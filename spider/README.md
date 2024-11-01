@@ -30,45 +30,43 @@ pip install undetected-chromedriver selenium
 - `undetected-chromedriver`：一個 ChromeDriver 包裝工具，用於幫助繞過網站的反爬蟲檢測。
 - `selenium`：提供瀏覽器自動化的工具。
 
-### 步驟 3：在 WSL 中安裝 Google Chrome
+### 步驟 3：下載並配置 Google Chrome 和 ChromeDriver
 
 1. **下載 Chrome for Linux**：
-   可以直接在 WSL 中下載 Chrome `.deb` 安裝包，或從 [Google Chrome 官網](https://www.google.com/chrome/) 下載。
+
+   您可以從以下連結下載適用於 Linux 的 Chrome 二進位檔案：
+   [Chrome for Linux 下載連結](https://storage.googleapis.com/chrome-for-testing-public/130.0.6723.91/linux64/chrome-linux64.zip)
+
+2. **解壓縮 Chrome 並複製到 WSL**：
+
+   假設您已經在 Windows 上下載了 `chrome-linux64.zip`。您可以使用以下命令將解壓縮後的 `chrome` 資料夾移至 WSL：
 
    ```bash
-   wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+   # 在 Windows 上解壓縮後，將 chrome 資料夾移到 WSL 的指定目錄
+   cp -r /mnt/d/TAHRD/TAHRD-Graduation-Project/chrome ~/chrome
    ```
 
-2. **安裝 Chrome**：
+3. **複製 ChromeDriver**：
+
+   同樣地，假設您已經將 `chromedriver` 解壓縮至 `chromedriver-linux64` 資料夾，您可以將其複製到 WSL 的指定目錄：
 
    ```bash
-   sudo apt install ./google-chrome-stable_current_amd64.deb
+   cp -r /mnt/d/TAHRD/TAHRD-Graduation-Project/chromedriver-linux64 ~/chromedriver-linux64
    ```
 
-3. **驗證安裝**：
-   確保 Chrome 已正確安裝，可以運行以下指令查看版本：
+4. **確認 Chrome 和 ChromeDriver**：
+   確認 `chrome` 和 `chromedriver` 已正確放置，並且具有執行權限：
 
    ```bash
-   google-chrome --version
+   # 確認 Chrome
+   ~/chrome/chrome --version
+
+   # 確認 ChromeDriver
+   chmod +x ~/chromedriver-linux64/chromedriver
+   ~/chromedriver-linux64/chromedriver --version
    ```
 
-   如果安裝成功，應該會顯示 Chrome 的版本號。
-
-### 步驟 4：安裝 ChromeDriver
-
-1. **下載 ChromeDriver**：
-   下載與您的 Chrome 版本相符的 ChromeDriver。您可以在 [這裡](https://sites.google.com/chromium.org/driver/) 找到相應版本的 ChromeDriver。
-
-2. **解壓縮並移動 ChromeDriver**：
-   下載完成後，解壓縮並將 `chromedriver` 移動到一個方便的位置。在本指南中，假設您將它移動到 `/mnt/d/TAHRD/TAHRD-Graduation-Project/chromedriver-linux64/`。
-
-   ```bash
-   mkdir -p /mnt/d/TAHRD/TAHRD-Graduation-Project/chromedriver-linux64/
-   mv chromedriver /mnt/d/TAHRD/TAHRD-Graduation-Project/chromedriver-linux64/
-   chmod +x /mnt/d/TAHRD/TAHRD-Graduation-Project/chromedriver-linux64/chromedriver
-   ```
-
-### 步驟 5：在 WSL 中配置 Chrome 的無頭模式
+### 步驟 4：在 WSL 中配置 Chrome 的無頭模式
 
 由於 WSL 沒有圖形介面，需要將 Chrome 設置為無頭模式：
 
@@ -78,7 +76,7 @@ pip install undetected-chromedriver selenium
    options.add_argument("--headless")
    ```
 
-### 步驟 6：執行爬蟲
+### 步驟 5：執行爬蟲
 
 環境配置完成後，可以使用以下指令運行爬蟲：
 
@@ -94,7 +92,9 @@ python app.py
 .
 ├── app.py                  # 主爬蟲代碼
 ├── README.md               # 本說明文件
-└── dcard_comments.txt      # 爬取結果輸出文件
+├── dcard_comments.txt      # 爬取結果輸出文件
+├── chrome                  # Google Chrome 執行檔
+└── chromedriver-linux64    # ChromeDriver 執行檔
 ```
 
 ## 常見問題排查
@@ -107,6 +107,3 @@ python app.py
 
 - 避免過於頻繁地運行腳本，Dcard 可能會檢測並阻止過於頻繁的請求。
 - 可以在腳本中的 `quick_sleep` 函數中添加延遲，以避免被檢測為爬蟲行為。
-
-本指南應能協助您順利在 WSL 中完成 Dcard 爬蟲的環境建置與使用。祝您爬取順利！
-```
