@@ -3,8 +3,8 @@
 指導老師：蔡芸琤教授  
 
 # 前後端組進度追蹤  
-[前端組進度追蹤](https://github.com/PeiHsiuLu/Graduation_folio)  
-[後端組進度追蹤](https://github.com/claire0311/front-end)  
+[前端組進度追蹤](https://github.com/claire0311/front-end)  
+[後端組進度追蹤](https://github.com/PeiHsiuLu/Graduation_folio)  
 
 
 # LLM社交模擬器  
