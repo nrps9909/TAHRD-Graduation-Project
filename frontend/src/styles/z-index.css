@@ -1,0 +1,40 @@
+/* Z-Index Management System */
+:root {
+  /* Z-Index 層級管理 */
+  --z-base: 0;
+  --z-dropdown: 1000;
+  --z-sticky: 1020;
+  --z-fixed: 1030;
+  --z-modal-backdrop: 1040;
+  --z-modal: 1050;
+  --z-popover: 1060;
+  --z-tooltip: 1070;
+  --z-notification: 1080;
+  
+  /* 遊戲特定層級 */
+  --z-game-canvas: 1;
+  --z-game-ui: 10;
+  --z-game-dialogue: 20;
+  --z-game-phone: 30;
+  --z-game-modal: 40;
+  --z-game-notification: 50;
+}
+
+/* Z-Index utility classes */
+.z-base { z-index: var(--z-base); }
+.z-dropdown { z-index: var(--z-dropdown); }
+.z-sticky { z-index: var(--z-sticky); }
+.z-fixed { z-index: var(--z-fixed); }
+.z-modal-backdrop { z-index: var(--z-modal-backdrop); }
+.z-modal { z-index: var(--z-modal); }
+.z-popover { z-index: var(--z-popover); }
+.z-tooltip { z-index: var(--z-tooltip); }
+.z-notification { z-index: var(--z-notification); }
+
+/* Game specific */
+.z-game-canvas { z-index: var(--z-game-canvas); }
+.z-game-ui { z-index: var(--z-game-ui); }
+.z-game-dialogue { z-index: var(--z-game-dialogue); }
+.z-game-phone { z-index: var(--z-game-phone); }
+.z-game-modal { z-index: var(--z-game-modal); }
+.z-game-notification { z-index: var(--z-game-notification); }

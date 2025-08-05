@@ -39,6 +39,9 @@ interface GameState {
   playerPosition: [number, number, number]
   playerRotation: number
   
+  // Mobile controls
+  joystickInput: { x: number; y: number }
+  
   // NPCs
   npcs: NPC[]
   selectedNpc: string | null
@@ -82,6 +85,7 @@ interface GameState {
   setShowDiary: (show: boolean) => void
   setPlayerPosition: (position: [number, number, number]) => void
   setPlayerRotation: (rotation: number) => void
+  setJoystickInput: (x: number, y: number) => void
 }
 
 export const useGameStore = create<GameState>()(
@@ -92,6 +96,7 @@ export const useGameStore = create<GameState>()(
       playerName: '',
       playerPosition: [0, 0.5, 0],
       playerRotation: 0,
+      joystickInput: { x: 0, y: 0 },
       npcs: [],
       selectedNpc: null,
       conversations: [],
@@ -230,6 +235,7 @@ export const useGameStore = create<GameState>()(
       setShowDiary: (show) => set({ showDiary: show }),
       setPlayerPosition: (position) => set({ playerPosition: position }),
       setPlayerRotation: (rotation) => set({ playerRotation: rotation }),
+      setJoystickInput: (x, y) => set({ joystickInput: { x, y } }),
     }),
     {
       name: 'heart-whisper-town-game',

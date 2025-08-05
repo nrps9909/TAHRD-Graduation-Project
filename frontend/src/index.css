@@ -1,174 +1,88 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Import modular styles */
+@import './styles/index.css';
 
-@layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222.2 84% 4.9%;
-
-    --muted: 210 40% 96%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-
-    --accent: 210 40% 96%;
-    --accent-foreground: 222.2 84% 4.9%;
-
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-
-    --radius: 0.5rem;
-  }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 84% 4.9%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 94.1%;
-  }
+/* 遊戲場景游標控制 */
+.game-scene {
+  position: relative;
 }
 
-@layer base {
-  * {
-    @apply border-border;
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-  }
-  
-  html, body {
-    height: 100%;
-    width: 100%;
-    overflow: hidden;
-  }
-  
-  body {
-    @apply bg-background text-foreground;
-    font-family: 'Inter', 'Noto Sans TC', sans-serif;
-    margin: 0 !important;
-    padding: 0 !important;
-  }
-  
-  #root {
-    height: 100vh;
-    width: 100vw;
-    position: fixed;
-    top: 0;
-    left: 0;
-  }
+/* 遊戲場景 canvas 樣式 */
+.game-scene canvas {
+  cursor: grab;
+  outline: none; /* 移除焦點外框 */
+  user-select: none; /* 防止選取 */
 }
 
-/* 心語小鎮特有樣式 */
-.town-gradient {
-  background: linear-gradient(135deg, #F4E4C1 0%, #E8F4F8 50%, #F0E6FF 100%);
+.game-scene canvas:active {
+  cursor: grabbing;
 }
 
-.dialogue-box {
-  @apply bg-white/90 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-white/20;
-}
-
-.npc-card {
-  @apply bg-gradient-to-br from-healing-gentle to-healing-soft rounded-xl p-6 shadow-md hover:shadow-lg transition-all duration-300;
-}
-
-.memory-flower {
-  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));
-  transition: transform 0.3s ease, filter 0.3s ease;
-}
-
-.memory-flower:hover {
-  transform: scale(1.1);
-  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.15));
-}
-
-/* 文字打字機效果 */
-.typewriter {
+/* 全螢幕遊戲模式 */
+body.game-active {
+  cursor: none !important;
   overflow: hidden;
-  border-right: 2px solid;
-  white-space: nowrap;
-  animation: typewriter 3s steps(40, end), blink-caret 0.75s step-end infinite;
 }
 
-@keyframes typewriter {
-  from {
-    width: 0;
-  }
-  to {
-    width: 100%;
-  }
+body.game-active * {
+  cursor: none !important;
 }
 
-@keyframes blink-caret {
-  from, to {
-    border-color: transparent;
-  }
-  50% {
-    border-color: currentColor;
-  }
+/* Pointer Lock 提示 */
+.pointer-lock-hint {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 20px;
+  border-radius: 10px;
+  text-align: center;
+  pointer-events: none;
+  transition: opacity 0.3s;
 }
 
-/* 3D 場景樣式 - 確保全螢幕顯示 */
-.scene-container {
-  @apply w-full h-screen relative overflow-hidden;
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+/* PC遊戲優化 */
+body {
+  overflow: hidden; /* 防止頁面滾動 */
 }
 
-.scene-container canvas {
-  @apply w-full h-full;
-  display: block !important;
-  position: absolute !important;
-  top: 0 !important;
-  left: 0 !important;
+/* PC遊戲：提升按鈕體驗 */
+button, [role="button"] {
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.ui-overlay {
-  @apply absolute inset-0 pointer-events-none;
-  z-index: 100 !important;
-  position: fixed;
+button:hover, [role="button"]:hover {
+  transform: scale(1.05);
 }
 
-.ui-overlay > * {
-  @apply pointer-events-auto;
+button:active, [role="button"]:active {
+  transform: scale(0.95);
+}
+
+/* PC遊戲：鍵盤導航 */
+*:focus {
+  outline: 2px solid #87CEEB;
+  outline-offset: 2px;
+}
+
+/* PC遊戲：滾動條美化 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0,0,0,0.1);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(135, 206, 235, 0.6);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(135, 206, 235, 0.8);
 }

@@ -1,7 +1,9 @@
 import { useRef, useEffect } from 'react'
-import { useFrame, useThree } from '@react-three/fiber'
+import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useGameStore } from '@/stores/gameStore'
+import { collisionSystem } from '@/utils/collision'
+import { CameraController } from './CameraController'
 
 interface PlayerProps {
   position?: [number, number, number]
@@ -9,24 +11,25 @@ interface PlayerProps {
 
 export const Player = ({ position = [0, 0, 0] }: PlayerProps) => {
   const playerRef = useRef<THREE.Group>(null)
-  const { camera } = useThree()
   const { setPlayerPosition, setPlayerRotation } = useGameStore()
   const isMounted = useRef(true)
 
   // 移動相關狀態
   const velocity = useRef(new THREE.Vector3())
   const direction = useRef(new THREE.Vector3())
+  const cameraRotation = useRef(0)
   const keys = useRef({
     forward: false,
     backward: false,
     left: false,
     right: false,
-    shift: false
+    shift: false,
+    run: false  // PC遊戲：跑步鍵
   })
 
-  // 相機偏移設定
-  const cameraOffset = useRef(new THREE.Vector3(0, 8, 12))
-  const cameraLookAtOffset = useRef(new THREE.Vector3(0, 2, 0))
+  // 玩家狀態
+  const isMoving = useRef(false)
+  const walkCycle = useRef(0)
 
   // 鍵盤事件處理
   useEffect(() => {
@@ -51,6 +54,10 @@ export const Player = ({ position = [0, 0, 0] }: PlayerProps) => {
         case 'ShiftLeft':
         case 'ShiftRight':
           keys.current.shift = true
+          break
+        case 'ControlLeft':
+        case 'ControlRight':
+          keys.current.run = true
           break
       }
     }
@@ -77,6 +84,10 @@ export const Player = ({ position = [0, 0, 0] }: PlayerProps) => {
         case 'ShiftRight':
           keys.current.shift = false
           break
+        case 'ControlLeft':
+        case 'ControlRight':
+          keys.current.run = false
+          break
       }
     }
 
@@ -96,52 +107,72 @@ export const Player = ({ position = [0, 0, 0] }: PlayerProps) => {
     // 重置方向向量
     direction.current.set(0, 0, 0)
 
-    // 根據按鍵設定移動方向
-    if (keys.current.forward) direction.current.z -= 1
-    if (keys.current.backward) direction.current.z += 1
-    if (keys.current.left) direction.current.x -= 1
-    if (keys.current.right) direction.current.x += 1
+    // PC遊戲：鍵盤輸入 (設定本地方向向量)
+    if (keys.current.forward) direction.current.z = 1    // W鍵：本地前方
+    if (keys.current.backward) direction.current.z = -1  // S鍵：本地後方
+    if (keys.current.left) direction.current.x = 1       // A鍵：本地左方
+    if (keys.current.right) direction.current.x = -1     // D鍵：本地右方
 
     // 正規化方向向量
     if (direction.current.length() > 0) {
       direction.current.normalize()
       
-      // 根據相機角度調整移動方向
-      const cameraDirection = new THREE.Vector3()
-      camera.getWorldDirection(cameraDirection)
-      cameraDirection.y = 0
-      cameraDirection.normalize()
-      
-      const cameraRight = new THREE.Vector3()
-      cameraRight.crossVectors(cameraDirection, new THREE.Vector3(0, 1, 0))
-      
+      // 計算移動方向
       const moveDirection = new THREE.Vector3()
-      moveDirection.addScaledVector(cameraDirection, -direction.current.z)
-      moveDirection.addScaledVector(cameraRight, direction.current.x)
+      
+      // 檢查是否在 Pointer Lock 模式
+      const isPointerLocked = !!document.pointerLockElement
+      
+      if (isPointerLocked) {
+        // PC遊戲 Pointer Lock 模式 - 基於相機朝向移動
+        // Three.js坐標系：Z軸負方向為forward，X軸正方向為right
+        const forward = new THREE.Vector3(0, 0, -1)  
+        const right = new THREE.Vector3(-1, 0, 0)    // 修正右向量為負X方向
+        
+        // 根據相機旋轉調整方向向量
+        forward.applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraRotation.current)
+        right.applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraRotation.current)
+        
+        // 正確的方向映射
+        moveDirection.addScaledVector(forward, direction.current.z)   // Z軸：前後移動
+        moveDirection.addScaledVector(right, direction.current.x)     // X軸：左右移動
+      } else {
+        // 標準模式 - 世界坐標移動
+        moveDirection.x = direction.current.x
+        moveDirection.z = direction.current.z
+      }
+      
       moveDirection.normalize()
 
-      // 計算移動速度（按住Shift加速）
-      const speed = keys.current.shift ? 12 : 8
+      // PC遊戲：多種移動速度
+      let speed = 6  // 基礎步行速度
+      if (keys.current.run) speed = 15  // Ctrl - 跑步
+      else if (keys.current.shift) speed = 3  // Shift - 潛行
       velocity.current.copy(moveDirection.multiplyScalar(speed * delta))
 
-      // 更新玩家位置
-      const newPosition = new THREE.Vector3().copy(playerRef.current.position)
-      newPosition.add(velocity.current)
+      // 計算新位置
+      const currentPosition = playerRef.current.position.clone()
+      const targetPosition = currentPosition.clone().add(velocity.current)
       
-      // 保持在島嶼範圍內（半徑55的圓形島嶼）
-      const distanceFromCenter = Math.sqrt(newPosition.x * newPosition.x + newPosition.z * newPosition.z)
-      if (distanceFromCenter > 52) {
-        newPosition.normalize().multiplyScalar(52)
-        newPosition.y = 0.5
-      }
-
-      playerRef.current.position.copy(newPosition)
+      // 使用碰撞系統檢查並獲取有效位置
+      const validPosition = collisionSystem.getClosestValidPosition(
+        currentPosition,
+        targetPosition,
+        0.5 // 玩家半徑
+      )
+      
+      playerRef.current.position.copy(validPosition)
+      
+      // 走路動畫
+      isMoving.current = true
+      walkCycle.current += delta * 10
       if (isMounted.current) {
-        setPlayerPosition([newPosition.x, newPosition.y, newPosition.z])
+        setPlayerPosition([validPosition.x, validPosition.y, validPosition.z])
       }
 
-      // 旋轉玩家面向移動方向
+      // PC遊戲：角色朝向邏輯
       if (moveDirection.length() > 0) {
+        // 無論哪種模式，角色都面向移動方向
         const targetRotation = Math.atan2(moveDirection.x, moveDirection.z)
         playerRef.current.rotation.y = THREE.MathUtils.lerp(
           playerRef.current.rotation.y,
@@ -152,25 +183,15 @@ export const Player = ({ position = [0, 0, 0] }: PlayerProps) => {
           setPlayerRotation(targetRotation)
         }
       }
+    } else {
+      isMoving.current = false
     }
-
-    // 更新相機跟隨
-    const playerPosition = playerRef.current.position
-    const idealCameraPosition = new THREE.Vector3()
-    idealCameraPosition.copy(playerPosition)
-    idealCameraPosition.add(cameraOffset.current)
-
-    const idealLookAtPosition = new THREE.Vector3()
-    idealLookAtPosition.copy(playerPosition)
-    idealLookAtPosition.add(cameraLookAtOffset.current)
-
-    // 平滑插值相機位置
-    camera.position.lerp(idealCameraPosition, 3 * delta)
     
-    // 讓相機始終看向玩家
-    const lookAtTarget = new THREE.Vector3()
-    lookAtTarget.copy(idealLookAtPosition)
-    camera.lookAt(lookAtTarget)
+    // 走路時的上下擺動
+    if (isMoving.current && playerRef.current) {
+      const bobAmount = Math.sin(walkCycle.current) * 0.05
+      playerRef.current.position.y = 0.5 + bobAmount
+    }
   })
 
   // Component lifecycle management
@@ -190,7 +211,18 @@ export const Player = ({ position = [0, 0, 0] }: PlayerProps) => {
   }, []) // Remove dependencies to prevent infinite loop
 
   return (
-    <group ref={playerRef} position={position}>
+    <>
+      <CameraController 
+        target={playerRef} 
+        offset={new THREE.Vector3(0, 8, 12)}  // PC遊戲第三人稱視角
+        lookAtOffset={new THREE.Vector3(0, 1.5, 0)}
+        smoothness={6}
+        enableRotation={true}  // PC模式：啟用旋轉
+        enablePointerLock={true}  // PC模式：啟用pointer lock
+        onRotationChange={(rotation) => { cameraRotation.current = rotation }}
+      />
+      
+      <group ref={playerRef} position={position}>
       {/* 玩家身體 */}
       <mesh castShadow receiveShadow position={[0, 1, 0]}>
         <capsuleGeometry args={[0.5, 1]} />
@@ -224,6 +256,7 @@ export const Player = ({ position = [0, 0, 0] }: PlayerProps) => {
         <circleGeometry args={[0.8, 16]} />
         <meshBasicMaterial color="#000000" transparent opacity={0.3} />
       </mesh>
-    </group>
+      </group>
+    </>
   )
 }

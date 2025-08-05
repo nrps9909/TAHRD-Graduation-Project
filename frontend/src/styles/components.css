@@ -1,0 +1,56 @@
+/* Component Styles */
+
+/* 心語小鎮特有樣式 */
+.town-gradient {
+  background: linear-gradient(135deg, #F4E4C1 0%, #E8F4F8 50%, #F0E6FF 100%);
+}
+
+/* Dialogue Box */
+.dialogue-box {
+  @apply bg-white/90 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-white/20;
+}
+
+/* NPC Card */
+.npc-card {
+  @apply bg-gradient-to-br from-healing-gentle to-healing-soft rounded-xl p-6 shadow-md hover:shadow-lg transition-all duration-300;
+}
+
+/* Memory Flower */
+.memory-flower {
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));
+  transition: transform 0.3s ease, filter 0.3s ease;
+}
+
+.memory-flower:hover {
+  transform: scale(1.1);
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.15));
+}
+
+/* Phone Component */
+.phone-container {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: var(--z-game-phone);
+}
+
+.phone-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(4px);
+  z-index: calc(var(--z-game-phone) - 1);
+}
+
+/* Notification Badge */
+.notification-badge {
+  position: fixed;
+  top: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--z-game-notification);
+}

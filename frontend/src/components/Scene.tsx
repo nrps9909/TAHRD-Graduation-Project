@@ -5,11 +5,12 @@ import { NPCCharacter } from './3D/NPCCharacter'
 import { MemoryFlower } from './3D/MemoryFlower'
 import { Buildings } from './3D/Buildings'
 import { Player } from './3D/Player'
+import { ParticleEffects, Fireflies } from './3D/ParticleEffects'
 import { useGameStore } from '@/stores/gameStore'
 import * as THREE from 'three'
 
 export const Scene = () => {
-  const { npcs, memoryFlowers, weather, timeOfDay } = useGameStore()
+  const { npcs, memoryFlowers, weather, timeOfDay, season } = useGameStore()
   const lightRef = useRef<THREE.DirectionalLight>(null)
 
   // 動態調整光線基於時間
@@ -81,21 +82,11 @@ export const Scene = () => {
         />
       ))}
       
-      {/* 環境粒子效果 */}
-      {weather === 'rainy' && (
-        <group>
-          {Array.from({ length: 100 }, (_, i) => (
-            <mesh key={i} position={[
-              (Math.random() - 0.5) * 100,
-              Math.random() * 20 + 10,
-              (Math.random() - 0.5) * 100
-            ]}>
-              <sphereGeometry args={[0.02, 4, 4]} />
-              <meshBasicMaterial color="#87CEEB" transparent opacity={0.6} />
-            </mesh>
-          ))}
-        </group>
-      )}
+      {/* 粒子效果 */}
+      <ParticleEffects weather={weather} season={season} />
+      
+      {/* 夜晚的螢火蟲 */}
+      {(timeOfDay < 6 || timeOfDay > 20) && <Fireflies />}
     </>
   )
 }

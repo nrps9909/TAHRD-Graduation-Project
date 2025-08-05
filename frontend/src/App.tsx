@@ -3,6 +3,7 @@ import { Canvas } from '@react-three/fiber'
 import { Environment } from '@react-three/drei'
 import { Scene } from './components/Scene'
 import { UI } from './components/UI'
+import { PointerLockManager } from './components/3D/PointerLockManager'
 import { useGameStore } from './stores/gameStore'
 import { useSocketConnection } from './hooks/useSocketConnection'
 
@@ -31,34 +32,34 @@ function App() {
   }
 
   return (
-    <div className="scene-container">
-      <Canvas
-        camera={{ position: [0, 8, 12], fov: 75 }}
-        shadows
-        style={{ 
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          background: 'linear-gradient(to bottom, #87CEEB, #98FB98, #F0E68C)'
-        }}
-      >
-        <ambientLight intensity={0.4} />
-        <directionalLight
-          position={[10, 10, 5]}
-          intensity={1}
-          castShadow
-          shadow-mapSize-width={2048}
-          shadow-mapSize-height={2048}
-        />
-        
-        <Environment preset="park" />
-        
-        <Scene />
-      </Canvas>
+    <div className="game-container">
+      <PointerLockManager />
+      <div className="game-scene">
+        <Canvas
+          camera={{ position: [0, 8, 12], fov: 75 }}
+          shadows
+          style={{ 
+            width: '100%',
+            height: '100%',
+            background: 'linear-gradient(to bottom, #87CEEB 0%, #98D8E8 30%, #F0E68C 60%, #98FB98 100%)'
+          }}
+        >
+          <ambientLight intensity={0.4} />
+          <directionalLight
+            position={[10, 10, 5]}
+            intensity={1}
+            castShadow
+            shadow-mapSize-width={2048}
+            shadow-mapSize-height={2048}
+          />
+          
+          <Environment preset="sunset" background blur={0.5} />
+          
+          <Scene />
+        </Canvas>
+      </div>
       
-      <div className="ui-overlay">
+      <div className="game-ui">
         <UI />
       </div>
     </div>
