@@ -64,16 +64,35 @@ export const DialogueBox = () => {
   if (!currentNpc) return null
 
   return (
-    <div className="dialogue-box w-full animate-slide-up">
+    <div className="w-full animate-slide-up" style={{
+      animation: 'slideUp 0.3s ease-out'
+    }}>
       {/* Modern Animal Crossing Style Dialogue Box */}
-      <div className="relative">
+      <div className="relative" style={{
+        maxWidth: '800px',
+        margin: '0 auto'
+      }}>
         {/* Character Bubble Tail */}
-        <div className="absolute -top-6 left-20 w-12 h-12 bg-white/95 rounded-full 
-                       transform rotate-45 shadow-lg" />
+        <div style={{
+          position: 'absolute',
+          top: '-24px',
+          left: '80px',
+          width: '48px',
+          height: '48px',
+          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+          borderRadius: '50%',
+          transform: 'rotate(45deg)',
+          boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)'
+        }} />
         
         {/* Main Dialogue Container */}
-        <div className="bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl 
-                       border-4 border-white/50 overflow-hidden">
+        <div style={{
+          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+          backdropFilter: 'blur(12px)',
+          borderRadius: '24px',
+          boxShadow: '0 20px 40px rgba(0, 0, 0, 0.1), 0 0 0 4px rgba(255, 255, 255, 0.5)',
+          overflow: 'hidden'
+        }}>
           {/* Header with Character Info */}
           <div className="bg-gradient-to-r from-blue-100 to-purple-100 px-6 py-4 
                          flex items-center justify-between">
@@ -234,11 +253,30 @@ export const DialogueBox = () => {
           </div>
 
           {/* Modern Input Area */}
-          <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-white border-t-4 border-yellow-200">
-            <div className="flex items-center gap-3">
+          <div style={{
+            padding: '16px 24px',
+            background: 'linear-gradient(to right, #F9FAFB, #FFFFFF)',
+            borderTop: '4px solid #FDE047'
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px'
+            }}>
               {/* User Avatar */}
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-400 to-blue-500 
-                             flex items-center justify-center text-white shadow-lg shrink-0">
+              <div style={{
+                width: '48px',
+                height: '48px',
+                borderRadius: '16px',
+                background: 'linear-gradient(to bottom right, #60A5FA, #3B82F6)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'white',
+                boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
+                flexShrink: 0,
+                fontSize: '24px'
+              }}>
                 😊
               </div>
               

@@ -58,7 +58,10 @@ export const CameraController = ({
         hasInteracted = true
         return true
       } catch (err) {
-        console.log(`${source} 進入 Pointer lock 失敗:`, err.message)
+        // 只在非用戶手勢錯誤時才記錄
+        if (!err.message?.includes('user gesture')) {
+          console.log(`${source} 進入 Pointer lock 失敗:`, err.message)
+        }
         return false
       } finally {
         pendingPointerLockRequest.current = false
@@ -67,11 +70,12 @@ export const CameraController = ({
     
     // 延遲自動進入 pointer lock
     const delayedAutoLock = () => {
-      setTimeout(() => {
-        if (!hasInteracted) {
-          safeEnterPointerLock('自動啟動')
-        }
-      }, 1000) // 延遲1秒，確保頁面完全載入
+      // 移除自動啟動，等待用戶互動
+      // setTimeout(() => {
+      //   if (!hasInteracted) {
+      //     safeEnterPointerLock('自動啟動')
+      //   }
+      // }, 1000) // 延遲1秒，確保頁面完全載入
     }
     
     // 監聽滑鼠進入畫布
@@ -131,7 +135,7 @@ export const CameraController = ({
       if (isPointerLocked.current) {
         // Pointer Lock 模式 - 自由視角
         const sensitivity = 0.002
-        targetRotation.current += event.movementX * sensitivity  // 修正：滑鼠右移相機右轉
+        targetRotation.current -= event.movementX * sensitivity  // 修正：滑鼠右移相機左轉（更符合FPS遊戲習慣）
         pitch.current = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, pitch.current - event.movementY * sensitivity))
       } else if (isDragging.current) {
         // 拖曳模式 - 水平旋轉
@@ -253,7 +257,7 @@ export const CameraController = ({
     
     // 垂直位置調整（基於俯仰角度）
     if (isPointerLocked.current) {
-      rotatedOffset.y = offset.y + Math.sin(pitch.current) * horizontalDistance * 0.3
+      rotatedOffset.y = offset.y + Math.sin(pitch.current) * horizontalDistance * 0.5  // 增加上下視角的影響
     } else {
       rotatedOffset.y = offset.y
     }
@@ -277,7 +281,7 @@ export const CameraController = ({
       
       // 應用俯仰角調整
       const pitchQuaternion = new THREE.Quaternion()
-      pitchQuaternion.setFromAxisAngle(new THREE.Vector3(1, 0, 0), pitch.current * 0.3)
+      pitchQuaternion.setFromAxisAngle(new THREE.Vector3(1, 0, 0), pitch.current * 0.5)  // 增加俯仰影響
       tempCamera.quaternion.multiply(pitchQuaternion)
       
       // 平滑旋轉相機朝向

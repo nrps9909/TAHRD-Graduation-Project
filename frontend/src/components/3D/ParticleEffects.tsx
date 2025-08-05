@@ -1,4 +1,4 @@
-import { useRef, useMemo } from 'react'
+import { useRef, useMemo, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 
@@ -8,194 +8,183 @@ interface ParticleEffectsProps {
 }
 
 export const ParticleEffects = ({ weather, season }: ParticleEffectsProps) => {
-  const particlesRef = useRef<THREE.Points>(null)
+  const meshRef = useRef<THREE.Points>(null)
+  const initialized = useRef(false)
+  const geometryRef = useRef<THREE.BufferGeometry | null>(null)
   
-  // 創建粒子幾何和材質
-  const particles = useMemo(() => {
-    const count = weather === 'rainy' ? 500 : season === 'spring' ? 200 : 100
-    const positions = new Float32Array(count * 3)
-    const colors = new Float32Array(count * 3)
-    const sizes = new Float32Array(count)
-    
-    for (let i = 0; i < count; i++) {
-      const i3 = i * 3
+  // 創建極簡的粒子系統
+  const particleSystem = useMemo(() => {
+    try {
+      // 大幅減少粒子數量
+      const count = weather === 'rainy' ? 50 : season === 'spring' ? 30 : 20
+      const positions = new Float32Array(count * 3)
       
-      // 位置 - 在整個場景範圍內隨機分布
-      positions[i3] = (Math.random() - 0.5) * 100
-      positions[i3 + 1] = Math.random() * 30
-      positions[i3 + 2] = (Math.random() - 0.5) * 100
-      
-      // 顏色
-      if (weather === 'rainy') {
-        // 雨滴 - 藍色
-        colors[i3] = 0.5
-        colors[i3 + 1] = 0.7
-        colors[i3 + 2] = 1
-      } else if (season === 'spring') {
-        // 櫻花花瓣 - 粉色
-        colors[i3] = 1
-        colors[i3 + 1] = 0.7 + Math.random() * 0.3
-        colors[i3 + 2] = 0.8 + Math.random() * 0.2
-      } else if (season === 'autumn') {
-        // 落葉 - 橙黃色
-        const hue = Math.random() * 0.2
-        colors[i3] = 1
-        colors[i3 + 1] = 0.5 + hue
-        colors[i3 + 2] = 0.1
-      } else {
-        // 默認 - 光點
-        colors[i3] = 1
-        colors[i3 + 1] = 1
-        colors[i3 + 2] = 0.8
+      // 初始化位置
+      for (let i = 0; i < count; i++) {
+        const i3 = i * 3
+        positions[i3] = (Math.random() - 0.5) * 40
+        positions[i3 + 1] = Math.random() * 15
+        positions[i3 + 2] = (Math.random() - 0.5) * 40
       }
       
-      // 大小
-      sizes[i] = weather === 'rainy' ? 0.1 : 0.2 + Math.random() * 0.3
+      const geometry = new THREE.BufferGeometry()
+      geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+      
+      // 強制計算邊界球以確保幾何體正確初始化
+      geometry.computeBoundingSphere()
+      
+      const material = new THREE.PointsMaterial({
+        size: 0.5,
+        sizeAttenuation: true,
+        color: weather === 'rainy' ? 0x87CEEB : 0xFFFFFF,
+        transparent: true,
+        opacity: 0.6,
+      })
+      
+      // 保存幾何體引用
+      geometryRef.current = geometry
+      
+      return { geometry, material, count }
+    } catch (error) {
+      console.error('Error creating particle system:', error)
+      return null
     }
-    
-    const geometry = new THREE.BufferGeometry()
-    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
-    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
-    geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1))
-    
-    const material = new THREE.PointsMaterial({
-      size: 0.3,
-      sizeAttenuation: true,
-      vertexColors: true,
-      transparent: true,
-      opacity: weather === 'rainy' ? 0.6 : 0.8,
-      blending: THREE.AdditiveBlending
-    })
-    
-    return { geometry, material }
   }, [weather, season])
   
-  // 動畫
-  useFrame((state, delta) => {
-    if (!particlesRef.current) return
-    
-    const positions = particlesRef.current.geometry.attributes.position.array as Float32Array
-    
-    for (let i = 0; i < positions.length; i += 3) {
-      if (weather === 'rainy') {
-        // 雨滴快速下落
-        positions[i + 1] -= delta * 20
-        
-        // 風的影響
-        positions[i] += Math.sin(state.clock.elapsedTime + i) * delta * 0.5
-        
-        // 重置位置
-        if (positions[i + 1] < 0) {
-          positions[i] = (Math.random() - 0.5) * 100
-          positions[i + 1] = 30
-          positions[i + 2] = (Math.random() - 0.5) * 100
-        }
-      } else if (season === 'spring' || season === 'autumn') {
-        // 花瓣/落葉緩慢飄落
-        positions[i + 1] -= delta * 2
-        
-        // 螺旋下落效果
-        const time = state.clock.elapsedTime
-        positions[i] += Math.sin(time + i) * delta * 2
-        positions[i + 2] += Math.cos(time + i) * delta * 2
-        
-        // 重置位置
-        if (positions[i + 1] < 0) {
-          positions[i] = (Math.random() - 0.5) * 100
-          positions[i + 1] = 20 + Math.random() * 10
-          positions[i + 2] = (Math.random() - 0.5) * 100
-        }
-      } else {
-        // 漂浮的光點
-        positions[i + 1] += Math.sin(state.clock.elapsedTime + i) * delta * 0.5
-        
-        // 保持在一定高度範圍內
-        if (positions[i + 1] > 20) positions[i + 1] = 5
-        if (positions[i + 1] < 5) positions[i + 1] = 20
+  // 清理資源
+  useEffect(() => {
+    return () => {
+      if (geometryRef.current) {
+        geometryRef.current.dispose()
+        geometryRef.current = null
       }
+      if (meshRef.current) {
+        if (meshRef.current.geometry && meshRef.current.geometry !== geometryRef.current) {
+          meshRef.current.geometry.dispose()
+        }
+        if (meshRef.current.material) {
+          (meshRef.current.material as THREE.Material).dispose()
+        }
+      }
+      initialized.current = false
+    }
+  }, [weather, season])
+  
+  // 極簡動畫
+  useFrame((state, delta) => {
+    if (!meshRef.current || !particleSystem) return
+    
+    const mesh = meshRef.current
+    const geometry = mesh.geometry
+    
+    // 基本檢查
+    if (!geometry || !geometry.attributes || !geometry.attributes.position) return
+    
+    const positionAttribute = geometry.attributes.position
+    
+    // 確保 attribute 有效
+    if (!positionAttribute || !positionAttribute.array) return
+    
+    // 獲取位置數組並檢查
+    const positions = positionAttribute.array as Float32Array
+    const itemSize = positionAttribute.itemSize || 3
+    const count = positionAttribute.count || 0
+    
+    // 確保數組存在且有效
+    if (!positions || positions.length === 0 || count === 0) return
+    
+    // 初始化檢查
+    if (!initialized.current) {
+      initialized.current = true
+      return
     }
     
-    particlesRef.current.geometry.attributes.position.needsUpdate = true
-    
-    // 旋轉整個粒子系統
-    if (season !== 'winter' && weather !== 'rainy') {
-      particlesRef.current.rotation.y += delta * 0.05
+    try {
+      // 安全的動畫更新 - 使用 count 而不是 positions.length
+      for (let i = 0; i < count; i++) {
+        const index = i * itemSize
+        
+        // 邊界檢查
+        if (index + 2 >= positions.length) break
+        
+        if (weather === 'rainy') {
+          positions[index + 1] -= delta * 5 // 雨滴下落
+          if (positions[index + 1] < 0) {
+            positions[index + 1] = 15
+          }
+        } else {
+          positions[index + 1] += Math.sin(state.clock.elapsedTime + i) * delta * 0.2
+          if (positions[index + 1] > 15) positions[index + 1] = 0
+          if (positions[index + 1] < 0) positions[index + 1] = 15
+        }
+      }
+      
+      // 安全更新
+      positionAttribute.needsUpdate = true
+      
+    } catch (error) {
+      console.error('Error in particle animation:', error)
+      initialized.current = false
     }
   })
   
-  return <points ref={particlesRef} {...particles} />
+  if (!particleSystem) return null
+  
+  return (
+    <points
+      key={`particles-${weather}-${season}`}
+      ref={meshRef}
+      geometry={particleSystem.geometry}
+      material={particleSystem.material}
+      frustumCulled={false}
+      onUpdate={(self) => {
+        // 確保幾何體已正確附加
+        if (self.geometry && !initialized.current) {
+          initialized.current = true
+        }
+      }}
+    />
+  )
 }
 
-// 螢火蟲效果
+// 簡化的螢火蟲效果
 export const Fireflies = () => {
-  const firefliesRef = useRef<THREE.Group>(null)
-  const lightRefs = useRef<THREE.PointLight[]>([])
+  const groupRef = useRef<THREE.Group>(null)
   
+  // 創建少量螢火蟲
   const fireflies = useMemo(() => {
-    return Array.from({ length: 15 }, (_, i) => ({
+    return Array.from({ length: 5 }, (_, i) => ({
       id: i,
-      position: new THREE.Vector3(
-        (Math.random() - 0.5) * 80,
-        2 + Math.random() * 8,
-        (Math.random() - 0.5) * 80
-      ),
+      position: [
+        (Math.random() - 0.5) * 30,
+        2 + Math.random() * 5,
+        (Math.random() - 0.5) * 30
+      ] as [number, number, number],
       phase: Math.random() * Math.PI * 2,
-      speed: 0.5 + Math.random() * 0.5
     }))
   }, [])
   
   useFrame((state) => {
-    if (!firefliesRef.current) return
+    if (!groupRef.current) return
     
     fireflies.forEach((firefly, i) => {
-      const time = state.clock.elapsedTime * firefly.speed + firefly.phase
-      
-      // 8字形飛行路徑
-      const x = firefly.position.x + Math.sin(time) * 5
-      const y = firefly.position.y + Math.sin(time * 2) * 2
-      const z = firefly.position.z + Math.cos(time) * 5
-      
-      const mesh = firefliesRef.current!.children[i * 2] as THREE.Mesh
-      const light = lightRefs.current[i]
-      
-      if (mesh) {
-        mesh.position.set(x, y, z)
-        
-        // 閃爍效果
-        const brightness = 0.5 + Math.sin(time * 3) * 0.5
-        ;(mesh.material as THREE.MeshBasicMaterial).opacity = brightness
-      }
-      
-      if (light) {
-        light.position.set(x, y, z)
-        light.intensity = brightness * 2
+      const child = groupRef.current?.children[i]
+      if (child) {
+        const time = state.clock.elapsedTime + firefly.phase
+        child.position.x = firefly.position[0] + Math.sin(time * 0.5) * 2
+        child.position.y = firefly.position[1] + Math.sin(time * 0.8) * 1
+        child.position.z = firefly.position[2] + Math.cos(time * 0.5) * 2
       }
     })
   })
   
   return (
-    <group ref={firefliesRef}>
-      {fireflies.map((firefly, i) => (
-        <group key={firefly.id}>
-          <mesh position={firefly.position.toArray()}>
-            <sphereGeometry args={[0.1, 8, 8]} />
-            <meshBasicMaterial 
-              color="#FFFF00" 
-              emissive="#FFFF00"
-              emissiveIntensity={2}
-              transparent 
-              opacity={0.8} 
-            />
-          </mesh>
-          <pointLight
-            ref={(el) => { if (el) lightRefs.current[i] = el }}
-            position={firefly.position.toArray()}
-            color="#FFFF00"
-            intensity={2}
-            distance={5}
-            decay={2}
-          />
-        </group>
+    <group ref={groupRef}>
+      {fireflies.map((firefly) => (
+        <mesh key={firefly.id} position={firefly.position}>
+          <sphereGeometry args={[0.1, 8, 8]} />
+          <meshBasicMaterial color="#FFFF00" transparent opacity={0.8} />
+        </mesh>
       ))}
     </group>
   )

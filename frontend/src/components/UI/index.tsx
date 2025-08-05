@@ -4,6 +4,7 @@ import { AnimalCrossingPhone } from './AnimalCrossingPhone'
 import { GameModals } from './GameModals'
 import { Crosshair } from './Crosshair'
 import { PointerLockHint } from './PointerLockHint'
+import { InteractionHint } from './InteractionHint'
 import { HotkeyManager, HotkeyHints } from './HotkeyManager'
 import { PointerLockStatus } from './PointerLockStatus'
 import { useGameStore } from '@/stores/gameStore'
@@ -37,6 +38,9 @@ export const UI = () => {
       
       {/* PC遊戲：Pointer Lock 狀態提示 */}
       <PointerLockStatus />
+      
+      {/* 互動提示 - 靠近 NPC 時顯示 */}
+      <InteractionHint />
       
       {/* PC遊戲：快速鍵提示 */}
       <HotkeyHints visible={showControls} />

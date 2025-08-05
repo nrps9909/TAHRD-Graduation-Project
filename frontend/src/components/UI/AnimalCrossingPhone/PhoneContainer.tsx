@@ -56,14 +56,37 @@ export const PhoneContainer = ({
       />
       
       {/* Phone Container */}
-      <div className="phone-container animate-phone-appear">
+      <div className="phone-container animate-phone-appear" style={{
+        position: 'fixed',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        zIndex: 1000,
+        animation: 'phoneAppear 0.5s ease-out'
+      }}>
         {/* Phone Frame */}
-        <div className="relative w-96 h-[700px] bg-gradient-to-b from-orange-300 via-yellow-300 to-orange-400 
-                       rounded-[3rem] p-6 shadow-2xl border-4 border-orange-500">
+        <div style={{
+          position: 'relative',
+          width: '384px',
+          height: '700px',
+          background: 'linear-gradient(to bottom, #FCD34D, #FDE047, #FCD34D)',
+          borderRadius: '48px',
+          padding: '24px',
+          boxShadow: '0 25px 50px rgba(0, 0, 0, 0.3), 0 0 0 4px #DC2626',
+          border: '4px solid #F97316'
+        }}>
           
           {/* Screen Bezel */}
-          <div className="w-full h-full bg-gradient-to-b from-sky-200 to-green-200 rounded-[2rem] 
-                         overflow-hidden relative border-3 border-orange-600 shadow-inner">
+          <div style={{
+            width: '100%',
+            height: '100%',
+            background: 'linear-gradient(to bottom, #BAE6FD, #BBF7D0)',
+            borderRadius: '32px',
+            overflow: 'hidden',
+            position: 'relative',
+            border: '3px solid #EA580C',
+            boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.1)'
+          }}>
             
             {/* Status Bar */}
             <div className="relative z-10 flex justify-between items-center px-6 py-4 

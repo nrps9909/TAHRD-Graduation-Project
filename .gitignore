@@ -129,3 +129,4 @@ coverage.xml
 .hypothesis
 /venv/bin
 /venv
+frontend/src/components/3D/Player.tsx

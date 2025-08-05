@@ -40,21 +40,23 @@ interface AIResponse {
 }
 
 class GeminiService {
-  private genAI: GoogleGenerativeAI
-  private model: any
+  private genAI?: GoogleGenerativeAI
+  private model?: any
   private useGeminiCLI: boolean
 
   constructor() {
-    const apiKey = process.env.GEMINI_API_KEY
-    if (!apiKey) {
-      throw new Error('GEMINI_API_KEY is required')
-    }
-    
-    this.genAI = new GoogleGenerativeAI(apiKey)
-    this.model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-pro' })
-    
     // 可以透過環境變數控制是否使用 Gemini CLI
     this.useGeminiCLI = process.env.USE_GEMINI_CLI === 'true'
+    
+    const apiKey = process.env.GEMINI_API_KEY
+    if (!this.useGeminiCLI && (!apiKey || apiKey === 'your-api-key')) {
+      throw new Error('GEMINI_API_KEY is required when USE_GEMINI_CLI is false')
+    }
+    
+    if (!this.useGeminiCLI) {
+      this.genAI = new GoogleGenerativeAI(apiKey!)
+      this.model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-pro' })
+    }
   }
 
   async generateNPCResponse(
@@ -110,7 +112,7 @@ class GeminiService {
   private async callGeminiCLI(prompt: string, npcPersonality: NPCPersonality | null = null): Promise<string> {
     return new Promise((resolve, reject) => {
       const projectRoot = path.resolve(__dirname, '../../../')
-      const geminiScriptPath = path.join(projectRoot, 'gemini.py')
+      const geminiScriptPath = path.join(projectRoot, 'backend', 'npc_dialogue_service.py')
       
       // 準備參數
       const args = [geminiScriptPath, '--chat', prompt]

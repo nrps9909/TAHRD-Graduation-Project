@@ -2,6 +2,7 @@ import { Server, Socket } from 'socket.io'
 import { PrismaClient } from '@prisma/client'
 import Redis from 'ioredis'
 import { logger } from './utils/logger'
+import { conversationResolvers } from './resolvers/conversationResolvers'
 
 export const socketHandler = (io: Server, prisma: PrismaClient, redis: Redis) => {
   io.on('connection', (socket: Socket) => {
@@ -19,24 +20,56 @@ export const socketHandler = (io: Server, prisma: PrismaClient, redis: Redis) =>
       logger.info(`Socket ${socket.id} left room: ${roomId}`)
     })
 
-    // 處理用戶消息（這裡主要是為了即時性，實際的AI處理在GraphQL resolver中）
+    // 處理用戶消息 - 直接調用 GraphQL resolver
     socket.on('user-message', async ({ npcId, content }) => {
       try {
-        // 廣播用戶開始輸入（可選）
-        socket.broadcast.emit('user-typing', { 
-          socketId: socket.id, 
-          npcId, 
-          isTyping: true 
-        })
+        // 基本驗證
+        if (!npcId || !content || !content.trim()) {
+          socket.emit('error', { message: 'Invalid message data' })
+          return
+        }
 
-        // 這裡可以添加一些即時驗證邏輯
-        logger.info(`User message to NPC ${npcId}: ${content.substring(0, 50)}...`)
+        logger.info(`Guest user message to NPC ${npcId}: ${content.substring(0, 50)}...`)
         
-        // 實際的消息處理會在 GraphQL mutation 中進行
+        // 確保 guest user 存在
+        let guestUser = await prisma.user.findUnique({
+          where: { username: 'guest' }
+        })
+        
+        if (!guestUser) {
+          guestUser = await prisma.user.create({
+            data: {
+              username: 'guest',
+              email: 'guest@example.com',
+              passwordHash: 'dummy-hash',
+            }
+          })
+          logger.info('Created guest user for demo purposes')
+        }
+        
+        // 創建 GraphQL context
+        const context = {
+          prisma,
+          userId: guestUser.id,
+          io,
+          redis
+        }
+
+        // 直接調用 sendMessage resolver
+        const result = await conversationResolvers.Mutation.sendMessage(
+          null,
+          { input: { npcId, content } },
+          context
+        )
+
+        logger.info('Message processed successfully', { npcId, userId: guestUser.id })
         
       } catch (error) {
         logger.error('Error handling user message:', error)
         socket.emit('error', { message: 'Failed to process message' })
+        
+        // 確保停止輸入指示器
+        io.emit('npc-typing', { npcId, isTyping: false })
       }
     })
 

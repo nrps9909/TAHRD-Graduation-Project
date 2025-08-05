@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useCallback } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useGameStore } from '@/stores/gameStore'
@@ -11,8 +11,9 @@ interface PlayerProps {
 
 export const Player = ({ position = [0, 0, 0] }: PlayerProps) => {
   const playerRef = useRef<THREE.Group>(null)
-  const { setPlayerPosition, setPlayerRotation } = useGameStore()
+  const { setPlayerPosition, setPlayerRotation, npcs, startConversation } = useGameStore()
   const isMounted = useRef(true)
+  const interactionDistance = 3 // 互動距離（單位）
 
   // 移動相關狀態
   const velocity = useRef(new THREE.Vector3())
@@ -30,6 +31,34 @@ export const Player = ({ position = [0, 0, 0] }: PlayerProps) => {
   // 玩家狀態
   const isMoving = useRef(false)
   const walkCycle = useRef(0)
+  
+  // 檢查附近的 NPC
+  const checkNearbyNPC = useCallback(() => {
+    if (!playerRef.current) return
+    
+    const playerPos = new THREE.Vector3()
+    playerRef.current.getWorldPosition(playerPos)
+    
+    // 尋找最近的 NPC
+    let nearestNPC = null
+    let nearestDistance = Infinity
+    
+    npcs.forEach((npc) => {
+      const npcPos = new THREE.Vector3(npc.position[0], npc.position[1], npc.position[2])
+      const distance = playerPos.distanceTo(npcPos)
+      
+      if (distance < interactionDistance && distance < nearestDistance) {
+        nearestDistance = distance
+        nearestNPC = npc
+      }
+    })
+    
+    // 如果找到附近的 NPC，開始對話
+    if (nearestNPC) {
+      console.log(`與 ${nearestNPC.name} 開始對話`)
+      startConversation(nearestNPC.id)
+    }
+  }, [npcs, startConversation])
 
   // 鍵盤事件處理
   useEffect(() => {
@@ -58,6 +87,10 @@ export const Player = ({ position = [0, 0, 0] }: PlayerProps) => {
         case 'ControlLeft':
         case 'ControlRight':
           keys.current.run = true
+          break
+        case 'KeyF':
+          // F鍵互動 - 檢查附近的NPC
+          checkNearbyNPC()
           break
       }
     }
@@ -110,8 +143,8 @@ export const Player = ({ position = [0, 0, 0] }: PlayerProps) => {
     // PC遊戲：鍵盤輸入 (設定本地方向向量)
     if (keys.current.forward) direction.current.z = 1    // W鍵：本地前方
     if (keys.current.backward) direction.current.z = -1  // S鍵：本地後方
-    if (keys.current.left) direction.current.x = 1       // A鍵：本地左方
-    if (keys.current.right) direction.current.x = -1     // D鍵：本地右方
+    if (keys.current.left) direction.current.x = -1      // A鍵：本地左方（修正方向）
+    if (keys.current.right) direction.current.x = 1      // D鍵：本地右方（修正方向）
 
     // 正規化方向向量
     if (direction.current.length() > 0) {
@@ -127,7 +160,7 @@ export const Player = ({ position = [0, 0, 0] }: PlayerProps) => {
         // PC遊戲 Pointer Lock 模式 - 基於相機朝向移動
         // Three.js坐標系：Z軸負方向為forward，X軸正方向為right
         const forward = new THREE.Vector3(0, 0, -1)  
-        const right = new THREE.Vector3(-1, 0, 0)    // 修正右向量為負X方向
+        const right = new THREE.Vector3(1, 0, 0)    // 標準右向量
         
         // 根據相機旋轉調整方向向量
         forward.applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraRotation.current)
@@ -138,8 +171,9 @@ export const Player = ({ position = [0, 0, 0] }: PlayerProps) => {
         moveDirection.addScaledVector(right, direction.current.x)     // X軸：左右移動
       } else {
         // 標準模式 - 世界坐標移動
+        // 在 Three.js 中，Z 軸負方向是前進
         moveDirection.x = direction.current.x
-        moveDirection.z = direction.current.z
+        moveDirection.z = -direction.current.z
       }
       
       moveDirection.normalize()
@@ -171,8 +205,8 @@ export const Player = ({ position = [0, 0, 0] }: PlayerProps) => {
       }
 
       // PC遊戲：角色朝向邏輯
-      if (moveDirection.length() > 0) {
-        // 無論哪種模式，角色都面向移動方向
+      if (moveDirection.length() > 0 && !isPointerLocked) {
+        // 只在非 Pointer Lock 模式下，角色面向移動方向
         const targetRotation = Math.atan2(moveDirection.x, moveDirection.z)
         playerRef.current.rotation.y = THREE.MathUtils.lerp(
           playerRef.current.rotation.y,
@@ -181,6 +215,19 @@ export const Player = ({ position = [0, 0, 0] }: PlayerProps) => {
         )
         if (isMounted.current) {
           setPlayerRotation(targetRotation)
+        }
+      } else if (isPointerLocked) {
+        // Pointer Lock 模式下，角色朝向跟隨移動方向
+        if (moveDirection.length() > 0) {
+          const targetRotation = Math.atan2(moveDirection.x, moveDirection.z)
+          playerRef.current.rotation.y = THREE.MathUtils.lerp(
+            playerRef.current.rotation.y,
+            targetRotation,
+            10 * delta
+          )
+          if (isMounted.current) {
+            setPlayerRotation(targetRotation)
+          }
         }
       }
     } else {

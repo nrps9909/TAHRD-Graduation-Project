@@ -11,10 +11,11 @@ export const useSocketConnection = () => {
     const socketUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000'
     
     socketRef.current = io(socketUrl, {
-      transports: ['websocket', 'polling'], // Allow fallback to polling
+      transports: ['polling', 'websocket'], // Start with polling, then upgrade to websocket
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
+      timeout: 20000, // 20 second timeout for initial connection
     })
 
     const socket = socketRef.current

@@ -5,7 +5,7 @@ import { NPCCharacter } from './3D/NPCCharacter'
 import { MemoryFlower } from './3D/MemoryFlower'
 import { Buildings } from './3D/Buildings'
 import { Player } from './3D/Player'
-import { ParticleEffects, Fireflies } from './3D/ParticleEffects'
+import { ParticleEffects, Fireflies } from './3D/ParticleEffectsFixed'
 import { useGameStore } from '@/stores/gameStore'
 import * as THREE from 'three'
 
@@ -82,10 +82,10 @@ export const Scene = () => {
         />
       ))}
       
-      {/* 粒子效果 */}
+      {/* 粒子效果 - 使用修復版本 */}
       <ParticleEffects weather={weather} season={season} />
       
-      {/* 夜晚的螢火蟲 */}
+      {/* 夜晚的螢火蟲 - 使用修復版本 */}
       {(timeOfDay < 6 || timeOfDay > 20) && <Fireflies />}
     </>
   )
