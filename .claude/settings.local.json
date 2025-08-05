@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(cat:*)",
+      "Bash(ls:*)",
+      "Bash(mkdir:*)",
+      "Bash(python3:*)",
+      "Bash(env)",
+      "Bash(source .env)",
+      "Bash(chmod:*)",
+      "Bash(npm install)",
+      "Bash(docker compose:*)",
+      "Bash(rm:*)",
+      "Bash(npm:*)",
+      "Bash(npm config get:*)",
+      "Bash(docker logs:*)",
+      "Bash(curl:*)",
+      "Bash(docker exec:*)",
+      "Bash(grep:*)",
+      "Bash(pkill:*)",
+      "Bash(ss:*)",
+      "Bash(fuser:*)",
+      "Bash(docker stop:*)",
+      "Bash(docker rm:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(docker-compose build:*)",
+      "Bash(docker-compose restart:*)",
+      "Bash(kill:*)"
+    ],
+    "deny": []
+  }
+}
