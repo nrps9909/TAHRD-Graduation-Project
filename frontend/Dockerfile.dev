@@ -1,0 +1,17 @@
+# 前端開發 Dockerfile
+FROM node:18-alpine
+
+WORKDIR /app
+
+# 安裝開發依賴
+COPY package.json package-lock.json* ./
+RUN npm install
+
+# 複製源代碼
+COPY . .
+
+# 暴露開發服務器端口
+EXPOSE 3000
+
+# 啟動開發服務器
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

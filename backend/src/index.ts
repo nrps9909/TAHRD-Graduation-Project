@@ -1,0 +1,128 @@
+import express from 'express'
+import { createServer } from 'http'
+import { Server } from 'socket.io'
+import { ApolloServer } from '@apollo/server'
+import { expressMiddleware } from '@apollo/server/express4'
+import { ApolloServerPluginDrainHttpServer } from '@apollo/server/plugin/drainHttpServer'
+import cors from 'cors'
+import { typeDefs } from './schema'
+import { resolvers } from './resolvers'
+import { createContext } from './context'
+import { socketHandler } from './socket'
+import { logger } from './utils/logger'
+import { connectRedis } from './utils/redis'
+import { PrismaClient } from '@prisma/client'
+
+const PORT = process.env.PORT || 4000
+
+async function startServer() {
+  try {
+    // 初始化 Express 應用
+    const app = express()
+    const httpServer = createServer(app)
+    
+    // 初始化資料庫連接
+    const prisma = new PrismaClient()
+    await prisma.$connect()
+    logger.info('Database connected successfully')
+    
+    // 初始化 Redis 連接
+    const redis = connectRedis()
+    
+    // 初始化 Socket.IO
+    const io = new Server(httpServer, {
+      cors: {
+        origin: process.env.FRONTEND_URL || "http://localhost:3000",
+        methods: ["GET", "POST"]
+      },
+      transports: ['websocket', 'polling']
+    })
+    
+    // Socket.IO 事件處理
+    socketHandler(io, prisma, redis)
+    
+    // 初始化 Apollo Server
+    const server = new ApolloServer({
+      typeDefs,
+      resolvers,
+      plugins: [ApolloServerPluginDrainHttpServer({ httpServer })],
+      introspection: process.env.NODE_ENV !== 'production',
+    })
+    
+    await server.start()
+    
+    // 中間件設置
+    app.use(cors({
+      origin: process.env.FRONTEND_URL || "http://localhost:3000",
+      credentials: true
+    }))
+    
+    app.use(express.json({ limit: '10mb' }))
+    
+    // GraphQL endpoint
+    app.use('/graphql', expressMiddleware(server, {
+      context: ({ req }) => createContext({ req, prisma, redis, io })
+    }))
+    
+    // 根路徑端點
+    app.get('/', (req, res) => {
+      res.json({
+        message: '🌸 歡迎來到心語小鎮 API',
+        version: '1.0.0',
+        endpoints: {
+          graphql: `http://localhost:${PORT}/graphql`,
+          health: `http://localhost:${PORT}/health`,
+          websocket: `ws://localhost:${PORT}`
+        }
+      })
+    })
+    
+    // 健康檢查端點
+    app.get('/health', (req, res) => {
+      res.json({ 
+        status: 'ok', 
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV || 'development'
+      })
+    })
+    
+    // 啟動服務器
+    httpServer.listen(PORT, () => {
+      logger.info(`🌸 心語小鎮服務器啟動成功！`)
+      logger.info(`📍 GraphQL: http://localhost:${PORT}/graphql`)
+      logger.info(`🔌 WebSocket: ws://localhost:${PORT}`)
+      logger.info(`🏥 Health Check: http://localhost:${PORT}/health`)
+    })
+    
+    // 優雅關閉處理
+    const shutdown = async (signal: string) => {
+      logger.info(`Received ${signal}, shutting down gracefully...`)
+      
+      httpServer.close(async () => {
+        await server.stop()
+        await prisma.$disconnect()
+        redis.disconnect()
+        process.exit(0)
+      })
+    }
+    
+    process.on('SIGTERM', () => shutdown('SIGTERM'))
+    process.on('SIGINT', () => shutdown('SIGINT'))
+    
+  } catch (error) {
+    logger.error('Failed to start server:', error)
+    process.exit(1)
+  }
+}
+
+// 處理未捕獲的異常
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('Unhandled Rejection at:', promise, 'reason:', reason)
+})
+
+process.on('uncaughtException', (error) => {
+  logger.error('Uncaught Exception:', error)
+  process.exit(1)
+})
+
+startServer()

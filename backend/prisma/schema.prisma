@@ -1,0 +1,248 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  extensions = [vector]
+}
+
+model User {
+  id           String   @id @default(uuid())
+  username     String   @unique
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  lastLogin    DateTime? @map("last_login")
+  isActive     Boolean  @default(true) @map("is_active")
+
+  // Relations
+  relationships    Relationship[]
+  conversations    Conversation[]
+  memoryFlowers    MemoryFlower[] @relation("UserMemoryFlowers")
+  diaryEntries     DiaryEntry[]
+  wishProgress     UserWishProgress[]
+  sentLetters      Letter[] @relation("SentLetters")
+  receivedLetters  Letter[] @relation("ReceivedLetters")
+  worldState       WorldState?
+
+  @@map("users")
+}
+
+model NPC {
+  id               String   @id @default(uuid())
+  name             String
+  personality      String
+  backgroundStory  String?  @map("background_story")
+  appearanceConfig Json?    @map("appearance_config")
+  currentMood      String   @default("neutral") @map("current_mood")
+  locationX        Float    @default(0) @map("location_x")
+  locationY        Float    @default(0) @map("location_y")
+  locationZ        Float    @default(0) @map("location_z")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  relationships       Relationship[]
+  conversations       Conversation[]
+  memoryFlowers       MemoryFlower[] @relation("NPCMemoryFlowers")
+  wishes              Wish[]
+  npcRelationships1   NPCRelationship[] @relation("NPC1Relations")
+  npcRelationships2   NPCRelationship[] @relation("NPC2Relations")
+  sentLetters         Letter[] @relation("NPCSentLetters")
+  receivedLetters     Letter[] @relation("NPCReceivedLetters")
+
+  @@map("npcs")
+}
+
+model Conversation {
+  id                String    @id @default(uuid())
+  userId            String    @map("user_id")
+  npcId             String    @map("npc_id")
+  content           String
+  speakerType       SpeakerType @map("speaker_type")
+  emotionTag        String?   @map("emotion_tag")
+  timestamp         DateTime  @default(now())
+  contextEmbedding  Unsupported("vector(1536)")? @map("context_embedding")
+
+  // Relations
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  npc               NPC       @relation(fields: [npcId], references: [id], onDelete: Cascade)
+  memoryFlowers     MemoryFlower[]
+
+  @@index([userId, npcId])
+  @@index([timestamp])
+  @@map("conversations")
+}
+
+enum SpeakerType {
+  user
+  npc
+
+  @@map("speaker_type")
+}
+
+model Relationship {
+  id                  String   @id @default(uuid())
+  userId              String   @map("user_id")
+  npcId               String   @map("npc_id")
+  relationshipLevel   Int      @default(1) @map("relationship_level")
+  trustLevel          Float    @default(0.0) @map("trust_level")
+  affectionLevel      Float    @default(0.0) @map("affection_level")
+  lastInteraction     DateTime @default(now()) @map("last_interaction")
+  totalInteractions   Int      @default(0) @map("total_interactions")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  npc                 NPC      @relation(fields: [npcId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, npcId])
+  @@index([userId])
+  @@map("relationships")
+}
+
+model MemoryFlower {
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id")
+  npcId          String   @map("npc_id")
+  conversationId String   @map("conversation_id")
+  flowerType     String   @map("flower_type")
+  emotionColor   String   @map("emotion_color")
+  positionX      Float    @map("position_x")
+  positionY      Float    @map("position_y")
+  positionZ      Float    @map("position_z")
+  growthStage    Int      @default(1) @map("growth_stage")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user           User         @relation("UserMemoryFlowers", fields: [userId], references: [id], onDelete: Cascade)
+  npc            NPC          @relation("NPCMemoryFlowers", fields: [npcId], references: [id], onDelete: Cascade)
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("memory_flowers")
+}
+
+model NPCRelationship {
+  id               String   @id @default(uuid())
+  npc1Id           String   @map("npc1_id")
+  npc2Id           String   @map("npc2_id")
+  relationshipType String   @map("relationship_type")
+  strength         Float    @default(0.5)
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  npc1             NPC      @relation("NPC1Relations", fields: [npc1Id], references: [id], onDelete: Cascade)
+  npc2             NPC      @relation("NPC2Relations", fields: [npc2Id], references: [id], onDelete: Cascade)
+
+  @@unique([npc1Id, npc2Id])
+  @@map("npc_relationships")
+}
+
+model Wish {
+  id                 String     @id @default(uuid())
+  npcId              String     @map("npc_id")
+  title              String
+  description        String
+  wishType           WishType   @map("wish_type")
+  isFulfilled        Boolean    @default(false) @map("is_fulfilled")
+  fulfillmentMethod  String?    @map("fulfillment_method")
+  priority           Int        @default(1)
+  createdAt          DateTime   @default(now()) @map("created_at")
+  fulfilledAt        DateTime?  @map("fulfilled_at")
+
+  // Relations
+  npc                NPC        @relation(fields: [npcId], references: [id], onDelete: Cascade)
+  userProgress       UserWishProgress[]
+
+  @@map("wishes")
+}
+
+enum WishType {
+  companion
+  reconciliation
+  growth
+  dream
+
+  @@map("wish_type")
+}
+
+model UserWishProgress {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  wishId      String   @map("wish_id")
+  progress    Float    @default(0.0)
+  notes       String?
+  lastUpdated DateTime @default(now()) @map("last_updated")
+
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  wish        Wish     @relation(fields: [wishId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, wishId])
+  @@map("user_wish_progress")
+}
+
+model Letter {
+  id            String      @id @default(uuid())
+  senderType    SpeakerType @map("sender_type")
+  senderId      String      @map("sender_id")
+  recipientType SpeakerType @map("recipient_type")
+  recipientId   String      @map("recipient_id")
+  subject       String?
+  content       String
+  isRead        Boolean     @default(false) @map("is_read")
+  sentAt        DateTime    @default(now()) @map("sent_at")
+  readAt        DateTime?   @map("read_at")
+
+  // Relations (using separate fields for different entity types)
+  senderUser      User? @relation("SentLetters", fields: [senderId], references: [id], onDelete: Cascade, map: "letter_sender_user_fkey")
+  recipientUser   User? @relation("ReceivedLetters", fields: [recipientId], references: [id], onDelete: Cascade, map: "letter_recipient_user_fkey")
+  senderNPC       NPC?  @relation("NPCSentLetters", fields: [senderId], references: [id], onDelete: Cascade, map: "letter_sender_npc_fkey")
+  recipientNPC    NPC?  @relation("NPCReceivedLetters", fields: [recipientId], references: [id], onDelete: Cascade, map: "letter_recipient_npc_fkey")
+
+  @@index([recipientType, recipientId])
+  @@map("letters")
+}
+
+model DiaryEntry {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  title     String?
+  content   String
+  mood      String?
+  isPrivate Boolean  @default(true) @map("is_private")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("diary_entries")
+}
+
+model WorldState {
+  id            String   @id @default(uuid())
+  userId        String   @unique @map("user_id")
+  weather       String   @default("sunny")
+  timeOfDay     Int      @default(12) @map("time_of_day")
+  season        String   @default("spring")
+  specialEvents Json     @default("[]") @map("special_events")
+  lastUpdated   DateTime @default(now()) @map("last_updated")
+
+  // Relations
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("world_state")
+}

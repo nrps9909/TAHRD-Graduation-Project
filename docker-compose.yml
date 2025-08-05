@@ -1,0 +1,84 @@
+version: '3.8'
+
+services:
+  # PostgreSQL 主資料庫
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: heart-whisper-postgres
+    environment:
+      POSTGRES_DB: heart_whisper_town
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ./database/memory_enhancement.sql:/docker-entrypoint-initdb.d/02-memory_enhancement.sql
+    networks:
+      - heart-whisper-network
+
+  # Redis 緩存
+  redis:
+    image: redis:7-alpine
+    container_name: heart-whisper-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - heart-whisper-network
+
+  # 後端 API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: heart-whisper-backend
+    ports:
+      - "4000:4000"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://postgres:password123@postgres:5432/heart_whisper_town
+      - REDIS_URL=redis://redis:6379
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - JWT_SECRET=${JWT_SECRET}
+      - USE_GEMINI_CLI=true
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    networks:
+      - heart-whisper-network
+    command: npm run dev
+
+  # 前端應用
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: heart-whisper-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_URL=http://localhost:4000
+      - VITE_WS_URL=ws://localhost:4000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - heart-whisper-network
+    command: npm run dev -- --host 0.0.0.0
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  heart-whisper-network:
+    driver: bridge
