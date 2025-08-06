@@ -49,8 +49,8 @@
 /* Notification Badge */
 .notification-badge {
   position: fixed;
-  top: 2rem;
-  left: 50%;
-  transform: translateX(-50%);
+  bottom: 2rem; /* 改為底部定位 */
+  right: 2rem; /* 改為右下角 */
+  transform: none; /* 移除置中變換 */
   z-index: var(--z-game-notification);
 }

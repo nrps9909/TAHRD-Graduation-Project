@@ -247,6 +247,10 @@ class GeminiLLMService:
             
             output = result.stdout.strip()
             
+            # 移除 Gemini CLI 的認證訊息
+            if output.startswith('Loaded cached credentials.'):
+                output = output.replace('Loaded cached credentials.', '').strip()
+            
             if not output:
                 raise Exception("未能提取到有效的輸出內容")
             
@@ -262,6 +266,10 @@ class GeminiLLMService:
         """處理 LLM 回應"""
         # 清理回應文字
         response = response.strip()
+        
+        # 移除 Gemini CLI 的認證訊息
+        if response.startswith('Loaded cached credentials.'):
+            response = response.replace('Loaded cached credentials.', '').strip()
         
         # 移除可能的 markdown 符號
         response = response.replace('```', '')

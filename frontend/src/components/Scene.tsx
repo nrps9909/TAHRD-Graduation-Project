@@ -40,7 +40,7 @@ export const Scene = () => {
 
   return (
     <>
-      <fog attach="fog" args={[fogColor, 40, 70]} />
+      <fog attach="fog" args={[fogColor, 60, 100]} />
       
       <directionalLight 
         ref={lightRef}
@@ -70,6 +70,8 @@ export const Scene = () => {
           key={npc.id}
           npc={npc}
           position={npc.position}
+          conversationContent={npc.conversationContent}
+          isInConversation={npc.isInConversation}
         />
       ))}
       

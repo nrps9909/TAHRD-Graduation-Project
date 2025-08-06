@@ -13,7 +13,7 @@ export const Player = ({ position = [0, 0, 0] }: PlayerProps) => {
   const playerRef = useRef<THREE.Group>(null)
   const { setPlayerPosition, setPlayerRotation, npcs, startConversation } = useGameStore()
   const isMounted = useRef(true)
-  const interactionDistance = 3 // 互動距離（單位）
+  const interactionDistance = 5 // 互動距離（單位） - 增加到5單位
 
   // 移動相關狀態
   const velocity = useRef(new THREE.Vector3())
@@ -24,8 +24,7 @@ export const Player = ({ position = [0, 0, 0] }: PlayerProps) => {
     backward: false,
     left: false,
     right: false,
-    shift: false,
-    run: false  // PC遊戲：跑步鍵
+    shift: false  // Shift鍵奔跑
   })
 
   // 玩家狀態
@@ -34,7 +33,7 @@ export const Player = ({ position = [0, 0, 0] }: PlayerProps) => {
   
   // 檢查附近的 NPC
   const checkNearbyNPC = useCallback(() => {
-    if (!playerRef.current) return
+    if (!playerRef.current) return null
     
     const playerPos = new THREE.Vector3()
     playerRef.current.getWorldPosition(playerPos)
@@ -53,12 +52,20 @@ export const Player = ({ position = [0, 0, 0] }: PlayerProps) => {
       }
     })
     
-    // 如果找到附近的 NPC，開始對話
-    if (nearestNPC) {
-      console.log(`與 ${nearestNPC.name} 開始對話`)
-      startConversation(nearestNPC.id)
+    return nearestNPC
+  }, [npcs, interactionDistance])
+  
+  // F鍵互動處理
+  const handleInteraction = useCallback(() => {
+    const nearbyNPC = checkNearbyNPC()
+    
+    if (nearbyNPC) {
+      console.log(`與 ${nearbyNPC.name} 開始對話 (距離: ${nearbyNPC.position})`)
+      startConversation(nearbyNPC.id)
+    } else {
+      console.log('附近沒有可互動的 NPC')
     }
-  }, [npcs, startConversation])
+  }, [checkNearbyNPC, startConversation])
 
   // 鍵盤事件處理
   useEffect(() => {
@@ -82,15 +89,11 @@ export const Player = ({ position = [0, 0, 0] }: PlayerProps) => {
           break
         case 'ShiftLeft':
         case 'ShiftRight':
-          keys.current.shift = true
-          break
-        case 'ControlLeft':
-        case 'ControlRight':
-          keys.current.run = true
+          keys.current.shift = true  // Shift鍵奔跑
           break
         case 'KeyF':
           // F鍵互動 - 檢查附近的NPC
-          checkNearbyNPC()
+          handleInteraction()
           break
       }
     }
@@ -115,11 +118,7 @@ export const Player = ({ position = [0, 0, 0] }: PlayerProps) => {
           break
         case 'ShiftLeft':
         case 'ShiftRight':
-          keys.current.shift = false
-          break
-        case 'ControlLeft':
-        case 'ControlRight':
-          keys.current.run = false
+          keys.current.shift = false  // 釋放Shift鍵
           break
       }
     }
@@ -131,7 +130,7 @@ export const Player = ({ position = [0, 0, 0] }: PlayerProps) => {
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('keyup', handleKeyUp)
     }
-  }, [])
+  }, [handleInteraction])  // 加入 handleInteraction 依賴
 
   // 每幀更新
   useFrame((_, delta) => {
@@ -178,10 +177,9 @@ export const Player = ({ position = [0, 0, 0] }: PlayerProps) => {
       
       moveDirection.normalize()
 
-      // PC遊戲：多種移動速度
-      let speed = 6  // 基礎步行速度
-      if (keys.current.run) speed = 15  // Ctrl - 跑步
-      else if (keys.current.shift) speed = 3  // Shift - 潛行
+      // 移動速度設定
+      let speed = 8  // 正常行走速度
+      if (keys.current.shift) speed = 15  // Shift - 奔跑
       velocity.current.copy(moveDirection.multiplyScalar(speed * delta))
 
       // 計算新位置

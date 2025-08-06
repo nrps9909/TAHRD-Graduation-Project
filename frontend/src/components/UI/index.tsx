@@ -30,8 +30,8 @@ export const UI = () => {
       {/* PC遊戲：快速鍵管理器 */}
       <HotkeyManager />
       
-      {/* PC遊戲：準心 */}
-      <Crosshair />
+      {/* PC遊戲：準心 - 已移除 */}
+      {/* <Crosshair /> */}
       
       {/* PC遊戲：Pointer Lock 提示 */}
       <PointerLockHint />

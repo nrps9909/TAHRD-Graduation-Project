@@ -38,8 +38,26 @@ async function startServer() {
     // 初始化 Socket.IO
     const io = new Server(httpServer, {
       cors: {
-        origin: process.env.FRONTEND_URL || "http://localhost:3000",
-        methods: ["GET", "POST"]
+        origin: function (origin, callback) {
+          // 允許的 origins 列表
+          const allowedOrigins = [
+            'http://localhost:3000',
+            'http://localhost:3001',
+            'http://localhost:5173', // Vite 預設端口
+            process.env.FRONTEND_URL
+          ].filter(Boolean)
+          
+          // 開發環境允許任何 localhost
+          if (process.env.NODE_ENV === 'development' && origin && origin.includes('localhost')) {
+            callback(null, true)
+          } else if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true)
+          } else {
+            callback(new Error('Not allowed by CORS'))
+          }
+        },
+        methods: ["GET", "POST"],
+        credentials: true
       },
       transports: ['websocket', 'polling']
     })
@@ -59,8 +77,27 @@ async function startServer() {
     
     // 中間件設置
     app.use(cors({
-      origin: process.env.FRONTEND_URL || "http://localhost:3000",
-      credentials: true
+      origin: function (origin, callback) {
+        // 允許的 origins 列表
+        const allowedOrigins = [
+          'http://localhost:3000',
+          'http://localhost:3001',
+          'http://localhost:5173', // Vite 預設端口
+          process.env.FRONTEND_URL
+        ].filter(Boolean)
+        
+        // 開發環境允許任何 localhost
+        if (process.env.NODE_ENV === 'development' && origin && origin.includes('localhost')) {
+          callback(null, true)
+        } else if (!origin || allowedOrigins.includes(origin)) {
+          callback(null, true)
+        } else {
+          callback(new Error('Not allowed by CORS'))
+        }
+      },
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization']
     }))
     
     app.use(express.json({ limit: '10mb' }))

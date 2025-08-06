@@ -12,12 +12,13 @@
 
 /* 3D Scene Container */
 .game-scene {
-  position: absolute;
+  position: fixed;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
+  width: 100vw;
+  height: 100vh;
   z-index: var(--z-game-canvas);
+  background: #000000; /* 確保沒有透明區域 */
 }
 
 /* UI Layer - 不使用 pointer-events-none */

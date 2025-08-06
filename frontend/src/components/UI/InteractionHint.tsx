@@ -1,51 +1,50 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useGameStore } from '@/stores/gameStore'
 import * as THREE from 'three'
 
 export const InteractionHint = () => {
-  const [showHint, setShowHint] = useState(false)
-  const [nearestNPC, setNearestNPC] = useState<string | null>(null)
   const { npcs, playerPosition } = useGameStore()
+  const [nearbyNPC, setNearbyNPC] = useState<any>(null)
+  const interactionDistance = 5
   
-  const interactionDistance = 3 // 與 Player.tsx 中的設定相同
-  
-  useEffect(() => {
-    if (!playerPosition) return
-    
+  // 檢查附近的 NPC
+  const checkNearbyNPC = useCallback(() => {
     const playerPos = new THREE.Vector3(playerPosition[0], playerPosition[1], playerPosition[2])
     
-    // 檢查最近的 NPC
     let nearest = null
-    let nearestDist = Infinity
+    let nearestDistance = Infinity
     
     npcs.forEach((npc) => {
       const npcPos = new THREE.Vector3(npc.position[0], npc.position[1], npc.position[2])
       const distance = playerPos.distanceTo(npcPos)
       
-      if (distance < interactionDistance && distance < nearestDist) {
-        nearestDist = distance
-        nearest = npc.name
+      if (distance < interactionDistance && distance < nearestDistance) {
+        nearestDistance = distance
+        nearest = npc
       }
     })
     
-    if (nearest) {
-      setNearestNPC(nearest)
-      setShowHint(true)
-    } else {
-      setShowHint(false)
-      setNearestNPC(null)
-    }
-  }, [playerPosition, npcs])
+    setNearbyNPC(nearest)
+  }, [npcs, playerPosition])
   
-  if (!showHint || !nearestNPC) return null
+  useEffect(() => {
+    const interval = setInterval(checkNearbyNPC, 100) // 每100ms檢查一次
+    return () => clearInterval(interval)
+  }, [checkNearbyNPC])
+  
+  if (!nearbyNPC) return null
   
   return (
-    <div className="fixed bottom-32 left-1/2 transform -translate-x-1/2 z-40 animate-fade-in">
-      <div className="bg-black bg-opacity-80 text-white px-6 py-3 rounded-full shadow-lg flex items-center space-x-3">
-        <div className="bg-white text-black w-8 h-8 rounded flex items-center justify-center font-bold">
+    <div className="fixed bottom-32 left-1/2 transform -translate-x-1/2 z-50
+                    bg-white/95 px-6 py-3 rounded-full shadow-lg
+                    border-2 border-blue-400 animate-pulse">
+      <div className="flex items-center gap-3">
+        <div className="bg-blue-500 text-white px-3 py-1 rounded font-bold">
           F
         </div>
-        <span className="text-lg">與 {nearestNPC} 對話</span>
+        <span className="text-gray-800 font-medium">
+          與 {nearbyNPC.name} 對話
+        </span>
       </div>
     </div>
   )

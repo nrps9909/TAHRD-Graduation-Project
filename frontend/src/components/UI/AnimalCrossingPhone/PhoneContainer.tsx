@@ -62,36 +62,36 @@ export const PhoneContainer = ({
         left: '50%',
         transform: 'translate(-50%, -50%)',
         zIndex: 1000,
-        animation: 'phoneAppear 0.5s ease-out'
+        animation: 'phoneAppear 0.3s ease-out'
       }}>
-        {/* Phone Frame */}
+        {/* Phone Frame - 優化大小和顏色 */}
         <div style={{
           position: 'relative',
-          width: '384px',
-          height: '700px',
-          background: 'linear-gradient(to bottom, #FCD34D, #FDE047, #FCD34D)',
-          borderRadius: '48px',
-          padding: '24px',
-          boxShadow: '0 25px 50px rgba(0, 0, 0, 0.3), 0 0 0 4px #DC2626',
-          border: '4px solid #F97316'
+          width: '320px',
+          height: '600px',
+          background: 'linear-gradient(135deg, #FEF3C7 0%, #FDE68A 50%, #FCD34D 100%)',
+          borderRadius: '40px',
+          padding: '20px',
+          boxShadow: '0 20px 40px rgba(0, 0, 0, 0.25), inset 0 2px 4px rgba(255, 255, 255, 0.5)',
+          border: '3px solid #F59E0B'
         }}>
           
-          {/* Screen Bezel */}
+          {/* Screen Bezel - 更柔和的顏色 */}
           <div style={{
             width: '100%',
             height: '100%',
-            background: 'linear-gradient(to bottom, #BAE6FD, #BBF7D0)',
-            borderRadius: '32px',
+            background: 'linear-gradient(180deg, #E0F7FA 0%, #C8E6C9 100%)',
+            borderRadius: '28px',
             overflow: 'hidden',
             position: 'relative',
-            border: '3px solid #EA580C',
-            boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.1)'
+            border: '2px solid #FBB040',
+            boxShadow: 'inset 0 2px 8px rgba(0, 0, 0, 0.08)'
           }}>
             
-            {/* Status Bar */}
-            <div className="relative z-10 flex justify-between items-center px-6 py-4 
-                           bg-gradient-to-r from-yellow-200/80 to-orange-200/80 backdrop-blur-sm
-                           border-b-2 border-orange-300/50">
+            {/* Status Bar - 更簡潔的設計 */}
+            <div className="relative z-10 flex justify-between items-center px-6 py-3 
+                           bg-gradient-to-r from-emerald-200/90 to-teal-200/90 backdrop-blur-sm
+                           border-b border-emerald-300/50">
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 bg-gradient-to-br from-green-400 to-green-600 rounded-full 
                                flex items-center justify-center">
@@ -111,34 +111,29 @@ export const PhoneContainer = ({
               </div>
             </div>
 
-            {/* Background Decorations */}
+            {/* Background Decorations - 更細緻 */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
-              {/* Clouds */}
-              <div className="absolute top-16 left-8 text-4xl opacity-60 animate-float">☁️</div>
-              <div className="absolute top-24 right-12 text-3xl opacity-60 animate-float-delayed">☁️</div>
-              <div className="absolute top-32 left-1/2 transform -translate-x-1/2 text-2xl opacity-40 animate-float">☁️</div>
+              {/* Subtle Pattern */}
+              <div className="absolute top-20 left-10 text-2xl opacity-20 animate-float">✨</div>
+              <div className="absolute top-40 right-10 text-xl opacity-20 animate-float" style={{ animationDelay: '2s' }}>✨</div>
+              <div className="absolute bottom-20 left-1/2 text-lg opacity-15 animate-float" style={{ animationDelay: '1s' }}>✨</div>
               
-              {/* Nature Elements */}
-              <div className="absolute bottom-40 left-6 text-3xl opacity-70 animate-float">🌸</div>
-              <div className="absolute bottom-32 right-8 text-2xl opacity-70 animate-float-delayed">🦋</div>
-              <div className="absolute bottom-48 right-16 text-xl opacity-60 animate-float">🌿</div>
-              
-              {/* Ground Pattern */}
-              <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-green-300/30 to-transparent" />
+              {/* Subtle Ground Pattern */}
+              <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-emerald-200/20 to-transparent" />
             </div>
 
-            {/* Main Content Area */}
-            <div className="relative z-10 p-6 pt-8 h-full flex flex-col">
+            {/* Main Content Area - 減少內距 */}
+            <div className="relative z-10 p-4 pt-6 h-full flex flex-col">
               
-              {/* Title */}
-              <div className="text-center mb-6">
-                <h1 className="text-2xl font-bold text-brown-800 drop-shadow-sm">NookPhone</h1>
-                <div className="text-sm text-brown-600">心語小鎮 · 應用程式</div>
+              {/* Title - 更簡潔 */}
+              <div className="text-center mb-4">
+                <h1 className="text-xl font-bold text-emerald-800 drop-shadow-sm">NookPhone</h1>
+                <div className="text-xs text-emerald-600">心語小鎮</div>
               </div>
 
-              {/* App Grid */}
+              {/* App Grid - 優化間距 */}
               <div className="flex-1 flex flex-col justify-center">
-                <div className="grid grid-cols-3 gap-6 mb-8">
+                <div className="grid grid-cols-3 gap-4 mb-6">
                   {currentApps.map((app, index) => (
                     <button
                       key={app.id}
@@ -150,12 +145,12 @@ export const PhoneContainer = ({
                         animationDelay: `${index * 150}ms`
                       }}
                     >
-                      {/* App Icon Container */}
-                      <div className={`w-16 h-16 bg-gradient-to-br ${app.color} 
-                                     rounded-2xl shadow-lg group-hover:shadow-xl
-                                     flex items-center justify-center text-2xl
-                                     border-3 border-white/60 group-hover:border-white/90
-                                     transition-all duration-300 relative overflow-hidden
+                      {/* App Icon Container - 更小更精緻 */}
+                      <div className={`w-14 h-14 bg-gradient-to-br ${app.color} 
+                                     rounded-xl shadow-md group-hover:shadow-lg
+                                     flex items-center justify-center text-xl
+                                     border-2 border-white/70 group-hover:border-white
+                                     transition-all duration-200 relative overflow-hidden
                                      group-active:scale-95`}>
                         
                         {/* Shine Effect */}
@@ -171,9 +166,9 @@ export const PhoneContainer = ({
                                        opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                       </div>
                       
-                      {/* App Name */}
-                      <span className="text-xs font-bold text-brown-800 mt-2 text-center drop-shadow-sm
-                                     group-hover:text-brown-900 transition-colors duration-200">
+                      {/* App Name - 更小的字體 */}
+                      <span className="text-[10px] font-semibold text-emerald-800 mt-1.5 text-center
+                                     group-hover:text-emerald-900 transition-colors duration-200">
                         {app.name}
                       </span>
                     </button>
@@ -198,21 +193,21 @@ export const PhoneContainer = ({
                 )}
               </div>
 
-              {/* Home Indicator */}
+              {/* Home Indicator - 更細緻 */}
               <div className="flex justify-center">
-                <div className="w-16 h-1 bg-brown-400/50 rounded-full" />
+                <div className="w-12 h-0.5 bg-emerald-400/30 rounded-full" />
               </div>
             </div>
 
-            {/* Close Button */}
+            {/* Close Button - 更優雅 */}
             <button
               onClick={onClose}
-              className="absolute top-6 right-6 w-10 h-10 bg-red-500 hover:bg-red-600 rounded-full 
-                       flex items-center justify-center text-white text-lg font-bold
-                       shadow-lg hover:shadow-xl transition-all duration-200 z-20
-                       border-2 border-white/50"
+              className="absolute top-4 right-4 w-8 h-8 bg-gradient-to-br from-red-400 to-red-500 hover:from-red-500 hover:to-red-600 rounded-full 
+                       flex items-center justify-center text-white text-sm font-bold
+                       shadow-md hover:shadow-lg transition-all duration-200 z-20
+                       border-2 border-white/70 hover:scale-110 active:scale-95"
             >
-              ✕
+              ×
             </button>
           </div>
         </div>

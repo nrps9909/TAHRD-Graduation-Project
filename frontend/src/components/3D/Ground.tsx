@@ -151,12 +151,38 @@ export const Ground = () => {
       return { id: i, position: [x, scale * 0.3, z], scale }
     })
   }, [])
+  
+  // 使用 useMemo 固定小石子位置
+  const pebbles = useMemo(() => {
+    return Array.from({ length: 15 }, (_, i) => {
+      const angle = (i / 15) * Math.PI * 2
+      const radius = 20 + Math.random() * 30
+      const x = Math.cos(angle) * radius
+      const z = Math.sin(angle) * radius
+      const rotation = [Math.random() * Math.PI, Math.random() * Math.PI, 0]
+      const scale = 0.3 + Math.random() * 0.4
+      const color = `hsl(30, 20%, ${40 + Math.random() * 20}%)`
+      return { id: i, position: [x, 0.05, z], rotation, scale, color }
+    })
+  }, [])
+  
+  // 使用 useMemo 固定葉片位置
+  const leaves = useMemo(() => {
+    return Array.from({ length: 20 }, (_, i) => {
+      const x = (Math.random() - 0.5) * 100
+      const z = (Math.random() - 0.5) * 100
+      const rotation = Math.random() * Math.PI * 2
+      const scale = 0.5 + Math.random() * 0.5
+      const color = `hsl(${80 + Math.random() * 40}, 60%, ${30 + Math.random() * 20}%)`
+      return { id: i, position: [x, 0.02, z], rotation, scale, color }
+    })
+  }, [])
 
   return (
     <>
       {/* 主島嶼地面 - 增強草地材質 */}
       <mesh ref={meshRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.1, 0]} receiveShadow>
-        <circleGeometry args={[60, 128]} />
+        <circleGeometry args={[100, 128]} />
         <meshStandardMaterial 
           color="#7ec850"
           roughness={0.9}
@@ -401,54 +427,43 @@ export const Ground = () => {
       ))}
       
       {/* 額外的地面裝飾 - 小石子 */}
-      {Array.from({ length: 15 }, (_, i) => {
-        const angle = (i / 15) * Math.PI * 2
-        const radius = 20 + Math.random() * 30
-        const x = Math.cos(angle) * radius
-        const z = Math.sin(angle) * radius
-        return (
-          <mesh 
-            key={`pebble-${i}`}
-            position={[x, 0.05, z]}
-            rotation={[Math.random() * Math.PI, Math.random() * Math.PI, 0]}
-            scale={0.3 + Math.random() * 0.4}
-            castShadow
-            receiveShadow
-          >
-            <dodecahedronGeometry args={[0.5]} />
-            <meshStandardMaterial 
-              color={`hsl(30, 20%, ${40 + Math.random() * 20}%)`}
-              roughness={0.9}
-              metalness={0.1}
-            />
-          </mesh>
-        )
-      })}
+      {pebbles.map((pebble) => (
+        <mesh 
+          key={`pebble-${pebble.id}`}
+          position={pebble.position as [number, number, number]}
+          rotation={pebble.rotation as [number, number, number]}
+          scale={pebble.scale}
+          castShadow
+          receiveShadow
+        >
+          <dodecahedronGeometry args={[0.5]} />
+          <meshStandardMaterial 
+            color={pebble.color}
+            roughness={0.9}
+            metalness={0.1}
+          />
+        </mesh>
+      ))}
       
       {/* 裝飾性葉片 */}
-      {Array.from({ length: 20 }, (_, i) => {
-        const x = (Math.random() - 0.5) * 100
-        const z = (Math.random() - 0.5) * 100
-        const rotation = Math.random() * Math.PI * 2
-        return (
-          <mesh
-            key={`leaf-${i}`}
-            position={[x, 0.02, z]}
-            rotation={[-Math.PI / 2, 0, rotation]}
-            scale={0.5 + Math.random() * 0.5}
-            receiveShadow
-          >
-            <planeGeometry args={[0.5, 0.8]} />
-            <meshStandardMaterial 
-              color={`hsl(${80 + Math.random() * 40}, 60%, ${30 + Math.random() * 20}%)`}
-              side={THREE.DoubleSide}
-              transparent
-              opacity={0.8}
-              roughness={0.8}
-            />
-          </mesh>
-        )
-      })}
+      {leaves.map((leaf) => (
+        <mesh
+          key={`leaf-${leaf.id}`}
+          position={leaf.position as [number, number, number]}
+          rotation={[-Math.PI / 2, 0, leaf.rotation]}
+          scale={leaf.scale}
+          receiveShadow
+        >
+          <planeGeometry args={[0.5, 0.8]} />
+          <meshStandardMaterial 
+            color={leaf.color}
+            side={THREE.DoubleSide}
+            transparent
+            opacity={0.8}
+            roughness={0.8}
+          />
+        </mesh>
+      ))}
     </>
   )
 }

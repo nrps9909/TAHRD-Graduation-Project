@@ -4,12 +4,13 @@ import { Environment } from '@react-three/drei'
 import { Scene } from './components/Scene'
 import { UI } from './components/UI'
 import { PointerLockManager } from './components/3D/PointerLockManager'
-import { NookPhone } from './components/UI/NookPhone'
+// import { NookPhone } from './components/UI/NookPhone' // 已移除，使用 AnimalCrossingPhone
 import { VisualSoundEffects, BubbleEffect, MusicalNoteRain } from './components/UI/VisualSoundEffects'
 import { NPCConversationBubble } from './components/UI/NPCConversationBubble'
 import { useGameStore } from './stores/gameStore'
 import { useSocketConnection } from './hooks/useSocketConnection'
 import './styles/animalcrossing.css'
+import './styles/npc-animations.css'
 
 function App() {
   const { initializeGame, isLoading } = useGameStore()
@@ -78,16 +79,8 @@ function App() {
   }
 
   return (
-    <div className="game-container relative">
+    <div className="game-container">
       <PointerLockManager />
-      
-      {/* Background decorative elements */}
-      <div className="fixed inset-0 pointer-events-none z-0">
-        {/* Floating clouds */}
-        <div className="absolute top-10 left-20 text-6xl opacity-20 animate-float">☁️</div>
-        <div className="absolute top-20 right-40 text-5xl opacity-20 animate-float" style={{ animationDelay: '2s' }}>☁️</div>
-        <div className="absolute top-40 left-1/2 text-7xl opacity-15 animate-float" style={{ animationDelay: '4s' }}>☁️</div>
-      </div>
       
       <div className="game-scene">
         <Canvas
@@ -96,7 +89,9 @@ function App() {
           style={{ 
             width: '100%',
             height: '100%',
-            background: 'linear-gradient(to bottom, #87CEEB 0%, #98D8E8 30%, #F0E68C 60%, #98FB98 100%)'
+            position: 'absolute',
+            top: 0,
+            left: 0
           }}
         >
           <ambientLight intensity={0.4} />
@@ -108,7 +103,7 @@ function App() {
             shadow-mapSize-height={2048}
           />
           
-          <Environment preset="sunset" background blur={0.5} />
+          <Environment preset="sunset" background={true} blur={0} />
           
           <Scene />
         </Canvas>
@@ -118,8 +113,8 @@ function App() {
         <UI />
       </div>
       
-      {/* Animal Crossing Style Phone UI */}
-      <NookPhone />
+      {/* Animal Crossing Style Phone UI - 已移除，使用 UI 組件中的 AnimalCrossingPhone */}
+      {/* <NookPhone /> */}
       
       {/* Visual Effects Layers */}
       <VisualSoundEffects />

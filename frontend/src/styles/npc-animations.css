@@ -1,0 +1,62 @@
+/* NPC 對話泡泡動畫 */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+}
+
+/* NPC 移動動畫 */
+.npc-character {
+  transition: all 0.3s ease;
+}
+
+.npc-walking {
+  animation: walk 0.5s ease-in-out infinite;
+}
+
+@keyframes walk {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-2px) rotate(-2deg);
+  }
+  75% {
+    transform: translateY(-2px) rotate(2deg);
+  }
+}
+
+/* 對話泡泡樣式 */
+.conversation-bubble {
+  animation: fadeIn 0.3s ease, float 2s ease-in-out infinite;
+  will-change: transform;
+}
+
+.conversation-bubble.fade-out {
+  animation: fadeOut 0.3s ease forwards;
+}

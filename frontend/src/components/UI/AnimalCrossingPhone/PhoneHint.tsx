@@ -3,6 +3,11 @@ interface PhoneHintProps {
 }
 
 export const PhoneHint = ({ visible }: PhoneHintProps) => {
+  // 直接返回 null，不顯示提示
+  return null
+  
+  // 原始程式碼保留但不執行
+  /*
   if (!visible) return null
 
   return (
@@ -21,4 +26,5 @@ export const PhoneHint = ({ visible }: PhoneHintProps) => {
       </div>
     </div>
   )
+  */
 }

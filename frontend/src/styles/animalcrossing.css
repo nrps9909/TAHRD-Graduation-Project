@@ -221,6 +221,45 @@
   animation: tada 1s ease-in-out;
 }
 
+/* Phone Animations */
+@keyframes phoneAppear {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -45%) scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+.animate-phone-appear {
+  animation: phoneAppear 0.3s ease-out forwards;
+}
+
+/* Delayed float animation */
+.animate-float-delayed {
+  animation: float 3s ease-in-out infinite;
+  animation-delay: 1.5s;
+}
+
+/* Bounce in animation for clicked apps */
+@keyframes bounce-in {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(0.95);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.animate-bounce-in {
+  animation: bounce-in 0.2s ease-out;
+}
+
 .animate-rubber-band {
   animation: rubber-band 1s ease-in-out;
 }

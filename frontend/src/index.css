@@ -1,6 +1,16 @@
 /* Import modular styles */
 @import './styles/index.css';
 
+/* 確保沒有任何邊距和間距 */
+html, body, #root {
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  overflow: hidden !important;
+  position: relative !important;
+}
+
 /* 遊戲場景游標控制 */
 .game-scene {
   position: relative;
@@ -45,6 +55,9 @@ body.game-active * {
 /* PC遊戲優化 */
 body {
   overflow: hidden; /* 防止頁面滾動 */
+  position: fixed !important; /* 確保位置固定 */
+  top: 0 !important;
+  left: 0 !important;
 }
 
 /* PC遊戲：提升按鈕體驗 */

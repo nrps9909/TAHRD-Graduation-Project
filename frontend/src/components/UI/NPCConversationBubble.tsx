@@ -66,7 +66,7 @@ export const NPCConversationBubble: React.FC = () => {
           return newMap
         })
       } else if (data.type === 'ended') {
-        // 對話結束，3秒後移除泡泡
+        // 對話結束，7秒後移除泡泡
         setTimeout(() => {
           setConversations(prev => {
             const newMap = new Map(prev)
@@ -81,7 +81,7 @@ export const NPCConversationBubble: React.FC = () => {
             }
             return newMap
           })
-        }, 3000)
+        }, 7000)
       }
     }
 
@@ -157,7 +157,7 @@ export const NPCConversationBubble: React.FC = () => {
           className="fixed z-30 pointer-events-none animate-fade-in"
           style={{
             left: '50%',
-            top: '20%',
+            top: '30%', // 調整位置更居中
             transform: 'translate(-50%, -50%)'
           }}
         >
@@ -165,9 +165,9 @@ export const NPCConversationBubble: React.FC = () => {
           <div className="relative">
             {/* 裝飾效果 */}
             <div className="absolute -top-8 left-1/2 transform -translate-x-1/2">
-              <div className="flex items-center gap-2 bg-white/90 rounded-full px-3 py-1 shadow-lg border-2 border-yellow-300">
-                <MessageCircle className="w-4 h-4 text-green-500" />
-                <span className="text-xs font-bold text-gray-700">
+              <div className="flex items-center gap-2 bg-white/90 rounded-full px-4 py-2 shadow-lg border-2 border-yellow-300">
+                <MessageCircle className="w-5 h-5 text-green-500" />
+                <span className="text-sm font-bold text-gray-700">
                   {conversation.messages[0]?.topic || '閒聊中'}
                 </span>
                 <div className="flex gap-1">
@@ -178,8 +178,8 @@ export const NPCConversationBubble: React.FC = () => {
               </div>
             </div>
 
-            {/* 主對話框 */}
-            <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl border-4 border-white p-4 max-w-md">
+            {/* 主對話框 - 放大尺寸 */}
+            <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl border-4 border-white p-8 max-w-4xl transform scale-125">
               {/* 對話參與者 */}
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
@@ -187,13 +187,13 @@ export const NPCConversationBubble: React.FC = () => {
                   <div className="flex -space-x-3">
                     {conversation.messages.length > 0 && (
                       <>
-                        <div className="w-10 h-10 bg-gradient-to-br from-green-300 to-emerald-400 rounded-full flex items-center justify-center border-2 border-white shadow-md">
-                          <span className="text-lg">
+                        <div className="w-16 h-16 bg-gradient-to-br from-green-300 to-emerald-400 rounded-full flex items-center justify-center border-3 border-white shadow-md">
+                          <span className="text-2xl">
                             {getEmotionIcon(conversation.messages[0].emotion)}
                           </span>
                         </div>
-                        <div className="w-10 h-10 bg-gradient-to-br from-blue-300 to-indigo-400 rounded-full flex items-center justify-center border-2 border-white shadow-md">
-                          <span className="text-lg">
+                        <div className="w-16 h-16 bg-gradient-to-br from-blue-300 to-indigo-400 rounded-full flex items-center justify-center border-3 border-white shadow-md">
+                          <span className="text-2xl">
                             {getEmotionIcon(conversation.messages[conversation.messages.length - 1]?.emotion || 'calm')}
                           </span>
                         </div>
@@ -203,42 +203,42 @@ export const NPCConversationBubble: React.FC = () => {
                   
                   {/* 參與者名稱 */}
                   <div>
-                    <p className="text-sm font-bold text-gray-800">
+                    <p className="text-lg font-bold text-gray-800">
                       {conversation.messages[0]?.speakerName} & {conversation.messages[0]?.listenerName}
                     </p>
-                    <p className="text-xs text-gray-500">正在聊天中...</p>
+                    <p className="text-base text-gray-500">正在聊天中...</p>
                   </div>
                 </div>
 
                 {/* 動畫圖標 */}
                 <div className="animate-bounce-slow">
-                  <Sparkles className="w-5 h-5 text-yellow-400" />
+                  <Sparkles className="w-7 h-7 text-yellow-400" />
                 </div>
               </div>
 
-              {/* 對話內容 */}
-              <div className="space-y-2 max-h-60 overflow-y-auto ac-scrollbar">
+              {/* 對話內容 - 增加最大高度 */}
+              <div className="space-y-4 max-h-[500px] overflow-y-auto ac-scrollbar">
                 {conversation.messages.slice(-3).map((msg, index) => (
                   <div
                     key={`${msg.speakerId}-${index}-${msg.timestamp}`}
                     className={`animate-slide-up bg-gradient-to-r ${getEmotionColor(msg.emotion)} 
-                              rounded-2xl p-3 border-2 shadow-md`}
+                              rounded-2xl p-4 border-3 shadow-lg`}
                     style={{ animationDelay: `${index * 100}ms` }}
                   >
                     <div className="flex items-start gap-2">
                       {/* 說話者圖標 */}
                       <div className="shrink-0">
-                        <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-sm">
-                          <span className="text-sm">{getEmotionIcon(msg.emotion)}</span>
+                        <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-md">
+                          <span className="text-xl">{getEmotionIcon(msg.emotion)}</span>
                         </div>
                       </div>
                       
                       {/* 消息內容 */}
                       <div className="flex-1">
-                        <p className="text-xs font-semibold text-gray-700 mb-1">
+                        <p className="text-base font-semibold text-gray-700 mb-1">
                           {msg.speakerName}
                         </p>
-                        <p className="text-sm text-gray-800 leading-relaxed">
+                        <p className="text-lg text-gray-800 leading-relaxed">
                           {msg.content}
                         </p>
                       </div>
@@ -250,9 +250,9 @@ export const NPCConversationBubble: React.FC = () => {
               {/* 音符動畫效果 */}
               <div className="absolute -bottom-2 -right-2">
                 <div className="relative">
-                  <Music className="w-6 h-6 text-green-400 animate-bounce" />
-                  <Music className="w-4 h-4 text-blue-400 absolute -top-2 -right-2 animate-float" />
-                  <Music className="w-3 h-3 text-pink-400 absolute -bottom-1 -left-2 animate-pulse" />
+                  <Music className="w-8 h-8 text-green-400 animate-bounce" />
+                  <Music className="w-6 h-6 text-blue-400 absolute -top-3 -right-3 animate-float" />
+                  <Music className="w-5 h-5 text-pink-400 absolute -bottom-2 -left-3 animate-pulse" />
                 </div>
               </div>
             </div>

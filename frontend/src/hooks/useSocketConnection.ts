@@ -4,7 +4,7 @@ import { useGameStore } from '@/stores/gameStore'
 
 export const useSocketConnection = () => {
   const socketRef = useRef<Socket | null>(null)
-  const { addMessage, setTyping, updateNpcMood } = useGameStore()
+  const { addMessage, setTyping, updateNpcMood, updateNpcConversation } = useGameStore()
 
   useEffect(() => {
     // Use the API URL for socket connection (socket.io handles the ws:// protocol)
@@ -49,6 +49,22 @@ export const useSocketConnection = () => {
     socket.on('npc-mood-change', (data) => {
       updateNpcMood(data.npcId, data.mood)
     })
+    
+    // NPC 之間的對話事件
+    socket.on('npc-conversation', (data) => {
+      if (data.type === 'message') {
+        // 更新說話者的對話泡泡
+        updateNpcConversation(data.speakerId, data.listenerId, data.content)
+        
+        // 3秒後清除對話泡泡
+        setTimeout(() => {
+          updateNpcConversation(data.speakerId, null, null)
+        }, 3000)
+      } else if (data.type === 'ended') {
+        // 對話結束，清除兩個NPC的對話狀態
+        console.log(`NPC conversation ended: ${data.npc1} and ${data.npc2} discussed ${data.topic}`)
+      }
+    })
 
     socket.on('error', (error) => {
       console.error('Socket error:', error)
@@ -57,7 +73,7 @@ export const useSocketConnection = () => {
     return () => {
       socket.disconnect()
     }
-  }, [addMessage, setTyping, updateNpcMood])
+  }, [addMessage, setTyping, updateNpcMood, updateNpcConversation])
 
   const sendMessage = (npcId: string, content: string) => {
     if (socketRef.current) {

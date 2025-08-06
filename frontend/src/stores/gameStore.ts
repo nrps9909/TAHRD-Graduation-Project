@@ -9,6 +9,9 @@ interface NPC {
   position: [number, number, number]
   relationshipLevel: number
   lastInteraction?: Date
+  isInConversation?: boolean
+  conversationContent?: string
+  conversationPartner?: string
 }
 
 interface Conversation {
@@ -84,6 +87,7 @@ interface GameState {
   setPlayerPosition: (position: [number, number, number]) => void
   setPlayerRotation: (rotation: number) => void
   setJoystickInput: (x: number, y: number) => void
+  updateNpcConversation: (npcId: string, partnerId: string | null, content: string | null) => void
 }
 
 export const useGameStore = create<GameState>()(
@@ -241,6 +245,22 @@ export const useGameStore = create<GameState>()(
       setPlayerPosition: (position) => set({ playerPosition: position }),
       setPlayerRotation: (rotation) => set({ playerRotation: rotation }),
       setJoystickInput: (x, y) => set({ joystickInput: { x, y } }),
+      
+      updateNpcConversation: (npcId, partnerId, content) => {
+        set(state => ({
+          npcs: state.npcs.map(npc => {
+            if (npc.id === npcId) {
+              return {
+                ...npc,
+                isInConversation: !!content,
+                conversationContent: content || undefined,
+                conversationPartner: partnerId || undefined
+              }
+            }
+            return npc
+          })
+        }))
+      },
     }),
     {
       name: 'heart-whisper-town-game',
