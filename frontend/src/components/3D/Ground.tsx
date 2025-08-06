@@ -1,6 +1,6 @@
 import { useRef, useEffect, useMemo } from 'react'
 import * as THREE from 'three'
-import { useFrame } from '@react-three/fiber'
+import { useFrame, useLoader } from '@react-three/fiber'
 import { collisionSystem } from '@/utils/collision'
 import { Tree } from './Tree'
 import { Flower } from './Flower'
@@ -154,34 +154,95 @@ export const Ground = () => {
 
   return (
     <>
-      {/* 主島嶼地面 - 多層次草地 */}
+      {/* 主島嶼地面 - 增強草地材質 */}
       <mesh ref={meshRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.1, 0]} receiveShadow>
-        <circleGeometry args={[60, 64]} />
-        <meshLambertMaterial color="#90EE90" />
+        <circleGeometry args={[60, 128]} />
+        <meshStandardMaterial 
+          color="#7ec850"
+          roughness={0.9}
+          metalness={0.1}
+        />
       </mesh>
       
-      {/* 草地紋理變化 */}
+      {/* 草地紋理層 - 使用程序化紋理 */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.08, 0]} receiveShadow>
+        <planeGeometry args={[120, 120, 64, 64]} />
+        <meshStandardMaterial 
+          color="#6ab540"
+          transparent
+          opacity={0.4}
+          roughness={1}
+          metalness={0}
+        />
+      </mesh>
+      
+      {/* 草地紋理變化 - 更自然的色彩 */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[10, -0.09, -10]} receiveShadow>
-        <circleGeometry args={[15, 32]} />
-        <meshLambertMaterial color="#98FB98" />
+        <circleGeometry args={[15, 64]} />
+        <meshStandardMaterial 
+          color="#8fbc8f"
+          roughness={0.95}
+          metalness={0}
+        />
       </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-20, -0.09, 15]} receiveShadow>
-        <circleGeometry args={[20, 32]} />
-        <meshLambertMaterial color="#7CFC00" />
+        <circleGeometry args={[20, 64]} />
+        <meshStandardMaterial 
+          color="#90ee90"
+          roughness={0.95}
+          metalness={0}
+        />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[30, -0.09, 5]} receiveShadow>
+        <circleGeometry args={[18, 64]} />
+        <meshStandardMaterial 
+          color="#7cfc00"
+          roughness={0.95}
+          metalness={0}
+        />
       </mesh>
       
-      {/* 沙灘邊緣 */}
+      {/* 沙灘邊緣 - 更細緻的沙地 */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]} receiveShadow>
-        <ringGeometry args={[55, 60, 64]} />
-        <meshLambertMaterial color="#F4E4C1" />
+        <ringGeometry args={[55, 60, 128]} />
+        <meshStandardMaterial 
+          color="#f4e4c1"
+          roughness={1}
+          metalness={0}
+        />
+      </mesh>
+      
+      {/* 沙灘細節層 */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.04, 0]} receiveShadow>
+        <ringGeometry args={[56, 59, 64]} />
+        <meshStandardMaterial 
+          color="#faebd7"
+          transparent
+          opacity={0.5}
+          roughness={1}
+        />
       </mesh>
       
       {/* 石板路徑 */}
       <group>
-        {/* 中央廣場 */}
+        {/* 中央廣場 - 石磚材質 */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]} receiveShadow>
-          <circleGeometry args={[8, 32]} />
-          <meshLambertMaterial color="#DEB887" />
+          <circleGeometry args={[8, 64]} />
+          <meshStandardMaterial 
+            color="#deb887"
+            roughness={0.8}
+            metalness={0.1}
+          />
+        </mesh>
+        
+        {/* 廣場裝飾環 */}
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.011, 0]} receiveShadow>
+          <ringGeometry args={[7.5, 8, 64]} />
+          <meshStandardMaterial 
+            color="#d2b48c"
+            roughness={0.7}
+            metalness={0.05}
+          />
         </mesh>
         
         {/* 石板小徑 */}
@@ -224,10 +285,28 @@ export const Ground = () => {
         ))}
       </group>
       
-      {/* 湖泊 */}
+      {/* 湖泊 - 更真實的水面 */}
       <mesh ref={waterRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 30]} receiveShadow>
-        <circleGeometry args={[10, 32]} />
-        <meshLambertMaterial color="#4682B4" transparent opacity={0.8} />
+        <circleGeometry args={[10, 64]} />
+        <meshStandardMaterial 
+          color="#4682b4"
+          transparent 
+          opacity={0.85}
+          roughness={0.1}
+          metalness={0.8}
+        />
+      </mesh>
+      
+      {/* 水面反光層 */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.021, 30]} receiveShadow>
+        <circleGeometry args={[9.8, 32]} />
+        <meshStandardMaterial 
+          color="#87ceeb"
+          transparent 
+          opacity={0.3}
+          roughness={0}
+          metalness={1}
+        />
       </mesh>
       
       {/* 湖泊邊緣裝飾 */}
@@ -299,17 +378,77 @@ export const Ground = () => {
         </group>
       ))}
       
-      {/* 小草叢 */}
+      {/* 小草叢 - 更豐富的草地細節 */}
       {grassPatches.map((grass) => (
-        <mesh 
-          key={`grass-${grass.id}`} 
-          position={grass.position as [number, number, number]} 
-          receiveShadow
-        >
-          <coneGeometry args={[0.15, 0.4, 6]} />
-          <meshLambertMaterial color={grass.color} />
-        </mesh>
+        <group key={`grass-${grass.id}`} position={grass.position as [number, number, number]}>
+          <mesh receiveShadow>
+            <coneGeometry args={[0.15, 0.4, 6]} />
+            <meshStandardMaterial 
+              color={grass.color}
+              roughness={0.9}
+              metalness={0}
+            />
+          </mesh>
+          {/* 額外的草葉 */}
+          <mesh position={[0.1, 0, 0.1]} receiveShadow>
+            <coneGeometry args={[0.1, 0.3, 4]} />
+            <meshStandardMaterial 
+              color={grass.color}
+              roughness={0.9}
+            />
+          </mesh>
+        </group>
       ))}
+      
+      {/* 額外的地面裝飾 - 小石子 */}
+      {Array.from({ length: 15 }, (_, i) => {
+        const angle = (i / 15) * Math.PI * 2
+        const radius = 20 + Math.random() * 30
+        const x = Math.cos(angle) * radius
+        const z = Math.sin(angle) * radius
+        return (
+          <mesh 
+            key={`pebble-${i}`}
+            position={[x, 0.05, z]}
+            rotation={[Math.random() * Math.PI, Math.random() * Math.PI, 0]}
+            scale={0.3 + Math.random() * 0.4}
+            castShadow
+            receiveShadow
+          >
+            <dodecahedronGeometry args={[0.5]} />
+            <meshStandardMaterial 
+              color={`hsl(30, 20%, ${40 + Math.random() * 20}%)`}
+              roughness={0.9}
+              metalness={0.1}
+            />
+          </mesh>
+        )
+      })}
+      
+      {/* 裝飾性葉片 */}
+      {Array.from({ length: 20 }, (_, i) => {
+        const x = (Math.random() - 0.5) * 100
+        const z = (Math.random() - 0.5) * 100
+        const rotation = Math.random() * Math.PI * 2
+        return (
+          <mesh
+            key={`leaf-${i}`}
+            position={[x, 0.02, z]}
+            rotation={[-Math.PI / 2, 0, rotation]}
+            scale={0.5 + Math.random() * 0.5}
+            receiveShadow
+          >
+            <planeGeometry args={[0.5, 0.8]} />
+            <meshStandardMaterial 
+              color={`hsl(${80 + Math.random() * 40}, 60%, ${30 + Math.random() * 20}%)`}
+              side={THREE.DoubleSide}
+              transparent
+              opacity={0.8}
+              roughness={0.8}
+            />
+          </mesh>
+        )
+      })}
     </>
   )
 }

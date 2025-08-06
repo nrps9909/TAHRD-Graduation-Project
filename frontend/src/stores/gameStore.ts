@@ -62,8 +62,6 @@ interface GameState {
   // UI state
   isLoading: boolean
   showDialogue: boolean
-  currentDialogue: string
-  dialogueHistory: string[]
   showInventory: boolean
   showMap: boolean
   showSettings: boolean
@@ -108,8 +106,6 @@ export const useGameStore = create<GameState>()(
       season: 'spring',
       isLoading: true,
       showDialogue: false,
-      currentDialogue: '',
-      dialogueHistory: [],
       showInventory: false,
       showMap: false,
       showSettings: false,
@@ -180,8 +176,7 @@ export const useGameStore = create<GameState>()(
             selectedNpc: npcId,
             isInConversation: true,
             showDialogue: true,
-            currentDialogue: `你好！我是${npc.name}，很高興見到你。`,
-            dialogueHistory: [],
+            conversations: get().conversations.filter(c => c.npcId === npcId), // Keep only this NPC's conversation history
           })
         }
       },
@@ -191,16 +186,26 @@ export const useGameStore = create<GameState>()(
           isInConversation: false,
           showDialogue: false,
           selectedNpc: null,
-          currentDialogue: '',
-          dialogueHistory: [],
         })
       },
 
       addMessage: (message) => {
-        set((state) => ({
-          conversations: [...state.conversations, message],
-          dialogueHistory: [...state.dialogueHistory, message.content],
-        }))
+        set((state) => {
+          // Check if message already exists to prevent duplicates
+          const exists = state.conversations.some(c => 
+            c.content === message.content && 
+            c.npcId === message.npcId && 
+            Math.abs(new Date(c.timestamp).getTime() - new Date(message.timestamp).getTime()) < 1000
+          )
+          
+          if (exists) {
+            return state
+          }
+          
+          return {
+            conversations: [...state.conversations, message],
+          }
+        })
       },
 
       setTyping: (isTyping) => {

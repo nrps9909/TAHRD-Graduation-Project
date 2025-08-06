@@ -4,8 +4,12 @@ import { Environment } from '@react-three/drei'
 import { Scene } from './components/Scene'
 import { UI } from './components/UI'
 import { PointerLockManager } from './components/3D/PointerLockManager'
+import { NookPhone } from './components/UI/NookPhone'
+import { VisualSoundEffects, BubbleEffect, MusicalNoteRain } from './components/UI/VisualSoundEffects'
+import { NPCConversationBubble } from './components/UI/NPCConversationBubble'
 import { useGameStore } from './stores/gameStore'
 import { useSocketConnection } from './hooks/useSocketConnection'
+import './styles/animalcrossing.css'
 
 function App() {
   const { initializeGame, isLoading } = useGameStore()
@@ -17,23 +21,74 @@ function App() {
 
   if (isLoading) {
     return (
-      <div className="w-full h-screen bg-gradient-to-br from-healing-warm to-healing-gentle flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-gentle-float mb-4">
-            <div className="w-16 h-16 bg-white rounded-full shadow-lg flex items-center justify-center">
-              🌸
+      <div className="w-full h-screen bg-gradient-to-br from-sky-200 via-green-100 to-yellow-100 flex items-center justify-center overflow-hidden relative">
+        {/* Animated background patterns */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-10 left-10 text-8xl animate-float">🌱</div>
+          <div className="absolute top-20 right-20 text-7xl animate-float" style={{ animationDelay: '1s' }}>🌸</div>
+          <div className="absolute bottom-20 left-20 text-9xl animate-float" style={{ animationDelay: '2s' }}>🌻</div>
+          <div className="absolute bottom-10 right-10 text-6xl animate-float" style={{ animationDelay: '3s' }}>🌼</div>
+          <div className="absolute top-1/2 left-1/2 text-8xl animate-spin-slow">✨</div>
+        </div>
+        
+        <div className="text-center animate-pop-in relative z-10">
+          {/* Animated logo with glow effect */}
+          <div className="relative mb-6">
+            <div className="absolute inset-0 bg-gradient-to-br from-yellow-300 to-green-300 rounded-full blur-3xl opacity-50 animate-pulse" />
+            <div className="relative animate-bounce-slow">
+              <div className="w-32 h-32 bg-gradient-to-br from-green-400 via-emerald-400 to-teal-500 
+                            rounded-full shadow-2xl flex items-center justify-center 
+                            border-4 border-white ac-avatar group hover:scale-110 transition-transform">
+                <span className="text-5xl group-hover:animate-tada">🌳</span>
+              </div>
+              {/* Decorative rings */}
+              <div className="absolute inset-0 border-4 border-green-300 rounded-full animate-ping opacity-30" />
+              <div className="absolute inset-0 border-4 border-yellow-300 rounded-full animate-ping opacity-30" style={{ animationDelay: '0.5s' }} />
             </div>
           </div>
-          <h2 className="text-2xl font-bold text-gray-700 mb-2">心語小鎮</h2>
-          <p className="text-gray-600 animate-pulse">正在為你準備這個溫暖的世界...</p>
+          
+          {/* Title with enhanced styling */}
+          <div className="relative">
+            <h2 className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-green-600 to-blue-600 mb-2 ac-font animate-rainbow">
+              心語小鎮
+            </h2>
+            <p className="text-lg text-green-700 font-medium mb-4">Heart Whisper Town</p>
+          </div>
+          
+          {/* Loading indicator with cute animation */}
+          <div className="flex items-center justify-center gap-3 bg-white/70 rounded-full px-6 py-3 shadow-lg">
+            <div className="flex gap-1">
+              <div className="w-3 h-3 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+              <div className="w-3 h-3 bg-yellow-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+              <div className="w-3 h-3 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+            </div>
+            <p className="text-green-600 font-semibold">正在準備你的島嶼...</p>
+          </div>
+          
+          {/* Tips */}
+          <div className="mt-8 text-sm text-gray-600 animate-fade-in" style={{ animationDelay: '1s' }}>
+            <p className="flex items-center justify-center gap-2">
+              <span className="text-lg">💡</span>
+              小提示：與島民聊天可以提升親密度哦！
+            </p>
+          </div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="game-container">
+    <div className="game-container relative">
       <PointerLockManager />
+      
+      {/* Background decorative elements */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        {/* Floating clouds */}
+        <div className="absolute top-10 left-20 text-6xl opacity-20 animate-float">☁️</div>
+        <div className="absolute top-20 right-40 text-5xl opacity-20 animate-float" style={{ animationDelay: '2s' }}>☁️</div>
+        <div className="absolute top-40 left-1/2 text-7xl opacity-15 animate-float" style={{ animationDelay: '4s' }}>☁️</div>
+      </div>
+      
       <div className="game-scene">
         <Canvas
           camera={{ position: [0, 8, 12], fov: 75 }}
@@ -61,6 +116,30 @@ function App() {
       
       <div className="game-ui">
         <UI />
+      </div>
+      
+      {/* Animal Crossing Style Phone UI */}
+      <NookPhone />
+      
+      {/* Visual Effects Layers */}
+      <VisualSoundEffects />
+      <BubbleEffect />
+      <MusicalNoteRain active={false} />
+      
+      {/* NPC Conversation Bubbles */}
+      <NPCConversationBubble />
+      
+      {/* Corner decorations */}
+      <div className="fixed top-4 left-4 z-20 pointer-events-none">
+        <div className="bg-gradient-to-br from-green-400 to-emerald-500 rounded-2xl p-3 shadow-xl border-3 border-white animate-wiggle">
+          <span className="text-2xl">🌱</span>
+        </div>
+      </div>
+      
+      <div className="fixed top-4 right-4 z-20 pointer-events-none">
+        <div className="bg-gradient-to-br from-yellow-400 to-orange-500 rounded-2xl p-3 shadow-xl border-3 border-white animate-pulse">
+          <span className="text-2xl">✨</span>
+        </div>
       </div>
     </div>
   )

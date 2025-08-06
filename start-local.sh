@@ -38,19 +38,31 @@ if [ -z "$GEMINI_API_KEY" ]; then
 fi
 echo "✅ 環境變數已設置"
 
-# 創建後端 .env 文件
+# 創建後端 .env 文件（如果不存在或需要更新）
 echo ""
 echo "📝 配置後端環境..."
-cat > backend/.env << EOF
+
+# 如果 backend/.env 已存在且包含有效的 GEMINI_API_KEY，則不覆蓋
+if [ -f backend/.env ] && grep -q "GEMINI_API_KEY=AIza" backend/.env 2>/dev/null; then
+    echo "✅ 後端環境已配置（保留現有設定）"
+else
+    # 確保 GEMINI_API_KEY 有正確的值
+    if [ -z "$GEMINI_API_KEY" ] || [ "$GEMINI_API_KEY" = "your-api-key" ]; then
+        # 從根目錄 .env 文件提取 API key
+        GEMINI_API_KEY=$(grep "^GEMINI_API_KEY=" .env 2>/dev/null | tail -1 | cut -d'=' -f2 | tr -d '"' | tr -d "'")
+    fi
+    
+    cat > backend/.env << EOF
 NODE_ENV=development
-DATABASE_URL=postgresql://postgres:password123@localhost:5432/heart_whisper_town
+DATABASE_URL=postgresql://postgres:password123@localhost:5433/heart_whisper_town
 REDIS_URL=redis://localhost:6379
 GEMINI_API_KEY=${GEMINI_API_KEY}
-JWT_SECRET=${JWT_SECRET:-default-jwt-secret}
+JWT_SECRET=${JWT_SECRET:-heart_whisper_town_secret_2024}
 PORT=4000
 USE_GEMINI_CLI=true
 EOF
-echo "✅ 後端環境配置完成"
+    echo "✅ 後端環境配置完成"
+fi
 
 # 創建前端 .env 文件
 echo "📝 配置前端環境..."

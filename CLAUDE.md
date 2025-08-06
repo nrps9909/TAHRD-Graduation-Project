@@ -4,308 +4,242 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is the **Heart Whisper Town (心語小鎮)** project - an LLM-powered 3D healing social game built with modern web technologies. Players interact with AI-driven NPCs in a warm virtual town, building deep emotional connections through meaningful conversations.
+**Heart Whisper Town (心語小鎮)** - An LLM-powered 3D healing social game where players interact with AI-driven NPCs to build deep emotional connections through meaningful conversations.
+
+### Core NPCs (3 Main Characters)
+
+1. **小雅 (Xiao Ya)** - Warm Café Owner
+   - ID: `npc-1`
+   - Personality: 溫暖親切的咖啡館老闆娘，總是能敏銳察覺到他人的情緒變化
+   - Traits: Warm, empathetic, observant, mature
+   - Location: Café (10, 0, 15)
+
+2. **月兒 (Yue Er)** - Dreamy Musician  
+   - ID: `npc-3`
+   - Personality: 充滿夢幻氣質的音樂家，經常在月光下彈奏吉他
+   - Traits: Romantic, artistic, free-spirited, mysterious
+   - Location: Music Stage (0, 5, 25)
+
+3. **小晴 (Xiao Qing)** - Cheerful Student
+   - ID: `npc-5`
+   - Personality: 活潑開朗的大學生，充滿青春活力
+   - Traits: Energetic, curious, friendly, optimistic
+   - Location: Town Square (-15, 0, 20)
 
 ## Quick Start
 
 ```bash
-# Start everything with Docker Compose
+# Docker Compose (recommended)
 docker-compose up -d
 
-# View logs
-docker-compose logs -f
+# Local development (requires PostgreSQL, Redis)
+./start-local.sh
 
-# Access the application
-# Frontend: http://localhost:3000
-# Backend API: http://localhost:4000
-# GraphQL Playground: http://localhost:4000/graphql
+# Access points
+Frontend: http://localhost:3000
+Backend API: http://localhost:4000
+GraphQL Playground: http://localhost:4000/graphql
 ```
-
-## Technology Stack
-
-### Frontend
-- **React 18** + **TypeScript** - Modern UI framework with type safety
-- **Three.js** + **React Three Fiber** - 3D rendering and scene management
-- **Tailwind CSS** - Utility-first styling with healing color palette
-- **Zustand** - Lightweight state management
-- **Apollo Client** - GraphQL client with caching
-- **Socket.IO Client** - Real-time communication
-- **Vite** - Fast build tool and dev server
-
-### Backend
-- **Node.js** + **Express** - Server runtime and framework
-- **GraphQL** + **Apollo Server** - API layer with type-safe queries
-- **Socket.IO** - WebSocket real-time communication
-- **Prisma** - Type-safe database ORM
-- **PostgreSQL** + **pgvector** - Main database with vector search
-- **Redis** - Caching and session management
-- **Google Gemini AI** - Large language model for NPC conversations
-
-### Development & Deployment
-- **Docker** + **Docker Compose** - Containerized development environment
-- **Nginx** - Reverse proxy and static file serving
-- **ESLint** + **TypeScript** - Code quality and type checking
 
 ## Key Commands
 
 ### Development
 ```bash
-# Start all services with Docker Compose
-docker-compose up -d
-
-# Install dependencies
+# Install all dependencies
 npm install
 
-# Start development servers
+# Start development servers (frontend + backend)
 npm run dev
 
-# Database operations (run from backend directory)
+# Run specific workspace
+npm run dev:frontend
+npm run dev:backend
+
+# Database operations (run from backend/)
 cd backend
 npm run db:generate    # Generate Prisma client
-npm run db:push       # Push schema changes
+npm run db:push       # Push schema to database
 npm run db:migrate    # Run migrations
 npm run db:seed       # Seed initial data
 
-# Code quality
-npm run lint          # Lint all code
-npm run test          # Run tests
+# Code quality checks
+npm run lint          # Lint all workspaces
+npm run lint:frontend # Frontend only
+npm run lint:backend  # Backend only
 
-# Individual workspace commands
-npm run lint:frontend  # Lint frontend code only
-npm run lint:backend   # Lint backend code only
-npm run test:frontend  # Run frontend tests
-npm run test:backend   # Run backend tests
-```
+# Testing
+npm run test          # Run all tests
+npm run test:frontend # Frontend tests
+npm run test:backend  # Backend tests
 
-### Production
-```bash
-npm run build         # Build all applications
+# Production build
+npm run build         # Build all workspaces
 npm start            # Start production server
 ```
 
-## Architecture Overview
-
-### Project Structure
-```
-heart-whisper-town/
-├── frontend/                 # React frontend application
-│   ├── src/
-│   │   ├── components/       # React components
-│   │   │   ├── 3D/          # Three.js 3D components
-│   │   │   └── UI/          # User interface components
-│   │   ├── stores/          # Zustand state management
-│   │   ├── hooks/           # Custom React hooks
-│   │   ├── graphql/         # GraphQL queries and mutations
-│   │   └── utils/           # Utility functions
-│   └── Dockerfile
-├── backend/                  # Node.js backend API
-│   ├── src/
-│   │   ├── resolvers/       # GraphQL resolvers
-│   │   ├── services/        # Business logic services
-│   │   ├── prisma/          # Prisma client and migrations
-│   │   ├── schema.ts        # GraphQL schema definitions
-│   │   ├── context.ts       # GraphQL context setup
-│   │   ├── socket.ts        # Socket.IO configuration
-│   │   └── index.ts         # Main server entry point
-│   ├── prisma/
-│   │   └── schema.prisma    # Database schema definition
-│   └── Dockerfile
-├── database/                 # Database initialization scripts
-│   ├── init.sql             # Initial database structure
-│   └── memory_enhancement.sql # Memory system enhancements
-├── docker-compose.yml        # Docker container orchestration
-└── package.json             # Root workspace configuration
-```
-
-### Database Schema
-The core entities and their relationships:
-
-- **Users**: Player accounts with authentication
-- **NPCs**: AI-driven characters with personalities and locations
-- **Conversations**: Chat history with emotional context and vector embeddings
-- **Relationships**: Dynamic user-NPC relationship tracking (trust, affection, level)
-- **MemoryFlowers**: Visual representations of meaningful conversations
-- **Wishes**: NPC goals that players can help fulfill
-- **Letters**: Asynchronous communication system
-- **DiaryEntries**: Player's personal journal
-- **WorldState**: Environmental conditions (weather, time, season)
-
-### Key Systems
-
-1. **AI Conversation System** (`backend/src/services/geminiService.ts`)
-   - Uses Google Gemini AI for dynamic, contextual responses
-   - Maintains conversation history and emotional context
-   - Generates relationship impacts and memory flowers
-   - Handles fallback responses for API failures
-   - Configurable via `USE_GEMINI_CLI` environment variable for CLI-based integration
-
-2. **Real-time Communication** (`backend/src/socket.ts`)
-   - Socket.IO for instant message delivery
-   - Typing indicators and presence updates
-   - Room-based communication
-
-3. **3D Scene Management** (`frontend/src/components/3D/`)
-   - Three.js scene with NPCs, buildings, and memory flowers
-   - Dynamic lighting based on time of day
-   - Interactive character models with mood indicators
-
-4. **State Management** (`frontend/src/stores/gameStore.ts`)
-   - Zustand store for game state
-   - Real-time updates from WebSocket events
-   - Persistent conversation history
-
-## Development Guidelines
-
-### Database Initialization
-The database is automatically initialized when starting Docker Compose. Two SQL scripts are executed:
-1. `database/init.sql` - Creates initial NPCs and their relationships
-2. `database/memory_enhancement.sql` - Adds pgvector extension and memory-related functions
-
-For manual initialization or testing:
+### Automation Scripts
 ```bash
-# Initialize database manually
-docker exec -i postgres_container psql -U postgres -d heart_whisper_town < database/init.sql
-docker exec -i postgres_container psql -U postgres -d heart_whisper_town < database/memory_enhancement.sql
+# Local development startup script
+./start-local.sh      # Starts PostgreSQL, Redis, and dev servers locally
 
-# Test NPC conversations via CLI
-python3 gemini.py --chat "Hello" --npc emma
-python3 gemini.py --chat "Tell me about flowers" --npc lily
-python3 gemini.py --chat "Recommend a book" --npc tom
+# Automation runner
+./auto-run.sh        # Execute commands from commands.txt
+./auto-run.sh -c     # Create example commands file
+./auto-run.sh -s 22:00  # Schedule daily execution
+
+# Python automation (more advanced)
+python claude-auto-runner.py -e  # Create example config
+python claude-auto-runner.py -r  # Run commands
 ```
 
-### Adding New NPCs
-1. Insert NPC data in `database/init.sql` or via admin interface
-2. Update NPC positioning in `frontend/src/components/3D/NPCCharacter.tsx`
-3. Add personality prompts in `backend/src/services/geminiService.ts`
-4. Create initial wishes in the database
+## Architecture
 
-### Customizing AI Behavior
-- Modify prompt templates in `geminiService.ts`
-- Adjust relationship impact calculations
-- Configure memory flower generation logic
-- Fine-tune emotional response patterns
-- Refer to `GEMINI.md` for detailed NPC personality templates and emotion system
+### Tech Stack
+- **Frontend**: React 18, TypeScript, Three.js (React Three Fiber), Tailwind CSS, Zustand, Apollo Client, Vite
+- **Backend**: Node.js, Express, GraphQL (Apollo Server), Prisma ORM, Socket.IO, Google Gemini AI
+- **Database**: PostgreSQL with pgvector extension, Redis for caching
+- **DevOps**: Docker, Docker Compose, Nginx
 
-### 3D Scene Modifications
-- Edit building layouts in `frontend/src/components/3D/Buildings.tsx`
-- Adjust NPC appearance and animations in `NPCCharacter.tsx`
-- Modify memory flower visualizations in `MemoryFlower.tsx`
-- Update ground textures and environment in `Ground.tsx`
+### Key Services & Files
 
-### UI Component Development
-- Follow healing color palette defined in `tailwind.config.js`
-- Use consistent component patterns from `frontend/src/components/UI/`
-- Implement responsive design for different screen sizes
-- Add accessibility features (ARIA labels, keyboard navigation)
+#### AI Conversation System
+- `backend/src/services/geminiService.ts` - Gemini AI integration, NPC personality management
+- `backend/npc_dialogue_service.py` - Python CLI for Gemini API calls (USE_GEMINI_CLI mode)
+- `backend/GEMINI.md` - NPC personality templates and emotion system documentation
+- Environment: `USE_GEMINI_CLI=true` enables CLI-based integration
 
-### Key GraphQL Operations
-Common queries and mutations used throughout the application:
-- `getConversations` - Fetch conversation history with NPCs
-- `sendMessage` - Send a message to an NPC and receive AI response
-- `getRelationship` - Get current relationship status with an NPC
-- `getMemoryFlowers` - Retrieve memory flowers for display
-- `login` / `register` - User authentication operations
+#### Database Schema (`backend/prisma/schema.prisma`)
+Core entities: User, NPC, Conversation, Relationship, MemoryFlower, Wish, Letter, DiaryEntry, WorldState
 
-## Environment Variables
+#### Real-time Communication
+- `backend/src/socket.ts` - Socket.IO configuration
+- `backend/src/index.ts` - Main server entry
 
-Required environment variables (copy from `.env.example`):
+#### 3D Scene & UI
+- `frontend/src/components/Scene.tsx` - Main 3D scene composition
+- `frontend/src/components/3D/` - Three.js components (NPCs, buildings, memory flowers)
+- `frontend/src/components/UI/DialogueBox.tsx` - NPC conversation interface
+- `frontend/src/stores/gameStore.ts` - Zustand state management
+
+#### GraphQL API
+- `backend/src/schema.ts` - Type definitions
+- `backend/src/resolvers/` - Query and mutation resolvers
+
+## Environment Setup
 
 ```env
-# AI Integration
-GEMINI_API_KEY=your_gemini_api_key_here
-
-# Authentication
+# Required (add to backend/.env and root .env)
+GEMINI_API_KEY="your_gemini_api_key_here"  # Include quotes
 JWT_SECRET=your_jwt_secret_here
-
-# Database
 DATABASE_URL=postgresql://postgres:password123@localhost:5432/heart_whisper_town
-
-# Cache
 REDIS_URL=redis://localhost:6379
 
-# Development
-NODE_ENV=development
-REACT_APP_API_URL=http://localhost:4000
-REACT_APP_WS_URL=ws://localhost:4000
-
 # Optional
-USE_GEMINI_CLI=true  # Use CLI-based Gemini integration instead of API
+USE_GEMINI_CLI=true  # Use Python CLI for Gemini instead of direct API
+NODE_ENV=development
 ```
 
-## Testing Strategy
+## Development Workflow
 
-### Unit Tests
-- Service layer business logic
-- Utility functions and helpers
-- React component behavior
+### NPC Interaction System
 
-### Integration Tests
-- GraphQL resolver functionality
-- Database operations
-- AI service responses
+#### Features
+- **NPC-to-NPC Conversations**: NPCs automatically chat with each other every 30s-2min
+- **Personality-Based Responses**: Each NPC has unique speaking patterns and interests
+- **Visual Feedback**: Conversation bubbles appear when NPCs interact
+- **Emotion System**: NPCs express different moods (cheerful, calm, dreamy, etc.)
 
-### E2E Tests
-- Complete user conversation flows
-- Memory flower generation
-- Relationship progression
+#### Testing NPC Interactions
+```bash
+# Run the NPC interaction test
+node backend/test-npc-interaction.js
+```
 
-## Performance Considerations
+### Game World Features
+- **Grass Texture Ground**: Realistic grass material with proper texturing
+- **Animal Crossing UI**: Cute, rounded interface elements
+- **Visual Effects**: Bubbles, musical notes, sparkles
+- **NookPhone**: In-game phone with 9 apps for various functions
 
-### Backend Optimizations
-- Redis caching for frequent queries
-- Connection pooling for database
-- Rate limiting for AI API calls
-- Efficient vector similarity searches
+### Testing AI Conversations
+```bash
+# Via Python CLI
+python3 backend/gemini.py --chat "Hello" --npc emma
+python3 backend/gemini.py --chat "Tell me about flowers" --npc lily
 
-### Frontend Optimizations
-- Three.js object pooling and disposal
-- Lazy loading of 3D assets
-- Optimized re-renders with Zustand
-- Compressed textures and models
+# Via GraphQL Playground
+# Navigate to http://localhost:4000/graphql
+```
 
-### AI Cost Management
-- Intelligent conversation caching
-- Context window optimization
-- Fallback responses for API limits
-- User tier-based restrictions
+### Database Management
+```bash
+# Initialize database (auto-runs with Docker Compose)
+docker exec -i heart-whisper-postgres psql -U postgres -d heart_whisper_town < database/init.sql
+docker exec -i heart-whisper-postgres psql -U postgres -d heart_whisper_town < database/memory_enhancement.sql
 
-## Security Measures
+# Access Prisma Studio
+cd backend && npx prisma studio
+```
 
-- JWT-based authentication with expiration
-- Input sanitization for user messages
-- Rate limiting on API endpoints
-- Secure WebSocket connections
-- Environment variable management
-- Docker security best practices
+## Common Tasks
 
-## Troubleshooting
+### Debugging
+- GraphQL: http://localhost:4000/graphql
+- Socket.IO: Set `DEBUG=socket.io:*`
+- Prisma Studio: `cd backend && npx prisma studio`
+- Redis CLI: `redis-cli` at port 6379
+- Docker logs: `docker-compose logs -f [service]`
+
+### Performance Optimization
+- Monitor Three.js memory with browser DevTools
+- Check Redis cache hits
+- Review Gemini API usage and costs
+- Optimize vector similarity searches in PostgreSQL
 
 ### Common Issues
-1. **AI API Failures**: Check Gemini API key and quota limits
-2. **Database Connection**: Verify PostgreSQL container is running
-3. **Socket.IO Issues**: Ensure CORS configuration allows frontend origin
-4. **3D Performance**: Monitor Three.js memory usage and dispose unused objects
-5. **Build Failures**: Clear node_modules and reinstall dependencies
+1. **Gemini API failures**: Check API key format (needs quotes) and quota
+2. **Database connection**: Verify PostgreSQL is running on correct port
+3. **Socket.IO**: Check CORS configuration for frontend origin
+4. **Build failures**: Clear node_modules and reinstall
+5. **3D performance**: Dispose unused Three.js objects properly
 
-### Development Workflow
-1. Always run linting before commits
-2. Test AI conversations with different personality prompts
-3. Verify database migrations work in both directions
-4. Check 3D scene performance on lower-end devices
-5. Validate WebSocket connections across different browsers
+## Project Structure
+```
+├── frontend/                # React frontend
+│   ├── src/
+│   │   ├── components/     # UI and 3D components
+│   │   ├── stores/        # Zustand state
+│   │   └── graphql/       # Queries/mutations
+├── backend/                 # Node.js backend
+│   ├── src/
+│   │   ├── services/      # Business logic
+│   │   ├── resolvers/     # GraphQL resolvers
+│   │   └── prisma/        # Database client
+│   └── prisma/
+│       └── schema.prisma  # Database schema
+├── database/               # SQL initialization
+├── automation/             # Automation tools
+└── docker-compose.yml      # Container orchestration
+```
 
-### Debugging Tips
-1. **GraphQL Playground**: Access at http://localhost:4000/graphql for testing queries
-2. **Socket.IO Debugging**: Enable debug mode by setting `DEBUG=socket.io:*`
-3. **Prisma Studio**: Run `npx prisma studio` in backend directory to inspect database
-4. **Three.js Inspector**: Use browser DevTools for 3D scene debugging
-5. **Redis CLI**: Connect to Redis at localhost:6379 to inspect cache
+## Important Notes
 
-### Important File Locations
-- **NPC Personalities**: `backend/src/services/geminiService.ts` - NPC prompt configuration
-- **3D Scene Setup**: `frontend/src/components/Scene.tsx` - Main 3D scene composition
-- **Game State**: `frontend/src/stores/gameStore.ts` - Central state management
-- **GraphQL Schema**: `backend/src/schema.ts` - API type definitions
-- **Database Models**: `backend/prisma/schema.prisma` - Data structure definitions
+- NPCs use Gemini AI for dynamic personality-driven responses
+- Memory flowers visualize emotional connections in 3D space
+- Relationship levels (1-10) affect conversation intimacy
+- WebSocket enables real-time chat and presence updates
+- pgvector extension powers semantic conversation search
+- All timestamps are stored in UTC
 
-This codebase implements a sophisticated AI-powered social game that requires careful attention to both technical architecture and user experience design.
+## Gemini CLI Integration
+
+**IMPORTANT**: The Gemini CLI automatically reads all `GEMINI.md` files in the current directory when launched. DO NOT manually read or pass GEMINI.md content in `gemini.py`. The Python script should only:
+1. Load personality files (`*_personality.txt` and `*_chat_history.txt`)
+2. Pass character data to Gemini CLI
+3. Let Gemini CLI handle the prompt construction using its auto-loaded GEMINI.md
+
+The `gemini.py` file's role is strictly to:
+- Read character personality and chat history files
+- Format basic character information
+- Pass data to Gemini CLI for response generation
+- NOT to construct complex prompts or read GEMINI.md

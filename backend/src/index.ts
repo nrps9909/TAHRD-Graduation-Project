@@ -1,5 +1,10 @@
 import 'dotenv/config'
 import express from 'express'
+
+// 調試環境變數
+console.log('[DEBUG] Backend 啟動時的環境變數:')
+console.log('GEMINI_API_KEY:', process.env.GEMINI_API_KEY ? '已設置' : '未設置')
+console.log('NODE_ENV:', process.env.NODE_ENV)
 import { createServer } from 'http'
 import { Server } from 'socket.io'
 import { ApolloServer } from '@apollo/server'

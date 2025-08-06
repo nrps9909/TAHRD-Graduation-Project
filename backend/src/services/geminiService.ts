@@ -2,6 +2,9 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 import { logger } from '../utils/logger'
 import { spawn } from 'child_process'
 import * as path from 'path'
+import * as fs from 'fs'
+import { v4 as uuidv4 } from 'uuid'
+import * as dotenv from 'dotenv'
 
 interface NPCPersonality {
   id: string
@@ -39,7 +42,7 @@ interface AIResponse {
   moodChange?: string
 }
 
-class GeminiService {
+export class GeminiService {
   private genAI?: GoogleGenerativeAI
   private model?: any
   private useGeminiCLI: boolean
@@ -79,6 +82,98 @@ class GeminiService {
     }
   }
 
+  // 新增：生成簡單回應（用於NPC之間的對話）
+  async generateResponse(prompt: string, npcId: string): Promise<string> {
+    try {
+      if (this.useGeminiCLI) {
+        return await this.generateSimpleResponseWithCLI(prompt, npcId)
+      } else {
+        const result = await this.model.generateContent(prompt)
+        const response = await result.response
+        return response.text().trim()
+      }
+    } catch (error) {
+      logger.error('Simple response generation error:', error)
+      // 返回備用回應
+      const fallbacks = [
+        '是啊，我也這麼覺得。',
+        '你說得對！',
+        '嗯，這很有趣。',
+        '謝謝你的分享。',
+        '我很高興能和你聊天。'
+      ]
+      return fallbacks[Math.floor(Math.random() * fallbacks.length)]
+    }
+  }
+
+  // 生成簡單回應（CLI版本）
+  private async generateSimpleResponseWithCLI(prompt: string, npcId: string): Promise<string> {
+    try {
+      // 建立臨時 JSON 檔案
+      const tempDir = path.join(process.cwd(), 'temp')
+      if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(tempDir, { recursive: true })
+      }
+      
+      const tempFileName = `simple_conversation_${uuidv4()}.json`
+      const tempFilePath = path.join(tempDir, tempFileName)
+      
+      // 準備簡單對話資料
+      const conversationData = {
+        message: prompt,
+        npcData: {
+          id: npcId,
+          name: this.getNPCName(npcId),
+          personality: this.getNPCPersonality(npcId),
+          currentMood: 'neutral',
+          relationshipLevel: 5
+        },
+        context: {
+          recentMessages: [],
+          timestamp: new Date().toISOString()
+        }
+      }
+      
+      // 寫入 JSON 檔案
+      fs.writeFileSync(tempFilePath, JSON.stringify(conversationData, null, 2), 'utf-8')
+      logger.info(`Created temp JSON file for simple response: ${tempFilePath}`)
+      
+      // 呼叫 gemini.py CLI
+      const cliResponse = await this.callGeminiCLI(tempFilePath)
+      
+      // 清理臨時檔案
+      try {
+        fs.unlinkSync(tempFilePath)
+      } catch (err) {
+        logger.warn(`Failed to delete temp file: ${tempFilePath}`)
+      }
+      
+      return cliResponse || '嗯，我明白了。'
+    } catch (error) {
+      logger.error('Error in generateSimpleResponseWithCLI:', error)
+      return '抱歉，我現在有點困惑...'
+    }
+  }
+  
+  // Helper functions for NPC data
+  private getNPCName(npcId: string): string {
+    const npcNames: Record<string, string> = {
+      'npc-1': '小雅',
+      'npc-3': '月兒',
+      'npc-5': '小晴'
+    }
+    return npcNames[npcId] || 'Unknown'
+  }
+  
+  private getNPCPersonality(npcId: string): string {
+    const npcPersonalities: Record<string, string> = {
+      'npc-1': '溫暖親切的咖啡館老闆娘，總是能敏銳察覺到他人的情緒變化',
+      'npc-3': '充滿夢幻氣質的音樂家，經常在月光下彈奏吉他',
+      'npc-5': '活潑開朗的大學生，充滿青春活力'
+    }
+    return npcPersonalities[npcId] || 'Friendly NPC'
+  }
+
   private async generateNPCResponseWithAPI(
     npcPersonality: NPCPersonality,
     userMessage: string,
@@ -99,40 +194,99 @@ class GeminiService {
     userMessage: string,
     context: ConversationContext
   ): Promise<AIResponse> {
-    // 建構用於 CLI 的對話上下文
-    const conversationPrompt = this.buildConversationPrompt(npcPersonality, userMessage, context)
+    // 建立臨時 JSON 檔案
+    const tempDir = path.join(process.cwd(), 'temp')
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true })
+    }
     
-    // 呼叫 gemini.py CLI
-    const cliResponse = await this.callGeminiCLI(conversationPrompt, npcPersonality)
+    const tempFileName = `conversation_${uuidv4()}.json`
+    const tempFilePath = path.join(tempDir, tempFileName)
     
-    // 解析 CLI 回應
-    return this.parseAIResponse(cliResponse, npcPersonality)
+    // 準備共享記憶（從最近的對話中提取）
+    const sharedMemories = await this.getSharedMemories(npcPersonality.id)
+    
+    // 準備對話資料
+    const conversationData = {
+      message: userMessage,
+      npcData: {
+        id: npcPersonality.id,
+        name: npcPersonality.name,
+        personality: npcPersonality.personality,
+        backgroundStory: npcPersonality.backgroundStory,
+        currentMood: npcPersonality.currentMood,
+        relationshipLevel: context.relationshipLevel,
+        sharedMemories: sharedMemories // 加入共享記憶
+      },
+      context: {
+        recentMessages: context.recentMessages,
+        timestamp: new Date().toISOString()
+      }
+    }
+    
+    try {
+      // 寫入 JSON 檔案
+      fs.writeFileSync(tempFilePath, JSON.stringify(conversationData, null, 2), 'utf-8')
+      logger.info(`Created temp JSON file: ${tempFilePath}`)
+      
+      // 呼叫 gemini.py CLI
+      const cliResponse = await this.callGeminiCLI(tempFilePath)
+      
+      // 刪除臨時檔案 - 暫時保留以供調試
+      // fs.unlinkSync(tempFilePath)
+      
+      // 處理回應
+      return this.processGeminiResponse(cliResponse, npcPersonality)
+      
+    } catch (error) {
+      // 確保清理臨時檔案
+      if (fs.existsSync(tempFilePath)) {
+        fs.unlinkSync(tempFilePath)
+      }
+      throw error
+    }
   }
 
-  private async callGeminiCLI(prompt: string, npcPersonality: NPCPersonality | null = null): Promise<string> {
+  private async callGeminiCLI(jsonFilePath: string): Promise<string> {
     return new Promise((resolve, reject) => {
-      const projectRoot = path.resolve(__dirname, '../../../')
-      const geminiScriptPath = path.join(projectRoot, 'backend', 'npc_dialogue_service.py')
+      const startTime = Date.now()
+      logger.info(`[DEBUG] callGeminiCLI 開始執行`)
       
-      // 準備參數
-      const args = [geminiScriptPath, '--chat', prompt]
+      const projectRoot = path.resolve(__dirname, '../../')
+      const geminiScriptPath = path.join(projectRoot, 'gemini.py')
       
-      // 如果有 NPC 個性數據則添加
-      if (npcPersonality) {
-        const npcData = JSON.stringify({
-          name: npcPersonality.name,
-          personality: npcPersonality.personality,
-          backgroundStory: npcPersonality.backgroundStory,
-          currentMood: npcPersonality.currentMood
-        })
-        args.push('--npc-data', npcData)
+      // 準備參數 - 只傳入 JSON 檔案路徑
+      const args = [geminiScriptPath, jsonFilePath]
+      
+      logger.info(`Calling gemini.py with args: ${args.join(' ')}`)
+      logger.info(`[DEBUG] 檔案是否存在: ${fs.existsSync(jsonFilePath)}`)
+      logger.info(`[DEBUG] 當前環境變數 GEMINI_API_KEY: ${process.env.GEMINI_API_KEY ? '已設置' : '未設置'}`)
+      
+      // 執行 Python 腳本 - 從 backend 目錄執行以確保正確讀取 .env
+      const backendDir = projectRoot
+      
+      // 如果當前進程沒有 GEMINI_API_KEY，嘗試從 backend/.env 讀取
+      let processEnv = { ...process.env }
+      if (!processEnv.GEMINI_API_KEY) {
+        const envPath = path.join(projectRoot, '.env')
+        const envConfig = dotenv.config({ path: envPath })
+        if (envConfig.parsed && envConfig.parsed.GEMINI_API_KEY) {
+          processEnv.GEMINI_API_KEY = envConfig.parsed.GEMINI_API_KEY
+          logger.info(`[DEBUG] 從 ${envPath} 載入 GEMINI_API_KEY`)
+        }
       }
       
-      // 執行 Python 腳本
+      logger.info(`[DEBUG] 傳遞的 GEMINI_API_KEY: ${processEnv.GEMINI_API_KEY ? '已設置' : '未設置'}`)
+      
+      // Ensure PATH is included in the environment
+      processEnv.PATH = process.env.PATH || '/usr/bin:/bin:/usr/local/bin'
+      
       const pythonProcess = spawn('python3', args, {
-        cwd: projectRoot,
-        env: { ...process.env }
+        cwd: backendDir,
+        env: processEnv
       })
+      
+      logger.info(`[DEBUG] Python 進程已啟動，PID: ${pythonProcess.pid}`)
       
       let output = ''
       let errorOutput = ''
@@ -146,12 +300,23 @@ class GeminiService {
       })
       
       pythonProcess.on('close', (code) => {
+        const duration = Date.now() - startTime
+        logger.info(`[DEBUG] Python 進程結束，耗時: ${duration}ms，退出碼: ${code}`)
+        
+        // 記錄 stderr 輸出（包含日誌）
+        if (errorOutput) {
+          logger.info(`Gemini CLI stderr output:\n${errorOutput}`)
+        }
+        
         if (code === 0) {
-          // 提取實際的 AI 回應（移除日誌信息）
-          const cleanOutput = this.extractAIResponseFromCLIOutput(output)
-          resolve(cleanOutput)
+          // 直接返回輸出，gemini.py 只會輸出純文字回應
+          const response = output.trim()
+          logger.info(`Gemini response: ${response}`)
+          logger.info(`[DEBUG] 成功返回回應，長度: ${response.length} 字符`)
+          resolve(response)
         } else {
           logger.error(`Gemini CLI failed with code ${code}: ${errorOutput}`)
+          logger.error(`[DEBUG] 失敗詳情 - 輸出: "${output}", 錯誤: "${errorOutput}"`)
           reject(new Error(`Gemini CLI failed: ${errorOutput}`))
         }
       })
@@ -163,34 +328,37 @@ class GeminiService {
     })
   }
 
-  private extractAIResponseFromCLIOutput(output: string): string {
-    // 查找 "NPC 回應：" 之後的內容
-    const responseMarker = '🤖 NPC 回應：'
-    const startIndex = output.indexOf(responseMarker)
+  private processGeminiResponse(response: string, npc: NPCPersonality): AIResponse {
+    // gemini.py 返回純文字回應，我們需要建構完整的 AIResponse
+    const content = response.trim()
     
-    if (startIndex === -1) {
-      // 如果沒有找到標記，嘗試提取所有非日誌內容
-      const lines = output.split('\n')
-      const contentLines = lines.filter(line => 
-        !line.includes('INFO') && 
-        !line.includes('✅') && 
-        !line.includes('===') &&
-        line.trim().length > 0
-      )
-      return contentLines.join('\n').trim()
+    // 根據 NPC 的情緒決定 emotionTag
+    const emotionTag = npc.currentMood || 'neutral'
+    
+    // 簡單的情感分析來決定關係影響
+    let trustChange = 0
+    let affectionChange = 0
+    
+    // 檢查回應的情感傾向
+    if (content.includes('謝謝') || content.includes('感謝')) {
+      trustChange = 0.1
+      affectionChange = 0.05
+    } else if (content.includes('開心') || content.includes('快樂')) {
+      affectionChange = 0.1
+    } else if (content.includes('理解') || content.includes('明白')) {
+      trustChange = 0.05
     }
     
-    // 提取標記後的內容
-    const afterMarker = output.substring(startIndex + responseMarker.length)
-    const lines = afterMarker.split('\n')
-    
-    // 移除分隔線和空行
-    const contentLines = lines.filter(line => 
-      !line.includes('===') && 
-      line.trim().length > 0
-    )
-    
-    return contentLines.join('\n').trim()
+    return {
+      content,
+      emotionTag,
+      suggestedActions: [],
+      relationshipImpact: {
+        trustChange,
+        affectionChange,
+        levelChange: 0
+      }
+    }
   }
 
   private buildConversationPrompt(
@@ -441,7 +609,9 @@ ${npc.personality}
     try {
       // 根據配置選擇使用 CLI 或直接 API
       if (this.useGeminiCLI) {
-        return await this.callGeminiCLI(prompt, null)
+        // NPC-to-NPC 對話暫時不支援 CLI 模式，使用備用回應
+        logger.warn('NPC-to-NPC conversation not supported in CLI mode, using fallback')
+        throw new Error('CLI mode not supported for NPC-to-NPC')
       } else {
         const result = await this.model.generateContent(prompt)
         const response = await result.response
@@ -464,6 +634,17 @@ ${npc.personality}
         }
       ])
     }
+  }
+
+  /**
+   * 獲取 NPC 的共享記憶
+   * @param npcId NPC ID
+   * @returns 共享記憶列表
+   */
+  private async getSharedMemories(npcId: string): Promise<string[]> {
+    // TODO: 從資料庫或快取中獲取實際的共享記憶
+    // 目前返回空陣列作為預設值
+    return []
   }
 }
 

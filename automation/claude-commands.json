@@ -1,0 +1,74 @@
+{
+  "name": "心語小鎮每日維護任務",
+  "description": "每晚自動執行的開發任務",
+  "schedule": {
+    "time": "22:00",
+    "timezone": "Asia/Taipei",
+    "days": ["everyday"]
+  },
+  "variables": {
+    "project_path": "/home/jesse637/Project/TAHRD-Graduation-Project",
+    "date": "{{DATE}}",
+    "time": "{{TIME}}"
+  },
+  "commands": [
+    {
+      "name": "檢查專案狀態",
+      "prompt": "請幫我檢查專案的當前狀態，包括：\n1. Git 狀態\n2. 是否有未提交的更改\n3. 依賴套件是否需要更新",
+      "wait_time": 5,
+      "save_response": true
+    },
+    {
+      "name": "程式碼品質檢查",
+      "prompt": "請執行以下檢查：\n1. 檢查前端和後端的 linting 錯誤\n2. 找出潛在的程式碼問題\n3. 提供改進建議",
+      "wait_time": 10,
+      "save_response": true
+    },
+    {
+      "name": "安全性掃描",
+      "prompt": "請檢查專案的安全性：\n1. 掃描依賴套件的安全漏洞\n2. 檢查環境變數是否有洩漏風險\n3. 檢查 API 端點的安全性",
+      "wait_time": 8,
+      "save_response": true
+    },
+    {
+      "name": "效能優化建議",
+      "prompt": "請分析並提供效能優化建議：\n1. 前端載入速度優化\n2. 後端 API 效能優化\n3. 資料庫查詢優化",
+      "wait_time": 10,
+      "save_response": true
+    },
+    {
+      "name": "生成每日報告",
+      "prompt": "請生成今日的開發報告，包括：\n1. 完成的功能\n2. 發現的問題\n3. 明天的待辦事項\n4. 整體專案進度",
+      "wait_time": 5,
+      "save_response": true,
+      "create_file": "daily-report-{{DATE}}.md"
+    },
+    {
+      "name": "備份重要文件",
+      "prompt": "請幫我創建一個備份腳本，備份以下內容：\n1. 資料庫架構\n2. 環境配置範例\n3. API 文檔",
+      "wait_time": 5,
+      "execute_result": true
+    },
+    {
+      "name": "更新文檔",
+      "prompt": "請檢查並更新以下文檔：\n1. README.md 是否需要更新\n2. API 文檔是否完整\n3. 部署指南是否清晰",
+      "wait_time": 8,
+      "save_response": true
+    }
+  ],
+  "notifications": {
+    "on_complete": {
+      "log_file": "automation-log-{{DATE}}.txt",
+      "summary": true
+    },
+    "on_error": {
+      "stop_on_error": false,
+      "log_errors": true
+    }
+  },
+  "output": {
+    "base_path": "./automation/reports/",
+    "create_daily_folder": true,
+    "format": "markdown"
+  }
+}

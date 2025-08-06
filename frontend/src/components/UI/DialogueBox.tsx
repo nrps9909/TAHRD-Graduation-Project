@@ -12,8 +12,7 @@ export const DialogueBox = () => {
   const { 
     selectedNpc, 
     npcs, 
-    dialogueHistory, 
-    currentDialogue, 
+    conversations, 
     isTyping,
     endConversation 
   } = useGameStore()
@@ -25,7 +24,7 @@ export const DialogueBox = () => {
   // 自動滾動到最新消息
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [dialogueHistory, currentDialogue])
+  }, [conversations])
 
   // 自動聚焦輸入框
   useEffect(() => {
@@ -164,65 +163,57 @@ export const DialogueBox = () => {
                          bg-gradient-to-b from-blue-50/50 to-purple-50/50">
             
             {/* Conversation History */}
-            {dialogueHistory.map((message, index) => {
-              const isUser = index % 2 === 1
-              return (
-                <div key={index} className={`animate-slide-up flex items-end gap-3 ${
-                  isUser ? 'flex-row-reverse' : ''
-                }`} style={{ animationDelay: `${index * 100}ms` }}>
-                  {/* Avatar */}
-                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center 
-                                  shadow-lg shrink-0 ${
-                    isUser 
-                      ? 'bg-gradient-to-br from-blue-400 to-blue-500 text-white' 
-                      : 'bg-gradient-to-br from-yellow-200 to-yellow-300'
-                  }`}>
-                    {isUser ? '😊' : getMoodEmoji(currentNpc.currentMood)}
-                  </div>
-                  
-                  {/* Message Bubble */}
-                  <div className={`max-w-xs lg:max-w-md ${
-                    isUser ? 'ml-auto' : 'mr-auto'
-                  }`}>
-                    <div className={`p-4 shadow-lg border-2 ${
+            {conversations
+              .filter(conv => conv.npcId === selectedNpc)
+              .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+              .map((message, index) => {
+                const isUser = message.speakerType === 'user'
+                const messageDate = new Date(message.timestamp)
+                const now = new Date()
+                const diffMinutes = Math.floor((now.getTime() - messageDate.getTime()) / 60000)
+                const timeText = diffMinutes === 0 ? '剛剛' : 
+                               diffMinutes < 60 ? `${diffMinutes} 分鐘前` : 
+                               `${Math.floor(diffMinutes / 60)} 小時前`
+                
+                return (
+                  <div key={message.id} className={`animate-slide-up flex items-end gap-3 ${
+                    isUser ? 'flex-row-reverse' : ''
+                  }`} style={{ animationDelay: `${Math.min(index * 50, 200)}ms` }}>
+                    {/* Avatar */}
+                    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center 
+                                    shadow-lg shrink-0 ${
                       isUser 
-                        ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-3xl rounded-br-lg border-blue-300' 
-                        : 'bg-white rounded-3xl rounded-bl-lg border-yellow-200'
+                        ? 'bg-gradient-to-br from-blue-400 to-blue-500 text-white' 
+                        : 'bg-gradient-to-br from-yellow-200 to-yellow-300'
                     }`}>
-                      <p className={`text-sm leading-relaxed ${
-                        isUser ? 'text-white' : 'text-gray-800'
+                      {isUser ? '😊' : getMoodEmoji(message.emotionTag || currentNpc.currentMood)}
+                    </div>
+                    
+                    {/* Message Bubble */}
+                    <div className={`max-w-xs lg:max-w-md ${
+                      isUser ? 'ml-auto' : 'mr-auto'
+                    }`}>
+                      <div className={`p-4 shadow-lg border-2 ${
+                        isUser 
+                          ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-3xl rounded-br-lg border-blue-300' 
+                          : 'bg-white rounded-3xl rounded-bl-lg border-yellow-200'
                       }`}>
-                        {message}
+                        <p className={`text-sm leading-relaxed ${
+                          isUser ? 'text-white' : 'text-gray-800'
+                        }`}>
+                          {message.content}
+                        </p>
+                      </div>
+                      {/* Timestamp */}
+                      <p className={`text-xs text-gray-500 mt-1 px-2 ${
+                        isUser ? 'text-right' : 'text-left'
+                      }`}>
+                        {timeText}
                       </p>
                     </div>
-                    {/* Timestamp */}
-                    <p className={`text-xs text-gray-500 mt-1 px-2 ${
-                      isUser ? 'text-right' : 'text-left'
-                    }`}>
-                      剛剛
-                    </p>
                   </div>
-                </div>
-              )
-            })}
-
-            {/* Current NPC Message */}
-            {currentDialogue && (
-              <div className="animate-slide-up flex items-end gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-yellow-200 to-yellow-300 
-                               flex items-center justify-center shadow-lg shrink-0">
-                  {getMoodEmoji(currentNpc.currentMood)}
-                </div>
-                <div className="max-w-xs lg:max-w-md">
-                  <div className="p-4 bg-white rounded-3xl rounded-bl-lg shadow-lg border-2 border-yellow-200">
-                    <p className="text-sm leading-relaxed text-gray-800">
-                      {currentDialogue}
-                    </p>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1 px-2">剛剛</p>
-                </div>
-              </div>
-            )}
+                )
+              })}
 
             {/* Typing Indicator */}
             {isTyping && (
@@ -321,7 +312,7 @@ export const DialogueBox = () => {
               </button>
             </div>
             
-            {/* Quick Actions */}
+            {/* Quick Actions with AC Style */}
             <div className="flex items-center justify-between mt-4">
               <div className="flex gap-2 flex-wrap">
                 {[
@@ -329,21 +320,25 @@ export const DialogueBox = () => {
                   { text: '😊 最近怎麼樣？', emoji: '😊' },
                   { text: '💬 聊聊你的故事', emoji: '💬' },
                   { text: '✨ 你的夢想是什麼？', emoji: '✨' }
-                ].map((suggestion, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setInputMessage(suggestion.text.split(' ').slice(1).join(' '))}
-                    className="px-3 py-1.5 bg-gradient-to-r from-blue-100 to-purple-100 
-                               hover:from-blue-200 hover:to-purple-200 
-                               text-gray-700 rounded-full text-xs
-                               transition-all duration-200 hover:scale-105 
-                               border border-blue-200 hover:border-blue-300
-                               flex items-center gap-1"
-                  >
-                    <span>{suggestion.emoji}</span>
-                    <span>{suggestion.text.split(' ').slice(1).join(' ')}</span>
-                  </button>
-                ))}
+                ].map((suggestion, index) => {
+                  const colors = ['from-yellow-200 to-orange-200', 'from-blue-200 to-cyan-200', 'from-purple-200 to-pink-200', 'from-green-200 to-teal-200']
+                  return (
+                    <button
+                      key={index}
+                      onClick={() => setInputMessage(suggestion.text.split(' ').slice(1).join(' '))}
+                      className={`group px-3 py-2 bg-gradient-to-r ${colors[index]} 
+                                 hover:shadow-lg text-gray-700 rounded-full text-xs font-semibold
+                                 transition-all duration-200 hover:scale-110 hover:-translate-y-1
+                                 border-2 border-white shadow-md
+                                 flex items-center gap-1.5 relative overflow-hidden`}
+                    >
+                      <span className="text-base transform group-hover:rotate-12 transition-transform">{suggestion.emoji}</span>
+                      <span>{suggestion.text.split(' ').slice(1).join(' ')}</span>
+                      {/* Shine effect */}
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-0 group-hover:opacity-30 transform -skew-x-12 group-hover:translate-x-full transition-all duration-500" />
+                    </button>
+                  )
+                })}
               </div>
               
               <span className="text-xs text-gray-500 hidden sm:block">
