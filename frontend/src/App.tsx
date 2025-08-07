@@ -4,6 +4,7 @@ import { Environment } from '@react-three/drei'
 import { Scene } from './components/Scene'
 import { UI } from './components/UI'
 import { PointerLockManager } from './components/3D/PointerLockManager'
+import { FontPreloader } from './components/FontPreloader'
 // import { NookPhone } from './components/UI/NookPhone' // 已移除，使用 AnimalCrossingPhone
 import { VisualSoundEffects, BubbleEffect, MusicalNoteRain } from './components/UI/VisualSoundEffects'
 import { NPCConversationBubble } from './components/UI/NPCConversationBubble'
@@ -80,6 +81,7 @@ function App() {
 
   return (
     <div className="game-container">
+      <FontPreloader />
       <PointerLockManager />
       
       <div className="game-scene">

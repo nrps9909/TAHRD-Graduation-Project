@@ -1,0 +1,78 @@
+/* Font Loading and Global Application */
+
+/* Primary font face definition - 華康新綜藝體 */
+@font-face {
+  font-family: 'GameFont';
+  src: url('/fonts/font-0.woff2') format('woff2'),
+       url('/fonts/font-0.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-10FFFF;
+}
+
+/* Fallback font face definition - 華康新綜藝體(P) */
+@font-face {
+  font-family: 'GameFont-P';
+  src: url('/fonts/font-1.woff2') format('woff2'),
+       url('/fonts/font-1.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-10FFFF;
+}
+
+/* Global font application with maximum specificity */
+html {
+  font-family: 'GameFont', 'Noto Sans TC', 'Microsoft YaHei', 'PingFang TC', sans-serif !important;
+}
+
+body {
+  font-family: 'GameFont', 'Noto Sans TC', 'Microsoft YaHei', 'PingFang TC', sans-serif !important;
+}
+
+/* Apply to all elements */
+* {
+  font-family: inherit !important;
+}
+
+/* Specific overrides for text elements */
+h1, h2, h3, h4, h5, h6,
+p, span, div, a, button,
+input, textarea, select,
+label, li, td, th {
+  font-family: 'GameFont', 'Noto Sans TC', 'Microsoft YaHei', 'PingFang TC', sans-serif !important;
+}
+
+/* Override Tailwind typography */
+.font-sans,
+.font-serif,
+.font-mono {
+  font-family: 'GameFont', 'Noto Sans TC', 'Microsoft YaHei', 'PingFang TC', sans-serif !important;
+}
+
+/* Override any inline styles */
+[style*="font-family"] {
+  font-family: 'GameFont', 'Noto Sans TC', 'Microsoft YaHei', 'PingFang TC', sans-serif !important;
+}
+
+/* Ensure font loads for pseudo elements */
+*::before,
+*::after {
+  font-family: 'GameFont', 'Noto Sans TC', 'Microsoft YaHei', 'PingFang TC', sans-serif !important;
+}
+
+/* Font smoothing for better rendering */
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Preload font hint */
+.font-preload {
+  font-family: 'GameFont';
+  position: absolute;
+  left: -9999px;
+  visibility: hidden;
+}

@@ -16,6 +16,7 @@ import { resolvers } from './resolvers'
 import { createContext } from './context'
 import { socketHandler } from './socket'
 import { logger } from './utils/logger'
+import trackingRoutes from './routes/trackingRoutes'
 import { connectRedis } from './utils/redis'
 import { PrismaClient } from '@prisma/client'
 
@@ -128,6 +129,9 @@ async function startServer() {
         environment: process.env.NODE_ENV || 'development'
       })
     })
+    
+    // 追蹤 API 路由
+    app.use(trackingRoutes)
     
     // 啟動服務器
     httpServer.listen(PORT, () => {

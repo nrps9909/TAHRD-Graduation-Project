@@ -3,6 +3,16 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Font Declarations */
+@font-face {
+  font-family: 'GameFont';
+  src: url('/fonts/font-0.woff2') format('woff2'),
+       url('/fonts/font-0.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* CSS Variables for theming */
 @layer base {
   :root {
@@ -68,7 +78,7 @@
   
   body {
     @apply text-foreground;
-    font-family: 'Inter', 'Noto Sans TC', sans-serif;
+    font-family: 'GameFont', 'Inter', 'Noto Sans TC', sans-serif !important;
     background: #000000; /* 黑色背景，確保沒有藍色洩漏 */
     margin: 0 !important; /* 確保沒有任何邊距 */
     padding: 0 !important;

@@ -79,6 +79,7 @@ interface GameState {
   setTyping: (isTyping: boolean) => void
   addMemoryFlower: (flower: MemoryFlower) => void
   updateNpcMood: (npcId: string, mood: string) => void
+  updateNpcPosition: (npcId: string, position: [number, number, number]) => void
   setWorldState: (state: { weather?: string; timeOfDay?: number; season?: string }) => void
   setShowInventory: (show: boolean) => void
   setShowMap: (show: boolean) => void
@@ -116,41 +117,124 @@ export const useGameStore = create<GameState>()(
       showDiary: false,
 
       // Actions
-      initializeGame: () => {
-        // Simulate loading initial data
-        setTimeout(() => {
+      initializeGame: async () => {
+        set({ isLoading: true })
+        
+        try {
+          // 從後端 API 動態載入 NPC 資料
+          const response = await fetch('http://localhost:4000/graphql', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              query: `
+                query GetNPCs {
+                  npcs {
+                    id
+                    name
+                    personality
+                    currentMood
+                    location {
+                      x
+                      y
+                      z
+                    }
+                  }
+                }
+              `
+            })
+          })
+          
+          const data = await response.json()
+          
+          if (data.data && data.data.npcs) {
+            // 將後端資料轉換為前端格式
+            const npcs = data.data.npcs.map((npc: any) => ({
+              id: npc.id,
+              name: npc.name,
+              personality: npc.personality || '載入中...',
+              currentMood: npc.currentMood || 'neutral',
+              position: [npc.location?.x || 0, npc.location?.y || 0, npc.location?.z || 0] as [number, number, number],
+              relationshipLevel: 1,
+            }))
+            
+            set({
+              playerId: 'player-1',
+              playerName: '旅人',
+              npcs,
+              isLoading: false,
+            })
+          } else {
+            // 使用預設資料作為備援
+            console.warn('無法從後端載入 NPC 資料，使用預設值')
+            set({
+              playerId: 'player-1',
+              playerName: '旅人',
+              npcs: [
+                {
+                  id: 'npc-1',
+                  name: '陸培修',
+                  personality: '夢幻的藝術家',
+                  currentMood: 'cheerful',
+                  position: [3, 0, 3],
+                  relationshipLevel: 1,
+                },
+                {
+                  id: 'npc-2',
+                  name: '劉宇岑',
+                  personality: '充滿活力的朋友',
+                  currentMood: 'excited',
+                  position: [-3, 0, 3],
+                  relationshipLevel: 1,
+                },
+                {
+                  id: 'npc-3',
+                  name: '陳庭安',
+                  personality: '溫柔的靈魂',
+                  currentMood: 'dreamy',
+                  position: [0, 0, 5],
+                  relationshipLevel: 1,
+                },
+              ],
+              isLoading: false,
+            })
+          }
+        } catch (error) {
+          console.error('載入遊戲資料失敗:', error)
+          // 使用預設資料
           set({
             playerId: 'player-1',
             playerName: '旅人',
             npcs: [
               {
                 id: 'npc-1',
-                name: '鋁配咻',
-                personality: '溫暖親切的咖啡館老闆娘',
+                name: '陸培修',
+                personality: '夢幻的藝術家',
                 currentMood: 'cheerful',
-                position: [3, 0, 3],  // 玩家右前方
+                position: [3, 0, 3],
                 relationshipLevel: 1,
               },
               {
                 id: 'npc-2',
-                name: '流羽岑',
-                personality: '活潑開朗的大學生',
+                name: '劉宇岑',
+                personality: '充滿活力的朋友',
                 currentMood: 'excited',
-                position: [-3, 0, 3],  // 玩家左前方
+                position: [-3, 0, 3],
                 relationshipLevel: 1,
               },
               {
                 id: 'npc-3',
-                name: '沉停鞍',
-                personality: '夢幻的音樂家',
+                name: '陳庭安',
+                personality: '溫柔的靈魂',
                 currentMood: 'dreamy',
-                position: [0, 0, 5],  // 玩家正前方
+                position: [0, 0, 5],
                 relationshipLevel: 1,
               },
             ],
             isLoading: false,
           })
-        }, 2000)
+        }
       },
 
       setSelectedNpc: (npcId) => {
@@ -210,6 +294,14 @@ export const useGameStore = create<GameState>()(
         set((state) => ({
           npcs: state.npcs.map(npc =>
             npc.id === npcId ? { ...npc, currentMood: mood } : npc
+          ),
+        }))
+      },
+
+      updateNpcPosition: (npcId, position) => {
+        set((state) => ({
+          npcs: state.npcs.map(npc =>
+            npc.id === npcId ? { ...npc, position } : npc
           ),
         }))
       },

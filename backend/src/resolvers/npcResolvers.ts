@@ -1,17 +1,45 @@
 import { Context } from '../context'
+import { personalityLoader } from '../services/npcPersonalityLoader'
 
 export const npcResolvers = {
   Query: {
     npcs: async (_: any, args: any, { prisma }: Context) => {
-      return prisma.nPC.findMany({
+      const npcs = await prisma.nPC.findMany({
         orderBy: { name: 'asc' }
+      })
+      
+      // 補充真實的個性資料
+      return npcs.map(npc => {
+        const personalityData = personalityLoader.getPersonality(npc.id)
+        if (personalityData) {
+          return {
+            ...npc,
+            personality: personalityData.personality || npc.personality,
+            backgroundStory: personalityData.backgroundStory || npc.backgroundStory
+          }
+        }
+        return npc
       })
     },
 
     npc: async (_: any, { id }: any, { prisma }: Context) => {
-      return prisma.nPC.findUnique({
+      const npc = await prisma.nPC.findUnique({
         where: { id }
       })
+      
+      if (!npc) return null
+      
+      // 補充真實的個性資料
+      const personalityData = personalityLoader.getPersonality(id)
+      if (personalityData) {
+        return {
+          ...npc,
+          personality: personalityData.personality || npc.personality,
+          backgroundStory: personalityData.backgroundStory || npc.backgroundStory
+        }
+      }
+      
+      return npc
     },
 
     wishes: async (_: any, args: any, { prisma, userId }: Context) => {

@@ -28,6 +28,39 @@ export const NPCConversationBubble: React.FC = () => {
   const { socket } = useSocketConnection()
   const { npcs } = useGameStore()
 
+  // 計算對話泡泡位置（基於兩個NPC的中點）
+  const calculatePosition = (npc1Id: string, npc2Id: string) => {
+    const npc1 = npcs.find(n => n.id === npc1Id)
+    const npc2 = npcs.find(n => n.id === npc2Id)
+    
+    if (!npc1 || !npc2) {
+      return { x: 50, y: 50, z: 0 }
+    }
+    
+    // 使用 NPC 的實時位置
+    return {
+      x: (npc1.position[0] + npc2.position[0]) / 2,
+      y: Math.max(npc1.position[1], npc2.position[1]) + 2,
+      z: (npc1.position[2] + npc2.position[2]) / 2
+    }
+  }
+
+  // 定期更新對話框位置
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setConversations(prev => {
+        const newMap = new Map(prev)
+        newMap.forEach((conv, key) => {
+          const [npc1Id, npc2Id] = key.split('-')
+          conv.position = calculatePosition(npc1Id, npc2Id)
+        })
+        return newMap
+      })
+    }, 100) // 每100ms更新一次位置
+
+    return () => clearInterval(interval)
+  }, [npcs])
+
   // 清理所有計時器
   useEffect(() => {
     return () => {
@@ -66,6 +99,9 @@ export const NPCConversationBubble: React.FC = () => {
             isActive: true,
             createdAt: Date.now()
           }
+          
+          // 每次收到新消息時更新位置
+          conversation.position = calculatePosition(data.speakerId, data.listenerId)
           
           conversation.messages.push({
             speakerId: data.speakerId,
@@ -113,23 +149,6 @@ export const NPCConversationBubble: React.FC = () => {
       socket.off('npc-conversation', handleNPCConversation)
     }
   }, [socket, npcs])
-
-  // 計算對話泡泡位置（基於兩個NPC的中點）
-  const calculatePosition = (npc1Id: string, npc2Id: string) => {
-    const npc1 = npcs.find(n => n.id === npc1Id)
-    const npc2 = npcs.find(n => n.id === npc2Id)
-    
-    if (!npc1 || !npc2) {
-      return { x: 50, y: 50, z: 0 }
-    }
-    
-    // 計算屏幕上的相對位置
-    return {
-      x: (npc1.position.x + npc2.position.x) / 2,
-      y: Math.max(npc1.position.y, npc2.position.y) + 2,
-      z: (npc1.position.z + npc2.position.z) / 2
-    }
-  }
 
   const getEmotionIcon = (emotion: string) => {
     switch (emotion) {

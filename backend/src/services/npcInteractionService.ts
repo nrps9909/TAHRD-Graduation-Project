@@ -1,9 +1,8 @@
 import { PrismaClient } from '@prisma/client'
-import { GeminiService } from './geminiService'
+import { geminiService } from './geminiServiceMCP'
 import { EventEmitter } from 'events'
 
 const prisma = new PrismaClient()
-const geminiService = new GeminiService()
 
 interface NPCConversation {
   npc1Id: string
@@ -61,9 +60,9 @@ export class NPCInteractionService extends EventEmitter {
   // 發起隨機NPC對話
   private async initiateRandomConversation() {
     try {
-      // 獲取主要的3個NPC
+      // 獲取主要的3個NPC (修正ID)
       const npcs = await prisma.nPC.findMany({
-        where: { id: { in: ['npc-1', 'npc-3', 'npc-5'] } }
+        where: { id: { in: ['npc-1', 'npc-2', 'npc-3'] } }
       })
 
       if (npcs.length < 2) return

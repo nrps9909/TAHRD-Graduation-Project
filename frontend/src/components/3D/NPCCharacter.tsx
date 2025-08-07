@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
-import { Text, Html } from '@react-three/drei'
+import { Text, Html, Billboard, RoundedBox } from '@react-three/drei'
 import { useGameStore } from '@/stores/gameStore'
 import * as THREE from 'three'
 
@@ -19,6 +19,8 @@ interface NPCCharacterProps {
 
 export const NPCCharacter = ({ npc, position, conversationContent, isInConversation }: NPCCharacterProps) => {
   const meshRef = useRef<THREE.Group>(null)
+  const bubbleRef = useRef<THREE.Group>(null)
+  const nameRef = useRef<THREE.Group>(null)
   const [hovered, setHovered] = useState(false)
   const [clicked, setClicked] = useState(false)
   const [currentPosition, setCurrentPosition] = useState(new THREE.Vector3(...position))
@@ -26,7 +28,7 @@ export const NPCCharacter = ({ npc, position, conversationContent, isInConversat
   const [walkSpeed] = useState(0.5) // 移動速度
   const [nextMoveTime, setNextMoveTime] = useState(Date.now() + Math.random() * 10000)
   const [facingDirection, setFacingDirection] = useState(0)
-  const { setSelectedNpc, startConversation, selectedNpc } = useGameStore()
+  const { setSelectedNpc, startConversation, selectedNpc, updateNpcPosition } = useGameStore()
   const { camera } = useThree()
 
   // 根據情緒選擇顏色
@@ -90,6 +92,11 @@ export const NPCCharacter = ({ npc, position, conversationContent, isInConversat
           meshRef.current.position.x = currentPosition.x
           meshRef.current.position.z = currentPosition.z
           
+          // 更新 store 中的位置（每隔一段時間更新，避免過於頻繁）
+          if (Math.random() < 0.1) { // 10% 機率更新，約每秒10次
+            updateNpcPosition(npc.id, [currentPosition.x, currentPosition.y, currentPosition.z])
+          }
+          
           // 面向移動方向
           if (!hovered) {
             meshRef.current.rotation.y = Math.atan2(direction.x, direction.z)
@@ -104,6 +111,29 @@ export const NPCCharacter = ({ npc, position, conversationContent, isInConversat
       if (hovered || selectedNpc === npc.id) {
         const lookAtPos = new THREE.Vector3(camera.position.x, meshRef.current.position.y, camera.position.z)
         meshRef.current.lookAt(lookAtPos)
+      }
+    }
+    
+    // 對話泡泡的可愛動畫
+    if (bubbleRef.current && isInConversation) {
+      // 輕微的縮放脈動
+      const scale = 1 + Math.sin(state.clock.elapsedTime * 3) * 0.05
+      bubbleRef.current.scale.setScalar(scale)
+      
+      // 輕微的旋轉搖擺
+      bubbleRef.current.rotation.z = Math.sin(state.clock.elapsedTime * 2) * 0.02
+    }
+    
+    // 名字標籤的可愛動畫
+    if (nameRef.current) {
+      // 懸浮效果
+      nameRef.current.position.y = (isInConversation && conversationContent ? 7.5 * size : 3.5 * size) 
+        + Math.sin(state.clock.elapsedTime * 2.5) * 0.1
+      
+      // 選中時的脈動效果
+      if (isSelected) {
+        const scale = 1 + Math.sin(state.clock.elapsedTime * 4) * 0.1
+        nameRef.current.scale.setScalar(scale)
       }
     }
   })
@@ -159,67 +189,186 @@ export const NPCCharacter = ({ npc, position, conversationContent, isInConversat
         </mesh>
       </group>
       
-      {/* 對話泡泡 */}
+      {/* 3D對話泡泡 - 使用Billboard永遠朝向玩家 */}
       {isInConversation && conversationContent && (
-        <Html
-          position={[0, 3.5 * size, 0]}
-          center
-          distanceFactor={10}
-          style={{
-            pointerEvents: 'none',
-            userSelect: 'none'
-          }}
+        <Billboard
+          ref={bubbleRef}
+          follow={true}
+          lockX={false}
+          lockY={false}
+          lockZ={false}
+          position={[0, 4.5 * size, 0]}
         >
-          <div style={{
-            background: 'rgba(255, 255, 255, 0.95)',
-            padding: '8px 12px',
-            borderRadius: '15px',
-            border: '2px solid #4A90E2',
-            boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-            maxWidth: '200px',
-            fontSize: '14px',
-            color: '#333',
-            fontFamily: 'Arial, sans-serif',
-            position: 'relative',
-            animation: 'float 2s ease-in-out infinite'
-          }}>
-            <div style={{
-              position: 'absolute',
-              bottom: '-8px',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              width: '0',
-              height: '0',
-              borderLeft: '8px solid transparent',
-              borderRight: '8px solid transparent',
-              borderTop: '8px solid #4A90E2',
-            }} />
-            <div style={{
-              position: 'absolute',
-              bottom: '-6px',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              width: '0',
-              height: '0',
-              borderLeft: '6px solid transparent',
-              borderRight: '6px solid transparent',
-              borderTop: '6px solid rgba(255, 255, 255, 0.95)',
-            }} />
+          {/* 3D對話框背景 */}
+          <RoundedBox
+            args={[5, 2.5, 0.3]}
+            radius={0.25}
+            smoothness={4}
+          >
+            <meshPhysicalMaterial
+              color="#FFE4E1"
+              emissive="#FFB6C1"
+              emissiveIntensity={0.2}
+              roughness={0.3}
+              metalness={0.1}
+              clearcoat={1}
+              clearcoatRoughness={0}
+              transmission={0.1}
+              thickness={0.5}
+            />
+          </RoundedBox>
+          
+          {/* 3D對話框邊框 */}
+          <RoundedBox
+            args={[5.2, 2.7, 0.25]}
+            radius={0.3}
+            smoothness={4}
+            position={[0, 0, -0.05]}
+          >
+            <meshPhysicalMaterial
+              color="#87CEEB"
+              emissive="#4A90E2"
+              emissiveIntensity={0.3}
+              roughness={0.2}
+              metalness={0.2}
+            />
+          </RoundedBox>
+          
+          {/* 對話文字 */}
+          <Text
+            position={[0, 0, 0.2]}
+            fontSize={0.35}
+            maxWidth={4.5}
+            lineHeight={1.4}
+            letterSpacing={0.02}
+            textAlign="center"
+            font="/fonts/font.TTC"
+            anchorX="center"
+            anchorY="middle"
+            color="#2C3E50"
+            outlineWidth={0.02}
+            outlineColor="#FFFFFF"
+            onSync={(self) => {
+              // 如果字體加載失敗，使用備用樣式
+              if (!self.geometry) {
+                console.warn('Custom font not found, using default')
+              }
+            }}
+          >
             {conversationContent}
-          </div>
-        </Html>
+          </Text>
+          
+          {/* 可愛的裝飾 - 星星 */}
+          <mesh position={[-2.3, 1, 0.2]}>
+            <coneGeometry args={[0.15, 0.3, 5]} />
+            <meshPhysicalMaterial
+              color="#FFD700"
+              emissive="#FFA500"
+              emissiveIntensity={0.5}
+              roughness={0.2}
+              metalness={0.8}
+            />
+          </mesh>
+          
+          <mesh position={[2.3, 1, 0.2]}>
+            <coneGeometry args={[0.15, 0.3, 5]} />
+            <meshPhysicalMaterial
+              color="#FFD700"
+              emissive="#FFA500"
+              emissiveIntensity={0.5}
+              roughness={0.2}
+              metalness={0.8}
+            />
+          </mesh>
+          
+          {/* 對話框尾巴（3D三角形） */}
+          <mesh position={[0, -1.5, 0]} rotation={[0, 0, Math.PI]}>
+            <coneGeometry args={[0.4, 0.8, 3]} />
+            <meshPhysicalMaterial
+              color="#FFE4E1"
+              emissive="#FFB6C1"
+              emissiveIntensity={0.2}
+              roughness={0.3}
+              metalness={0.1}
+            />
+          </mesh>
+        </Billboard>
       )}
       
-      {/* 名字標籤 */}
-      <Text
-        position={[0, isInConversation && conversationContent ? 4.8 * size : 3.5 * size, 0]}
-        fontSize={0.3}
-        color={isSelected ? "#FF6B6B" : "#333"}
-        anchorX="center"
-        anchorY="middle"
+      {/* 3D名字標籤 - 使用Billboard永遠朝向玩家 */}
+      <Billboard
+        ref={nameRef}
+        follow={true}
+        lockX={false}
+        lockY={false}
+        lockZ={false}
+        position={[0, isInConversation && conversationContent ? 7.5 * size : 3.5 * size, 0]}
       >
-        {npc.name}
-      </Text>
+        {/* 名字背景板 */}
+        <RoundedBox
+          args={[2, 0.8, 0.2]}
+          radius={0.15}
+          smoothness={4}
+        >
+          <meshPhysicalMaterial
+            color={isSelected ? "#FFB6C1" : "#E6E6FA"}
+            emissive={isSelected ? "#FF69B4" : "#9370DB"}
+            emissiveIntensity={0.3}
+            roughness={0.2}
+            metalness={0.1}
+            clearcoat={1}
+            clearcoatRoughness={0}
+            transmission={0.2}
+            thickness={0.3}
+          />
+        </RoundedBox>
+        
+        {/* 3D名字文字 */}
+        <Text
+          position={[0, 0, 0.15]}
+          fontSize={0.4}
+          font="/fonts/font.TTC"
+          anchorX="center"
+          anchorY="middle"
+          color={isSelected ? "#FFFFFF" : "#4B0082"}
+          outlineWidth={0.03}
+          outlineColor={isSelected ? "#FF1493" : "#FFFFFF"}
+          onSync={(self) => {
+            // 如果字體加載失敗，使用備用樣式
+            if (!self.geometry) {
+              console.warn('Custom font not found for name, using default')
+            }
+          }}
+        >
+          {npc.name}
+        </Text>
+        
+        {/* 可愛的愛心裝飾 */}
+        {isSelected && (
+          <>
+            <mesh position={[-0.9, 0, 0.15]} scale={0.15}>
+              <sphereGeometry args={[1, 16, 16]} />
+              <meshPhysicalMaterial
+                color="#FF69B4"
+                emissive="#FF1493"
+                emissiveIntensity={0.5}
+                roughness={0.2}
+                metalness={0.3}
+              />
+            </mesh>
+            <mesh position={[0.9, 0, 0.15]} scale={0.15}>
+              <sphereGeometry args={[1, 16, 16]} />
+              <meshPhysicalMaterial
+                color="#FF69B4"
+                emissive="#FF1493"
+                emissiveIntensity={0.5}
+                roughness={0.2}
+                metalness={0.3}
+              />
+            </mesh>
+          </>
+        )}
+      </Billboard>
       
       {/* hover 效果 */}
       {hovered && (

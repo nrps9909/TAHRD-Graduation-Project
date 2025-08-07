@@ -54,3 +54,73 @@
   transform: none; /* 移除置中變換 */
   z-index: var(--z-game-notification);
 }
+
+/* 聊天介面滾動條樣式 */
+.chat-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chat-scrollbar::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 3px;
+}
+
+.chat-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #10b981, #06b6d4);
+  border-radius: 3px;
+}
+
+.chat-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #059669, #0891b2);
+}
+
+/* 聊天訊息容器優化 */
+.chat-message-container {
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+}
+
+/* 輸入框聚焦效果 */
+.chat-input-focus {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.chat-input-focus:focus {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+}
+
+/* 聊天氣泡動畫 */
+.chat-bubble-enter {
+  animation: messageSend 0.3s ease-out;
+}
+
+/* 最小化動畫 */
+.chat-minimize {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 快速回覆按鈕懸停效果 */
+.quick-reply-btn {
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.quick-reply-btn::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.quick-reply-btn:hover::before {
+  width: 100%;
+  height: 100%;
+}

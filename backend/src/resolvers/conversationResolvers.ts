@@ -1,5 +1,5 @@
 import { GraphQLError } from 'graphql'
-import { geminiService } from '../services/geminiService'
+import { geminiService } from '../services/geminiServiceMCP'
 import { pubsub } from '../utils/pubsub'
 import { logger } from '../utils/logger'
 import { Context } from '../context'

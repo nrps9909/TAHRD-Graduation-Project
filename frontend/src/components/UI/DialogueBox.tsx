@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from 'react'
-import { Send, Heart } from 'lucide-react'
+import { Send, X, Sparkles } from 'lucide-react'
 import { useGameStore } from '@/stores/gameStore'
 import { useSocketConnection } from '@/hooks/useSocketConnection'
 
 export const DialogueBox = () => {
   const [inputMessage, setInputMessage] = useState('')
-  const [isExpanded] = useState(true)
+  const [isMinimized, setIsMinimized] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   
@@ -18,23 +18,22 @@ export const DialogueBox = () => {
   } = useGameStore()
   
   const { sendMessage } = useSocketConnection()
-
   const currentNpc = npcs.find(npc => npc.id === selectedNpc)
 
-  // 自動滾動到最新消息
+  // Auto-scroll to latest message
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [conversations])
 
-  // 自動聚焦輸入框
+  // Auto-focus input
   useEffect(() => {
-    if (isExpanded && inputRef.current) {
+    if (!isMinimized && inputRef.current) {
       inputRef.current.focus()
     }
-  }, [isExpanded])
+  }, [isMinimized, selectedNpc])
 
   const handleSendMessage = () => {
-    if (!inputMessage.trim() || !selectedNpc) return
+    if (!inputMessage.trim() || !selectedNpc || isTyping) return
     
     sendMessage(selectedNpc, inputMessage.trim())
     setInputMessage('')
@@ -47,307 +46,461 @@ export const DialogueBox = () => {
     }
   }
 
-  const getMoodEmoji = (mood: string) => {
-    switch (mood) {
-      case 'cheerful': return '😊'
-      case 'calm': return '😌'
-      case 'dreamy': return '✨'
-      case 'peaceful': return '🕊️'
-      case 'excited': return '🌟'
-      case 'thoughtful': return '🤔'
-      case 'warm': return '🤗'
-      default: return '😊'
-    }
-  }
-
   if (!currentNpc) return null
 
+  const npcConversations = conversations
+    .filter(conv => conv.npcId === selectedNpc)
+    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+
   return (
-    <div className="w-full animate-slide-up" style={{
-      animation: 'slideUp 0.3s ease-out'
+    <div style={{
+      position: 'fixed',
+      bottom: isMinimized ? '-320px' : '0',
+      left: '50%',
+      transform: 'translateX(-50%)',
+      width: '90%',
+      maxWidth: '600px',
+      zIndex: 50,
+      transition: 'bottom 0.3s ease-out'
     }}>
-      {/* Modern Animal Crossing Style Dialogue Box */}
-      <div className="relative" style={{
-        maxWidth: '800px',
-        margin: '0 auto'
+      {/* Chat Container */}
+      <div style={{
+        background: 'linear-gradient(to bottom, rgba(255,255,255,0.95), rgba(255,255,255,0.98))',
+        backdropFilter: 'blur(12px)',
+        borderTopLeftRadius: '24px',
+        borderTopRightRadius: '24px',
+        boxShadow: '0 -10px 40px rgba(0,0,0,0.1)',
+        border: '1px solid rgba(255,255,255,0.5)',
+        overflow: 'hidden'
       }}>
-        {/* Character Bubble Tail */}
-        <div style={{
-          position: 'absolute',
-          top: '-24px',
-          left: '80px',
-          width: '48px',
-          height: '48px',
-          backgroundColor: 'rgba(255, 255, 255, 0.95)',
-          borderRadius: '50%',
-          transform: 'rotate(45deg)',
-          boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)'
-        }} />
         
-        {/* Main Dialogue Container */}
+        {/* Header Bar */}
         <div style={{
-          backgroundColor: 'rgba(255, 255, 255, 0.95)',
-          backdropFilter: 'blur(12px)',
-          borderRadius: '24px',
-          boxShadow: '0 20px 40px rgba(0, 0, 0, 0.1), 0 0 0 4px rgba(255, 255, 255, 0.5)',
-          overflow: 'hidden'
+          background: 'linear-gradient(to right, rgba(52,211,153,0.9), rgba(6,182,212,0.9))',
+          padding: '12px 24px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          borderBottom: '4px solid rgba(255,255,255,0.3)'
         }}>
-          {/* Header with Character Info */}
-          <div className="bg-gradient-to-r from-blue-100 to-purple-100 px-6 py-4 
-                         flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              {/* Character Avatar */}
-              <div className="relative">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-yellow-200 to-yellow-300 
-                               flex items-center justify-center text-3xl shadow-lg
-                               transform hover:scale-110 transition-transform duration-300">
-                  {getMoodEmoji(currentNpc.currentMood)}
-                </div>
-                {/* Mood Indicator */}
-                <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-white rounded-full 
-                               shadow-md flex items-center justify-center">
-                  <span className="text-xs">💭</span>
-                </div>
+          {/* NPC Info */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ position: 'relative' }}>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                background: 'rgba(255,255,255,0.9)',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+              }}>
+                <span style={{ fontSize: '20px' }}>✨</span>
               </div>
-              
-              {/* Character Name & Status */}
-              <div>
-                <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                  {currentNpc.name}
-                  {/* Speaking Animation */}
-                  {isTyping && (
-                    <span className="inline-flex gap-1">
-                      <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" 
-                            style={{ animationDelay: '0ms' }} />
-                      <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" 
-                            style={{ animationDelay: '150ms' }} />
-                      <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" 
-                            style={{ animationDelay: '300ms' }} />
-                    </span>
-                  )}
-                </h3>
-                <div className="flex items-center gap-3">
-                  {/* Relationship Hearts */}
-                  <div className="flex items-center gap-0.5">
-                    {Array.from({ length: 5 }, (_, i) => (
-                      <Heart 
-                        key={i} 
-                        className={`w-4 h-4 transition-all duration-300 ${
-                          i < currentNpc.relationshipLevel 
-                            ? 'fill-pink-400 text-pink-400 scale-110' 
-                            : 'text-gray-300 scale-90'
-                        }`} 
-                      />
-                    ))}
-                  </div>
-                  <span className="text-sm text-gray-600 capitalize bg-white/50 px-2 py-0.5 rounded-full">
-                    {currentNpc.currentMood}
-                  </span>
-                </div>
+              {isTyping && (
+                <div style={{
+                  position: 'absolute',
+                  bottom: '-4px',
+                  right: '-4px',
+                  width: '12px',
+                  height: '12px',
+                  background: '#4ade80',
+                  borderRadius: '50%',
+                  border: '2px solid white',
+                  animation: 'pulse 1s infinite'
+                }} />
+              )}
+            </div>
+            <div>
+              <h3 style={{
+                color: 'white',
+                fontWeight: 'bold',
+                fontSize: '18px',
+                textShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                margin: 0
+              }}>
+                {currentNpc.name}
+              </h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{
+                  fontSize: '12px',
+                  color: 'rgba(255,255,255,0.8)',
+                  background: 'rgba(255,255,255,0.2)',
+                  padding: '2px 8px',
+                  borderRadius: '12px'
+                }}>
+                  {currentNpc.currentMood}
+                </span>
               </div>
             </div>
-            
-            {/* Close Button */}
-            <button
-              onClick={endConversation}
-              className="w-10 h-10 rounded-full bg-white/80 hover:bg-white 
-                        flex items-center justify-center text-gray-500 hover:text-gray-700
-                        transition-all duration-200 hover:scale-110 shadow-md"
-            >
-              <span className="text-xl font-bold">×</span>
-            </button>
           </div>
 
-          {/* Messages Area - Modern Chat Style */}
-          <div className="h-80 overflow-y-auto px-6 py-4 space-y-4 
-                         bg-gradient-to-b from-blue-50/50 to-purple-50/50">
-            
-            {/* Conversation History */}
-            {conversations
-              .filter(conv => conv.npcId === selectedNpc)
-              .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-              .map((message, index) => {
+          {/* Control Buttons */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button
+              onClick={() => setIsMinimized(!isMinimized)}
+              style={{
+                width: '32px',
+                height: '32px',
+                background: 'rgba(255,255,255,0.2)',
+                border: 'none',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'white',
+                cursor: 'pointer',
+                fontSize: '18px',
+                fontWeight: 'bold'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.3)'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
+            >
+              {isMinimized ? '▲' : '▼'}
+            </button>
+            <button
+              onClick={endConversation}
+              style={{
+                width: '32px',
+                height: '32px',
+                background: 'rgba(248,113,113,0.8)',
+                border: 'none',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'white',
+                cursor: 'pointer'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = '#ef4444'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(248,113,113,0.8)'}
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+
+        {/* Chat Messages Area */}
+        {!isMinimized && (
+          <>
+            <div style={{
+              height: '256px',
+              overflowY: 'auto',
+              padding: '12px 16px',
+              background: 'linear-gradient(to bottom, rgba(164,232,228,0.1), rgba(167,243,208,0.1))',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px'
+            }}>
+              
+              {/* Welcome message if no conversations */}
+              {npcConversations.length === 0 && (
+                <div style={{
+                  textAlign: 'center',
+                  padding: '32px 0',
+                  animation: 'fadeIn 0.3s ease-out'
+                }}>
+                  <Sparkles style={{
+                    width: '48px',
+                    height: '48px',
+                    color: '#10b981',
+                    margin: '0 auto 12px'
+                  }} />
+                  <p style={{ color: '#6b7280', fontSize: '14px' }}>
+                    開始和 {currentNpc.name} 聊天吧！
+                  </p>
+                </div>
+              )}
+
+              {/* Conversation Messages */}
+              {npcConversations.map((message, index) => {
                 const isUser = message.speakerType === 'user'
-                const messageDate = new Date(message.timestamp)
-                const now = new Date()
-                const diffMinutes = Math.floor((now.getTime() - messageDate.getTime()) / 60000)
-                const timeText = diffMinutes === 0 ? '剛剛' : 
-                               diffMinutes < 60 ? `${diffMinutes} 分鐘前` : 
-                               `${Math.floor(diffMinutes / 60)} 小時前`
                 
                 return (
-                  <div key={message.id} className={`animate-slide-up flex items-end gap-3 ${
-                    isUser ? 'flex-row-reverse' : ''
-                  }`} style={{ animationDelay: `${Math.min(index * 50, 200)}ms` }}>
-                    {/* Avatar */}
-                    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center 
-                                    shadow-lg shrink-0 ${
-                      isUser 
-                        ? 'bg-gradient-to-br from-blue-400 to-blue-500 text-white' 
-                        : 'bg-gradient-to-br from-yellow-200 to-yellow-300'
-                    }`}>
-                      {isUser ? '😊' : getMoodEmoji(message.emotionTag || currentNpc.currentMood)}
-                    </div>
-                    
-                    {/* Message Bubble */}
-                    <div className={`max-w-xs lg:max-w-md ${
-                      isUser ? 'ml-auto' : 'mr-auto'
-                    }`}>
-                      <div className={`p-4 shadow-lg border-2 ${
-                        isUser 
-                          ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-3xl rounded-br-lg border-blue-300' 
-                          : 'bg-white rounded-3xl rounded-bl-lg border-yellow-200'
-                      }`}>
-                        <p className={`text-sm leading-relaxed ${
-                          isUser ? 'text-white' : 'text-gray-800'
-                        }`}>
+                  <div key={message.id} style={{
+                    display: 'flex',
+                    justifyContent: isUser ? 'flex-end' : 'flex-start',
+                    animation: 'fadeInUp 0.3s ease-out',
+                    animationDelay: `${Math.min(index * 50, 200)}ms`
+                  }}>
+                    <div style={{ maxWidth: '80%' }}>
+                      {/* Message Bubble */}
+                      <div style={{
+                        padding: '10px 16px',
+                        borderRadius: '18px',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                        background: isUser 
+                          ? 'linear-gradient(to right, #60a5fa, #3b82f6)'
+                          : 'white',
+                        color: isUser ? 'white' : '#1f2937',
+                        border: isUser ? 'none' : '1px solid #e5e7eb',
+                        borderBottomRightRadius: isUser ? '4px' : '18px',
+                        borderBottomLeftRadius: isUser ? '18px' : '4px'
+                      }}>
+                        <p style={{
+                          fontSize: '14px',
+                          lineHeight: '1.5',
+                          margin: 0
+                        }}>
                           {message.content}
                         </p>
                       </div>
+                      
                       {/* Timestamp */}
-                      <p className={`text-xs text-gray-500 mt-1 px-2 ${
-                        isUser ? 'text-right' : 'text-left'
-                      }`}>
-                        {timeText}
+                      <p style={{
+                        fontSize: '11px',
+                        color: '#9ca3af',
+                        marginTop: '4px',
+                        padding: '0 8px',
+                        textAlign: isUser ? 'right' : 'left'
+                      }}>
+                        {new Date(message.timestamp).toLocaleTimeString('zh-TW', {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
                       </p>
                     </div>
                   </div>
                 )
               })}
 
-            {/* Typing Indicator */}
-            {isTyping && (
-              <div className="animate-slide-up flex items-end gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-yellow-200 to-yellow-300 
-                               flex items-center justify-center shadow-lg shrink-0">
-                  {getMoodEmoji(currentNpc.currentMood)}
-                </div>
-                <div className="max-w-xs">
-                  <div className="p-4 bg-white rounded-3xl rounded-bl-lg shadow-lg border-2 border-yellow-200">
-                    <div className="flex items-center gap-1">
-                      <span className="text-sm text-gray-600 mr-2">正在輸入</span>
-                      <div className="flex gap-1">
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" 
-                             style={{animationDelay: '0.1s'}} />
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" 
-                             style={{animationDelay: '0.2s'}} />
+              {/* Typing Indicator */}
+              {isTyping && (
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'flex-start',
+                  animation: 'fadeIn 0.3s ease-out'
+                }}>
+                  <div style={{
+                    background: 'white',
+                    borderRadius: '18px',
+                    borderBottomLeftRadius: '4px',
+                    padding: '12px 16px',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                    border: '1px solid #e5e7eb'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div style={{ display: 'flex', gap: '4px' }}>
+                        <span style={{
+                          width: '8px',
+                          height: '8px',
+                          background: '#9ca3af',
+                          borderRadius: '50%',
+                          animation: 'bounce 1.4s infinite',
+                          animationDelay: '0ms'
+                        }} />
+                        <span style={{
+                          width: '8px',
+                          height: '8px',
+                          background: '#9ca3af',
+                          borderRadius: '50%',
+                          animation: 'bounce 1.4s infinite',
+                          animationDelay: '150ms'
+                        }} />
+                        <span style={{
+                          width: '8px',
+                          height: '8px',
+                          background: '#9ca3af',
+                          borderRadius: '50%',
+                          animation: 'bounce 1.4s infinite',
+                          animationDelay: '300ms'
+                        }} />
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
-            
-            {/* Auto-scroll anchor */}
-            <div ref={messagesEndRef} />
-          </div>
+              )}
 
-          {/* Modern Input Area */}
-          <div style={{
-            padding: '16px 24px',
-            background: 'linear-gradient(to right, #F9FAFB, #FFFFFF)',
-            borderTop: '4px solid #FDE047'
-          }}>
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Input Area */}
             <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px'
+              padding: '12px 16px',
+              background: 'rgba(255,255,255,0.8)',
+              borderTop: '1px solid #e5e7eb'
             }}>
-              {/* User Avatar */}
               <div style={{
-                width: '48px',
-                height: '48px',
-                borderRadius: '16px',
-                background: 'linear-gradient(to bottom right, #60A5FA, #3B82F6)',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
-                color: 'white',
-                boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
-                flexShrink: 0,
-                fontSize: '24px'
+                gap: '12px'
               }}>
-                😊
-              </div>
-              
-              {/* Input Field */}
-              <div className="flex-1 relative">
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={inputMessage}
-                  onChange={(e) => setInputMessage(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder={`和 ${currentNpc.name} 聊天...`}
-                  className="w-full px-4 py-3 pr-20 rounded-2xl bg-white border-2 border-gray-200 
-                            focus:outline-none focus:ring-4 focus:ring-blue-200 focus:border-blue-400
-                            text-gray-800 placeholder-gray-400 shadow-inner
-                            transition-all duration-200"
-                  disabled={isTyping}
-                  maxLength={100}
-                />
-                
-                {/* Character Counter */}
-                <div className="absolute right-14 top-1/2 transform -translate-y-1/2">
-                  <span className={`text-xs ${
-                    inputMessage.length > 80 ? 'text-red-500' : 'text-gray-400'
-                  }`}>
-                    {inputMessage.length}/100
-                  </span>
+                {/* Input Field */}
+                <div style={{ flex: 1, position: 'relative' }}>
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={inputMessage}
+                    onChange={(e) => setInputMessage(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    placeholder={`輸入訊息...`}
+                    style={{
+                      width: '100%',
+                      padding: '10px 48px 10px 16px',
+                      borderRadius: '24px',
+                      background: '#f9fafb',
+                      border: '2px solid #e5e7eb',
+                      outline: 'none',
+                      fontSize: '14px',
+                      transition: 'all 0.2s'
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = '#10b981'
+                      e.currentTarget.style.background = 'white'
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = '#e5e7eb'
+                      e.currentTarget.style.background = '#f9fafb'
+                    }}
+                    disabled={isTyping}
+                    maxLength={100}
+                  />
+                  
+                  {/* Character Counter */}
+                  {inputMessage.length > 0 && (
+                    <span style={{
+                      position: 'absolute',
+                      right: '16px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      fontSize: '11px',
+                      color: inputMessage.length > 80 ? '#ef4444' : '#9ca3af'
+                    }}>
+                      {inputMessage.length}/100
+                    </span>
+                  )}
                 </div>
+
+                {/* Send Button */}
+                <button
+                  onClick={handleSendMessage}
+                  disabled={!inputMessage.trim() || isTyping}
+                  style={{
+                    width: '40px',
+                    height: '40px',
+                    background: inputMessage.trim() && !isTyping 
+                      ? 'linear-gradient(to right, #10b981, #06b6d4)'
+                      : '#e5e7eb',
+                    borderRadius: '50%',
+                    border: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'white',
+                    cursor: inputMessage.trim() && !isTyping ? 'pointer' : 'not-allowed',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (inputMessage.trim() && !isTyping) {
+                      e.currentTarget.style.transform = 'scale(1.1)'
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'scale(1)'
+                  }}
+                >
+                  <Send size={16} />
+                </button>
               </div>
-              
-              {/* Send Button */}
-              <button
-                onClick={handleSendMessage}
-                disabled={!inputMessage.trim() || isTyping || inputMessage.length > 100}
-                className="w-12 h-12 rounded-2xl bg-gradient-to-br from-green-400 to-green-500 
-                          text-white shadow-lg hover:shadow-xl
-                          hover:scale-110 active:scale-95 
-                          disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100
-                          transition-all duration-200 flex items-center justify-center"
-              >
-                <Send className="w-5 h-5" />
-              </button>
-            </div>
-            
-            {/* Quick Actions with AC Style */}
-            <div className="flex items-center justify-between mt-4">
-              <div className="flex gap-2 flex-wrap">
-                {[
-                  { text: '👋 你好！', emoji: '👋' },
-                  { text: '😊 最近怎麼樣？', emoji: '😊' },
-                  { text: '💬 聊聊你的故事', emoji: '💬' },
-                  { text: '✨ 你的夢想是什麼？', emoji: '✨' }
-                ].map((suggestion, index) => {
-                  const colors = ['from-yellow-200 to-orange-200', 'from-blue-200 to-cyan-200', 'from-purple-200 to-pink-200', 'from-green-200 to-teal-200']
-                  return (
-                    <button
-                      key={index}
-                      onClick={() => setInputMessage(suggestion.text.split(' ').slice(1).join(' '))}
-                      className={`group px-3 py-2 bg-gradient-to-r ${colors[index]} 
-                                 hover:shadow-lg text-gray-700 rounded-full text-xs font-semibold
-                                 transition-all duration-200 hover:scale-110 hover:-translate-y-1
-                                 border-2 border-white shadow-md
-                                 flex items-center gap-1.5 relative overflow-hidden`}
-                    >
-                      <span className="text-base transform group-hover:rotate-12 transition-transform">{suggestion.emoji}</span>
-                      <span>{suggestion.text.split(' ').slice(1).join(' ')}</span>
-                      {/* Shine effect */}
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-0 group-hover:opacity-30 transform -skew-x-12 group-hover:translate-x-full transition-all duration-500" />
-                    </button>
-                  )
-                })}
+
+              {/* Quick Replies */}
+              <div style={{
+                display: 'flex',
+                gap: '8px',
+                marginTop: '8px',
+                flexWrap: 'wrap'
+              }}>
+                {['你好！', '最近怎麼樣？', '再見！'].map((text, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setInputMessage(text)}
+                    style={{
+                      padding: '4px 12px',
+                      background: 'linear-gradient(to right, #f3e8ff, #fce7f3)',
+                      borderRadius: '12px',
+                      fontSize: '12px',
+                      color: '#6b7280',
+                      border: '1px solid #e9d5ff',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'linear-gradient(to right, #e9d5ff, #fbcfe8)'
+                      e.currentTarget.style.transform = 'scale(1.05)'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'linear-gradient(to right, #f3e8ff, #fce7f3)'
+                      e.currentTarget.style.transform = 'scale(1)'
+                    }}
+                  >
+                    {text}
+                  </button>
+                ))}
               </div>
-              
-              <span className="text-xs text-gray-500 hidden sm:block">
-                Enter 送出 • Shift+Enter 換行
-              </span>
             </div>
-          </div>
-        </div>
+          </>
+        )}
       </div>
+
+      {/* Floating Animation Elements */}
+      <div style={{
+        position: 'absolute',
+        top: '-32px',
+        right: '16px',
+        pointerEvents: 'none',
+        animation: 'float 3s ease-in-out infinite',
+        fontSize: '24px'
+      }}>
+        💬
+      </div>
+      <div style={{
+        position: 'absolute',
+        top: '-48px',
+        left: '16px',
+        pointerEvents: 'none',
+        animation: 'float 3s ease-in-out infinite',
+        animationDelay: '1s',
+        fontSize: '20px'
+      }}>
+        ✨
+      </div>
+
+      {/* Animation Styles */}
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        @keyframes bounce {
+          0%, 60%, 100% { transform: translateY(0); }
+          30% { transform: translateY(-10px); }
+        }
+        
+        @keyframes float {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-10px); }
+        }
+        
+        @keyframes pulse {
+          0% { opacity: 1; }
+          50% { opacity: 0.5; }
+          100% { opacity: 1; }
+        }
+      `}</style>
     </div>
   )
 }

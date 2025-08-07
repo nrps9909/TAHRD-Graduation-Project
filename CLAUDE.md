@@ -1,251 +1,274 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude (claude.ai) when working with the Heart Whisper Town metaverse codebase.
 
 ## Project Overview
 
-**Heart Whisper Town (心語小鎮)** - An AI NPC Metaverse powered by LLMs, where autonomous NPCs live, interact, and share memories. This is a 3D healing social game featuring a living world where:
+**Heart Whisper Town (心語小鎮)** - A next-generation AI-powered metaverse healing game featuring autonomous NPCs that feel genuinely alive. Built with Animal Crossing aesthetics and powered by Gemini CLI with MCP (Model Context Protocol) architecture.
 
-- **NPCs are autonomous agents** with their own personalities, memories, and relationships
-- **Shared memory system** allows NPCs to remember and discuss player interactions with each other
-- **Living world simulation** where NPCs continue to interact even when players are offline
-- **Deep emotional connections** emerge from meaningful, context-aware conversations
-- **Metaverse-like experience** where every interaction affects the entire world's collective memory
+### Core Metaverse Concepts
 
-### Core NPCs (3 Main Characters)
+- **Living NPCs**: Each NPC is a persistent AI agent with deep personalities, long-term memories, and evolving relationships
+- **Gossip Network**: NPCs share information about players among themselves, creating a living social fabric
+- **Persistent World**: NPCs continue their lives, form opinions, and have experiences even when players are offline
+- **Emotional Intelligence**: NPCs remember not just what was said, but how it made them feel
+- **Collective Memory**: The entire town shares a collective consciousness through the MCP architecture
 
-1. **鋁配咻 (Lü Pei Xiu)** - Warm Café Owner
-   - ID: `npc-1`
-   - Personality: 溫暖親切的咖啡館老闆娘，總是能敏銳察覺到他人的情緒變化
-   - Traits: Warm, empathetic, observant, mature
-   - Location: Near Player Spawn (3, 0, 3)
+## Architecture Overview
 
-2. **流羽岑 (Liu Yu Cen)** - Cheerful Student
-   - ID: `npc-2`
-   - Personality: 活潑開朗的大學生，充滿青春活力
-   - Traits: Energetic, curious, friendly, optimistic
-   - Location: Near Player Spawn (-3, 0, 3)
+### MCP (Model Context Protocol) Architecture
 
-3. **沉停鞍 (Chen Ting An)** - Dreamy Musician  
-   - ID: `npc-3`
-   - Personality: 充滿夢幻氣質的音樂家，經常在月光下彈奏吉他
-   - Traits: Romantic, artistic, free-spirited, mysterious
-   - Location: Near Player Spawn (0, 0, 5)
+```
+┌─────────────────────────────────────────────────────────┐
+│                    Frontend (React/Three.js)             │
+│                    Animal Crossing UI/UX                 │
+└────────────────────────┬────────────────────────────────┘
+                         │ GraphQL/WebSocket
+┌────────────────────────┴────────────────────────────────┐
+│                    Backend (Node.js/Express)             │
+│                    GraphQL API Server                    │
+└────────────────────────┬────────────────────────────────┘
+                         │ HTTP/REST
+┌────────────────────────┴────────────────────────────────┐
+│                    MCP Server (Python/FastAPI)           │
+│                    High-Performance NPC Service          │
+└────────────────────────┬────────────────────────────────┘
+                         │ Subprocess
+┌────────────────────────┴────────────────────────────────┐
+│                    Gemini CLI                            │
+│              (gemini-2.0-flash-exp model)                │
+│            Auto-loads GEMINI.md contexts                 │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Tech Stack
+
+- **Frontend**: React 18, TypeScript, Three.js (React Three Fiber), Tailwind CSS, Zustand, Apollo Client
+- **Backend**: Node.js, Express, GraphQL (Apollo Server), Prisma ORM, Socket.IO
+- **MCP Server**: Python 3.9+, FastAPI, uvloop, asyncio, Pydantic
+- **AI Engine**: Google Gemini CLI with gemini-2.0-flash-exp model
+- **Database**: PostgreSQL with pgvector extension, Redis for caching
+- **DevOps**: Docker, Docker Compose, Nginx
 
 ## Quick Start
 
 ```bash
-# Docker Compose (recommended)
-docker-compose up -d
+# MCP-optimized startup (recommended)
+./start-mcp.sh
 
-# Local development (requires PostgreSQL, Redis)
-./start-local.sh
+# Traditional startup
+docker-compose up -d
 
 # Access points
 Frontend: http://localhost:3000
 Backend API: http://localhost:4000
-GraphQL Playground: http://localhost:4000/graphql
+GraphQL: http://localhost:4000/graphql
+MCP Server: http://localhost:8765
 ```
 
-## Key Commands
+## MCP Server Details
 
-### Development
+### Key Features
+
+1. **High-Performance Architecture**
+   - Uses uvloop for 2-3x faster event loops
+   - LRU memory caching for instant responses
+   - Parallel NPC processing capabilities
+   - Sub-100ms response times for cached interactions
+
+2. **Memory Management**
+   - Per-NPC memory directories (`backend/memories/[npc_name]/`)
+   - Automatic GEMINI.md loading via `--include-directories`
+   - Session persistence with checkpointing
+   - Shared memory pool for gossip/information exchange
+
+3. **API Endpoints**
+   ```
+   POST /generate       - Generate NPC dialogue
+   POST /memory/update  - Update NPC memories
+   GET /status         - Service status
+   GET /health         - Health check
+   POST /cache/clear   - Clear response cache
+   ```
+
+### NPC Personality System
+
+Each NPC has:
+- **Personality File**: `backend/personalities/[npc_name]_personality.txt`
+- **Chat History**: `backend/personalities/[npc_name]_chat_history.txt`  
+- **Memory Context**: `backend/memories/[npc_name]/GEMINI.md`
+
+Current NPCs:
+- **Lu Peixiu (陸培修)** - The dreamy artist (npc-1)
+- **Liu Yucen (劉宇岑)** - The energetic friend (npc-2)
+- **Chen Tingan (陳庭安)** - The gentle soul (npc-3)
+
+## Metaverse Features
+
+### 1. Long-Term Memory System
+NPCs remember everything through the MCP memory system:
+```python
+# Memories are stored per-NPC with emotional context
+memories/lupeixiu/GEMINI.md
+memories/liuyucen/GEMINI.md
+memories/chentingan/GEMINI.md
+memories/shared/      # Shared town memories
+```
+
+### 2. Gossip & Information Network
+NPCs share information about players:
+- Morning coffee discussions about recent player visits
+- Sharing concerns if a player seems sad
+- Celebrating player achievements together
+- Forming collective opinions about events
+
+### 3. Living World Simulation
+- NPCs have daily routines and activities
+- They form relationships with each other
+- They have goals, dreams, and worries
+- Their moods change based on town events
+
+### 4. Emotional Intelligence
+Each interaction considers:
+- Current mood and emotional state
+- Relationship level (1-10)
+- Trust and affection metrics
+- Past conversation context
+- Shared memories from other NPCs
+
+## Development Commands
+
+### MCP Server Management
 ```bash
-# Install all dependencies
-npm install
+# Start MCP server standalone
+cd backend && python3 mcp_server.py
 
-# Start development servers (frontend + backend)
-npm run dev
+# Monitor MCP performance
+curl http://localhost:8765/status | jq
 
-# Run specific workspace
-npm run dev:frontend
-npm run dev:backend
+# Clear MCP cache
+curl -X POST http://localhost:8765/cache/clear
 
-# Database operations (run from backend/)
+# View MCP logs
+tail -f backend/logs/mcp_server.log
+```
+
+### Database Operations
+```bash
 cd backend
-npm run db:generate    # Generate Prisma client
-npm run db:push       # Push schema to database
 npm run db:migrate    # Run migrations
-npm run db:seed       # Seed initial data
-
-# Code quality checks
-npm run lint          # Lint all workspaces
-npm run lint:frontend # Frontend only
-npm run lint:backend  # Backend only
-
-# Testing
-npm run test          # Run all tests
-npm run test:frontend # Frontend tests
-npm run test:backend  # Backend tests
-
-# Production build
-npm run build         # Build all workspaces
-npm start            # Start production server
+npm run db:push       # Push schema changes
+npm run db:seed       # Seed NPCs and initial data
+npm run db:studio     # Open Prisma Studio
 ```
 
-### Automation Scripts
+### Testing NPCs
 ```bash
-# Local development startup script
-./start-local.sh      # Starts PostgreSQL, Redis, and dev servers locally
+# Test MCP integration
+curl -X POST http://localhost:8765/generate \
+  -H "Content-Type: application/json" \
+  -d '{"npc_id": "npc-1", "message": "Hello!"}'
 
-# Automation runner
-./auto-run.sh        # Execute commands from commands.txt
-./auto-run.sh -c     # Create example commands file
-./auto-run.sh -s 22:00  # Schedule daily execution
-
-# Python automation (more advanced)
-python claude-auto-runner.py -e  # Create example config
-python claude-auto-runner.py -r  # Run commands
-```
-
-## Architecture
-
-### Tech Stack
-- **Frontend**: React 18, TypeScript, Three.js (React Three Fiber), Tailwind CSS, Zustand, Apollo Client, Vite
-- **Backend**: Node.js, Express, GraphQL (Apollo Server), Prisma ORM, Socket.IO, Google Gemini AI
-- **Database**: PostgreSQL with pgvector extension, Redis for caching
-- **DevOps**: Docker, Docker Compose, Nginx
-
-### Key Services & Files
-
-#### AI Conversation System
-- `backend/src/services/geminiService.ts` - Gemini AI integration, NPC personality management
-- `backend/npc_dialogue_service.py` - Python CLI for Gemini API calls (USE_GEMINI_CLI mode)
-- `backend/GEMINI.md` - NPC personality templates and emotion system documentation
-- Environment: `USE_GEMINI_CLI=true` enables CLI-based integration
-
-#### Database Schema (`backend/prisma/schema.prisma`)
-Core entities: User, NPC, Conversation, Relationship, MemoryFlower, Wish, Letter, DiaryEntry, WorldState
-
-#### Real-time Communication
-- `backend/src/socket.ts` - Socket.IO configuration
-- `backend/src/index.ts` - Main server entry
-
-#### 3D Scene & UI
-- `frontend/src/components/Scene.tsx` - Main 3D scene composition
-- `frontend/src/components/3D/` - Three.js components (NPCs, buildings, memory flowers)
-- `frontend/src/components/UI/DialogueBox.tsx` - NPC conversation interface
-- `frontend/src/stores/gameStore.ts` - Zustand state management
-
-#### GraphQL API
-- `backend/src/schema.ts` - Type definitions
-- `backend/src/resolvers/` - Query and mutation resolvers
-
-## Environment Setup
-
-```env
-# Required (add to backend/.env and root .env)
-GEMINI_API_KEY="your_gemini_api_key_here"  # Include quotes
-JWT_SECRET=your_jwt_secret_here
-DATABASE_URL=postgresql://postgres:password123@localhost:5432/heart_whisper_town
-REDIS_URL=redis://localhost:6379
-
-# Optional
-USE_GEMINI_CLI=true  # Use Python CLI for Gemini instead of direct API
-NODE_ENV=development
-```
-
-## Development Workflow
-
-### NPC Interaction System
-
-#### Features
-- **NPC-to-NPC Conversations**: NPCs automatically chat with each other every 30s-2min
-- **Personality-Based Responses**: Each NPC has unique speaking patterns and interests
-- **Visual Feedback**: Conversation bubbles appear when NPCs interact
-- **Emotion System**: NPCs express different moods (cheerful, calm, dreamy, etc.)
-
-#### Testing NPC Interactions
-```bash
-# Run the NPC interaction test
-node backend/test-npc-interaction.js
-```
-
-### Game World Features
-- **Grass Texture Ground**: Realistic grass material with proper texturing
-- **Animal Crossing UI**: Cute, rounded interface elements
-- **Visual Effects**: Bubbles, musical notes, sparkles
-- **NookPhone**: In-game phone with 9 apps for various functions
-
-### Testing AI Conversations
-```bash
-# Via Python CLI
-python3 backend/gemini.py --chat "Hello" --npc emma
-python3 backend/gemini.py --chat "Tell me about flowers" --npc lily
-
-# Via GraphQL Playground
+# Test via GraphQL
 # Navigate to http://localhost:4000/graphql
 ```
 
-### Database Management
-```bash
-# Initialize database (auto-runs with Docker Compose)
-docker exec -i heart-whisper-postgres psql -U postgres -d heart_whisper_town < database/init.sql
-docker exec -i heart-whisper-postgres psql -U postgres -d heart_whisper_town < database/memory_enhancement.sql
+## Environment Variables
 
-# Access Prisma Studio
-cd backend && npx prisma studio
+```env
+# Required
+GEMINI_API_KEY="your-gemini-api-key"    # Must include quotes
+DATABASE_URL=postgresql://postgres:password123@localhost:5432/heart_whisper_town
+REDIS_URL=redis://localhost:6379
+JWT_SECRET=your_jwt_secret_here
+
+# MCP Configuration
+MCP_SERVICE_URL=http://localhost:8765
+USE_GEMINI_CLI=true                     # Enable CLI mode
+NODE_ENV=development
 ```
 
-## Common Tasks
+## Memory System Architecture
 
-### Debugging
-- GraphQL: http://localhost:4000/graphql
-- Socket.IO: Set `DEBUG=socket.io:*`
-- Prisma Studio: `cd backend && npx prisma studio`
-- Redis CLI: `redis-cli` at port 6379
-- Docker logs: `docker-compose logs -f [service]`
+### Memory Hierarchy
+1. **Personal Memories** - Individual NPC experiences
+2. **Shared Memories** - Town-wide knowledge base
+3. **Episodic Memories** - Specific events and interactions
+4. **Semantic Memories** - General knowledge about players
+
+### Memory Flower System
+Visual representation of memories in 3D space:
+- **Color**: Represents emotion (warm yellow, soft pink, etc.)
+- **Size**: Indicates importance/impact
+- **Position**: Shows temporal relationships
+- **Glow**: Active/recent memories shine brighter
+
+## Common Development Tasks
+
+### Adding New NPCs
+1. Create personality file: `backend/personalities/[name]_personality.txt`
+2. Create memory directory: `backend/memories/[name]/GEMINI.md`
+3. Update NPC mapping in `mcp_server.py`
+4. Add to database seed
+5. Create 3D model and position in scene
+
+### Enhancing NPC Intelligence
+1. Update GEMINI.md templates for richer responses
+2. Add new emotion states and reactions
+3. Implement new memory types
+4. Create inter-NPC relationship dynamics
 
 ### Performance Optimization
-- Monitor Three.js memory with browser DevTools
-- Check Redis cache hits
-- Review Gemini API usage and costs
-- Optimize vector similarity searches in PostgreSQL
+- Monitor MCP cache hit rates
+- Optimize Gemini CLI calls with batch processing
+- Use Redis for session state
+- Implement memory pruning for old interactions
 
-### Common Issues
-1. **Gemini API failures**: Check API key format (needs quotes) and quota
-2. **Database connection**: Verify PostgreSQL is running on correct port
-3. **Socket.IO**: Check CORS configuration for frontend origin
-4. **Build failures**: Clear node_modules and reinstall
-5. **3D performance**: Dispose unused Three.js objects properly
+## Troubleshooting
 
-## Project Structure
-```
-├── frontend/                # React frontend
-│   ├── src/
-│   │   ├── components/     # UI and 3D components
-│   │   ├── stores/        # Zustand state
-│   │   └── graphql/       # Queries/mutations
-├── backend/                 # Node.js backend
-│   ├── src/
-│   │   ├── services/      # Business logic
-│   │   ├── resolvers/     # GraphQL resolvers
-│   │   └── prisma/        # Database client
-│   └── prisma/
-│       └── schema.prisma  # Database schema
-├── database/               # SQL initialization
-├── automation/             # Automation tools
-└── docker-compose.yml      # Container orchestration
-```
+### MCP Server Issues
+- **Timeout errors**: Increase timeout in `mcp_server.py` (default 30s)
+- **404 on root**: Normal - use `/status` for health checks
+- **Gemini errors**: Check API key format and quota
+
+### Memory System
+- **NPCs forgetting**: Check memory file persistence
+- **Gossip not spreading**: Verify shared memory directory
+- **Inconsistent responses**: Clear MCP cache
+
+### Performance
+- **Slow responses**: Check MCP server logs for bottlenecks
+- **High latency**: Enable response caching
+- **Memory leaks**: Monitor Python process memory usage
+
+## Best Practices
+
+### For Metaverse Realism
+1. **Consistent Personalities**: NPCs should never break character
+2. **Natural Gossip**: Information spreads organically, not instantly
+3. **Emotional Continuity**: Moods persist across sessions
+4. **Believable Routines**: NPCs have schedules and habits
+
+### For Code Quality
+1. **Type Safety**: Use TypeScript interfaces for all data structures
+2. **Error Handling**: Graceful fallbacks for AI failures
+3. **Logging**: Comprehensive logging at all service boundaries
+4. **Testing**: Unit tests for personality consistency
+
+## Future Enhancements
+
+- **Voice Integration**: NPCs speaking with unique voices
+- **Advanced Emotions**: More nuanced emotional states
+- **Dream System**: NPCs dream about player interactions
+- **Seasonal Events**: Town-wide celebrations and changes
+- **Multi-language**: NPCs speaking player's language
 
 ## Important Notes
 
-- NPCs use Gemini AI for dynamic personality-driven responses
-- Memory flowers visualize emotional connections in 3D space
-- Relationship levels (1-10) affect conversation intimacy
-- WebSocket enables real-time chat and presence updates
-- pgvector extension powers semantic conversation search
-- All timestamps are stored in UTC
+- The MCP architecture enables true metaverse-scale interactions
+- Each NPC is designed to feel like a real friend, not a game character
+- Memory persistence is critical - never delete memory files
+- The gossip system creates emergent storytelling
+- Performance monitoring is essential for maintaining immersion
 
-## Gemini CLI Integration
-
-**IMPORTANT**: The Gemini CLI automatically reads all `GEMINI.md` files in the current directory when launched. DO NOT manually read or pass GEMINI.md content in `gemini.py`. The Python script should only:
-1. Load personality files (`*_personality.txt` and `*_chat_history.txt`)
-2. Pass character data to Gemini CLI
-3. Let Gemini CLI handle the prompt construction using its auto-loaded GEMINI.md
-
-The `gemini.py` file's role is strictly to:
-- Read character personality and chat history files
-- Format basic character information
-- Pass data to Gemini CLI for response generation
-- NOT to construct complex prompts or read GEMINI.md
+Remember: This isn't just a game - it's a living world where every interaction matters and every NPC is a unique individual with their own story to tell.
