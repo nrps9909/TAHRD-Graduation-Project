@@ -125,42 +125,26 @@ export const useGameStore = create<GameState>()(
             npcs: [
               {
                 id: 'npc-1',
-                name: '小雅',
+                name: '鋁配咻',
                 personality: '溫暖親切的咖啡館老闆娘',
                 currentMood: 'cheerful',
-                position: [10, 0, 15],
+                position: [3, 0, 3],  // 玩家右前方
                 relationshipLevel: 1,
               },
               {
                 id: 'npc-2',
-                name: '阿山',
-                personality: '內向的圖書館管理員',
-                currentMood: 'calm',
-                position: [-20, 0, -10],
+                name: '流羽岑',
+                personality: '活潑開朗的大學生',
+                currentMood: 'excited',
+                position: [-3, 0, 3],  // 玩家左前方
                 relationshipLevel: 1,
               },
               {
                 id: 'npc-3',
-                name: '月兒',
+                name: '沉停鞍',
                 personality: '夢幻的音樂家',
                 currentMood: 'dreamy',
-                position: [0, 5, 25],
-                relationshipLevel: 1,
-              },
-              {
-                id: 'npc-4',
-                name: '老張',
-                personality: '慈祥的花園管理員',
-                currentMood: 'peaceful',
-                position: [30, 0, 0],
-                relationshipLevel: 1,
-              },
-              {
-                id: 'npc-5',
-                name: '小晴',
-                personality: '活潑開朗的學生',
-                currentMood: 'excited',
-                position: [-15, 0, 20],
+                position: [0, 0, 5],  // 玩家正前方
                 relationshipLevel: 1,
               },
             ],

@@ -23,10 +23,14 @@
     "test:backend": "cd backend && npm run test"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "prisma": "^6.13.0"
   },
   "engines": {
     "node": ">=18.0.0",
     "npm": ">=9.0.0"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.13.0"
   }
 }

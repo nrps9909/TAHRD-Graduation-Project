@@ -46,17 +46,24 @@ export class GeminiService {
   private genAI?: GoogleGenerativeAI
   private model?: any
   private useGeminiCLI: boolean
+  private useOptimizedCLI: boolean
+  private optimizedCLIService?: any
 
   constructor() {
     // 可以透過環境變數控制是否使用 Gemini CLI
     this.useGeminiCLI = process.env.USE_GEMINI_CLI === 'true'
+    this.useOptimizedCLI = process.env.USE_OPTIMIZED_CLI === 'true'
     
-    const apiKey = process.env.GEMINI_API_KEY
-    if (!this.useGeminiCLI && (!apiKey || apiKey === 'your-api-key')) {
-      throw new Error('GEMINI_API_KEY is required when USE_GEMINI_CLI is false')
-    }
-    
-    if (!this.useGeminiCLI) {
+    if (this.useOptimizedCLI) {
+      // 使用優化的 HTTP 服務呼叫 Gemini CLI
+      const { geminiServiceOptimizedCLI } = require('./geminiServiceOptimizedCLI')
+      this.optimizedCLIService = geminiServiceOptimizedCLI
+      logger.info('✅ 使用優化的 Gemini CLI 服務模式')
+    } else if (!this.useGeminiCLI) {
+      const apiKey = process.env.GEMINI_API_KEY
+      if (!apiKey || apiKey === 'your-api-key') {
+        throw new Error('GEMINI_API_KEY is required when USE_GEMINI_CLI is false')
+      }
       this.genAI = new GoogleGenerativeAI(apiKey!)
       this.model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-pro' })
     }
@@ -68,10 +75,25 @@ export class GeminiService {
     context: ConversationContext
   ): Promise<AIResponse> {
     try {
-      // 根據配置選擇使用 CLI 或直接 API
-      if (this.useGeminiCLI) {
+      // 根據配置選擇使用模式
+      if (this.useOptimizedCLI) {
+        // 優化的 CLI 模式（推薦）
+        const sharedMemories = await this.getSharedMemories(npcPersonality.id)
+        const enrichedContext = {
+          ...context,
+          sharedMemories: sharedMemories.map(m => m.content),
+          otherNPCMemories: await this.getOtherNPCMemories(npcPersonality.id)
+        }
+        return await this.optimizedCLIService.generateNPCResponse(
+          npcPersonality,
+          userMessage,
+          enrichedContext
+        )
+      } else if (this.useGeminiCLI) {
+        // 原始 CLI 模式
         return await this.generateNPCResponseWithCLI(npcPersonality, userMessage, context)
       } else {
+        // 直接 API 模式
         return await this.generateNPCResponseWithAPI(npcPersonality, userMessage, context)
       }
     } catch (error) {
@@ -85,7 +107,9 @@ export class GeminiService {
   // 新增：生成簡單回應（用於NPC之間的對話）
   async generateResponse(prompt: string, npcId: string): Promise<string> {
     try {
-      if (this.useGeminiCLI) {
+      if (this.useOptimizedCLI) {
+        return await this.optimizedCLIService.generateResponse(prompt, npcId)
+      } else if (this.useGeminiCLI) {
         return await this.generateSimpleResponseWithCLI(prompt, npcId)
       } else {
         const result = await this.model.generateContent(prompt)
@@ -119,12 +143,13 @@ export class GeminiService {
       const tempFilePath = path.join(tempDir, tempFileName)
       
       // 準備簡單對話資料
+      // 個性資料由 Python CLI 從檔案讀取，不在此處提供
       const conversationData = {
         message: prompt,
         npcData: {
           id: npcId,
           name: this.getNPCName(npcId),
-          personality: this.getNPCPersonality(npcId),
+          personality: '', // 由 gemini.py 從檔案讀取
           currentMood: 'neutral',
           relationshipLevel: 5
         },
@@ -157,21 +182,20 @@ export class GeminiService {
   
   // Helper functions for NPC data
   private getNPCName(npcId: string): string {
+    // 名稱將由 Python CLI 從個性檔案中讀取
+    // 這裡只作為備用方案
     const npcNames: Record<string, string> = {
-      'npc-1': '小雅',
-      'npc-3': '月兒',
-      'npc-5': '小晴'
+      'npc-1': '鋁配咻',
+      'npc-2': '流羽岑',
+      'npc-3': '沉停鞍'
     }
-    return npcNames[npcId] || 'Unknown'
+    return npcNames[npcId] || 'NPC'
   }
   
   private getNPCPersonality(npcId: string): string {
-    const npcPersonalities: Record<string, string> = {
-      'npc-1': '溫暖親切的咖啡館老闆娘，總是能敏銳察覺到他人的情緒變化',
-      'npc-3': '充滿夢幻氣質的音樂家，經常在月光下彈奏吉他',
-      'npc-5': '活潑開朗的大學生，充滿青春活力'
-    }
-    return npcPersonalities[npcId] || 'Friendly NPC'
+    // 個性描述完全由 Python CLI 從 personalities/*.txt 檔案讀取
+    // 不在此處硬編碼，讓 gemini.py 處理所有個性資料
+    return ''
   }
 
   private async generateNPCResponseWithAPI(
@@ -207,13 +231,14 @@ export class GeminiService {
     const sharedMemories = await this.getSharedMemories(npcPersonality.id)
     
     // 準備對話資料
+    // 個性和背景故事由 Python CLI 從 personalities/*.txt 檔案讀取
     const conversationData = {
       message: userMessage,
       npcData: {
         id: npcPersonality.id,
         name: npcPersonality.name,
-        personality: npcPersonality.personality,
-        backgroundStory: npcPersonality.backgroundStory,
+        personality: '', // 由 gemini.py 從檔案讀取
+        backgroundStory: '', // 由 gemini.py 從檔案讀取
         currentMood: npcPersonality.currentMood,
         relationshipLevel: context.relationshipLevel,
         sharedMemories: sharedMemories // 加入共享記憶
@@ -641,10 +666,26 @@ ${npc.personality}
    * @param npcId NPC ID
    * @returns 共享記憶列表
    */
-  private async getSharedMemories(npcId: string): Promise<string[]> {
-    // TODO: 從資料庫或快取中獲取實際的共享記憶
-    // 目前返回空陣列作為預設值
-    return []
+  private async getSharedMemories(npcId: string): Promise<any[]> {
+    // TODO: 從資料庫獲取實際的共享記憶
+    // 這裡可以連接到 SharedMemory 資料表
+    return [
+      { content: '昨天有個玩家跟我分享了他的煩惱', importance: 0.7 },
+      { content: '最近小鎮裡多了很多新的花朵', importance: 0.5 }
+    ]
+  }
+  
+  /**
+   * 獲取其他 NPC 的相關記憶
+   * @param currentNpcId 當前 NPC ID
+   * @returns 其他 NPC 的記憶
+   */
+  private async getOtherNPCMemories(currentNpcId: string): Promise<string[]> {
+    // TODO: 從資料庫獲取其他 NPC 的記憶
+    return [
+      '流羽岑說有個玩家很喜歡聽音樂',
+      '鋁配咻提到最近有人心情不太好'
+    ]
   }
 }
 

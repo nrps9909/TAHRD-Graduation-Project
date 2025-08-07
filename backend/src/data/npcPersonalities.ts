@@ -29,7 +29,7 @@ export interface NPCPersonalityProfile {
 export const npcPersonalities: Record<string, NPCPersonalityProfile> = {
   'npc-1': {
     id: 'npc-1',
-    name: '小雅',
+    name: '鋁配咻',
     personality: '溫暖親切的咖啡館老闆娘，總是能敏銳察覺到他人的情緒變化，擅長傾聽和給予建議。',
     traits: ['溫暖', '體貼', '觀察力強', '善解人意', '成熟'],
     speakingStyle: '溫柔且充滿關懷，經常使用鼓勵性的語言',
@@ -108,7 +108,7 @@ export const npcPersonalities: Record<string, NPCPersonalityProfile> = {
 
   'npc-3': {
     id: 'npc-3',
-    name: '月兒',
+    name: '沉停鞍',
     personality: '充滿夢幻氣質的音樂家，經常在月光下彈奏吉他，用音樂治癒人心。',
     traits: ['浪漫', '感性', '藝術', '自由', '神秘'],
     speakingStyle: '說話如詩如歌，充滿想像力和感性',
@@ -185,9 +185,9 @@ export const npcPersonalities: Record<string, NPCPersonalityProfile> = {
   },
   */
 
-  'npc-5': {
-    id: 'npc-5',
-    name: '小晴',
+  'npc-2': {
+    id: 'npc-2',
+    name: '流羽岑',
     personality: '活潑開朗的大學生，充滿青春活力，對一切新鮮事物都充滿好奇心。',
     traits: ['活潑', '好奇', '熱情', '樂觀', '友善'],
     speakingStyle: '語速較快，充滿活力，經常使用年輕人的用語',

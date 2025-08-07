@@ -259,11 +259,11 @@ export const Player = ({ position = [0, 0, 0] }: PlayerProps) => {
     <>
       <CameraController 
         target={playerRef} 
-        offset={new THREE.Vector3(0, 8, 12)}  // PC遊戲第三人稱視角
+        offset={new THREE.Vector3(0, 5, 8)}  // 更近的第三人稱視角
         lookAtOffset={new THREE.Vector3(0, 1.5, 0)}
-        smoothness={6}
+        smoothness={8}  // 更平滑的相機移動
         enableRotation={true}  // PC模式：啟用旋轉
-        enablePointerLock={true}  // PC模式：啟用pointer lock
+        enablePointerLock={true}  // 啟用永久 pointer lock
         onRotationChange={(rotation) => { cameraRotation.current = rotation }}
       />
       

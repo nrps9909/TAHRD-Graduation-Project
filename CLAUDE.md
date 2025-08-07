@@ -4,27 +4,33 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Heart Whisper Town (心語小鎮)** - An LLM-powered 3D healing social game where players interact with AI-driven NPCs to build deep emotional connections through meaningful conversations.
+**Heart Whisper Town (心語小鎮)** - An AI NPC Metaverse powered by LLMs, where autonomous NPCs live, interact, and share memories. This is a 3D healing social game featuring a living world where:
+
+- **NPCs are autonomous agents** with their own personalities, memories, and relationships
+- **Shared memory system** allows NPCs to remember and discuss player interactions with each other
+- **Living world simulation** where NPCs continue to interact even when players are offline
+- **Deep emotional connections** emerge from meaningful, context-aware conversations
+- **Metaverse-like experience** where every interaction affects the entire world's collective memory
 
 ### Core NPCs (3 Main Characters)
 
-1. **小雅 (Xiao Ya)** - Warm Café Owner
+1. **鋁配咻 (Lü Pei Xiu)** - Warm Café Owner
    - ID: `npc-1`
    - Personality: 溫暖親切的咖啡館老闆娘，總是能敏銳察覺到他人的情緒變化
    - Traits: Warm, empathetic, observant, mature
-   - Location: Café (10, 0, 15)
+   - Location: Near Player Spawn (3, 0, 3)
 
-2. **月兒 (Yue Er)** - Dreamy Musician  
+2. **流羽岑 (Liu Yu Cen)** - Cheerful Student
+   - ID: `npc-2`
+   - Personality: 活潑開朗的大學生，充滿青春活力
+   - Traits: Energetic, curious, friendly, optimistic
+   - Location: Near Player Spawn (-3, 0, 3)
+
+3. **沉停鞍 (Chen Ting An)** - Dreamy Musician  
    - ID: `npc-3`
    - Personality: 充滿夢幻氣質的音樂家，經常在月光下彈奏吉他
    - Traits: Romantic, artistic, free-spirited, mysterious
-   - Location: Music Stage (0, 5, 25)
-
-3. **小晴 (Xiao Qing)** - Cheerful Student
-   - ID: `npc-5`
-   - Personality: 活潑開朗的大學生，充滿青春活力
-   - Traits: Energetic, curious, friendly, optimistic
-   - Location: Town Square (-15, 0, 20)
+   - Location: Near Player Spawn (0, 0, 5)
 
 ## Quick Start
 

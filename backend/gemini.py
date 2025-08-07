@@ -148,9 +148,9 @@ class GeminiLLMService:
     def _load_personality_files(self, npc_name: str) -> Dict[str, str]:
         """載入並清理 NPC 的個性檔案和聊天紀錄"""
         name_mapping = {
-            '小晴': 'xiaoqing',
-            '小雅': 'xiaoya',
-            '月兒': 'yueer'
+            '流羽岑': 'liuyucen',
+            '鋁配咻': 'lupeixiu',
+            '沉停鞍': 'chentingan'
         }
         
         filename = name_mapping.get(npc_name)
@@ -186,34 +186,70 @@ class GeminiLLMService:
         return result
     
     def _build_npc_prompt(self, user_message: str, npc_data: Dict[str, Any]) -> str:
-        """建構 NPC 對話 prompt - 只傳入角色資料，讓 Gemini CLI 自動讀取 GEMINI.md"""
+        """建構 NPC 對話 prompt - 包含完整元宇宙上下文"""
         npc_name = npc_data.get('name', '未知')
         
         # 載入個性檔案和聊天紀錄
         files_data = self._load_personality_files(npc_name)
         
+        # 從 npc_data 取得額外的元宇宙資料
+        shared_memories = npc_data.get('sharedMemories', [])
+        other_npc_memories = npc_data.get('otherNPCMemories', [])
+        session_messages = npc_data.get('sessionMessages', [])
+        
+        # 格式化共享記憶
+        my_memories_text = ''
+        if shared_memories:
+            my_memories_text = '\n'.join([f"- {mem}" for mem in shared_memories[:5]])
+        
+        # 格式化其他 NPC 的記憶
+        others_memories_text = ''
+        if other_npc_memories:
+            others_memories_text = '\n'.join([f"- {mem}" for mem in other_npc_memories[:3]])
+        
+        # 格式化會話歷史
+        session_history = ''
+        if session_messages:
+            session_history = '\n'.join(session_messages[-10:])  # 最近 10 條
+        
         if files_data['personality'] and files_data['chat_history']:
-            # 只提供角色資料，不建構複雜的 prompt
-            # Gemini CLI 會自動讀取當前目錄的 GEMINI.md
-            
-            prompt = f"""角色名稱：{npc_name}
+            prompt = f"""你是心語小鎮元宇宙中的 NPC「{npc_name}」。這是一個活生生的世界，所有 NPC 都有自己的記憶和經歷。
 
+【角色設定】
 {files_data['personality']}
 
-=== 聊天紀錄參考 ===
-{files_data['chat_history']}
+【對話風格參考】
+{files_data['chat_history'][:1000]}
 
-當前狀態：
+【我的記憶】
+{my_memories_text or '（暫無特別記憶）'}
+
+【其他居民告訴我的事】
+{others_memories_text or '（暫無聽說的事）'}
+
+【當前會話歷史】
+{session_history or '（新對話）'}
+
+【當前狀態】
 - 心情：{npc_data.get('currentMood', 'neutral')}
 - 親密度：{npc_data.get('relationshipLevel', 1)}/10
+- 信任度：{npc_data.get('trustLevel', 50)}%
+- 好感度：{npc_data.get('affectionLevel', 50)}%
 
 玩家說：{user_message}
+
+請以 {npc_name} 的身份回應。記住：
+1. 你可以提及其他 NPC 告訴你的事情
+2. 你的回應會成為小鎮的共享記憶
+3. 表現出真實的情感和個性
+4. 如果這是重要的對話，標記它應該被記住
+
 {npc_name}："""
             
             return prompt
         else:
-            # 備用模式：如果找不到檔案，使用簡單提示
-            return f"你是{npc_name}。玩家說：{user_message}"
+            # 備用模式
+            return f"你是心語小鎮的{npc_name}。玩家說：{user_message}"
     
     def _call_gemini_cli(self, prompt: str) -> str:
         """呼叫 Gemini CLI"""
@@ -319,9 +355,24 @@ def main():
         # 擷取必要資料
         user_message = data.get('message', '')
         npc_data = data.get('npcData', {})
+        context = data.get('context', {})
+        
+        # 合併元宇宙資料
+        if 'sharedMemories' in context:
+            npc_data['sharedMemories'] = context['sharedMemories']
+        if 'otherNPCMemories' in context:
+            npc_data['otherNPCMemories'] = context['otherNPCMemories']
+        if 'sessionMessages' in context:
+            npc_data['sessionMessages'] = context['sessionMessages']
+        if 'trustLevel' in context:
+            npc_data['trustLevel'] = context['trustLevel']
+        if 'affectionLevel' in context:
+            npc_data['affectionLevel'] = context['affectionLevel']
         
         logger.info(f"使用者訊息：{user_message}")
         logger.info(f"NPC 名稱：{npc_data.get('name', 'Unknown')}")
+        logger.info(f"共享記憶數量：{len(npc_data.get('sharedMemories', []))}")
+        logger.info(f"會話訊息數量：{len(npc_data.get('sessionMessages', []))}")ѕ
         
         # 生成回應
         response = llm_service.generate_response(user_message, npc_data)

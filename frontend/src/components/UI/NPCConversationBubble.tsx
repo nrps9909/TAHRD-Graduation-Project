@@ -19,6 +19,8 @@ interface ConversationBubble {
   messages: NPCConversationMessage[]
   position: { x: number; y: number; z: number }
   isActive: boolean
+  createdAt: number  // 新增：創建時間戳
+  timeoutId?: NodeJS.Timeout  // 新增：計時器ID
 }
 
 export const NPCConversationBubble: React.FC = () => {
@@ -26,6 +28,18 @@ export const NPCConversationBubble: React.FC = () => {
   const { socket } = useSocketConnection()
   const { npcs } = useGameStore()
 
+  // 清理所有計時器
+  useEffect(() => {
+    return () => {
+      // 組件卸載時清理所有計時器
+      conversations.forEach(conv => {
+        if (conv.timeoutId) {
+          clearTimeout(conv.timeoutId)
+        }
+      })
+    }
+  }, [conversations])
+  
   useEffect(() => {
     if (!socket) return
 
@@ -39,11 +53,18 @@ export const NPCConversationBubble: React.FC = () => {
           const newMap = new Map(prev)
           const existingKey = newMap.has(key) ? key : newMap.has(reverseKey) ? reverseKey : key
           
-          const conversation = newMap.get(existingKey) || {
+          // 清除舊的計時器
+          const oldConv = newMap.get(existingKey)
+          if (oldConv?.timeoutId) {
+            clearTimeout(oldConv.timeoutId)
+          }
+          
+          const conversation = oldConv || {
             id: existingKey,
             messages: [],
             position: calculatePosition(data.speakerId, data.listenerId),
-            isActive: true
+            isActive: true,
+            createdAt: Date.now()
           }
           
           conversation.messages.push({
@@ -62,26 +83,27 @@ export const NPCConversationBubble: React.FC = () => {
             conversation.messages = conversation.messages.slice(-5)
           }
           
+          // 設定7秒後自動移除
+          const timeoutId = setTimeout(() => {
+            console.log(`移除NPC對話泡泡: ${existingKey}`)
+            setConversations(prev => {
+              const newMap = new Map(prev)
+              newMap.delete(existingKey)
+              return newMap
+            })
+          }, 7000)
+          
+          console.log(`新增NPC對話泡泡: ${existingKey}，將在7秒後消失`)
+          
+          conversation.timeoutId = timeoutId
+          conversation.createdAt = Date.now()
+          
           newMap.set(existingKey, conversation)
           return newMap
         })
       } else if (data.type === 'ended') {
-        // 對話結束，7秒後移除泡泡
-        setTimeout(() => {
-          setConversations(prev => {
-            const newMap = new Map(prev)
-            // 找到並移除相關對話
-            for (const [key, conv] of newMap.entries()) {
-              if (conv.messages.some(m => 
-                (m.speakerName === data.npc1 || m.speakerName === data.npc2) &&
-                (m.listenerName === data.npc1 || m.listenerName === data.npc2)
-              )) {
-                newMap.delete(key)
-              }
-            }
-            return newMap
-          })
-        }, 7000)
+        // 對話結束，不立即移除（已由每個消息的計時器處理）
+        console.log('NPC對話結束，將在7秒後自動消失')
       }
     }
 
@@ -154,11 +176,11 @@ export const NPCConversationBubble: React.FC = () => {
       {Array.from(conversations.values()).map((conversation) => (
         <div
           key={conversation.id}
-          className="fixed z-30 pointer-events-none animate-fade-in"
+          className="fixed z-50 pointer-events-none animate-fade-in"
           style={{
             left: '50%',
-            top: '30%', // 調整位置更居中
-            transform: 'translate(-50%, -50%)'
+            top: '20%', // 更靠上
+            transform: 'translate(-50%, -50%) scale(2.5)'  // 放大2.5倍
           }}
         >
           {/* 對話氣泡容器 */}
@@ -179,7 +201,12 @@ export const NPCConversationBubble: React.FC = () => {
             </div>
 
             {/* 主對話框 - 放大尺寸 */}
-            <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl border-4 border-white p-8 max-w-4xl transform scale-125">
+            <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl border-6 border-white p-12 min-w-[800px] max-w-6xl relative">
+              {/* 倒數計時指示器 */}
+              <div className="absolute -top-6 right-6 bg-red-500 text-white rounded-full px-5 py-2 text-lg font-bold animate-pulse shadow-lg">
+                ⏱️ 7秒後消失
+              </div>
+              
               {/* 對話參與者 */}
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
@@ -187,13 +214,13 @@ export const NPCConversationBubble: React.FC = () => {
                   <div className="flex -space-x-3">
                     {conversation.messages.length > 0 && (
                       <>
-                        <div className="w-16 h-16 bg-gradient-to-br from-green-300 to-emerald-400 rounded-full flex items-center justify-center border-3 border-white shadow-md">
-                          <span className="text-2xl">
+                        <div className="w-20 h-20 bg-gradient-to-br from-green-300 to-emerald-400 rounded-full flex items-center justify-center border-4 border-white shadow-lg">
+                          <span className="text-3xl">
                             {getEmotionIcon(conversation.messages[0].emotion)}
                           </span>
                         </div>
-                        <div className="w-16 h-16 bg-gradient-to-br from-blue-300 to-indigo-400 rounded-full flex items-center justify-center border-3 border-white shadow-md">
-                          <span className="text-2xl">
+                        <div className="w-20 h-20 bg-gradient-to-br from-blue-300 to-indigo-400 rounded-full flex items-center justify-center border-4 border-white shadow-lg">
+                          <span className="text-3xl">
                             {getEmotionIcon(conversation.messages[conversation.messages.length - 1]?.emotion || 'calm')}
                           </span>
                         </div>
@@ -203,42 +230,42 @@ export const NPCConversationBubble: React.FC = () => {
                   
                   {/* 參與者名稱 */}
                   <div>
-                    <p className="text-lg font-bold text-gray-800">
+                    <p className="text-2xl font-bold text-gray-800">
                       {conversation.messages[0]?.speakerName} & {conversation.messages[0]?.listenerName}
                     </p>
-                    <p className="text-base text-gray-500">正在聊天中...</p>
+                    <p className="text-lg text-gray-500">正在聊天中...</p>
                   </div>
                 </div>
 
                 {/* 動畫圖標 */}
                 <div className="animate-bounce-slow">
-                  <Sparkles className="w-7 h-7 text-yellow-400" />
+                  <Sparkles className="w-10 h-10 text-yellow-400" />
                 </div>
               </div>
 
               {/* 對話內容 - 增加最大高度 */}
-              <div className="space-y-4 max-h-[500px] overflow-y-auto ac-scrollbar">
+              <div className="space-y-6 max-h-[500px] overflow-y-auto ac-scrollbar">
                 {conversation.messages.slice(-3).map((msg, index) => (
                   <div
                     key={`${msg.speakerId}-${index}-${msg.timestamp}`}
                     className={`animate-slide-up bg-gradient-to-r ${getEmotionColor(msg.emotion)} 
-                              rounded-2xl p-4 border-3 shadow-lg`}
+                              rounded-3xl p-6 border-4 shadow-xl`}
                     style={{ animationDelay: `${index * 100}ms` }}
                   >
                     <div className="flex items-start gap-2">
                       {/* 說話者圖標 */}
                       <div className="shrink-0">
-                        <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-md">
-                          <span className="text-xl">{getEmotionIcon(msg.emotion)}</span>
+                        <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-lg">
+                          <span className="text-2xl">{getEmotionIcon(msg.emotion)}</span>
                         </div>
                       </div>
                       
                       {/* 消息內容 */}
                       <div className="flex-1">
-                        <p className="text-base font-semibold text-gray-700 mb-1">
+                        <p className="text-xl font-semibold text-gray-700 mb-2">
                           {msg.speakerName}
                         </p>
-                        <p className="text-lg text-gray-800 leading-relaxed">
+                        <p className="text-2xl text-gray-800 leading-relaxed">
                           {msg.content}
                         </p>
                       </div>
