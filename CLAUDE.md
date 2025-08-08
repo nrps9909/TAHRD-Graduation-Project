@@ -272,3 +272,5 @@ Visual representation of memories in 3D space:
 - Performance monitoring is essential for maintaining immersion
 
 Remember: This isn't just a game - it's a living world where every interaction matters and every NPC is a unique individual with their own story to tell.
+
+gemini-cli-docs/裡面是全部的gemini cli使用教學 有需要的時候可以去讀取裡面訊息 來學會如何優化使用gemini cli

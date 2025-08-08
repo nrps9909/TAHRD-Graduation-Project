@@ -123,7 +123,7 @@ class NPCDialogueServer:
         cmd = [
             "gemini",
             "-p", prompt,
-            "--model", "gemini-2.5-flash-lite"  # 使用 2.5-flash 模型
+            "--model", "gemini-2.5-flash"  # 使用 2.5-flash 模型
         ]
         
         # 記錄載入的檔案
