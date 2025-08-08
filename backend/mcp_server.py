@@ -77,15 +77,25 @@ class NPCDialogueServer:
         """預載入所有 NPC 個性檔案"""
         personalities = {}
         
+        name_mapping = {
+            'lupeixiu': 'LuPeiXiu',
+            'liuyucen': 'LiuYuCen', 
+            'chentingan': 'ChenTingAn'
+        }
+        
         for npc_id, npc_name in self.npc_map.items():
-            personality_file = self.personalities_dir / f"{npc_name}_personality.txt"
-            history_file = self.personalities_dir / f"{npc_name}_chat_history.txt"
+            formatted_name = name_mapping.get(npc_name, npc_name.title())
+            personality_file = self.memories_dir / npc_name / f"{formatted_name}_Personality.md"
+            chat_style_file = self.memories_dir / npc_name / f"{formatted_name}_Chat_style.txt"
             
             if personality_file.exists():
+                personality_content = personality_file.read_text(encoding='utf-8')
+                chat_style_content = chat_style_file.read_text(encoding='utf-8') if chat_style_file.exists() else ''
+                
                 personalities[npc_id] = {
                     'name': npc_name,
-                    'personality': personality_file.read_text(encoding='utf-8'),
-                    'history': history_file.read_text(encoding='utf-8') if history_file.exists() else ''
+                    'personality': personality_content,
+                    'chat_style': chat_style_content
                 }
                 
         return personalities
@@ -113,7 +123,7 @@ class NPCDialogueServer:
         cmd = [
             "gemini",
             "-p", prompt,
-            "--model", "gemini-2.5-flash"  # 使用 2.5-flash 模型
+            "--model", "gemini-2.5-flash-lite"  # 使用 2.5-flash 模型
         ]
         
         # 記錄載入的檔案
@@ -131,28 +141,52 @@ class NPCDialogueServer:
             cmd.extend(["--include-directories", ",".join(include_dirs)])
             tracking_data["files_loaded"]["include_dirs"] = include_dirs
             
-            # 記錄每個目錄中的 GEMINI.md
+            # 記錄每個目錄中的記憶檔案（避免載入.md檔案）
             for dir_path in include_dirs:
-                gemini_md = Path(dir_path) / "GEMINI.md"
-                if gemini_md.exists():
-                    tracking_data["files_loaded"]["memories"].append(str(gemini_md))
+                dir_path_obj = Path(dir_path)
+                # 檢查是否有個性或聊天風格檔案 (使用實際檔名格式)
+                name_mapping = {
+                    'lupeixiu': 'LuPeiXiu',
+                    'liuyucen': 'LiuYuCen', 
+                    'chentingan': 'ChenTingAn'
+                }
+                formatted_name = name_mapping.get(npc_name, npc_name.title())
+                personality_file = dir_path_obj / f"{formatted_name}_Personality.md"
+                chat_style_file = dir_path_obj / f"{formatted_name}_Chat_style.txt"
+                
+                if personality_file.exists():
+                    tracking_data["files_loaded"]["memories"].append(str(personality_file))
+                if chat_style_file.exists():
+                    tracking_data["files_loaded"]["memories"].append(str(chat_style_file))
         else:
             # 預設載入該 NPC 的記憶目錄
             memory_path = self.memories_dir / npc_name
             if memory_path.exists():
                 cmd.extend(["--include-directories", str(memory_path)])
-                cmd.append("--load-memory-from-include-directories")
                 tracking_data["files_loaded"]["include_dirs"].append(str(memory_path))
                 
-                # 記錄 GEMINI.md
-                gemini_md = memory_path / "GEMINI.md"
-                if gemini_md.exists():
-                    tracking_data["files_loaded"]["memories"].append(str(gemini_md))
+                # 記錄實際的記憶檔案（避免載入.md檔案）
+                name_mapping = {
+                    'lupeixiu': 'LuPeiXiu',
+                    'liuyucen': 'LiuYuCen', 
+                    'chentingan': 'ChenTingAn'
+                }
+                formatted_name = name_mapping.get(npc_name, npc_name.title())
+                personality_file = memory_path / f"{formatted_name}_Personality.md"
+                chat_style_file = memory_path / f"{formatted_name}_Chat_style.txt"
+                
+                if personality_file.exists():
+                    tracking_data["files_loaded"]["memories"].append(str(personality_file))
+                if chat_style_file.exists():
+                    tracking_data["files_loaded"]["memories"].append(str(chat_style_file))
         
-        # 共享記憶
-        shared_path = self.memories_dir / "shared" / "GEMINI.md"
-        if shared_path.exists():
-            tracking_data["files_loaded"]["shared"].append(str(shared_path))
+        # 共享記憶 - 檢查是否有共享記憶檔案（避免.md檔案）
+        shared_dir = self.memories_dir / "shared"
+        if shared_dir.exists():
+            # 可以添加共享記憶檔案的邏輯
+            for file_path in shared_dir.iterdir():
+                if file_path.is_file() and not file_path.suffix == '.md':
+                    tracking_data["files_loaded"]["shared"].append(str(file_path))
         
         start_time = time.time()
         
@@ -340,17 +374,13 @@ class NPCDialogueServer:
         if shared_memory_path.exists():
             shared_context = f"\n共享記憶：\n{shared_memory_path.read_text(encoding='utf-8')}"
         
-        prompt = f"""
-你是「{self._get_display_name(npc_id)}」，正在與玩家對話。
-
-最近對話歷史：
-{session_history}
-
-玩家說：{message}
-{shared_context}
-
-請以符合你個性的方式回應，保持角色一致性。
-        """.strip()
+        # 簡化提示詞 - 檢查message是否已包含完整上下文
+        if message.startswith("你是「") and "對話" in message:
+            # message已包含完整上下文，直接使用
+            prompt = message
+        else:
+            # message只是簡單內容，需要添加上下文
+            prompt = f"你是「{self._get_display_name(npc_id)}」，正在與玩家對話。玩家說：{message}"
         
         # 生成追蹤 ID
         track_id = f"mcp-{session_id or 'no-session'}-{int(time.time() * 1000)}"
@@ -399,8 +429,14 @@ class NPCDialogueServer:
         if not npc_name:
             return False
         
-        # 更新記憶檔案
-        memory_file = self.memories_dir / npc_name / "GEMINI.md"
+        # 更新記憶檔案 - 使用新的檔案命名
+        name_mapping = {
+            'lupeixiu': 'LuPeiXiu',
+            'liuyucen': 'LiuYuCen', 
+            'chentingan': 'ChenTingAn'
+        }
+        formatted_name = name_mapping.get(npc_name, npc_name.title())
+        memory_file = self.memories_dir / npc_name / f"{formatted_name}_Personality.md"
         if memory_file.exists():
             current_memory = memory_file.read_text(encoding='utf-8')
             

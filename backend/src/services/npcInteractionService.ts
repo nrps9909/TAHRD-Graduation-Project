@@ -179,26 +179,13 @@ export class NPCInteractionService extends EventEmitter {
         return `${speakerName}: ${msg.content}`
       }).join('\n')
 
-      // 構建提示詞
-      const prompt = `
-你是${speaker.name}，正在與${listener.name}對話。
-話題：${conversation.topic}
-
-你的性格：${speaker.personality}
-對方的性格：${listener.personality}
-
-對話歷史：
-${history}
-
-請根據你的性格特徵，對這個話題做出自然、友善的回應。
-回應要：
-1. 符合你的性格設定
-2. 與話題相關
-3. 表達適當的情緒
-4. 保持友善和諧的氛圍
-5. 回應長度在1-2句話之間
-
-請直接回覆對話內容，不要加任何額外說明。`
+      // 簡化提示詞 - 只告訴基本資訊，其他通過檔案載入
+      // 取得對話歷史中最後一句話
+      const lastMessage = conversation.messages.length > 0 ? 
+        conversation.messages[conversation.messages.length - 1].content : 
+        `${listener.name}說話了`
+      
+      const prompt = `你是「${speaker.name}」，正在與${listener.name}對話。${listener.name}說：${lastMessage}`
 
       // 使用Gemini生成回應
       const response = await geminiService.generateResponse(prompt, speaker.id)
