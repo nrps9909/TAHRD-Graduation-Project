@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-This file provides guidance to Claude (claude.ai) when working with the Heart Whisper Town metaverse codebase.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
 
@@ -66,6 +66,62 @@ GraphQL: http://localhost:4000/graphql
 MCP Server: http://localhost:8765
 ```
 
+## Development Commands
+
+### Project-wide commands (run from root)
+```bash
+npm run dev          # Start frontend + backend concurrently
+npm run build        # Build both frontend and backend
+npm run lint         # Lint both frontend and backend
+npm run test         # Run tests for both
+
+# Individual services
+npm run dev:frontend  # Start frontend only
+npm run dev:backend   # Start backend only
+```
+
+### Backend-specific commands (cd backend/)
+```bash
+npm run dev          # Start with nodemon
+npm run build        # TypeScript build
+npm run start        # Production start
+npm run lint         # ESLint check
+npm run test         # Jest tests
+
+# Database commands
+npm run db:generate  # Generate Prisma client
+npm run db:push      # Push schema to database
+npm run db:migrate   # Run migrations
+npm run db:seed      # Seed NPCs and initial data
+```
+
+### Frontend-specific commands (cd frontend/)
+```bash
+npm run dev          # Start Vite dev server
+npm run build        # Production build
+npm run lint         # ESLint check
+npm run preview      # Preview production build
+npm run test         # Run Vitest tests
+```
+
+### MCP Server Management
+```bash
+# Start MCP server standalone
+cd backend && python3 mcp_server.py
+
+# Monitor MCP performance
+curl http://localhost:8765/status | jq
+
+# Clear MCP cache
+curl -X POST http://localhost:8765/cache/clear
+
+# View MCP logs
+tail -f backend/logs/mcp_server.log
+
+# Stop all services
+./stop-mcp.sh
+```
+
 ## MCP Server Details
 
 ### Key Features
@@ -94,84 +150,29 @@ MCP Server: http://localhost:8765
 ### NPC Personality System
 
 Each NPC has:
-- **Personality File**: `backend/personalities/[npc_name]_personality.txt`
-- **Chat History**: `backend/personalities/[npc_name]_chat_history.txt`  
-- **Memory Context**: `backend/memories/[npc_name]/GEMINI.md`
+- **Personality File**: `backend/memories/[npc_name]/[NPC_Name]_Personality.md`
+- **Chat Style**: `backend/memories/[npc_name]/[NPC_Name]_Chat_style.txt`  
+- **System Prompt**: `backend/GEMINI.md` (shared system instructions)
 
 Current NPCs:
 - **Lu Peixiu (陸培修)** - The dreamy artist (npc-1)
 - **Liu Yucen (劉宇岑)** - The energetic friend (npc-2)
 - **Chen Tingan (陳庭安)** - The gentle soul (npc-3)
 
-## Metaverse Features
+## Memory System Architecture
 
-### 1. Long-Term Memory System
-NPCs remember everything through the MCP memory system:
-```python
-# Memories are stored per-NPC with emotional context
-memories/lupeixiu/GEMINI.md
-memories/liuyucen/GEMINI.md
-memories/chentingan/GEMINI.md
-memories/shared/      # Shared town memories
-```
+### Memory Hierarchy
+1. **Personal Memories** - Individual NPC experiences (`backend/memories/[npc_name]/`)
+2. **Shared Memories** - Town-wide knowledge base (`backend/memories/shared/`)
+3. **Episodic Memories** - Specific events and interactions
+4. **Semantic Memories** - General knowledge about players
 
-### 2. Gossip & Information Network
-NPCs share information about players:
-- Morning coffee discussions about recent player visits
-- Sharing concerns if a player seems sad
-- Celebrating player achievements together
-- Forming collective opinions about events
-
-### 3. Living World Simulation
-- NPCs have daily routines and activities
-- They form relationships with each other
-- They have goals, dreams, and worries
-- Their moods change based on town events
-
-### 4. Emotional Intelligence
-Each interaction considers:
-- Current mood and emotional state
-- Relationship level (1-10)
-- Trust and affection metrics
-- Past conversation context
-- Shared memories from other NPCs
-
-## Development Commands
-
-### MCP Server Management
-```bash
-# Start MCP server standalone
-cd backend && python3 mcp_server.py
-
-# Monitor MCP performance
-curl http://localhost:8765/status | jq
-
-# Clear MCP cache
-curl -X POST http://localhost:8765/cache/clear
-
-# View MCP logs
-tail -f backend/logs/mcp_server.log
-```
-
-### Database Operations
-```bash
-cd backend
-npm run db:migrate    # Run migrations
-npm run db:push       # Push schema changes
-npm run db:seed       # Seed NPCs and initial data
-npm run db:studio     # Open Prisma Studio
-```
-
-### Testing NPCs
-```bash
-# Test MCP integration
-curl -X POST http://localhost:8765/generate \
-  -H "Content-Type: application/json" \
-  -d '{"npc_id": "npc-1", "message": "Hello!"}'
-
-# Test via GraphQL
-# Navigate to http://localhost:4000/graphql
-```
+### Memory Flower System
+Visual representation of memories in 3D space:
+- **Color**: Represents emotion (warm yellow, soft pink, etc.)
+- **Size**: Indicates importance/impact
+- **Position**: Shows temporal relationships
+- **Glow**: Active/recent memories shine brighter
 
 ## Environment Variables
 
@@ -188,40 +189,30 @@ USE_GEMINI_CLI=true                     # Enable CLI mode
 NODE_ENV=development
 ```
 
-## Memory System Architecture
-
-### Memory Hierarchy
-1. **Personal Memories** - Individual NPC experiences
-2. **Shared Memories** - Town-wide knowledge base
-3. **Episodic Memories** - Specific events and interactions
-4. **Semantic Memories** - General knowledge about players
-
-### Memory Flower System
-Visual representation of memories in 3D space:
-- **Color**: Represents emotion (warm yellow, soft pink, etc.)
-- **Size**: Indicates importance/impact
-- **Position**: Shows temporal relationships
-- **Glow**: Active/recent memories shine brighter
-
 ## Common Development Tasks
 
 ### Adding New NPCs
-1. Create personality file: `backend/personalities/[name]_personality.txt`
-2. Create memory directory: `backend/memories/[name]/GEMINI.md`
+1. Create personality file: `backend/memories/[name]/[Name]_Personality.md`
+2. Create chat style file: `backend/memories/[name]/[Name]_Chat_style.txt`
 3. Update NPC mapping in `mcp_server.py`
-4. Add to database seed
+4. Add to database seed (`backend/prisma/seed.ts`)
 5. Create 3D model and position in scene
 
-### Enhancing NPC Intelligence
-1. Update GEMINI.md templates for richer responses
-2. Add new emotion states and reactions
-3. Implement new memory types
-4. Create inter-NPC relationship dynamics
+### Testing NPCs
+```bash
+# Test MCP integration
+curl -X POST http://localhost:8765/generate \
+  -H "Content-Type: application/json" \
+  -d '{"npc_id": "npc-1", "message": "Hello!"}'
+
+# Test via GraphQL
+# Navigate to http://localhost:4000/graphql
+```
 
 ### Performance Optimization
-- Monitor MCP cache hit rates
+- Monitor MCP cache hit rates via `/status` endpoint
 - Optimize Gemini CLI calls with batch processing
-- Use Redis for session state
+- Use Redis for session state caching
 - Implement memory pruning for old interactions
 
 ## Troubleshooting
@@ -241,27 +232,13 @@ Visual representation of memories in 3D space:
 - **High latency**: Enable response caching
 - **Memory leaks**: Monitor Python process memory usage
 
-## Best Practices
+## Gemini CLI Documentation
 
-### For Metaverse Realism
-1. **Consistent Personalities**: NPCs should never break character
-2. **Natural Gossip**: Information spreads organically, not instantly
-3. **Emotional Continuity**: Moods persist across sessions
-4. **Believable Routines**: NPCs have schedules and habits
-
-### For Code Quality
-1. **Type Safety**: Use TypeScript interfaces for all data structures
-2. **Error Handling**: Graceful fallbacks for AI failures
-3. **Logging**: Comprehensive logging at all service boundaries
-4. **Testing**: Unit tests for personality consistency
-
-## Future Enhancements
-
-- **Voice Integration**: NPCs speaking with unique voices
-- **Advanced Emotions**: More nuanced emotional states
-- **Dream System**: NPCs dream about player interactions
-- **Seasonal Events**: Town-wide celebrations and changes
-- **Multi-language**: NPCs speaking player's language
+The `gemini-cli-docs/` directory contains comprehensive documentation for optimizing Gemini CLI usage. Refer to these files when needed:
+- Authentication and configuration
+- Memory management and checkpointing
+- Tool usage and MCP server integration
+- Performance optimization techniques
 
 ## Important Notes
 
@@ -272,5 +249,3 @@ Visual representation of memories in 3D space:
 - Performance monitoring is essential for maintaining immersion
 
 Remember: This isn't just a game - it's a living world where every interaction matters and every NPC is a unique individual with their own story to tell.
-
-gemini-cli-docs/裡面是全部的gemini cli使用教學 有需要的時候可以去讀取裡面訊息 來學會如何優化使用gemini cli

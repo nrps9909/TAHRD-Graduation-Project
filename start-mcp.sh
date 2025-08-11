@@ -25,16 +25,26 @@ if [ -z "$GEMINI_API_KEY" ]; then
     fi
 fi
 
-# 安裝 Python 依賴
-echo -e "${BLUE}=== 檢查 Python 依賴 ===${NC}"
-pip3 install --quiet uvloop fastapi uvicorn pydantic 2>/dev/null
-echo -e "${GREEN}✅ Python 依賴已安裝${NC}"
+# 安裝 Python 依賴（系統環境）
+echo -e "${BLUE}=== 檢查 Python 依賴（系統環境）===${NC}"
+export PIP_BREAK_SYSTEM_PACKAGES=1
+sudo -H python3 -m pip install --quiet --upgrade --break-system-packages -r backend/requirements.txt 2>/dev/null || true
+echo -e "${GREEN}✅ Python 依賴已就緒${NC}"
 
 # 啟動資料庫
 echo -e "${BLUE}=== 啟動資料庫服務 ===${NC}"
-sudo service postgresql start
-sudo service redis-server start
-echo -e "${GREEN}✅ 資料庫服務已啟動${NC}"
+if sudo service postgresql start; then
+  :
+else
+  echo -e "${YELLOW}⚠️ 無法啟動 PostgreSQL，WSL 可能未啟用 systemd。請改用 docker compose 啟動資料庫。${NC}"
+fi
+
+if sudo service redis-server start; then
+  :
+else
+  echo -e "${YELLOW}⚠️ 無法啟動 Redis，WSL 可能未啟用 systemd。請改用 docker compose 啟動 Redis。${NC}"
+fi
+echo -e "${GREEN}✅ 資料庫服務處理完成${NC}"
 
 # 清理舊日誌檔案並建立新的日誌目錄
 echo -e "${BLUE}=== 清理舊日誌檔案 ===${NC}"

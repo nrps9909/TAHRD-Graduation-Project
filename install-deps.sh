@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 echo "📦 心語小鎮依賴安裝腳本"
 echo "======================"
@@ -50,59 +51,47 @@ sudo apt install -y redis-server
 echo ""
 echo "安裝 Node.js..."
 if ! command -v node &> /dev/null; then
-    curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+    curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
     sudo apt install -y nodejs
 else
     echo -e "${GREEN}✓ Node.js 已安裝${NC}"
 fi
 
-# ============ Python 套件安裝 ============
+# 決定可用的 npm 執行檔（統一後續全域安裝使用）
+if command -v npm &> /dev/null; then
+    NPM_BIN="$(command -v npm)"
+elif command -v /usr/bin/npm &> /dev/null; then
+    NPM_BIN="/usr/bin/npm"
+else
+    echo "安裝 npm..."
+    sudo apt install -y npm || true
+    NPM_BIN="$(command -v npm || echo npm)"
+fi
+
+# ============ Python 套件安裝（系統環境 + requirements） ============
 echo ""
-echo -e "${BLUE}=== 安裝 Python 套件 ===${NC}"
+echo -e "${BLUE}=== 安裝 Python 套件（系統環境）===${NC}"
 echo ""
 
-# 升級 pip
+# 啟用覆蓋 PEP 668（Ubuntu 24.04）
+export PIP_BREAK_SYSTEM_PACKAGES=1
+
 echo "升級 pip..."
-pip3 install --upgrade pip
+sudo -H python3 -m pip install --upgrade pip --break-system-packages || true
 
-# 安裝 Python 套件
-echo "安裝 Python 套件..."
-pip3 install --user \
-    fastapi \
-    uvicorn[standard] \
-    python-dotenv \
-    google-generativeai \
-    pydantic \
-    httpx \
-    aiofiles \
-    python-multipart
+echo "從 backend/requirements.txt 安裝套件（系統環境）..."
+sudo -H python3 -m pip install --break-system-packages -r backend/requirements.txt
 
-# ============ Gemini CLI 安裝 ============
+# ============ Gemini CLI 安裝（npm） ============
 echo ""
 echo -e "${BLUE}=== 安裝 Gemini CLI ===${NC}"
 echo ""
 
 if ! command -v gemini &> /dev/null; then
-    echo "嘗試安裝 Gemini CLI..."
-    
-    # 方法 1：使用 pipx（推薦）
-    if command -v pipx &> /dev/null; then
-        pipx install google-generativeai-cli
-    else
-        echo "安裝 pipx..."
-        sudo apt install -y pipx
-        pipx ensurepath
-        source ~/.bashrc
-        pipx install google-generativeai-cli
-    fi
-    
-    # 驗證安裝
-    if command -v gemini &> /dev/null; then
-        echo -e "${GREEN}✅ Gemini CLI 安裝成功${NC}"
-    else
-        echo -e "${YELLOW}⚠️ Gemini CLI 需要手動安裝${NC}"
-        echo "請參考：https://github.com/google/generative-ai-python"
-    fi
+    echo "使用 npm 安裝 Gemini CLI (@google/gemini-cli)..."
+    sudo -H "$NPM_BIN" install -g @google/gemini-cli || {
+        echo -e "${YELLOW}⚠️ npm 安裝失敗，請確認 npm 已安裝且 PATH 正確${NC}";
+    }
 else
     echo -e "${GREEN}✓ Gemini CLI 已安裝${NC}"
 fi
@@ -114,19 +103,19 @@ echo ""
 
 # TypeScript
 echo "安裝 TypeScript..."
-sudo npm install -g typescript
+sudo -H "$NPM_BIN" install -g typescript || true
 
 # ts-node
 echo "安裝 ts-node..."
-sudo npm install -g ts-node
+sudo -H "$NPM_BIN" install -g ts-node || true
 
 # nodemon
 echo "安裝 nodemon..."
-sudo npm install -g nodemon
+sudo -H "$NPM_BIN" install -g nodemon || true
 
 # Prisma CLI
 echo "安裝 Prisma CLI..."
-sudo npm install -g prisma
+sudo -H "$NPM_BIN" install -g prisma || true
 
 # ============ 專案依賴安裝 ============
 echo ""
@@ -165,20 +154,25 @@ echo ""
 echo -e "${BLUE}=== 設定資料庫 ===${NC}"
 echo ""
 
-# 啟動 PostgreSQL
-sudo service postgresql start
-
-# 設定 PostgreSQL 用戶
-echo "設定資料庫用戶..."
-sudo -u postgres psql << EOF
-ALTER USER postgres WITH PASSWORD 'password123';
-CREATE DATABASE heart_whisper_town;
-\q
-EOF
-
-# 安裝 pgvector 擴充
-echo "設定 pgvector 擴充..."
-sudo -u postgres psql -d heart_whisper_town -c "CREATE EXTENSION IF NOT EXISTS vector;" 2>/dev/null
+echo "啟動 PostgreSQL..."
+if sudo service postgresql start; then
+    echo "設定資料庫用戶/資料庫..."
+    # 建立資料庫（存在則略過）
+    if ! sudo -u postgres psql -tc "SELECT 1 FROM pg_database WHERE datname='heart_whisper_town'" | grep -q 1; then
+        sudo -u postgres createdb heart_whisper_town || true
+    fi
+    # 設定密碼
+    sudo -u postgres psql -c "ALTER USER postgres WITH PASSWORD 'password123';" || true
+    # 安裝 pgvector 擴充
+    echo "設定 pgvector 擴充..."
+    sudo -u postgres psql -d heart_whisper_town -c "CREATE EXTENSION IF NOT EXISTS vector;" 2>/dev/null || true
+    # 健康檢查（可選）
+    if command -v pg_isready &> /dev/null; then
+        sudo -u postgres pg_isready -d heart_whisper_town || true
+    fi
+else
+    echo -e "${YELLOW}⚠️ 無法啟動 PostgreSQL。若在 WSL 無 systemd，請改用 docker compose。${NC}"
+fi
 
 echo -e "${GREEN}✅ 資料庫設定完成${NC}"
 
@@ -245,10 +239,10 @@ echo "1. 設定 GEMINI_API_KEY："
 echo "   編輯 .env 檔案並填入您的 API Key"
 echo ""
 echo "2. 啟動服務："
-echo "   ./start-local.sh"
+echo "   ./start-mcp.sh"
 echo ""
 echo "3. 停止服務："
-echo "   ./stop-local.sh"
+echo "   ./stop-mcp.sh"
 echo ""
 echo -e "${BLUE}提示：${NC}"
 echo "- 如果遇到權限問題，請使用 sudo"
