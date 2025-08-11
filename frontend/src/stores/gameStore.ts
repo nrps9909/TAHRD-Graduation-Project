@@ -248,7 +248,7 @@ export const useGameStore = create<GameState>()(
             selectedNpc: npcId,
             isInConversation: true,
             showDialogue: true,
-            conversations: get().conversations.filter(c => c.npcId === npcId), // Keep only this NPC's conversation history
+            // Don't filter conversations here - keep all history
           })
         }
       },
@@ -258,6 +258,7 @@ export const useGameStore = create<GameState>()(
           isInConversation: false,
           showDialogue: false,
           selectedNpc: null,
+          // Keep conversations in state - don't clear them
         })
       },
 

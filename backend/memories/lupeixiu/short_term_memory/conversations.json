@@ -1,0 +1,62 @@
+[
+  {
+    "timestamp": "2025-08-09T15:05:17.326018",
+    "player_message": "你好，鋁配咻！今天天氣真好",
+    "npc_response": "是啊！陽光灑下來暖暖的，讓人心情都好起來了呢。你今天有什麼計畫嗎？",
+    "emotion": "positive"
+  },
+  {
+    "timestamp": "2025-08-10T15:05:17.326027",
+    "player_message": "你在畫什麼呢？",
+    "npc_response": "我在畫今天早上看到的雲朵呢！它們的形狀好特別，像是在跳舞一樣。",
+    "emotion": "positive"
+  },
+  {
+    "timestamp": "2025-08-11T15:48:23.738480",
+    "player_message": "早安 在幹嘛",
+    "npc_response": "早安啊！我正在整理我的小花園呢，最近種的向日葵開得特別好，金黃色的花瓣在陽光下閃閃發光，看了心情就很好！你呢？今天有什麼計畫嗎？",
+    "emotion": "positive"
+  },
+  {
+    "timestamp": "2025-08-11T15:49:04.703211",
+    "player_message": "我喜歡你",
+    "npc_response": "欸，真的嗎？聽到你這麼說，我心裡暖暖的，謝謝你喜歡我！你喜歡我哪一點啊？是我的熱情，還是我對小鎮的付出呢？",
+    "emotion": "positive"
+  },
+  {
+    "timestamp": "2025-08-11T16:08:24.794397",
+    "player_message": "早安",
+    "npc_response": "讓我想想該怎麼說...",
+    "emotion": "neutral"
+  },
+  {
+    "timestamp": "2025-08-11T16:08:59.937408",
+    "player_message": "為甚麼要想",
+    "npc_response": "讓我想想該怎麼說...",
+    "emotion": "neutral"
+  },
+  {
+    "timestamp": "2025-08-11T16:14:02.529468",
+    "player_message": "f11122",
+    "npc_response": "有時候，細節真的很重要呢。",
+    "emotion": "neutral"
+  },
+  {
+    "timestamp": "2025-08-11T16:18:49.014215",
+    "player_message": "早安",
+    "npc_response": "Loaded cached credentials.\n早安啊！今天天氣真好欸，你吃早餐了嗎？😊",
+    "emotion": "positive"
+  },
+  {
+    "timestamp": "2025-08-11T16:19:28.058141",
+    "player_message": "你好",
+    "npc_response": "Loaded cached credentials.\n哈囉！你好呀！👋 怎麼突然想到我了呀？🤔",
+    "emotion": "positive"
+  },
+  {
+    "timestamp": "2025-08-11T16:22:01.022525",
+    "player_message": "甚麼軌",
+    "npc_response": "Loaded cached credentials.\n欸，沒什麼軌啦！就剛好在想等等要吃什麼，哈哈。你呢？最近過得怎麼樣啊？😉",
+    "emotion": "positive"
+  }
+]

@@ -1,0 +1,56 @@
+[
+  {
+    "timestamp": "2025-08-08T15:05:17.326351",
+    "player_message": "嗨，流羽岑！",
+    "npc_response": "哈囉！今天要一起去探險嗎？我發現了一個很棒的地方！",
+    "emotion": "positive"
+  },
+  {
+    "timestamp": "2025-08-11T15:49:56.228570",
+    "player_message": "在幹嘛",
+    "npc_response": "我在 threads 上看過類似的討論耶！",
+    "emotion": "neutral"
+  },
+  {
+    "timestamp": "2025-08-11T15:50:12.623206",
+    "player_message": "啥",
+    "npc_response": "啥？你說啥？我剛剛好像走神了，嘿嘿。你再說一次好不好？",
+    "emotion": "neutral"
+  },
+  {
+    "timestamp": "2025-08-11T15:50:32.333703",
+    "player_message": "我喜歡你",
+    "npc_response": "欸？你、你說什麼啊？我、我有點沒聽清楚……（臉頰微微泛紅，眼神有些閃爍）",
+    "emotion": "positive"
+  },
+  {
+    "timestamp": "2025-08-11T15:50:50.603005",
+    "player_message": "不要在裝傻了 要步要出門玩",
+    "npc_response": "欸，你怎麼這樣說啦！我哪有裝傻，我只是在想，嗯... 要去哪裡玩比較好呢？你說說看嘛，想去哪裡玩？",
+    "emotion": "positive"
+  },
+  {
+    "timestamp": "2025-08-11T16:20:59.405115",
+    "player_message": "你好",
+    "npc_response": "我在 threads 上看過類似的討論耶！",
+    "emotion": "positive"
+  },
+  {
+    "timestamp": "2025-08-11T16:30:45.153067",
+    "player_message": "f早安",
+    "npc_response": "哇，這個問題好有趣！",
+    "emotion": "positive"
+  },
+  {
+    "timestamp": "2025-08-11T16:31:21.826986",
+    "player_message": "我喜歡你",
+    "npc_response": "哎呀，真的嗎？🥺 謝謝你啦，我寶貝！哈哈，你怎麼突然這麼說啊？",
+    "emotion": "positive"
+  },
+  {
+    "timestamp": "2025-08-11T16:32:03.800733",
+    "player_message": "你喜歡我嗎",
+    "npc_response": "欸，當然喜歡啊！你怎麼會這樣問啦～🥺",
+    "emotion": "positive"
+  }
+]

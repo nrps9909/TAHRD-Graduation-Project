@@ -74,6 +74,17 @@ pkill -f "node.*backend" 2>/dev/null || true
 pkill -f "vite" 2>/dev/null || true
 sleep 1
 
+# 更新NPC記憶（只在啟動時執行）
+echo -e "${BLUE}=== 更新 NPC 記憶系統 ===${NC}"
+cd backend
+python3 -c "
+from memory_manager import update_all_npc_memories_sync
+print('正在更新所有NPC的記憶（使用 AI 篩選）...')
+update_all_npc_memories_sync()
+print('✅ NPC記憶更新完成')
+" 2>/dev/null || echo -e "${YELLOW}⚠️ 記憶更新失敗，將使用現有記憶${NC}"
+cd ..
+
 # 啟動 MCP 服務器
 echo -e "${BLUE}=== 啟動 MCP 服務器 ===${NC}"
 cd backend

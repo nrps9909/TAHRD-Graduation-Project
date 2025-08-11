@@ -152,21 +152,22 @@ export const conversationResolvers = {
           })
         }
 
-        // 獲取最近對話歷史
+        // 獲取最近對話歷史（排除當前訊息，只取之前的5條）
         const recentMessages = await prisma.conversation.findMany({
           where: {
             userId,
             npcId,
+            id: { not: userMessage.id }, // 排除剛剛儲存的訊息
           },
           orderBy: { timestamp: 'desc' },
-          take: 10,
+          take: 5, // 減少到5條，避免context過大
         })
 
-        // 構建對話上下文
+        // 構建對話上下文（簡化版本）
         const context = {
-          recentMessages: recentMessages.map(msg => ({
+          recentMessages: recentMessages.slice(0, 3).map(msg => ({ // 只傳最近3條
             speaker: msg.speakerType as 'user' | 'npc',
-            content: msg.content,
+            content: msg.content.substring(0, 100), // 限制長度
             timestamp: msg.timestamp,
           })),
           relationshipLevel: relationship.relationshipLevel,

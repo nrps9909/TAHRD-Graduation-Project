@@ -247,5 +247,8 @@ The `gemini-cli-docs/` directory contains comprehensive documentation for optimi
 - Memory persistence is critical - never delete memory files
 - The gossip system creates emergent storytelling
 - Performance monitoring is essential for maintaining immersion
+- If use model, only use Gemini-2.5-flash
+- if want to call LLM, only use gemini.py I already wrote, or write in same logic just like gemini.py
+- 
 
 Remember: This isn't just a game - it's a living world where every interaction matters and every NPC is a unique individual with their own story to tell.

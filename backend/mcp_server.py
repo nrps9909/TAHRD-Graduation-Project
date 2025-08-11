@@ -20,6 +20,7 @@ from pydantic import BaseModel
 import hashlib
 from collections import OrderedDict
 import time
+from memory_manager import MemoryManager  # 導入記憶管理器
 
 # 設定 uvloop 為預設事件循環
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
@@ -68,6 +69,16 @@ class NPCDialogueServer:
             "npc-2": "liuyucen",
             "npc-3": "chentingan"
         }
+        
+        # 初始化每個NPC的記憶管理器
+        self.memory_managers = {}
+        for npc_id, npc_name in self.npc_map.items():
+            self.memory_managers[npc_id] = MemoryManager(npc_name)
+            # 匯出記憶到Gemini可讀格式
+            memory_content = self.memory_managers[npc_id].export_memories_to_gemini_format()
+            memory_file = self.memories_dir / npc_name / f"{npc_name}_memories.md"
+            memory_file.write_text(memory_content, encoding='utf-8')
+            logger.info(f"✅ 初始化 {npc_name} 的記憶管理器")
         
         # 預載入個性檔案
         self.personalities = self._preload_personalities()
@@ -217,6 +228,20 @@ class NPCDialogueServer:
             
             if result.returncode == 0:
                 response = stdout.decode('utf-8').strip()
+                
+                # 過濾掉 "Loaded cached credentials" 訊息
+                if response.startswith('Loaded cached credentials'):
+                    # 尋找實際內容開始的位置（通常在第一個換行後）
+                    lines = response.split('\n')
+                    if len(lines) > 1:
+                        response = '\n'.join(lines[1:]).strip()
+                    else:
+                        response = response.replace('Loaded cached credentials', '').strip()
+                
+                # 如果還是以此開頭，再次處理
+                if 'Loaded cached credentials' in response:
+                    response = response.replace('Loaded cached credentials.', '').strip()
+                    response = response.replace('Loaded cached credentials', '').strip()
                 
                 # 記錄成功的追蹤資訊
                 tracking_data["response"] = response
@@ -411,6 +436,31 @@ class NPCDialogueServer:
         
         # 更新快取
         self._update_cache(cache_key, response)
+        
+        # 保存對話到記憶（只保存有效對話）
+        if response and response != "抱歉，我現在有點困惑..." and npc_id in self.memory_managers:
+            try:
+                # 清理 message 中的 NPC 對話前綴
+                clean_message = message
+                if message.startswith("你是「") and "對話" in message:
+                    # 這是NPC間對話，不需要儲存
+                    logger.info(f"跳過儲存NPC間對話記憶")
+                else:
+                    # 只儲存玩家的真實對話，不儲存context
+                    self.memory_managers[npc_id].add_conversation(
+                        player_message=clean_message,
+                        npc_response=response,
+                        context={}  # 不儲存冗餘的context
+                    )
+                    
+                    # 更新記憶檔案供Gemini載入
+                    memory_content = self.memory_managers[npc_id].export_memories_to_gemini_format()
+                    npc_name = self.npc_map.get(npc_id, "")
+                    memory_file = self.memories_dir / npc_name / f"{npc_name}_memories.md"
+                    memory_file.write_text(memory_content, encoding='utf-8')
+                    logger.info(f"💾 已保存 {npc_id} 的對話記憶")
+            except Exception as e:
+                logger.error(f"保存記憶失敗: {e}")
         
         return response
     

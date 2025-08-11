@@ -87,7 +87,7 @@ export class GeminiMCPService {
     const startTime = Date.now()
 
     try {
-      // 調用 MCP 服務
+      // 調用 MCP 服務（優化context傳遞）
       const response = await axios.post(`${this.mcpUrl}/generate`, {
         npc_id: npcPersonality.id,
         message: userMessage,
@@ -96,7 +96,7 @@ export class GeminiMCPService {
           relationship_level: context.relationshipLevel,
           trust_level: context.trustLevel,
           affection_level: context.affectionLevel,
-          recent_messages: context.recentMessages
+          // 不傳遞 recent_messages 到 MCP，讓 MCP 使用自己的記憶系統
         },
         session_id: this.sessionId
       }, {
