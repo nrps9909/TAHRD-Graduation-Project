@@ -1,0 +1,144 @@
+Title: Status line configuration - Anthropic
+File: statusline.html
+==================================================
+
+Status line configuration - Anthropic 
+Anthropic home page English 
+
+Search... 
+
+Search... 
+
+Navigation Configuration 
+Status line configuration 
+
+Welcome 
+Developer Platform 
+Claude Code 
+Model Context Protocol (MCP) 
+API Reference 
+Resources 
+Release Notes 
+
+Getting started Overview 
+
+Quickstart 
+
+Common workflows 
+
+Build with Claude Code Claude Code SDK 
+
+Subagents 
+
+Claude Code hooks 
+
+GitHub Actions 
+
+Model Context Protocol (MCP) 
+
+Troubleshooting 
+
+Deployment Overview 
+
+Amazon Bedrock 
+
+Google Vertex AI 
+
+Corporate proxy 
+
+LLM gateway 
+
+Development containers 
+
+Administration Advanced installation 
+
+Identity and Access Management 
+
+Security 
+
+Data usage 
+
+Monitoring 
+
+Costs 
+
+Analytics 
+
+Configuration Settings 
+
+Add Claude Code to your IDE 
+
+Terminal configuration 
+
+Memory management 
+
+Status line configuration 
+
+Reference CLI reference 
+
+Interactive mode 
+
+Slash commands 
+
+Hooks reference 
+
+Resources Legal and compliance 
+
+==== ====
+
+Make Claude Code your own with a custom status line that displays at the bottom of the Claude Code interface, similar to how terminal prompts (PS1) work in shells like Oh-my-zsh. 
+
+=== ​ 
+
+Create a custom status line ===
+You can either: 
+Run /statusline to ask Claude Code to help you set up a custom status line. By default, it will try to reproduce your terminal’s prompt, but you can provide additional instructions about the behavior you want to Claude Code, such as /statusline show the model name in orange 
+
+Directly add a statusLine command to your .claude/settings.json : 
+
+{ "statusLine" : { "type" : "command" , "command" : "~/.claude/statusline.sh" , "padding" : 0 // Optional: set to 0 to let status line go to edge } } 
+
+=== ​ 
+
+How it Works ===
+The status line is updated when the conversation messages update 
+Updates run at most every 300ms 
+The first line of stdout from your command becomes the status line text 
+ANSI color codes are supported for styling your status line 
+Claude Code passes contextual information about the current session (model, directories, etc.) as JSON to your script via stdin 
+
+=== ​ 
+
+JSON Input Structure ===
+Your status line command receives structured data via stdin in JSON format: 
+{ "hook_event_name" : "Status" , "session_id" : "abc123..." , "transcript_path" : "/path/to/transcript.json" , "cwd" : "/current/working/directory" , "model" : { "id" : "claude-opus-4-1" , "display_name" : "Opus" } , "workspace" : { "current_dir" : "/current/working/directory" , "project_dir" : "/original/project/directory" } } 
+
+=== ​ 
+
+Example Scripts ===
+
+== ​ 
+
+Simple Status Line ==
+#!/bin/bash # Read JSON input from stdin input = $( cat ) # Extract values using jq MODEL_DISPLAY = $( echo " $input " | jq -r '.model.display_name' ) CURRENT_DIR = $( echo " $input " | jq -r '.workspace.current_dir' ) echo "[ $MODEL_DISPLAY ] 📁 ${CURRENT_DIR ## * / } " 
+
+== ​ 
+
+Git-Aware Status Line ==
+#!/bin/bash # Read JSON input from stdin input = $( cat ) # Extract values using jq MODEL_DISPLAY = $( echo " $input " | jq -r '.model.display_name' ) CURRENT_DIR = $( echo " $input " | jq -r '.workspace.current_dir' ) # Show git branch if in a git repo GIT_BRANCH = "" if git rev-parse --git-dir > /dev/null 2 > &1 ; then BRANCH = $( git branch --show-current 2 > /dev/null ) if [ -n " $BRANCH " ] ; then GIT_BRANCH = " | 🌿 $BRANCH " fi fi echo "[ $MODEL_DISPLAY ] 📁 ${CURRENT_DIR ## * / } $GIT_BRANCH " 
+
+== ​ 
+
+Python Example ==
+#!/usr/bin/env python3 import json import sys import os # Read JSON from stdin data = json . load ( sys . stdin ) # Extract values model = data [ 'model' ] [ 'display_name' ] current_dir = os . path . basename ( data [ 'workspace' ] [ 'current_dir' ] ) # Check for git branch git_branch = "" if os . path . exists ( '.git' ) : try : with open ( '.git/HEAD' , 'r' ) as f : ref = f . read ( ) . strip ( ) if ref . startswith ( 'ref: refs/heads/' ) : git_branch = f" | 🌿 { ref . replace ( 'ref: refs/heads/' , '' ) } " except : pass print ( f"[ { model } ] 📁 { current_dir } { git_branch } " ) 
+
+== ​ 
+
+Node.js Example ==
+#!/usr/bin/env node const fs = require ( 'fs' ) ; const path = require ( 'path' ) ; // Read JSON from stdin let input = '' ; process . stdin . on ( 'data' , chunk => input += chunk ) ; process . stdin . on ( 'end' , ( ) => { const data = JSON . parse ( input ) ; // Extract values const model = data . model . display_name ; const currentDir = path . basename ( data . workspace . current_dir ) ; // Check for git branch let gitBranch = '' ; try { const headContent = fs . readFileSync ( '.git/HEAD' , 'utf8' ) . trim ( ) ; if ( headContent . startsWith ( 'ref: refs/heads/' ) ) { gitBranch = ` | 🌿 ${ headContent . replace ( 'ref: refs/heads/' , '' ) } ` ; } } catch ( e ) { // Not a git repo or can't read HEAD } console . log ( ` [ ${ model } ] 📁 ${ currentDir } ${ gitBranch } ` ) ; } ) ; 
+
+== ​ 
+
+Helper Function Approach ==
+For more complex bash scripts, you can create helper functions: 
+#!/bin/bash # Read JSON input once input = $( cat ) # Helper functions 

@@ -1,0 +1,177 @@
+Title: Subagents - Anthropic
+File: sub-agents.html
+==================================================
+
+Subagents - Anthropic 
+Anthropic home page English 
+
+Search... 
+
+Search... 
+
+Navigation Build with Claude Code 
+Subagents 
+
+Welcome 
+Developer Platform 
+Claude Code 
+Model Context Protocol (MCP) 
+API Reference 
+Resources 
+Release Notes 
+
+Getting started Overview 
+
+Quickstart 
+
+Common workflows 
+
+Build with Claude Code Claude Code SDK 
+
+Subagents 
+
+Claude Code hooks 
+
+GitHub Actions 
+
+Model Context Protocol (MCP) 
+
+Troubleshooting 
+
+Deployment Overview 
+
+Amazon Bedrock 
+
+Google Vertex AI 
+
+Corporate proxy 
+
+LLM gateway 
+
+Development containers 
+
+Administration Advanced installation 
+
+Identity and Access Management 
+
+Security 
+
+Data usage 
+
+Monitoring 
+
+Costs 
+
+Analytics 
+
+Configuration Settings 
+
+Add Claude Code to your IDE 
+
+Terminal configuration 
+
+Memory management 
+
+Status line configuration 
+
+Reference CLI reference 
+
+Interactive mode 
+
+Slash commands 
+
+Hooks reference 
+
+Resources Legal and compliance 
+
+==== ====
+
+Custom subagents in Claude Code are specialized AI assistants that can be invoked to handle specific types of tasks. They enable more efficient problem-solving by providing task-specific configurations with customized system prompts, tools and a separate context window. 
+
+=== ​ 
+
+What are subagents? ===
+Subagents are pre-configured AI personalities that Claude Code can delegate tasks to. Each subagent: 
+Has a specific purpose and expertise area 
+Uses its own context window separate from the main conversation 
+Can be configured with specific tools it’s allowed to use 
+Includes a custom system prompt that guides its behavior 
+When Claude Code encounters a task that matches a subagent’s expertise, it can delegate that task to the specialized subagent, which works independently and returns results. 
+
+=== ​ 
+
+Key benefits ===
+
+=== Context preservation ===
+Each subagent operates in its own context, preventing pollution of the main conversation and keeping it focused on high-level objectives. 
+
+=== Specialized expertise ===
+Subagents can be fine-tuned with detailed instructions for specific domains, leading to higher success rates on designated tasks. 
+
+=== Reusability ===
+Once created, subagents can be used across different projects and shared with your team for consistent workflows. 
+
+=== Flexible permissions ===
+Each subagent can have different tool access levels, allowing you to limit powerful tools to specific subagent types. 
+
+=== ​ 
+
+Quick start ===
+To create your first subagent: 
+
+1 
+
+Open the subagents interface 
+Run the following command: 
+/agents 
+
+2 
+
+Select 'Create New Agent' 
+Choose whether to create a project-level or user-level subagent 
+
+3 
+
+Define the subagent 
+Recommended : Generate with Claude first, then customize to make it yours 
+Describe your subagent in detail and when it should be used 
+Select the tools you want to grant access to (or leave blank to inherit all tools) 
+The interface shows all available tools, making selection easy 
+If you’re generating with Claude, you can also edit the system prompt in your own editor by pressing e 
+
+4 
+
+Save and use 
+Your subagent is now available! Claude will use it automatically when appropriate, or you can invoke it explicitly: 
+> Use the code-reviewer subagent to check my recent changes 
+
+=== ​ 
+
+Subagent configuration ===
+
+== ​ 
+
+File locations ==
+Subagents are stored as Markdown files with YAML frontmatter in two possible locations: 
+Type Location Scope Priority Project subagents .claude/agents/ Available in current project Highest User subagents ~/.claude/agents/ Available across all projects Lower When subagent names conflict, project-level subagents take precedence over user-level subagents. 
+
+== ​ 
+
+File format ==
+Each subagent is defined in a Markdown file with this structure: 
+--- name: your-sub-agent-name description: Description of when this subagent should be invoked tools: tool1, tool2, tool3 # Optional - inherits all tools if omitted --- Your subagent's system prompt goes here. This can be multiple paragraphs and should clearly define the subagent's role, capabilities, and approach to solving problems. Include specific instructions, best practices, and any constraints the subagent should follow. 
+
+= ​ 
+
+Configuration fields =
+Field Required Description name Yes Unique identifier using lowercase letters and hyphens description Yes Natural language description of the subagent’s purpose tools No Comma-separated list of specific tools. If omitted, inherits all tools from the main thread 
+== ​ 
+
+Available tools ==
+Subagents can be granted access to any of Claude Code’s internal tools. See the tools documentation for a complete list of available tools. 
+
+Recommended: Use the /agents command to modify tool access - it provides an interactive interface that lists all available tools, including any connected MCP server tools, making it easier to select the ones you need. 
+
+You have two options for configuring tools: 
+Omit the tools field to inherit all tools from the main thread (default), including MCP tools 
+Specify individual to

@@ -1,0 +1,162 @@
+Title: Identity and Access Management - Anthropic
+File: iam.html
+==================================================
+
+Identity and Access Management - Anthropic 
+Anthropic home page English 
+
+Search... 
+
+Search... 
+
+Navigation Administration 
+Identity and Access Management 
+
+Welcome 
+Developer Platform 
+Claude Code 
+Model Context Protocol (MCP) 
+API Reference 
+Resources 
+Release Notes 
+
+Getting started Overview 
+
+Quickstart 
+
+Common workflows 
+
+Build with Claude Code Claude Code SDK 
+
+Subagents 
+
+Claude Code hooks 
+
+GitHub Actions 
+
+Model Context Protocol (MCP) 
+
+Troubleshooting 
+
+Deployment Overview 
+
+Amazon Bedrock 
+
+Google Vertex AI 
+
+Corporate proxy 
+
+LLM gateway 
+
+Development containers 
+
+Administration Advanced installation 
+
+Identity and Access Management 
+
+Security 
+
+Data usage 
+
+Monitoring 
+
+Costs 
+
+Analytics 
+
+Configuration Settings 
+
+Add Claude Code to your IDE 
+
+Terminal configuration 
+
+Memory management 
+
+Status line configuration 
+
+Reference CLI reference 
+
+Interactive mode 
+
+Slash commands 
+
+Hooks reference 
+
+Resources Legal and compliance 
+
+==== ====
+
+=== ​ 
+
+Authentication methods ===
+Setting up Claude Code requires access to Anthropic models. For teams, you can set up Claude Code access in one of three ways: 
+Anthropic API via the Anthropic Console 
+Amazon Bedrock 
+Google Vertex AI 
+
+== ​ 
+
+Anthropic API authentication ==
+To set up Claude Code access for your team via Anthropic API: 
+Use your existing Anthropic Console account or create a new Anthropic Console account 
+You can add users through either method below: Bulk invite users from within the Console (Console -> Settings -> Members -> Invite) 
+Set up SSO 
+
+When inviting users, they need one of the following roles: “Claude Code” role means users can only create Claude Code API keys 
+“Developer” role means users can create any kind of API key 
+
+Each invited user needs to complete these steps: Accept the Console invite 
+Check system requirements 
+Install Claude Code 
+Login with Console account credentials 
+
+== ​ 
+
+Cloud provider authentication ==
+To set up Claude Code access for your team via Bedrock or Vertex: 
+Follow the Bedrock docs or Vertex docs 
+Distribute the environment variables and instructions for generating cloud credentials to your users. Read more about how to manage configuration here . 
+Users can install Claude Code 
+
+=== ​ 
+
+Access control and permissions ===
+We support fine-grained permissions so that you’re able to specify exactly what the agent is allowed to do (e.g. run tests, run linter) and what it is not allowed to do (e.g. update cloud infrastructure). These permission settings can be checked into version control and distributed to all developers in your organization, as well as customized by individual developers. 
+
+== ​ 
+
+Permission system ==
+Claude Code uses a tiered permission system to balance power and safety: 
+Tool Type Example Approval Required ”Yes, don’t ask again” Behavior Read-only File reads, LS, Grep No N/A Bash Commands Shell execution Yes Permanently per project directory and command File Modification Edit/write files Yes Until session end 
+== ​ 
+
+Configuring permissions ==
+You can view & manage Claude Code’s tool permissions with /permissions . This UI lists all permission rules and the settings.json file they are sourced from. 
+Allow rules will allow Claude Code to use the specified tool without further manual approval. 
+Deny rules will prevent Claude Code from using the specified tool. Deny rules take precedence over allow rules. 
+Additional directories extend Claude’s file access to directories beyond the initial working directory. 
+Default mode controls Claude’s permission behavior when encountering new requests. 
+Permission rules use the format: Tool or Tool(optional-specifier) 
+A rule that is just the tool name matches any use of that tool. For example, adding Bash to the list of allow rules would allow Claude Code to use the Bash tool without requiring user approval. 
+
+= ​ 
+
+Permission modes =
+Claude Code supports several permission modes that can be set as the defaultMode in settings files : 
+Mode Description default Standard behavior - prompts for permission on first use of each tool acceptEdits Automatically accepts file edit permissions for the session plan Plan mode - Claude can analyze but not modify files or execute commands bypassPermissions Skips all permission prompts (requires safe environment - see warning below) 
+= ​ 
+
+Working directories =
+By default, Claude has access to files in the directory where it was launched. You can extend this access: 
+During startup : Use --add-dir <path> CLI argument 
+During session : Use /add-dir slash command 
+Persistent configuration : Add to additionalDirectories in settings files 
+Files in additional directories follow the same permission rules as the original working directory - they become readable without prompts, and file editing permissions follow the current permission mode. 
+
+= ​ 
+
+Tool-specific permission rules =
+Some tools support more fine-grained permission controls: 
+Bash 
+Bash(npm run build) Matches the exact Bash command npm run build 
+Bash(np

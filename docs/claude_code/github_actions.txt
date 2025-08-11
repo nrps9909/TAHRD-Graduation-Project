@@ -1,0 +1,192 @@
+Title: Claude Code GitHub Actions - Anthropic
+File: github-actions.html
+==================================================
+
+Claude Code GitHub Actions - Anthropic 
+Anthropic home page English 
+
+Search... 
+
+Search... 
+
+Navigation Build with Claude Code 
+Claude Code GitHub Actions 
+
+Welcome 
+Developer Platform 
+Claude Code 
+Model Context Protocol (MCP) 
+API Reference 
+Resources 
+Release Notes 
+
+Getting started Overview 
+
+Quickstart 
+
+Common workflows 
+
+Build with Claude Code Claude Code SDK 
+
+Subagents 
+
+Claude Code hooks 
+
+GitHub Actions 
+
+Model Context Protocol (MCP) 
+
+Troubleshooting 
+
+Deployment Overview 
+
+Amazon Bedrock 
+
+Google Vertex AI 
+
+Corporate proxy 
+
+LLM gateway 
+
+Development containers 
+
+Administration Advanced installation 
+
+Identity and Access Management 
+
+Security 
+
+Data usage 
+
+Monitoring 
+
+Costs 
+
+Analytics 
+
+Configuration Settings 
+
+Add Claude Code to your IDE 
+
+Terminal configuration 
+
+Memory management 
+
+Status line configuration 
+
+Reference CLI reference 
+
+Interactive mode 
+
+Slash commands 
+
+Hooks reference 
+
+Resources Legal and compliance 
+
+==== ====
+
+Claude Code GitHub Actions brings AI-powered automation to your GitHub workflow. With a simple @claude mention in any PR or issue, Claude can analyze your code, create pull requests, implement features, and fix bugs - all while following your project’s standards. 
+
+Claude Code GitHub Actions is currently in beta. Features and functionality may evolve as we refine the experience. 
+
+Claude Code GitHub Actions is built on top of the Claude Code SDK , which enables programmatic integration of Claude Code into your applications. You can use the SDK to build custom automation workflows beyond GitHub Actions. 
+
+=== ​ 
+
+Why use Claude Code GitHub Actions? ===
+Instant PR creation : Describe what you need, and Claude creates a complete PR with all necessary changes 
+Automated code implementation : Turn issues into working code with a single command 
+Follows your standards : Claude respects your CLAUDE.md guidelines and existing code patterns 
+Simple setup : Get started in minutes with our installer and API key 
+Secure by default : Your code stays on Github’s runners 
+
+=== ​ 
+
+What can Claude do? ===
+Claude Code provides powerful GitHub Actions that transform how you work with code: 
+
+== ​ 
+
+Claude Code Action ==
+This GitHub Action allows you to run Claude Code within your GitHub Actions workflows. You can use this to build any custom workflow on top of Claude Code. 
+View repository → 
+
+== ​ 
+
+Claude Code Action (Base) ==
+The foundation for building custom GitHub workflows with Claude. This extensible framework gives you full access to Claude’s capabilities for creating tailored automation. 
+View repository → 
+
+=== ​ 
+
+Setup ===
+
+=== ​ 
+
+Quick setup ===
+The easiest way to set up this action is through Claude Code in the terminal. Just open claude and run /install-github-app . 
+This command will guide you through setting up the GitHub app and required secrets. 
+
+You must be a repository admin to install the GitHub app and add secrets 
+This quickstart method is only available for direct Anthropic API users. If you’re using AWS Bedrock or Google Vertex AI, please see the Using with AWS Bedrock & Google Vertex AI section. 
+
+=== ​ 
+
+Manual setup ===
+If the /install-github-app command fails or you prefer manual setup, please follow these manual setup instructions: 
+Install the Claude GitHub app to your repository: https://github.com/apps/claude 
+Add ANTHROPIC_API_KEY to your repository secrets ( Learn how to use secrets in GitHub Actions ) 
+Copy the workflow file from examples/claude.yml into your repository’s .github/workflows/ 
+
+After completing either the quickstart or manual setup, test the action by tagging @claude in an issue or PR comment! 
+
+=== ​ 
+
+Example use cases ===
+Claude Code GitHub Actions can help you with a variety of tasks. For complete working examples, see the examples directory . 
+
+== ​ 
+
+Turn issues into PRs ==
+In an issue comment: 
+@claude implement this feature based on the issue description 
+
+Claude will analyze the issue, write the code, and create a PR for review. 
+
+== ​ 
+
+Get implementation help ==
+In a PR comment: 
+@claude how should I implement user authentication for this endpoint? 
+
+Claude will analyze your code and provide specific implementation guidance. 
+
+== ​ 
+
+Fix bugs quickly ==
+In an issue: 
+@claude fix the TypeError in the user dashboard component 
+
+Claude will locate the bug, implement a fix, and create a PR. 
+
+=== ​ 
+
+Best practices ===
+
+== ​ 
+
+CLAUDE.md configuration ==
+Create a CLAUDE.md file in your repository root to define code style guidelines, review criteria, project-specific rules, and preferred patterns. This file guides Claude’s understanding of your project standards. 
+
+== ​ 
+
+Security considerations ==
+
+Never commit API keys directly to your repository! 
+
+Always use GitHub Secrets for API keys: 
+Add your API key as a repository secret named ANTHROPIC_API_KEY 
+Reference it in workflows: anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }} 
+Limit action permissions to only what’s necessary 
+Review Claude’s suggestions before

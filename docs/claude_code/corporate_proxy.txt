@@ -1,0 +1,154 @@
+Title: Corporate proxy configuration - Anthropic
+File: corporate-proxy.html
+==================================================
+
+Corporate proxy configuration - Anthropic 
+Anthropic home page English 
+
+Search... 
+
+Search... 
+
+Navigation Deployment 
+Corporate proxy configuration 
+
+Welcome 
+Developer Platform 
+Claude Code 
+Model Context Protocol (MCP) 
+API Reference 
+Resources 
+Release Notes 
+
+Getting started Overview 
+
+Quickstart 
+
+Common workflows 
+
+Build with Claude Code Claude Code SDK 
+
+Subagents 
+
+Claude Code hooks 
+
+GitHub Actions 
+
+Model Context Protocol (MCP) 
+
+Troubleshooting 
+
+Deployment Overview 
+
+Amazon Bedrock 
+
+Google Vertex AI 
+
+Corporate proxy 
+
+LLM gateway 
+
+Development containers 
+
+Administration Advanced installation 
+
+Identity and Access Management 
+
+Security 
+
+Data usage 
+
+Monitoring 
+
+Costs 
+
+Analytics 
+
+Configuration Settings 
+
+Add Claude Code to your IDE 
+
+Terminal configuration 
+
+Memory management 
+
+Status line configuration 
+
+Reference CLI reference 
+
+Interactive mode 
+
+Slash commands 
+
+Hooks reference 
+
+Resources Legal and compliance 
+
+==== ====
+
+Claude Code supports standard HTTP/HTTPS proxy configurations through environment variables. This allows you to route all Claude Code traffic through your organization’s proxy servers for security, compliance, and monitoring purposes. 
+
+=== ​ 
+
+Basic proxy configuration ===
+
+== ​ 
+
+Environment variables ==
+Claude Code respects standard proxy environment variables: 
+# HTTPS proxy (recommended) export HTTPS_PROXY = https://proxy.example.com:8080 # HTTP proxy (if HTTPS not available) export HTTP_PROXY = http://proxy.example.com:8080 
+
+Claude Code currently does not support the NO_PROXY environment variable. All traffic will be routed through the configured proxy. 
+
+Claude Code does not support SOCKS proxies. 
+
+=== ​ 
+
+Authentication ===
+
+== ​ 
+
+Basic authentication ==
+If your proxy requires basic authentication, include credentials in the proxy URL: 
+export HTTPS_PROXY = http://username:password@proxy.example.com:8080 
+
+Avoid hardcoding passwords in scripts. Use environment variables or secure credential storage instead. 
+
+For proxies requiring advanced authentication (NTLM, Kerberos, etc.), consider using an LLM Gateway service that supports your authentication method. 
+
+== ​ 
+
+SSL certificate issues ==
+If your proxy uses custom SSL certificates, you may encounter certificate errors. 
+Ensure that you set the correct certificate bundle path: 
+export SSL_CERT_FILE = /path/to/certificate-bundle.crt export NODE_EXTRA_CA_CERTS = /path/to/certificate-bundle.crt 
+
+=== ​ 
+
+Network access requirements ===
+Claude Code requires access to the following URLs: 
+api.anthropic.com - Claude API endpoints 
+statsig.anthropic.com - Telemetry and metrics 
+sentry.io - Error reporting 
+Ensure these URLs are allowlisted in your proxy configuration and firewall rules. This is especially important when using Claude Code in containerized or restricted network environments. 
+
+=== ​ 
+
+Additional resources ===
+Claude Code settings 
+Environment variables reference 
+Troubleshooting guide 
+
+Was this page helpful? 
+Yes No 
+
+Google Vertex AI LLM gateway 
+
+On this page 
+Basic proxy configuration 
+Environment variables 
+Authentication 
+Basic authentication 
+SSL certificate issues 
+Network access requirements 
+Additional resources

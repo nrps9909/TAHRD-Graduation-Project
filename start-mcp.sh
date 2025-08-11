@@ -54,6 +54,8 @@ rm -rf backend/logs/* 2>/dev/null || true
 # 確保日誌目錄存在
 mkdir -p backend/logs
 mkdir -p backend/logs/gemini-tracking
+# 確保記憶目錄存在
+mkdir -p backend/memories/shared
 # 創建空的日誌檔案，避免寫入時出錯
 touch backend/logs/mcp_server.log
 touch backend/logs/backend.log

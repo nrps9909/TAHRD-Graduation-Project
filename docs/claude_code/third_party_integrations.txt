@@ -1,0 +1,188 @@
+Title: Enterprise deployment overview - Anthropic
+File: third-party-integrations.html
+==================================================
+
+Enterprise deployment overview - Anthropic 
+Anthropic home page English 
+
+Search... 
+
+Search... 
+
+Navigation Deployment 
+Enterprise deployment overview 
+
+Welcome 
+Developer Platform 
+Claude Code 
+Model Context Protocol (MCP) 
+API Reference 
+Resources 
+Release Notes 
+
+Getting started Overview 
+
+Quickstart 
+
+Common workflows 
+
+Build with Claude Code Claude Code SDK 
+
+Subagents 
+
+Claude Code hooks 
+
+GitHub Actions 
+
+Model Context Protocol (MCP) 
+
+Troubleshooting 
+
+Deployment Overview 
+
+Amazon Bedrock 
+
+Google Vertex AI 
+
+Corporate proxy 
+
+LLM gateway 
+
+Development containers 
+
+Administration Advanced installation 
+
+Identity and Access Management 
+
+Security 
+
+Data usage 
+
+Monitoring 
+
+Costs 
+
+Analytics 
+
+Configuration Settings 
+
+Add Claude Code to your IDE 
+
+Terminal configuration 
+
+Memory management 
+
+Status line configuration 
+
+Reference CLI reference 
+
+Interactive mode 
+
+Slash commands 
+
+Hooks reference 
+
+Resources Legal and compliance 
+
+==== ====
+
+This page provides an overview of available deployment options and helps you choose the right configuration for your organization. 
+
+=== ​ 
+
+Provider comparison ===
+Feature Anthropic Amazon Bedrock Google Vertex AI Regions Supported countries Multiple AWS regions Multiple GCP regions Prompt caching Enabled by default Enabled by default Enabled by default Authentication API key AWS credentials (IAM) GCP credentials (OAuth/Service Account) Cost tracking Dashboard AWS Cost Explorer GCP Billing Enterprise features Teams, usage monitoring IAM policies, CloudTrail IAM roles, Cloud Audit Logs 
+=== ​ 
+
+Cloud providers ===
+
+=== Amazon Bedrock ===
+Use Claude models through AWS infrastructure with IAM-based authentication and AWS-native monitoring 
+
+=== Google Vertex AI ===
+Access Claude models via Google Cloud Platform with enterprise-grade security and compliance 
+
+=== ​ 
+
+Corporate infrastructure ===
+
+=== Corporate Proxy ===
+Configure Claude Code to work with your organization’s proxy servers and SSL/TLS requirements 
+
+=== LLM Gateway ===
+Deploy centralized model access with usage tracking, budgeting, and audit logging 
+
+=== ​ 
+
+Configuration overview ===
+Claude Code supports flexible configuration options that allow you to combine different providers and infrastructure: 
+
+Understand the difference between: 
+Corporate proxy : An HTTP/HTTPS proxy for routing traffic (set via HTTPS_PROXY or HTTP_PROXY ) 
+LLM Gateway : A service that handles authentication and provides provider-compatible endpoints (set via ANTHROPIC_BASE_URL , ANTHROPIC_BEDROCK_BASE_URL , or ANTHROPIC_VERTEX_BASE_URL ) 
+Both configurations can be used in tandem. 
+
+== ​ 
+
+Using Bedrock with corporate proxy ==
+Route Bedrock traffic through a corporate HTTP/HTTPS proxy: 
+# Enable Bedrock export CLAUDE_CODE_USE_BEDROCK = 1 export AWS_REGION = us-east-1 # Configure corporate proxy export HTTPS_PROXY = 'https://proxy.example.com:8080' 
+
+== ​ 
+
+Using Bedrock with LLM Gateway ==
+Use a gateway service that provides Bedrock-compatible endpoints: 
+# Enable Bedrock export CLAUDE_CODE_USE_BEDROCK = 1 # Configure LLM gateway export ANTHROPIC_BEDROCK_BASE_URL = 'https://your-llm-gateway.com/bedrock' export CLAUDE_CODE_SKIP_BEDROCK_AUTH = 1 # If gateway handles AWS auth 
+
+== ​ 
+
+Using Vertex AI with corporate proxy ==
+Route Vertex AI traffic through a corporate HTTP/HTTPS proxy: 
+# Enable Vertex export CLAUDE_CODE_USE_VERTEX = 1 export CLOUD_ML_REGION = us-east5 export ANTHROPIC_VERTEX_PROJECT_ID = your-project-id # Configure corporate proxy export HTTPS_PROXY = 'https://proxy.example.com:8080' 
+
+== ​ 
+
+Using Vertex AI with LLM Gateway ==
+Combine Google Vertex AI models with an LLM gateway for centralized management: 
+# Enable Vertex export CLAUDE_CODE_USE_VERTEX = 1 # Configure LLM gateway export ANTHROPIC_VERTEX_BASE_URL = 'https://your-llm-gateway.com/vertex' export CLAUDE_CODE_SKIP_VERTEX_AUTH = 1 # If gateway handles GCP auth 
+
+== ​ 
+
+Authentication configuration ==
+Claude Code uses the ANTHROPIC_AUTH_TOKEN for the Authorization header when needed. The SKIP_AUTH flags ( CLAUDE_CODE_SKIP_BEDROCK_AUTH , CLAUDE_CODE_SKIP_VERTEX_AUTH ) are used in LLM gateway scenarios where the gateway handles provider authentication. 
+
+=== ​ 
+
+Choosing the right deployment configuration ===
+Consider these factors when selecting your deployment approach: 
+
+== ​ 
+
+Direct provider access ==
+Best for organizations that: 
+Want the simplest setup 
+Have existing AWS or GCP infrastructure 
+Need provider-native monitoring and compliance 
+
+== ​ 
+
+Corporate proxy ==
+Best for organizations that: 
+Have existing corporate proxy requirements 
+Need traffic monitoring and compliance 
+Must route all traffic through specific network paths 
+
+== ​ 
+
+LLM Gateway ==
+Best for organizations that: 
+Need usage tracking across teams 
+Want to dynamically switch between models 
+Require custom rate limiting or budgets 
+Need centralized authentication management 
+
+=== ​ 
+
+Debugging ===
+When debugging your deployment: 
+Use the claude /status slash command . This comman

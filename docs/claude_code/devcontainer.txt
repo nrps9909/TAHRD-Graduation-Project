@@ -1,0 +1,183 @@
+Title: Development containers - Anthropic
+File: devcontainer.html
+==================================================
+
+Development containers - Anthropic 
+Anthropic home page English 
+
+Search... 
+
+Search... 
+
+Navigation Deployment 
+Development containers 
+
+Welcome 
+Developer Platform 
+Claude Code 
+Model Context Protocol (MCP) 
+API Reference 
+Resources 
+Release Notes 
+
+Getting started Overview 
+
+Quickstart 
+
+Common workflows 
+
+Build with Claude Code Claude Code SDK 
+
+Subagents 
+
+Claude Code hooks 
+
+GitHub Actions 
+
+Model Context Protocol (MCP) 
+
+Troubleshooting 
+
+Deployment Overview 
+
+Amazon Bedrock 
+
+Google Vertex AI 
+
+Corporate proxy 
+
+LLM gateway 
+
+Development containers 
+
+Administration Advanced installation 
+
+Identity and Access Management 
+
+Security 
+
+Data usage 
+
+Monitoring 
+
+Costs 
+
+Analytics 
+
+Configuration Settings 
+
+Add Claude Code to your IDE 
+
+Terminal configuration 
+
+Memory management 
+
+Status line configuration 
+
+Reference CLI reference 
+
+Interactive mode 
+
+Slash commands 
+
+Hooks reference 
+
+Resources Legal and compliance 
+
+==== ====
+
+The reference devcontainer setup and associated Dockerfile offer a preconfigured development container that you can use as is, or customize for your needs. This devcontainer works with the Visual Studio Code Dev Containers extension and similar tools. 
+The container’s enhanced security measures (isolation and firewall rules) allow you to run claude --dangerously-skip-permissions to bypass permission prompts for unattended operation. 
+
+While the devcontainer provides substantial protections, no system is completely immune to all attacks.
+When executed with --dangerously-skip-permissions , devcontainers do not prevent a malicious project from exfiltrating anything accessible in the devcontainer including Claude Code credentials.
+We recommend only using devcontainers when developing with trusted repositories.
+Always maintain good security practices and monitor Claude’s activities. 
+
+=== ​ 
+
+Key features ===
+Production-ready Node.js : Built on Node.js 20 with essential development dependencies 
+Security by design : Custom firewall restricting network access to only necessary services 
+Developer-friendly tools : Includes git, ZSH with productivity enhancements, fzf, and more 
+Seamless VS Code integration : Pre-configured extensions and optimized settings 
+Session persistence : Preserves command history and configurations between container restarts 
+Works everywhere : Compatible with macOS, Windows, and Linux development environments 
+
+=== ​ 
+
+Getting started in 4 steps ===
+Install VS Code and the Remote - Containers extension 
+Clone the Claude Code reference implementation repository 
+Open the repository in VS Code 
+When prompted, click “Reopen in Container” (or use Command Palette: Cmd+Shift+P → “Remote-Containers: Reopen in Container”) 
+
+=== ​ 
+
+Configuration breakdown ===
+The devcontainer setup consists of three primary components: 
+devcontainer.json : Controls container settings, extensions, and volume mounts 
+Dockerfile : Defines the container image and installed tools 
+init-firewall.sh : Establishes network security rules 
+
+=== ​ 
+
+Security features ===
+The container implements a multi-layered security approach with its firewall configuration: 
+Precise access control : Restricts outbound connections to whitelisted domains only (npm registry, GitHub, Anthropic API, etc.) 
+Allowed outbound connections : The firewall permits outbound DNS and SSH connections 
+Default-deny policy : Blocks all other external network access 
+Startup verification : Validates firewall rules when the container initializes 
+Isolation : Creates a secure development environment separated from your main system 
+
+=== ​ 
+
+Customization options ===
+The devcontainer configuration is designed to be adaptable to your needs: 
+Add or remove VS Code extensions based on your workflow 
+Modify resource allocations for different hardware environments 
+Adjust network access permissions 
+Customize shell configurations and developer tooling 
+
+=== ​ 
+
+Example use cases ===
+
+== ​ 
+
+Secure client work ==
+Use devcontainers to isolate different client projects, ensuring code and credentials never mix between environments. 
+
+== ​ 
+
+Team onboarding ==
+New team members can get a fully configured development environment in minutes, with all necessary tools and settings pre-installed. 
+
+== ​ 
+
+Consistent CI/CD environments ==
+Mirror your devcontainer configuration in CI/CD pipelines to ensure development and production environments match. 
+
+=== ​ 
+
+Related resources ===
+VS Code devcontainers documentation 
+Claude Code security best practices 
+Corporate proxy configuration 
+
+Was this page helpful? 
+Yes No 
+
+LLM gateway Advanced installation 
+
+On this page 
+Key features 
+Getting started in 4 steps 
+Configuration breakdown 
+Security features 
+Customization options 
+Example use cases 
+Secure client work 
+Team onboarding 
+Consistent CI/CD environments 
+Related resources

@@ -18,7 +18,7 @@
   width: 100vw;
   height: 100vh;
   z-index: var(--z-game-canvas);
-  background: #000000; /* 確保沒有透明區域 */
+  background: linear-gradient(to bottom, #87CEEB, #98FB98); /* Sky gradient for debugging */
 }
 
 /* UI Layer - 不使用 pointer-events-none */

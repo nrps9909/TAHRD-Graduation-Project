@@ -3,8 +3,7 @@
 /* Primary font face definition - 華康新綜藝體 */
 @font-face {
   font-family: 'GameFont';
-  src: url('/fonts/font-0.woff2') format('woff2'),
-       url('/fonts/font-0.ttf') format('truetype');
+  src: url('/fonts/font.TTC') format('truetype-collection');
   font-weight: 100 900;
   font-style: normal;
   font-display: swap;
@@ -14,8 +13,7 @@
 /* Fallback font face definition - 華康新綜藝體(P) */
 @font-face {
   font-family: 'GameFont-P';
-  src: url('/fonts/font-1.woff2') format('woff2'),
-       url('/fonts/font-1.ttf') format('truetype');
+  src: url('/fonts/font.TTC') format('truetype-collection');
   font-weight: 100 900;
   font-style: normal;
   font-display: swap;

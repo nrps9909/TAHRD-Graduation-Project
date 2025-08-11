@@ -1,0 +1,179 @@
+Title: Claude Code SDK - Anthropic
+File: sdk.html
+==================================================
+
+Claude Code SDK - Anthropic 
+Anthropic home page English 
+
+Search... 
+
+Search... 
+
+Navigation Build with Claude Code 
+Claude Code SDK 
+
+Welcome 
+Developer Platform 
+Claude Code 
+Model Context Protocol (MCP) 
+API Reference 
+Resources 
+Release Notes 
+
+Getting started Overview 
+
+Quickstart 
+
+Common workflows 
+
+Build with Claude Code Claude Code SDK 
+
+Subagents 
+
+Claude Code hooks 
+
+GitHub Actions 
+
+Model Context Protocol (MCP) 
+
+Troubleshooting 
+
+Deployment Overview 
+
+Amazon Bedrock 
+
+Google Vertex AI 
+
+Corporate proxy 
+
+LLM gateway 
+
+Development containers 
+
+Administration Advanced installation 
+
+Identity and Access Management 
+
+Security 
+
+Data usage 
+
+Monitoring 
+
+Costs 
+
+Analytics 
+
+Configuration Settings 
+
+Add Claude Code to your IDE 
+
+Terminal configuration 
+
+Memory management 
+
+Status line configuration 
+
+Reference CLI reference 
+
+Interactive mode 
+
+Slash commands 
+
+Hooks reference 
+
+Resources Legal and compliance 
+
+==== ====
+
+=== ​ 
+
+Why use the Claude Code SDK? ===
+The Claude Code SDK provides all the building blocks you need to build production-ready agents: 
+Optimized Claude integration : Automatic prompt caching and
+performance optimizations 
+Rich tool ecosystem : File operations, code execution, web search, and
+MCP extensibility 
+Advanced permissions : Fine-grained control over agent capabilities 
+Production essentials : Built-in error handling, session management, and
+monitoring 
+
+=== ​ 
+
+What can you build with the SDK? ===
+Here are some example agent types you can create: 
+Coding agents: 
+SRE agents that diagnose and fix production issues 
+Security review bots that audit code for vulnerabilities 
+Oncall engineering assistants that triage incidents 
+Code review agents that enforce style and best practices 
+Business agents: 
+Legal assistants that review contracts and compliance 
+Finance advisors that analyze reports and forecasts 
+Customer support agents that resolve technical issues 
+Content creation assistants for marketing teams 
+The SDK is currently available in TypeScript and Python, with a command line interface (CLI) for quick prototyping. 
+
+=== ​ 
+
+Quick start ===
+Get your first agent running in under 5 minutes: 
+
+1 
+
+Install the SDK 
+Command line 
+TypeScript 
+Python 
+Install @anthropic-ai/claude-code from NPM: 
+npm install -g @anthropic-ai/claude-code 
+
+Install @anthropic-ai/claude-code from NPM: 
+npm install -g @anthropic-ai/claude-code 
+
+Install @anthropic-ai/claude-code from NPM: 
+npm install -g @anthropic-ai/claude-code 
+
+Install claude-code-sdk from PyPI and @anthropic-ai/claude-code from NPM: 
+pip install claude-code-sdk npm install -g @anthropic-ai/claude-code # Required dependency 
+
+(Optional) Install IPython for interactive development: 
+pip install ipython 
+
+2 
+
+Set your API key 
+Get your API key from the Anthropic Console and set the ANTHROPIC_API_KEY environment variable: 
+export ANTHROPIC_API_KEY = "your-api-key-here" 
+
+3 
+
+Create your first agent 
+Create one of these example agents: 
+Command line 
+TypeScript 
+Python 
+# Create a simple legal assistant claude -p "Review this contract clause for potential issues: 'The party agrees to unlimited liability...'" \ --append-system-prompt "You are a legal assistant. Identify risks and suggest improvements." 
+
+# Create a simple legal assistant claude -p "Review this contract clause for potential issues: 'The party agrees to unlimited liability...'" \ --append-system-prompt "You are a legal assistant. Identify risks and suggest improvements." 
+
+// legal-agent.ts import { query } from "@anthropic-ai/claude-code" ; // Create a simple legal assistant for await ( const message of query ( { prompt : "Review this contract clause for potential issues: 'The party agrees to unlimited liability...'" , options : { systemPrompt : "You are a legal assistant. Identify risks and suggest improvements." , maxTurns : 2 } } ) ) { if ( message . type === "result" ) { console . log ( message . result ) ; } } 
+
+# legal-agent.py import asyncio from claude_code_sdk import ClaudeSDKClient , ClaudeCodeOptions async def main ( ) : async with ClaudeSDKClient ( options = ClaudeCodeOptions ( system_prompt = "You are a legal assistant. Identify risks and suggest improvements." , max_turns = 2 ) ) as client : # Send the query await client . query ( "Review this contract clause for potential issues: 'The party agrees to unlimited liability...'" ) # Stream the response async for message in client . receive_response ( ) : if hasattr ( message , 'content' ) : # Print streaming content as it arrives for block in message . content : if hasattr ( block , 'text' ) : print ( block . text , end = '' , flush = True ) if __name__ == "__main__" : asyncio . run ( main ( ) ) 
+
+4 
+
+Run the agent 
+Command line 
+TypeScript 
+Python 
+Copy and paste the command above directly into your terminal. 
+
+Copy and paste the command above directly into your terminal. 
+
+Set up project: 
+npm init -y npm install @anthropic-ai/claude-code tsx 
+
+Add "type": "module" to your package.json 
+
+Save the cod

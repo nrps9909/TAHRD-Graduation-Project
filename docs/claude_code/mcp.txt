@@ -1,0 +1,194 @@
+Title: Connect Claude Code to tools via MCP - Anthropic
+File: mcp.html
+==================================================
+
+Connect Claude Code to tools via MCP - Anthropic 
+Anthropic home page English 
+
+Search... 
+
+Search... 
+
+Navigation Build with Claude Code 
+Connect Claude Code to tools via MCP 
+
+Welcome 
+Developer Platform 
+Claude Code 
+Model Context Protocol (MCP) 
+API Reference 
+Resources 
+Release Notes 
+
+Getting started Overview 
+
+Quickstart 
+
+Common workflows 
+
+Build with Claude Code Claude Code SDK 
+
+Subagents 
+
+Claude Code hooks 
+
+GitHub Actions 
+
+Model Context Protocol (MCP) 
+
+Troubleshooting 
+
+Deployment Overview 
+
+Amazon Bedrock 
+
+Google Vertex AI 
+
+Corporate proxy 
+
+LLM gateway 
+
+Development containers 
+
+Administration Advanced installation 
+
+Identity and Access Management 
+
+Security 
+
+Data usage 
+
+Monitoring 
+
+Costs 
+
+Analytics 
+
+Configuration Settings 
+
+Add Claude Code to your IDE 
+
+Terminal configuration 
+
+Memory management 
+
+Status line configuration 
+
+Reference CLI reference 
+
+Interactive mode 
+
+Slash commands 
+
+Hooks reference 
+
+Resources Legal and compliance 
+
+==== ====
+
+Claude Code can connect to hundreds of external tools and data sources through the Model Context Protocol (MCP) , an open-source standard for AI-tool integrations. MCP servers give Claude Code access to your tools, databases, and APIs. 
+
+=== ​ 
+
+What you can do with MCP ===
+With MCP servers connected, you can ask Claude Code to: 
+Implement features from issue trackers : “Add the feature described in JIRA issue ENG-4521 and create a PR on GitHub.” 
+Analyze monitoring data : “Check Sentry and Statsig to check the usage of the feature described in ENG-4521.” 
+Query databases : “Find emails of 10 random users who used feature ENG-4521, based on our Postgres database.” 
+Integrate designs : “Update our standard email template based on the new Figma designs that were posted in Slack” 
+Automate workflows : “Create Gmail drafts inviting these 10 users to a feedback session about the new feature.” 
+
+=== ​ 
+
+Popular MCP servers ===
+Here are some commonly used MCP servers you can connect to Claude Code: 
+
+Use third party MCP servers at your own risk - Anthropic has not verified
+the correctness or security of all these servers.
+Make sure you trust MCP servers you are installing.
+Be especially careful when using MCP servers that could fetch untrusted
+content, as these can expose you to prompt injection risk. 
+
+== Development & Testing Tools ==
+Sentry 
+Monitor errors, debug production issues 
+Command 
+claude mcp add --transport http sentry https://mcp.sentry.dev/mcp 
+
+Socket 
+Security analysis for dependencies 
+Command 
+claude mcp add --transport http socket https://mcp.socket.dev/ 
+
+== Project Management & Documentation ==
+Asana 
+Interact with your Asana workspace to keep projects on track 
+Command 
+claude mcp add --transport sse asana https://mcp.asana.com/sse 
+
+Atlassian 
+Manage your Jira tickets and Confluence docs 
+Command 
+claude mcp add --transport sse atlassian https://mcp.atlassian.com/v1/sse 
+
+ClickUp 
+Task management, project tracking 
+Command 
+claude mcp add clickup --env CLICKUP_API_KEY=YOUR_KEY --env CLICKUP_TEAM_ID=YOUR_ID -- npx -y @hauptsache.net/clickup-mcp 
+
+Intercom 
+Access real-time customer conversations, tickets, and user data 
+Command 
+claude mcp add --transport http intercom https://mcp.intercom.com/mcp 
+
+Linear 
+Integrate with Linear's issue tracking and project management 
+Command 
+claude mcp add --transport sse linear https://mcp.linear.app/sse 
+
+Notion 
+Read docs, update pages, manage tasks 
+Command 
+claude mcp add --transport http notion https://mcp.notion.com/mcp 
+
+== Databases & Data Management ==
+Airtable 
+Read/write records, manage bases and tables 
+Command 
+claude mcp add airtable --env AIRTABLE_API_KEY=YOUR_KEY -- npx -y airtable-mcp-server 
+
+== Payments & Commerce ==
+PayPal 
+Integrate PayPal commerce capabilities, payment processing, transaction management 
+Command 
+claude mcp add --transport http paypal https://mcp.paypal.com/mcp 
+
+Plaid 
+Analyze, troubleshoot, and optimize Plaid integrations. Banking data, financial account linking 
+Command 
+claude mcp add --transport sse plaid https://api.dashboard.plaid.com/mcp/sse 
+
+Square 
+Use an agent to build on Square APIs. Payments, inventory, orders, and more 
+Command 
+claude mcp add --transport sse square https://mcp.squareup.com/sse 
+
+Stripe 
+Payment processing, subscription management, and financial transactions 
+Command 
+claude mcp add --transport http stripe https://mcp.stripe.com 
+
+== Design & Media ==
+Figma 
+Access designs, export assets Requires Figma Desktop with Dev Mode MCP Server 
+Command 
+claude mcp add --transport sse figma http://127.0.0.1:3845/sse 
+
+invideo 
+Build video creation capabilities into your applications 
+Command 
+claude mcp add --transport sse invideo https://mcp.invideo.io/sse 
+
+== Infrastructure & DevOps ==
+Cloudflare 
+Build applications, analyze traffic, monitor performance, and manage security settings through Cloudflare Multiple services available. See documentation for specific server URLs. Claude Code can use the Cloudflare CLI if installed.
