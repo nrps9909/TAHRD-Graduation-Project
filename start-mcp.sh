@@ -11,17 +11,13 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-# 檢查環境變數
+# 檢查環境變數（無金鑰則警告但不中止，允許先啟動）
 if [ -z "$GEMINI_API_KEY" ]; then
     if [ -f .env ]; then
         source .env
     fi
-    
     if [ -z "$GEMINI_API_KEY" ] || [ "$GEMINI_API_KEY" = "your-api-key" ]; then
-        echo -e "${RED}❌ GEMINI_API_KEY 未設置${NC}"
-        echo "請在 .env 檔案中設置："
-        echo "GEMINI_API_KEY=\"your-actual-api-key\""
-        exit 1
+        echo -e "${YELLOW}⚠️ GEMINI_API_KEY 未設置，MCP 生成功能可能無法使用。先啟動服務，之後可再補上金鑰。${NC}"
     fi
 fi
 
@@ -42,7 +38,12 @@ fi
 if sudo service redis-server start; then
   :
 else
-  echo -e "${YELLOW}⚠️ 無法啟動 Redis，WSL 可能未啟用 systemd。請改用 docker compose 啟動 Redis。${NC}"
+  echo -e "${YELLOW}⚠️ 無法啟動 Redis 服務，嘗試使用守護行程啟動 redis-server...${NC}"
+  if command -v redis-server >/dev/null 2>&1; then
+    redis-server --daemonize yes || true
+  else
+    echo -e "${YELLOW}⚠️ 系統未找到 redis-server，可改用 docker compose 或重新執行 install-deps.sh${NC}"
+  fi
 fi
 echo -e "${GREEN}✅ 資料庫服務處理完成${NC}"
 
@@ -74,8 +75,14 @@ sleep 1
 # 啟動 MCP 服務器
 echo -e "${BLUE}=== 啟動 MCP 服務器 ===${NC}"
 cd backend
-nohup python3 mcp_server.py > logs/mcp_server.log 2>&1 &
-MCP_PID=$!
+if command -v gemini >/dev/null 2>&1; then
+  nohup python3 mcp_server.py > logs/mcp_server.log 2>&1 &
+  MCP_PID=$!
+else
+  echo -e "${YELLOW}⚠️ 未偵測到 gemini CLI，MCP 服務可能無法正常回應，請執行：npm i -g @google/gemini-cli${NC}"
+  nohup python3 mcp_server.py > logs/mcp_server.log 2>&1 &
+  MCP_PID=$!
+fi
 cd ..
 
 # 等待 MCP 服務就緒

@@ -23,7 +23,7 @@ sudo apt update
 # 基本工具
 echo ""
 echo "安裝基本工具..."
-sudo apt install -y curl wget git build-essential
+sudo apt install -y curl wget git build-essential python3-dev gnupg ca-certificates
 
 # Python 和 pip
 echo ""
@@ -47,26 +47,25 @@ echo ""
 echo "安裝 Redis..."
 sudo apt install -y redis-server
 
-# Node.js (使用 NodeSource 倉庫)
+# Node.js (使用 nvm 官方安裝流程)
 echo ""
-echo "安裝 Node.js..."
-if ! command -v node &> /dev/null; then
-    curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-    sudo apt install -y nodejs
-else
-    echo -e "${GREEN}✓ Node.js 已安裝${NC}"
+echo "安裝 Node.js (nvm)..."
+export NVM_DIR="$HOME/.nvm"
+if [ ! -s "$NVM_DIR/nvm.sh" ]; then
+  curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
 fi
+# 載入 nvm（同一個 shell 立即生效）
+if [ -s "$NVM_DIR/nvm.sh" ]; then
+  . "$NVM_DIR/nvm.sh"
+fi
+# 安裝並使用 Node 22（可自行調整為 LTS）
+nvm install 22
+nvm use 22
+nvm alias default 22
+echo -e "${GREEN}✓ Node.js 已安裝：$(node -v) / npm：$(npm -v)${NC}"
 
-# 決定可用的 npm 執行檔（統一後續全域安裝使用）
-if command -v npm &> /dev/null; then
-    NPM_BIN="$(command -v npm)"
-elif command -v /usr/bin/npm &> /dev/null; then
-    NPM_BIN="/usr/bin/npm"
-else
-    echo "安裝 npm..."
-    sudo apt install -y npm || true
-    NPM_BIN="$(command -v npm || echo npm)"
-fi
+# 使用 nvm 的 npm 作為全域安裝工具
+NPM_BIN="$(command -v npm)"
 
 # ============ Python 套件安裝（系統環境 + requirements） ============
 echo ""
@@ -77,10 +76,10 @@ echo ""
 export PIP_BREAK_SYSTEM_PACKAGES=1
 
 echo "升級 pip..."
-sudo -H python3 -m pip install --upgrade pip --break-system-packages || true
+sudo -H python3 -m pip install --upgrade pip --break-system-packages --ignore-installed || true
 
 echo "從 backend/requirements.txt 安裝套件（系統環境）..."
-sudo -H python3 -m pip install --break-system-packages -r backend/requirements.txt
+sudo -H python3 -m pip install --break-system-packages --upgrade --ignore-installed -r backend/requirements.txt || true
 
 # ============ Gemini CLI 安裝（npm） ============
 echo ""
@@ -89,7 +88,7 @@ echo ""
 
 if ! command -v gemini &> /dev/null; then
     echo "使用 npm 安裝 Gemini CLI (@google/gemini-cli)..."
-    sudo -H "$NPM_BIN" install -g @google/gemini-cli || {
+    "$NPM_BIN" install -g @google/gemini-cli || {
         echo -e "${YELLOW}⚠️ npm 安裝失敗，請確認 npm 已安裝且 PATH 正確${NC}";
     }
 else
@@ -103,19 +102,19 @@ echo ""
 
 # TypeScript
 echo "安裝 TypeScript..."
-sudo -H "$NPM_BIN" install -g typescript || true
+"$NPM_BIN" install -g typescript || true
 
 # ts-node
 echo "安裝 ts-node..."
-sudo -H "$NPM_BIN" install -g ts-node || true
+"$NPM_BIN" install -g ts-node || true
 
 # nodemon
 echo "安裝 nodemon..."
-sudo -H "$NPM_BIN" install -g nodemon || true
+"$NPM_BIN" install -g nodemon || true
 
 # Prisma CLI
 echo "安裝 Prisma CLI..."
-sudo -H "$NPM_BIN" install -g prisma || true
+"$NPM_BIN" install -g prisma || true
 
 # ============ 專案依賴安裝 ============
 echo ""
@@ -155,7 +154,21 @@ echo -e "${BLUE}=== 設定資料庫 ===${NC}"
 echo ""
 
 echo "啟動 PostgreSQL..."
+PG_STARTED=0
 if sudo service postgresql start; then
+    PG_STARTED=1
+else
+    # WSL 無 systemd 時，改用 pg_ctlcluster 啟動
+    if command -v pg_lsclusters >/dev/null 2>&1; then
+        CL_INFO=$(pg_lsclusters 2>/dev/null | awk 'NR==2{print $1" "$2}')
+        if [ -n "$CL_INFO" ]; then
+            PG_VER=$(echo "$CL_INFO" | awk '{print $1}')
+            PG_NAME=$(echo "$CL_INFO" | awk '{print $2}')
+            sudo pg_ctlcluster "$PG_VER" "$PG_NAME" start && PG_STARTED=1 || true
+        fi
+    fi
+fi
+if [ "$PG_STARTED" -eq 1 ]; then
     echo "設定資料庫用戶/資料庫..."
     # 建立資料庫（存在則略過）
     if ! sudo -u postgres psql -tc "SELECT 1 FROM pg_database WHERE datname='heart_whisper_town'" | grep -q 1; then
@@ -175,6 +188,19 @@ else
 fi
 
 echo -e "${GREEN}✅ 資料庫設定完成${NC}"
+
+# ============ Prisma 同步與種子資料 ============
+if [ -d "backend" ]; then
+  echo ""
+  echo -e "${BLUE}=== Prisma 資料庫同步與種子資料 ===${NC}"
+  export DATABASE_URL=postgresql://postgres:password123@localhost:5432/heart_whisper_town
+  cd backend
+  npx prisma generate || true
+  npx prisma db push || true
+  npm run db:seed || true
+  cd ..
+  echo -e "${GREEN}✅ Prisma 已同步並嘗試寫入初始資料${NC}"
+fi
 
 # ============ 創建目錄結構 ============
 echo ""
