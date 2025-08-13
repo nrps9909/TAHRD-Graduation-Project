@@ -1,0 +1,38 @@
+[
+  {
+    "timestamp": "2025-08-07T15:05:17.326572",
+    "player_message": "你好，沉停鞍",
+    "npc_response": "你好...今天的風很溫柔呢，就像在輕輕地擁抱著我們。",
+    "emotion": "neutral"
+  },
+  {
+    "timestamp": "2025-08-11T15:52:56.679552",
+    "player_message": "陳廷安你在幹嘛",
+    "npc_response": "讓我用另一個角度來看...",
+    "emotion": "neutral"
+  },
+  {
+    "timestamp": "2025-08-11T15:53:05.511922",
+    "player_message": "為甚麼",
+    "npc_response": "欸，為什麼什麼啊？你說清楚一點嘛，不然我怎麼知道你在問什麼呢？",
+    "emotion": "neutral"
+  },
+  {
+    "timestamp": "2025-08-11T15:53:19.947994",
+    "player_message": "我洗輾",
+    "npc_response": "欸，你說「洗輾」是什麼意思啊？是洗東西洗得很用力，還是有什麼特別的說法嗎？我有點好奇耶！",
+    "emotion": "positive"
+  },
+  {
+    "timestamp": "2025-08-11T15:53:57.505161",
+    "player_message": "我喜歡你",
+    "npc_response": "欸，真的嗎？聽到你這麼說，我心裡暖暖的，謝謝你喜歡我呀！",
+    "emotion": "positive"
+  },
+  {
+    "timestamp": "2025-08-11T16:09:35.447000",
+    "player_message": "早安",
+    "npc_response": "有意思，這讓我想到了一個想法...",
+    "emotion": "neutral"
+  }
+]

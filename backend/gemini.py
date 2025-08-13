@@ -1,18 +1,24 @@
 #!/usr/bin/env python3
 """
-心語小鎮 NPC 對話生成服務
-使用 Gemini API 生成個性化的 NPC 對話回應
+心語小鎮 NPC 對話生成服務 - 優化版
+創建完全隔離的臨時執行環境，避免 Gemini CLI 掃描無關檔案
+整合長短期記憶管理系統
 """
 
 import os
 import json
 import subprocess
-from datetime import datetime
-import logging
-from typing import Optional, Dict, Any
-
-# 設定日誌 - 輸出到 stderr 以避免干擾 stdout
+import shutil
+import tempfile
+import hashlib
 import sys
+import asyncio
+from datetime import datetime
+from pathlib import Path
+import logging
+from memory_manager import MemoryManager
+
+# 設定日誌
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -20,10 +26,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# 嘗試載入 python-dotenv - 從根目錄載入
+# 嘗試載入 python-dotenv
 try:
     from dotenv import load_dotenv
-    # 載入根目錄的 .env 文件
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     env_path = os.path.join(project_root, '.env')
     load_dotenv(env_path)
@@ -35,10 +40,6 @@ except Exception as e:
 
 # 配置常數
 GEMINI_CLI_COMMAND = "gemini"
-LOG_FILE = "gemini_usage_log.json"
-
-# 超時設定
-CLI_VERSION_TIMEOUT = 10
 CLI_EXECUTION_TIMEOUT = 120
 
 # 從環境變數讀取 API 金鑰
@@ -47,11 +48,10 @@ GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 # 如果沒有從環境變數讀到，嘗試直接從 .env 檔案讀取
 if not GEMINI_API_KEY:
     try:
-        # 優先檢查 backend 目錄的 .env 文件
         backend_dir = os.path.dirname(os.path.abspath(__file__))
         env_paths = [
-            os.path.join(backend_dir, '.env'),  # backend/.env
-            os.path.join(os.path.dirname(backend_dir), '.env')  # 根目錄 .env
+            os.path.join(backend_dir, '.env'),
+            os.path.join(os.path.dirname(backend_dir), '.env')
         ]
         
         for env_path in env_paths:
@@ -59,7 +59,6 @@ if not GEMINI_API_KEY:
                 with open(env_path, 'r') as f:
                     for line in f:
                         if line.startswith('GEMINI_API_KEY='):
-                            # 提取 API key，處理引號
                             key_value = line.split('=', 1)[1].strip()
                             GEMINI_API_KEY = key_value.strip('"\'')
                             if GEMINI_API_KEY and GEMINI_API_KEY != 'your-api-key':
@@ -71,269 +70,258 @@ if not GEMINI_API_KEY:
         logger.error(f"直接讀取 .env 檔案失敗：{e}")
 
 
-class GeminiLLMService:
-    """Gemini LLM 服務類"""
+def create_isolated_environment(npc_name: str, npc_data: dict) -> Path:
+    """創建完全隔離的執行環境"""
     
-    def __init__(self):
-        self.check_gemini_cli()
-        self.setup_auth()
-        self.personalities_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'personalities')
+    # 使用固定的路徑名稱以提高快取命中率
+    # 每個 NPC 有自己固定的臨時資料夾
+    name_mapping = {
+        '流羽岑': 'liuyucen',
+        '劉宇岑': 'liuyucen',
+        '鋁配咻': 'lupeixiu',
+        '陸培修': 'lupeixiu',
+        '沉停鞍': 'chentingan',
+        '陳庭安': 'chentingan'
+    }
     
-    def check_gemini_cli(self):
-        """檢查 Gemini CLI"""
-        try:
-            result = subprocess.run(
-                [GEMINI_CLI_COMMAND, "--version"],
-                capture_output=True,
-                text=True,
-                encoding='utf-8',
-                timeout=CLI_VERSION_TIMEOUT
-            )
-            
-            if result.returncode != 0:
-                raise Exception(f"Gemini CLI 檢查失敗：{result.stderr}")
-            
-            logger.info("✅ Gemini CLI 可用")
-            return True
-            
-        except FileNotFoundError:
-            raise Exception(f"找不到 Gemini CLI：{GEMINI_CLI_COMMAND}")
-        except subprocess.TimeoutExpired:
-            raise Exception("Gemini CLI 檢查超時")
-        except Exception as e:
-            raise Exception(f"Gemini CLI 檢查失敗：{e}")
+    npc_id = name_mapping.get(npc_name, npc_name.lower())
     
-    def setup_auth(self):
-        """設定認證"""
-        if GEMINI_API_KEY:
-            os.environ['GEMINI_API_KEY'] = GEMINI_API_KEY
-            logger.info(f"✅ Gemini 認證設定完成")
-        else:
-            raise Exception("未設定 GEMINI_API_KEY 環境變數")
+    # 使用固定路徑，這樣 Files API 和快取可以重複使用
+    temp_dir = Path(tempfile.gettempdir()) / "gemini_npc_cache" / npc_id
     
-    def generate_response(self, user_message: str, npc_data: Dict[str, Any]) -> str:
-        """生成 NPC 對話回應"""
-        # 儲存使用者訊息供備用回應使用
-        self._current_user_message = user_message
-        
-        try:
-            # 建構完整的 prompt
-            prompt = self._build_npc_prompt(user_message, npc_data)
-            
-            # 呼叫 Gemini CLI
-            response = self._call_gemini_cli(prompt)
-            
-            # 處理回應
-            return self._process_response(response)
-            
-        except Exception as e:
-            logger.error(f"生成 NPC 回應失敗：{e}")
-            # 返回備用回應
-            return self._get_fallback_response(npc_data)
+    # 如果資料夾存在，先清理舊內容
+    if temp_dir.exists():
+        shutil.rmtree(temp_dir)
     
-    def _clean_text(self, text: str) -> str:
-        """移除文本中不需要的 Unicode 格式化字符"""
-        # 移除 U+2068 (FIRST STRONG ISOLATE) 和其他相關的格式化字符
-        # https://www.w3.org/International/questions/qa-bidi-unicode-controls
-        unwanted_chars = [
-            '\u2068', '\u2069',  # FSI, PDI
-            '\u202a', '\u202b',  # LRE, RLE
-            '\u202c', '\u202d',  # PDF, LRO
-            '\u202e',  # RLO
-        ]
-        for char in unwanted_chars:
-            text = text.replace(char, '')
-        return text.strip()
-
-    def _load_personality_files(self, npc_name: str) -> Dict[str, str]:
-        """載入並清理 NPC 的個性檔案和聊天紀錄"""
-        name_mapping = {
-            '流羽岑': 'liuyucen',
-            '鋁配咻': 'lupeixiu',
-            '沉停鞍': 'chentingan'
-        }
-        
-        filename = name_mapping.get(npc_name)
-        if not filename:
-            logger.warning(f"找不到 {npc_name} 的檔案映射")
-            return {'personality': '', 'chat_history': ''}
-            
-        personality_file = os.path.join(self.personalities_dir, f"{filename}_personality.txt")
-        chat_history_file = os.path.join(self.personalities_dir, f"{filename}_chat_history.txt")
-        
-        result = {'personality': '', 'chat_history': ''}
-        
-        try:
-            if os.path.exists(personality_file):
-                with open(personality_file, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                    result['personality'] = self._clean_text(content)
-                    logger.info(f"成功載入並清理 {npc_name} 的個性檔案")
-            else:
-                logger.warning(f"個性檔案不存在：{personality_file}")
-                
-            if os.path.exists(chat_history_file):
-                with open(chat_history_file, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                    result['chat_history'] = self._clean_text(content)
-                    logger.info(f"成功載入並清理 {npc_name} 的聊天紀錄")
-            else:
-                logger.warning(f"聊天紀錄檔案不存在：{chat_history_file}")
-                
-        except Exception as e:
-            logger.error(f"載入或清理檔案失敗：{e}")
-            
-        return result
+    temp_dir.mkdir(parents=True, exist_ok=True)
     
-    def _build_npc_prompt(self, user_message: str, npc_data: Dict[str, Any]) -> str:
-        """建構 NPC 對話 prompt - 包含完整元宇宙上下文"""
-        npc_name = npc_data.get('name', '未知')
+    logger.info(f"📁 準備固定快取環境：{temp_dir}")
+    
+    filename = npc_id
+    
+    # 格式化名稱映射
+    name_formats = {
+        'lupeixiu': 'LuPeiXiu',
+        'liuyucen': 'LiuYuCen',
+        'chentingan': 'ChenTingAn'
+    }
+    formatted_name = name_formats.get(filename, filename.title())
+    
+    # 獲取 backend 目錄和 memories 目錄
+    backend_dir = Path(os.path.dirname(os.path.abspath(__file__)))
+    memories_dir = backend_dir / 'memories'
+    npc_memory_dir = memories_dir / filename
+    
+    files_copied = []
+    
+    try:
+        # 1. 複製 Personality.md
+        if npc_memory_dir.exists():
+            personality_file = npc_memory_dir / f"{formatted_name}_Personality.md"
+            if personality_file.exists():
+                dst = temp_dir / personality_file.name
+                shutil.copy2(personality_file, dst)
+                files_copied.append(personality_file.name)
+                logger.info(f"✅ 複製個性檔案：{personality_file.name}")
         
-        # 載入個性檔案和聊天紀錄
-        files_data = self._load_personality_files(npc_name)
+        # 2. 複製 Chat_style.txt
+        if npc_memory_dir.exists():
+            chat_style_file = npc_memory_dir / f"{formatted_name}_Chat_style.txt"
+            if chat_style_file.exists():
+                dst = temp_dir / chat_style_file.name
+                shutil.copy2(chat_style_file, dst)
+                files_copied.append(chat_style_file.name)
+                logger.info(f"✅ 複製聊天風格：{chat_style_file.name}")
         
-        # 從 npc_data 取得額外的元宇宙資料
-        shared_memories = npc_data.get('sharedMemories', [])
-        other_npc_memories = npc_data.get('otherNPCMemories', [])
-        session_messages = npc_data.get('sessionMessages', [])
+        # 3. 複製 short_term_memory/conversations.json
+        if npc_memory_dir.exists():
+            short_term_dir = npc_memory_dir / "short_term_memory"
+            if short_term_dir.exists():
+                conversations_file = short_term_dir / "conversations.json"
+                if conversations_file.exists():
+                    temp_short_term = temp_dir / "short_term_memory"
+                    temp_short_term.mkdir(exist_ok=True)
+                    dst = temp_short_term / "conversations.json"
+                    shutil.copy2(conversations_file, dst)
+                    files_copied.append("short_term_memory/conversations.json")
+                    logger.info(f"✅ 複製短期記憶")
         
-        # 格式化共享記憶
-        my_memories_text = ''
-        if shared_memories:
-            my_memories_text = '\n'.join([f"- {mem}" for mem in shared_memories[:5]])
+        # 4. 複製 long_term_memory/memories.json
+        if npc_memory_dir.exists():
+            long_term_dir = npc_memory_dir / "long_term_memory"
+            if long_term_dir.exists():
+                memories_file = long_term_dir / "memories.json"
+                if memories_file.exists():
+                    temp_long_term = temp_dir / "long_term_memory"
+                    temp_long_term.mkdir(exist_ok=True)
+                    dst = temp_long_term / "memories.json"
+                    shutil.copy2(memories_file, dst)
+                    files_copied.append("long_term_memory/memories.json")
+                    logger.info(f"✅ 複製長期記憶")
         
-        # 格式化其他 NPC 的記憶
-        others_memories_text = ''
-        if other_npc_memories:
-            others_memories_text = '\n'.join([f"- {mem}" for mem in other_npc_memories[:3]])
+        # 5. 複製 GEMINI.md
+        gemini_file = backend_dir / "GEMINI.md"
+        if gemini_file.exists():
+            dst = temp_dir / "GEMINI.md"
+            shutil.copy2(gemini_file, dst)
+            files_copied.append("GEMINI.md")
+            logger.info(f"✅ 複製系統提示：GEMINI.md")
         
-        # 格式化會話歷史
-        session_history = ''
-        if session_messages:
-            session_history = '\n'.join(session_messages[-10:])  # 最近 10 條
-        
-        if files_data['personality'] and files_data['chat_history']:
-            prompt = f"""你是心語小鎮元宇宙中的 NPC「{npc_name}」。這是一個活生生的世界，所有 NPC 都有自己的記憶和經歷。
+        # 6. 創建執行腳本（這是關鍵！）
+        # 創建一個簡單的執行腳本在臨時資料夾中
+        runner_script = temp_dir / "run_gemini.py"
+        with open(runner_script, 'w', encoding='utf-8') as f:
+            f.write(f"""#!/usr/bin/env python3
+# 這個腳本在臨時資料夾中執行，確保 Gemini CLI 只掃描這個資料夾
+import subprocess
+import sys
+import os
 
-【角色設定】
-{files_data['personality']}
-
-【對話風格參考】
-{files_data['chat_history'][:1000]}
-
-【我的記憶】
-{my_memories_text or '（暫無特別記憶）'}
-
-【其他居民告訴我的事】
-{others_memories_text or '（暫無聽說的事）'}
-
-【當前會話歷史】
-{session_history or '（新對話）'}
-
-【當前狀態】
+# 設定 prompt
+prompt = '''當前狀態：
 - 心情：{npc_data.get('currentMood', 'neutral')}
 - 親密度：{npc_data.get('relationshipLevel', 1)}/10
 - 信任度：{npc_data.get('trustLevel', 50)}%
 - 好感度：{npc_data.get('affectionLevel', 50)}%
 
-玩家說：{user_message}
+玩家說：{{}}
 
-請以 {npc_name} 的身份回應。記住：
-1. 你可以提及其他 NPC 告訴你的事情
-2. 你的回應會成為小鎮的共享記憶
-3. 表現出真實的情感和個性
-4. 如果這是重要的對話，標記它應該被記住
+請以 {npc_name} 的身份，根據你的個性檔案和記憶來回應。'''
 
-{npc_name}："""
-            
-            return prompt
-        else:
-            # 備用模式
-            return f"你是心語小鎮的{npc_name}。玩家說：{user_message}"
+# 從參數獲取使用者訊息
+user_message = sys.argv[1] if len(sys.argv) > 1 else "你好"
+
+# 執行 Gemini CLI（在當前目錄，也就是臨時資料夾）
+cmd = [
+    "gemini",
+    "--no-telemetry",
+    "--no-telemetry-log-prompts",
+    "-p", prompt.format(user_message)
+]
+
+# 設定環境變數
+env = os.environ.copy()
+env['GEMINI_API_KEY'] = '{GEMINI_API_KEY}'
+
+try:
+    result = subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        encoding='utf-8',
+        timeout=120,
+        env=env
+    )
     
-    def _call_gemini_cli(self, prompt: str) -> str:
-        """呼叫 Gemini CLI"""
-        try:
-            # 使用 -p 參數通過 stdin 傳遞提示
-            cmd = [GEMINI_CLI_COMMAND, "--no-telemetry", "--no-telemetry-log-prompts", "-p"]
-            
-            logger.info(f"執行 Gemini CLI (無遙測)")
-            
-            # 設定環境變數
-            env = os.environ.copy()
-            if GEMINI_API_KEY:
-                env['GEMINI_API_KEY'] = GEMINI_API_KEY
-            
-            result = subprocess.run(
-                cmd,
-                input=prompt,  # 使用 input 而不是將 prompt 作為參數
-                capture_output=True,
-                text=True,
-                encoding='utf-8',
-                timeout=CLI_EXECUTION_TIMEOUT,
-                env=env
-            )
-            
-            if result.returncode != 0:
-                error_msg = f"返回代碼：{result.returncode}"
-                if result.stderr:
-                    error_msg += f" | {result.stderr[:200]}"
-                logger.error(f"Gemini CLI 失敗：{error_msg}")
-                raise Exception(f"Gemini CLI 失敗：{error_msg}")
-            
+    if result.returncode == 0:
+        output = result.stdout.strip()
+        # 過濾掉認證訊息
+        if 'Loaded cached credentials' in output:
+            lines = output.split('\\n')
+            output = '\\n'.join(lines[1:]).strip()
+        print(output)
+    else:
+        print(f"錯誤：{{result.stderr}}", file=sys.stderr)
+        sys.exit(1)
+        
+except subprocess.TimeoutExpired:
+    print("執行超時", file=sys.stderr)
+    sys.exit(1)
+except Exception as e:
+    print(f"錯誤：{{e}}", file=sys.stderr)
+    sys.exit(1)
+""")
+        
+        logger.info(f"✅ 創建執行腳本：run_gemini.py")
+        files_copied.append("run_gemini.py")
+        
+        logger.info(f"📋 固定環境準備完成，包含 {len(files_copied)} 個檔案")
+        
+    except Exception as e:
+        logger.error(f"準備隔離環境失敗：{e}")
+    
+    return temp_dir
+
+
+def execute_in_isolation(temp_dir: Path, user_message: str) -> str:
+    """在隔離環境中執行"""
+    
+    try:
+        # 在臨時資料夾中執行 Python 腳本
+        # 這樣 Gemini CLI 就只會掃描臨時資料夾
+        cmd = ['python3', 'run_gemini.py', user_message]
+        
+        logger.info(f"🚀 在隔離環境執行：{temp_dir}")
+        
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            encoding='utf-8',
+            timeout=CLI_EXECUTION_TIMEOUT,
+            cwd=str(temp_dir)  # 關鍵：在臨時資料夾執行
+        )
+        
+        if result.returncode == 0:
             output = result.stdout.strip()
-            
-            # 移除 Gemini CLI 的認證訊息
-            if output.startswith('Loaded cached credentials.'):
-                output = output.replace('Loaded cached credentials.', '').strip()
-            
-            if not output:
-                raise Exception("未能提取到有效的輸出內容")
-            
-            logger.info(f"✅ Gemini CLI 成功生成回應 ({len(output)} 字符)")
+            logger.info(f"✅ 成功生成回應 ({len(output)} 字符)")
             return output
-                
-        except subprocess.TimeoutExpired:
-            raise Exception("Gemini CLI 執行超時")
-        except FileNotFoundError:
-            raise Exception(f"找不到 Gemini CLI：{GEMINI_CLI_COMMAND}")
-    
-    def _process_response(self, response: str) -> str:
-        """處理 LLM 回應"""
-        # 清理回應文字
-        response = response.strip()
-        
-        # 移除 Gemini CLI 的認證訊息
-        if response.startswith('Loaded cached credentials.'):
-            response = response.replace('Loaded cached credentials.', '').strip()
-        
-        # 移除可能的 markdown 符號
-        response = response.replace('```', '')
-        
-        # 確保回應不會太長
-        if len(response) > 200:
-            # 找到最近的句號截斷
-            cutoff = response[:200].rfind('。')
-            if cutoff > 0:
-                response = response[:cutoff + 1]
-            else:
-                response = response[:200] + '...'
-        
-        return response
-    
-    def _get_fallback_response(self, npc_data: Dict[str, Any]) -> str:
-        """獲取錯誤時的備用回應"""
-        # 簡單的錯誤回應
-        return "抱歉，我現在有點累了，讓我休息一下..."
+        else:
+            logger.error(f"執行失敗：{result.stderr}")
+            return "抱歉，我現在有點累了，讓我休息一下..."
+            
+    except subprocess.TimeoutExpired:
+        logger.error("執行超時")
+        return "抱歉，我需要更多時間思考..."
+    except Exception as e:
+        logger.error(f"執行錯誤：{e}")
+        return "抱歉，我現在有點困惑..."
 
 
-# 創建全局服務實例
-llm_service = GeminiLLMService()
+def cleanup_environment(temp_dir: Path):
+    """保留環境以利用快取（不清理）"""
+    # 不清理，讓檔案保留以便下次使用時可以利用快取
+    logger.info(f"💾 保留環境以利用快取：{temp_dir}")
+
+
+def update_npc_memory(npc_name: str, user_message: str, npc_response: str, context: dict = None):
+    """更新 NPC 記憶（同步包裝器）"""
+    try:
+        name_mapping = {
+            '流羽岑': 'liuyucen',
+            '劉宇岑': 'liuyucen',
+            '鋁配咻': 'lupeixiu',
+            '陸培修': 'lupeixiu',
+            '沉停鞍': 'chentingan',
+            '陳庭安': 'chentingan'
+        }
+        
+        npc_id = name_mapping.get(npc_name, npc_name.lower())
+        
+        # 初始化記憶管理器
+        memory_manager = MemoryManager(npc_id)
+        
+        # 添加對話到短期記憶
+        memory_manager.add_conversation(user_message, npc_response, context)
+        
+        # 定期更新記憶（每次對話後檢查）
+        asyncio.run(memory_manager.update_memories_at_startup())
+        
+        # 導出記憶到 Gemini 格式
+        memory_content = memory_manager.export_memories_to_gemini_format()
+        memory_file = Path(f"memories/{npc_id}/{npc_id}_memories.md")
+        
+        with open(memory_file, 'w', encoding='utf-8') as f:
+            f.write(memory_content)
+        
+        logger.info(f"✅ 已更新 {npc_name} 的記憶")
+        
+    except Exception as e:
+        logger.error(f"更新記憶失敗：{e}")
 
 
 def main():
     """主程式：從 JSON 檔案讀取對話資料並生成回應"""
-    import sys
     
     if len(sys.argv) < 2:
         print("請提供 JSON 檔案路徑")
@@ -342,10 +330,6 @@ def main():
     json_file_path = sys.argv[1]
     
     try:
-        # 記錄詳細資訊
-        logger.info(f"開始處理檔案：{json_file_path}")
-        logger.info(f"檔案是否存在：{os.path.exists(json_file_path)}")
-        
         # 讀取 JSON 檔案
         with open(json_file_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
@@ -364,33 +348,45 @@ def main():
             npc_data['otherNPCMemories'] = context['otherNPCMemories']
         if 'sessionMessages' in context:
             npc_data['sessionMessages'] = context['sessionMessages']
-        if 'trustLevel' in context:
-            npc_data['trustLevel'] = context['trustLevel']
-        if 'affectionLevel' in context:
-            npc_data['affectionLevel'] = context['affectionLevel']
         
-        logger.info(f"使用者訊息：{user_message}")
-        logger.info(f"NPC 名稱：{npc_data.get('name', 'Unknown')}")
-        logger.info(f"共享記憶數量：{len(npc_data.get('sharedMemories', []))}")
-        logger.info(f"會話訊息數量：{len(npc_data.get('sessionMessages', []))}")ѕ
+        npc_name = npc_data.get('name', 'Unknown')
         
-        # 生成回應
-        response = llm_service.generate_response(user_message, npc_data)
+        logger.info(f"NPC：{npc_name}")
+        logger.info(f"訊息：{user_message}")
         
-        # 直接輸出回應到終端
-        print(response)
+        # 創建隔離環境
+        temp_dir = create_isolated_environment(npc_name, npc_data)
+        
+        try:
+            # 在隔離環境中執行
+            response = execute_in_isolation(temp_dir, user_message)
+            
+            # 處理回應
+            if len(response) > 200:
+                cutoff = response[:200].rfind('。')
+                if cutoff > 0:
+                    response = response[:cutoff + 1]
+                else:
+                    response = response[:200] + '...'
+            
+            # 更新 NPC 記憶（在回應生成後）
+            update_npc_memory(npc_name, user_message, response, context)
+            
+            # 輸出回應
+            print(response)
+            
+        finally:
+            # 清理環境
+            cleanup_environment(temp_dir)
         
     except FileNotFoundError:
         logger.error(f"找不到檔案：{json_file_path}")
         print("抱歉，我現在有點困惑...")
     except json.JSONDecodeError as e:
-        logger.error(f"無效的 JSON 格式：{json_file_path} - {e}")
+        logger.error(f"無效的 JSON 格式：{e}")
         print("嗯，讓我想想該怎麼說...")
     except Exception as e:
         logger.error(f"處理失敗：{e}")
-        logger.error(f"錯誤類型：{type(e).__name__}")
-        import traceback
-        logger.error(f"堆疊追蹤：\n{traceback.format_exc()}")
         print("真抱歉，我需要休息一下...")
 
 

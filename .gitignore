@@ -80,7 +80,6 @@ public
 .storybook-out
 
 # Temporary folders
-tmp/
 temp/
 
 # Editor directories and files

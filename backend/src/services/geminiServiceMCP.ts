@@ -103,11 +103,17 @@ export class GeminiMCPService {
         timeout: 30000
       })
 
-      const npcResponse = response.data.response
+      const npcResponse = response.data?.response || ''
       const responseTime = Date.now() - startTime
 
       // 記錄回應
       geminiTracker.recordResponse(npcResponse, responseTime, false)
+      
+      // 如果沒有收到有效回應，使用備用
+      if (!npcResponse) {
+        logger.warn('MCP 返回空回應，使用備用回應')
+        return this.getFallbackResponse(npcPersonality, userMessage)
+      }
 
       // 解析情感並構建完整回應
       return this.buildAIResponse(npcResponse, npcPersonality, context)

@@ -58,53 +58,5 @@
     "player_message": "甚麼軌",
     "npc_response": "Loaded cached credentials.\n欸，沒什麼軌啦！就剛好在想等等要吃什麼，哈哈。你呢？最近過得怎麼樣啊？😉",
     "emotion": "positive"
-  },
-  {
-    "timestamp": "2025-08-12T18:05:34.929631",
-    "player_message": "我愛你，培修",
-    "npc_response": "我...我也很喜歡你呢！謝謝你的真心",
-    "emotion": "positive"
-  },
-  {
-    "timestamp": "2025-08-12T18:05:34.931275",
-    "player_message": "今天天氣真好",
-    "npc_response": "是啊，陽光很溫暖呢",
-    "emotion": "positive"
-  },
-  {
-    "timestamp": "2025-08-12T18:05:34.931522",
-    "player_message": "我想告訴你一個秘密，我其實很害怕孤獨",
-    "npc_response": "謝謝你願意告訴我...我會一直陪著你的，你並不孤單",
-    "emotion": "positive"
-  },
-  {
-    "timestamp": "2025-08-12T18:05:34.931840",
-    "player_message": "你好嗎？",
-    "npc_response": "我很好，謝謝關心",
-    "emotion": "positive"
-  },
-  {
-    "timestamp": "2025-08-12T18:05:34.934006",
-    "player_message": "我們約定好，以後每天都要一起看夕陽",
-    "npc_response": "好的！這是我們的約定！每天夕陽時分，我都會在這裡等你",
-    "emotion": "positive"
-  },
-  {
-    "timestamp": "2025-08-12T18:05:34.934239",
-    "player_message": "早安",
-    "npc_response": "早安呀！今天也要加油喔",
-    "emotion": "neutral"
-  },
-  {
-    "timestamp": "2025-08-12T18:05:34.934569",
-    "player_message": "你的夢想是什麼？",
-    "npc_response": "我想成為能夠療癒他人心靈的人，用我的畫作和陪伴讓大家感到溫暖",
-    "emotion": "neutral"
-  },
-  {
-    "timestamp": "2025-08-12T18:05:50.677854",
-    "player_message": "我愛你，培修",
-    "npc_response": "我...我也很喜歡你呢！謝謝你的真心",
-    "emotion": "positive"
   }
 ]

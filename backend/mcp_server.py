@@ -1,26 +1,29 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-MCP Server for Heart Whisper Town NPCs
-使用 Gemini CLI 的 MCP 功能提供高效能 NPC 對話服務
+優化版 MCP Server for Heart Whisper Town NPCs
+包含 Redis 快取、固定路徑、預熱機制
 """
 
 import os
 import json
 import subprocess
 import tempfile
+import shutil
 import logging
 from pathlib import Path
 from typing import Dict, List, Optional, Any
-from datetime import datetime
+from datetime import datetime, timedelta
 import asyncio
-import uvloop  # 高效能事件循環
+import uvloop
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import hashlib
 from collections import OrderedDict
 import time
-from memory_manager import MemoryManager  # 導入記憶管理器
+import atexit
+from memory_manager import MemoryManager
+import redis.asyncio as redis
 
 # 設定 uvloop 為預設事件循環
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
@@ -32,7 +35,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # FastAPI 應用
-app = FastAPI(title="Heart Whisper MCP Server", version="2.0")
+app = FastAPI(title="Heart Whisper MCP Server Optimized", version="3.0")
 
 # 請求模型
 class DialogueRequest(BaseModel):
@@ -40,7 +43,7 @@ class DialogueRequest(BaseModel):
     message: str
     context: Optional[Dict[str, Any]] = {}
     session_id: Optional[str] = None
-    
+
 class MemoryUpdate(BaseModel):
     npc_id: str
     memory_type: str
@@ -48,13 +51,11 @@ class MemoryUpdate(BaseModel):
     importance: float = 0.5
 
 class NPCDialogueServer:
-    """NPC 對話 MCP 服務器"""
+    """優化版 NPC 對話 MCP 服務器"""
     
     def __init__(self):
         self.personalities_dir = Path("personalities")
         self.memories_dir = Path("memories")
-        self.temp_dir = Path("temp")
-        self.temp_dir.mkdir(exist_ok=True)
         
         # 記憶快取 (LRU)
         self.memory_cache = OrderedDict()
@@ -70,19 +71,37 @@ class NPCDialogueServer:
             "npc-3": "chentingan"
         }
         
+        # Redis 連接（異步）
+        self.redis_client = None
+        self.redis_enabled = False
+        
         # 初始化每個NPC的記憶管理器
         self.memory_managers = {}
         for npc_id, npc_name in self.npc_map.items():
-            self.memory_managers[npc_id] = MemoryManager(npc_name)
-            # 匯出記憶到Gemini可讀格式
-            memory_content = self.memory_managers[npc_id].export_memories_to_gemini_format()
-            memory_file = self.memories_dir / npc_name / f"{npc_name}_memories.md"
-            memory_file.write_text(memory_content, encoding='utf-8')
-            logger.info(f"✅ 初始化 {npc_name} 的記憶管理器")
+            try:
+                self.memory_managers[npc_id] = MemoryManager(npc_name)
+                logger.info(f"✅ 初始化 {npc_name} 的記憶管理器")
+            except Exception as e:
+                logger.error(f"初始化 {npc_name} 記憶管理器失敗：{e}")
         
         # 預載入個性檔案
         self.personalities = self._preload_personalities()
         logger.info(f"✅ 預載入 {len(self.personalities)} 個 NPC 個性")
+    
+    async def init_redis(self):
+        """初始化 Redis 連接"""
+        try:
+            self.redis_client = await redis.from_url(
+                "redis://localhost:6379",
+                encoding="utf-8",
+                decode_responses=True
+            )
+            await self.redis_client.ping()
+            self.redis_enabled = True
+            logger.info("✅ Redis 連接成功")
+        except Exception as e:
+            logger.warning(f"⚠️ Redis 連接失敗，將不使用 Redis 快取：{e}")
+            self.redis_enabled = False
     
     def _preload_personalities(self) -> Dict[str, Dict[str, str]]:
         """預載入所有 NPC 個性檔案"""
@@ -106,262 +125,294 @@ class NPCDialogueServer:
                 personalities[npc_id] = {
                     'name': npc_name,
                     'personality': personality_content,
-                    'chat_style': chat_style_content
+                    'chat_style': chat_style_content,
+                    'formatted_name': formatted_name
                 }
                 
         return personalities
     
-    async def _call_gemini_mcp(self, prompt: str, npc_id: str, include_dirs: List[str] = None, track_id: str = None) -> str:
+    async def _get_from_redis(self, key: str) -> Optional[str]:
+        """從 Redis 獲取快取"""
+        if not self.redis_enabled or not self.redis_client:
+            return None
+        
+        try:
+            value = await self.redis_client.get(key)
+            if value:
+                logger.info(f"✨ Redis 快取命中：{key}")
+            return value
+        except Exception as e:
+            logger.error(f"Redis 讀取失敗：{e}")
+            return None
+    
+    async def _save_to_redis(self, key: str, value: str, ttl: int = 3600):
+        """保存到 Redis（預設 1 小時過期）"""
+        if not self.redis_enabled or not self.redis_client:
+            return
+        
+        try:
+            await self.redis_client.setex(key, ttl, value)
+            logger.info(f"💾 保存到 Redis：{key} (TTL: {ttl}秒)")
+        except Exception as e:
+            logger.error(f"Redis 寫入失敗：{e}")
+    
+    def _create_cache_key(self, npc_id: str, message: str, context: Dict = None) -> str:
+        """創建快取鍵"""
+        # 簡化 context，只包含重要欄位
+        simple_context = {
+            'mood': context.get('mood', 'neutral') if context else 'neutral',
+            'relationship': context.get('relationship_level', 0) if context else 0
+        }
+        
+        cache_str = f"{npc_id}:{message}:{json.dumps(simple_context, sort_keys=True)}"
+        return f"npc_response:{hashlib.md5(cache_str.encode()).hexdigest()}"
+    
+    def _get_fixed_temp_dir(self, npc_name: str) -> Path:
+        """獲取固定的臨時資料夾路徑"""
+        # 使用 backend 目錄下的 tmp 資料夾
+        backend_dir = Path(__file__).parent
+        temp_dir = backend_dir / "tmp" / "gemini_npc_cache" / npc_name
+        return temp_dir
+    
+    async def _prepare_temp_context(
+        self, 
+        npc_id: str, 
+        npc_name: str,
+        context: Dict[str, Any],
+        session_id: Optional[str] = None
+    ) -> Path:
+        """準備臨時資料夾並複製必要的檔案"""
+        # 使用固定路徑
+        temp_dir = self._get_fixed_temp_dir(npc_name)
+        
+        # 檢查是否需要更新檔案（如果資料夾已存在且檔案未過期，跳過複製）
+        should_update = True
+        if temp_dir.exists():
+            # 檢查檔案是否在 1 小時內更新過
+            gemini_file = temp_dir / "GEMINI.md"
+            if gemini_file.exists():
+                file_age = time.time() - gemini_file.stat().st_mtime
+                if file_age < 3600:  # 1 小時
+                    should_update = False
+                    logger.info(f"📂 使用現有快取資料夾（{file_age/60:.1f}分鐘前更新）")
+        
+        if should_update:
+            # 如果需要更新，清理並重建
+            if temp_dir.exists():
+                shutil.rmtree(temp_dir)
+            
+            temp_dir.mkdir(parents=True, exist_ok=True)
+            
+            # 複製必要檔案（與原來相同的邏輯）
+            npc_data = self.personalities.get(npc_id, {})
+            formatted_name = npc_data.get('formatted_name', npc_name.title())
+            
+            files_copied = []
+            npc_memory_dir = self.memories_dir / npc_name
+            
+            # 1. 複製 Personality.md
+            if npc_memory_dir.exists():
+                personality_file = npc_memory_dir / f"{formatted_name}_Personality.md"
+                if personality_file.exists():
+                    shutil.copy2(personality_file, temp_dir / personality_file.name)
+                    files_copied.append(personality_file.name)
+            
+            # 2. 複製 Chat_style.txt
+            if npc_memory_dir.exists():
+                chat_style_file = npc_memory_dir / f"{formatted_name}_Chat_style.txt"
+                if chat_style_file.exists():
+                    shutil.copy2(chat_style_file, temp_dir / chat_style_file.name)
+                    files_copied.append(chat_style_file.name)
+            
+            # 3. 複製 short_term_memory
+            if npc_memory_dir.exists():
+                short_term_dir = npc_memory_dir / "short_term_memory"
+                if short_term_dir.exists():
+                    conversations_file = short_term_dir / "conversations.json"
+                    if conversations_file.exists():
+                        temp_short_term = temp_dir / "short_term_memory"
+                        temp_short_term.mkdir(exist_ok=True)
+                        shutil.copy2(conversations_file, temp_short_term / "conversations.json")
+                        files_copied.append("short_term_memory/conversations.json")
+            
+            # 4. 複製 long_term_memory
+            if npc_memory_dir.exists():
+                long_term_dir = npc_memory_dir / "long_term_memory"
+                if long_term_dir.exists():
+                    memories_file = long_term_dir / "memories.json"
+                    if memories_file.exists():
+                        temp_long_term = temp_dir / "long_term_memory"
+                        temp_long_term.mkdir(exist_ok=True)
+                        shutil.copy2(memories_file, temp_long_term / "memories.json")
+                        files_copied.append("long_term_memory/memories.json")
+            
+            # 5. 複製 GEMINI.md
+            backend_dir = Path(__file__).parent
+            gemini_file = backend_dir / "GEMINI.md"
+            if gemini_file.exists():
+                shutil.copy2(gemini_file, temp_dir / "GEMINI.md")
+                files_copied.append("GEMINI.md")
+            
+            # 6. 創建執行用的 gemini.py 腳本
+            await self._create_execution_script(temp_dir, npc_name)
+            files_copied.append("gemini.py")
+            
+            logger.info(f"📁 更新固定快取資料夾：{temp_dir}")
+            logger.info(f"📋 包含檔案：{files_copied}")
+        
+        return temp_dir
+    
+    async def _create_execution_script(self, temp_dir: Path, npc_name: str):
+        """在 TMP 資料夾中創建 gemini.py 執行腳本"""
+        script_content = f'''#!/usr/bin/env python3
+"""
+NPC {npc_name} 專用的 Gemini 執行腳本
+在隔離環境中執行，只包含該 NPC 的必要檔案
+"""
+
+import sys
+import json
+import subprocess
+import os
+from pathlib import Path
+
+def main():
+    if len(sys.argv) < 2:
+        print("Usage: python3 gemini.py '<prompt>'")
+        sys.exit(1)
+    
+    prompt = sys.argv[1]
+    
+    # 設置環境變數
+    env = dict(os.environ)
+    api_key = os.getenv('GEMINI_API_KEY')
+    if api_key:
+        env['GEMINI_API_KEY'] = str(api_key)
+    
+    # 在當前目錄執行 Gemini CLI（包含所有必要檔案）
+    current_dir = Path(__file__).parent
+    cmd = [
+        "gemini",
+        "-p", prompt,
+        "--model", "gemini-2.5-flash",
+        "--include-directories", str(current_dir)
+    ]
+    
+    try:
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            env=env,
+            cwd=Path(__file__).parent,  # 在 TMP 目錄執行
+            timeout=30
+        )
+        
+        if result.returncode == 0:
+            # 清理輸出（移除認證訊息）
+            output = result.stdout.strip()
+            if 'Loaded cached credentials' in output:
+                lines = output.split('\\n')
+                output = '\\n'.join(l for l in lines if not l.startswith('Loaded')).strip()
+            print(output)
+        else:
+            print(f"Error: {{result.stderr}}", file=sys.stderr)
+            sys.exit(1)
+            
+    except subprocess.TimeoutExpired:
+        print("Error: Timeout after 30 seconds", file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error: {{e}}", file=sys.stderr)
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()
+'''
+        
+        script_path = temp_dir / "gemini.py"
+        script_path.write_text(script_content, encoding='utf-8')
+        script_path.chmod(0o755)  # 設為可執行
+        
+        logger.info(f"✅ 創建執行腳本：{script_path}")
+    
+    async def _call_gemini_mcp(
+        self, 
+        prompt: str, 
+        npc_id: str, 
+        temp_dir: Path,
+        track_id: str = None
+    ) -> str:
         """使用 Gemini CLI 的 MCP 功能生成回應"""
         npc_name = self.npc_map.get(npc_id, "")
         
-        # 追蹤資訊
-        tracking_data = {
-            "track_id": track_id,
-            "timestamp": datetime.now().isoformat(),
-            "npc_id": npc_id,
-            "npc_name": npc_name,
-            "prompt": prompt,
-            "files_loaded": {
-                "personality": [],
-                "memories": [],
-                "shared": [],
-                "include_dirs": []
-            }
-        }
-        
-        # 構建 Gemini CLI 命令
+        # 使用 TMP 資料夾內的 gemini.py 執行腳本
         cmd = [
-            "gemini",
-            "-p", prompt,
-            "--model", "gemini-2.5-flash"  # 使用 2.5-flash 模型
+            "python3",
+            "gemini.py",
+            prompt
         ]
-        
-        # 記錄載入的檔案
-        # 個性檔案
-        personality_file = self.personalities_dir / f"{npc_name}_personality.txt"
-        if personality_file.exists():
-            tracking_data["files_loaded"]["personality"].append(str(personality_file))
-        
-        history_file = self.personalities_dir / f"{npc_name}_chat_history.txt"
-        if history_file.exists():
-            tracking_data["files_loaded"]["personality"].append(str(history_file))
-        
-        # 添加記憶目錄
-        if include_dirs:
-            cmd.extend(["--include-directories", ",".join(include_dirs)])
-            tracking_data["files_loaded"]["include_dirs"] = include_dirs
-            
-            # 記錄每個目錄中的記憶檔案（避免載入.md檔案）
-            for dir_path in include_dirs:
-                dir_path_obj = Path(dir_path)
-                # 檢查是否有個性或聊天風格檔案 (使用實際檔名格式)
-                name_mapping = {
-                    'lupeixiu': 'LuPeiXiu',
-                    'liuyucen': 'LiuYuCen', 
-                    'chentingan': 'ChenTingAn'
-                }
-                formatted_name = name_mapping.get(npc_name, npc_name.title())
-                personality_file = dir_path_obj / f"{formatted_name}_Personality.md"
-                chat_style_file = dir_path_obj / f"{formatted_name}_Chat_style.txt"
-                
-                if personality_file.exists():
-                    tracking_data["files_loaded"]["memories"].append(str(personality_file))
-                if chat_style_file.exists():
-                    tracking_data["files_loaded"]["memories"].append(str(chat_style_file))
-        else:
-            # 預設載入該 NPC 的記憶目錄
-            memory_path = self.memories_dir / npc_name
-            if memory_path.exists():
-                cmd.extend(["--include-directories", str(memory_path)])
-                tracking_data["files_loaded"]["include_dirs"].append(str(memory_path))
-                
-                # 記錄實際的記憶檔案（避免載入.md檔案）
-                name_mapping = {
-                    'lupeixiu': 'LuPeiXiu',
-                    'liuyucen': 'LiuYuCen', 
-                    'chentingan': 'ChenTingAn'
-                }
-                formatted_name = name_mapping.get(npc_name, npc_name.title())
-                personality_file = memory_path / f"{formatted_name}_Personality.md"
-                chat_style_file = memory_path / f"{formatted_name}_Chat_style.txt"
-                
-                if personality_file.exists():
-                    tracking_data["files_loaded"]["memories"].append(str(personality_file))
-                if chat_style_file.exists():
-                    tracking_data["files_loaded"]["memories"].append(str(chat_style_file))
-        
-        # 共享記憶 - 檢查是否有共享記憶檔案（避免.md檔案）
-        shared_dir = self.memories_dir / "shared"
-        if shared_dir.exists():
-            # 可以添加共享記憶檔案的邏輯
-            for file_path in shared_dir.iterdir():
-                if file_path.is_file() and not file_path.suffix == '.md':
-                    tracking_data["files_loaded"]["shared"].append(str(file_path))
         
         start_time = time.time()
         
         try:
-            # 執行 Gemini CLI
-            # 確保環境變數都是字串
             env = dict(os.environ)
             api_key = os.getenv('GEMINI_API_KEY')
             if api_key:
                 env['GEMINI_API_KEY'] = str(api_key)
             
-            logger.info(f"🚀 執行 Gemini CLI: {' '.join(cmd[:4])}...")
-            tracking_data["cli_command"] = ' '.join(cmd)
+            logger.info(f"🚀 執行隔離環境 Gemini 腳本（{temp_dir.name}）")
             
             result = await asyncio.create_subprocess_exec(
                 *cmd,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
-                env=env
+                env=env,
+                cwd=str(temp_dir)  # 在隔離的 TMP 資料夾中執行
             )
             
             stdout, stderr = await asyncio.wait_for(
                 result.communicate(),
-                timeout=30  # 增加超時時間到 30 秒
+                timeout=30
             )
             
-            response_time = (time.time() - start_time) * 1000  # 轉換為毫秒
+            response_time = (time.time() - start_time) * 1000
             
             if result.returncode == 0:
                 response = stdout.decode('utf-8').strip()
                 
-                # 過濾掉 "Loaded cached credentials" 訊息
-                if response.startswith('Loaded cached credentials'):
-                    # 尋找實際內容開始的位置（通常在第一個換行後）
-                    lines = response.split('\n')
-                    if len(lines) > 1:
-                        response = '\n'.join(lines[1:]).strip()
-                    else:
-                        response = response.replace('Loaded cached credentials', '').strip()
-                
-                # 如果還是以此開頭，再次處理
+                # 過濾掉認證訊息
                 if 'Loaded cached credentials' in response:
-                    response = response.replace('Loaded cached credentials.', '').strip()
-                    response = response.replace('Loaded cached credentials', '').strip()
+                    lines = response.split('\n')
+                    response = '\n'.join(l for l in lines if not l.startswith('Loaded')).strip()
                 
-                # 記錄成功的追蹤資訊
-                tracking_data["response"] = response
-                tracking_data["response_time_ms"] = response_time
-                tracking_data["success"] = True
-                tracking_data["cache_hit"] = False
-                
-                # 寫入追蹤檔案
-                self._save_tracking_data(tracking_data)
-                
-                # 更新快取
-                cache_key = hashlib.md5(f"{prompt}{npc_id}".encode()).hexdigest()
-                self._update_cache(cache_key, response)
-                
+                logger.info(f"✅ Gemini 回應成功（{response_time:.0f}ms）")
                 return response
             else:
                 error_msg = stderr.decode('utf-8')
                 logger.error(f"Gemini MCP 錯誤: {error_msg}")
-                
-                # 記錄錯誤
-                tracking_data["success"] = False
-                tracking_data["error"] = error_msg
-                tracking_data["response_time_ms"] = response_time
-                self._save_tracking_data(tracking_data)
-                
                 return self._get_fallback_response(npc_id)
                 
         except asyncio.TimeoutError:
             logger.error("Gemini MCP 超時")
-            tracking_data["success"] = False
-            tracking_data["error"] = "Timeout after 30 seconds"
-            tracking_data["response_time_ms"] = 30000
-            self._save_tracking_data(tracking_data)
             return self._get_fallback_response(npc_id)
         except Exception as e:
             logger.error(f"Gemini MCP 異常: {e}")
-            tracking_data["success"] = False
-            tracking_data["error"] = str(e)
-            tracking_data["response_time_ms"] = (time.time() - start_time) * 1000
-            self._save_tracking_data(tracking_data)
             return self._get_fallback_response(npc_id)
-    
-    def _update_cache(self, key: str, value: str):
-        """更新 LRU 快取"""
-        if key in self.memory_cache:
-            del self.memory_cache[key]
-        elif len(self.memory_cache) >= self.max_cache_size:
-            self.memory_cache.popitem(last=False)
-        self.memory_cache[key] = value
-    
-    def _get_from_cache(self, key: str) -> Optional[str]:
-        """從快取獲取"""
-        if key in self.memory_cache:
-            # 移到最後（LRU）
-            value = self.memory_cache.pop(key)
-            self.memory_cache[key] = value
-            return value
-        return None
     
     def _get_fallback_response(self, npc_id: str) -> str:
         """獲取備用回應"""
         npc_name = self.npc_map.get(npc_id, "NPC")
         
         fallbacks = {
-            "lupeixiu": [
-                "這讓我想起了張愛玲的一句話...",
-                "有時候，細節真的很重要呢。",
-                "讓我想想該怎麼說..."
-            ],
-            "liuyucen": [
-                "哇，這個問題好有趣！",
-                "我在 threads 上看過類似的討論耶！",
-                "等等，讓我整理一下思緒..."
-            ],
-            "chentingan": [
-                "這個問題很 chill 啊！",
-                "讓我用另一個角度來看...",
-                "有意思，這讓我想到了一個想法..."
-            ]
+            "lupeixiu": ["這讓我想起了張愛玲的一句話..."],
+            "liuyucen": ["哇，這個問題好有趣！"],
+            "chentingan": ["這個問題很 chill 啊！"]
         }
         
         import random
         responses = fallbacks.get(npc_name, ["嗯，讓我想想..."])
         return random.choice(responses)
-    
-    def _save_tracking_data(self, data: Dict[str, Any]):
-        """保存追蹤資訊到 NPC 專屬的 JSON 檔案"""
-        try:
-            # 確保日誌目錄存在
-            log_dir = Path("logs/gemini-tracking")
-            log_dir.mkdir(parents=True, exist_ok=True)
-            
-            # 從資料中取得 NPC 名稱
-            npc_name = data.get('npc_name', 'unknown')
-            safe_name = npc_name.lower().replace(' ', '-')
-            
-            # 使用 NPC 名稱和日期作為檔案名
-            date_str = datetime.now().strftime('%Y-%m-%d')
-            log_file = log_dir / f"mcp-{safe_name}-{date_str}.json"
-            
-            # 讀取現有資料
-            existing_data = []
-            if log_file.exists():
-                try:
-                    with open(log_file, 'r', encoding='utf-8') as f:
-                        existing_data = json.load(f)
-                except:
-                    existing_data = []
-            
-            # 添加新資料
-            existing_data.append(data)
-            
-            # 寫回檔案
-            with open(log_file, 'w', encoding='utf-8') as f:
-                json.dump(existing_data, f, ensure_ascii=False, indent=2)
-                
-            logger.info(f"💾 已保存 {npc_name} 的追蹤資料到 {log_file}")
-            
-        except Exception as e:
-            logger.error(f"保存追蹤資料失敗: {e}")
     
     async def generate_response(
         self,
@@ -369,229 +420,287 @@ class NPCDialogueServer:
         message: str,
         context: Dict[str, Any] = None,
         session_id: str = None
-    ) -> str:
-        """生成 NPC 回應（核心功能）"""
+    ) -> Dict[str, Any]:
+        """生成 NPC 回應（核心功能）- 包含詳細時間追蹤"""
         
-        # 檢查快取
-        cache_key = hashlib.md5(f"{message}{npc_id}{session_id}".encode()).hexdigest()
-        cached = self._get_from_cache(cache_key)
-        if cached:
-            logger.info(f"✨ 快取命中: {npc_id}")
-            return cached
+        timing = {}
+        total_start = time.time()
         
-        # 獲取 NPC 資料
+        # 1. 檢查 Redis 快取
+        cache_start = time.time()
+        cache_key = self._create_cache_key(npc_id, message, context)
+        cached_response = await self._get_from_redis(cache_key)
+        timing['redis_cache_check'] = time.time() - cache_start
+        
+        if cached_response:
+            timing['total'] = time.time() - total_start
+            timing['cache_hit'] = True
+            return {
+                "response": cached_response,
+                "timing": timing,
+                "cached": True
+            }
+        
+        timing['cache_hit'] = False
+        
+        # 2. 獲取 NPC 資料
+        npc_start = time.time()
         npc_data = self.personalities.get(npc_id, {})
         if not npc_data:
-            return "抱歉，我現在有點困惑..."
+            return {
+                "response": "抱歉，我現在有點困惑...",
+                "timing": timing,
+                "error": "NPC not found"
+            }
         
-        # 構建提示詞
         npc_name = npc_data['name']
+        timing['npc_data_fetch'] = time.time() - npc_start
         
-        # 獲取會話歷史
-        session_history = ""
-        if session_id and session_id in self.sessions:
-            history = self.sessions[session_id].get('history', [])
-            session_history = "\n".join([f"{h['role']}: {h['content']}" for h in history[-5:]])
+        # 3. 準備臨時資料夾（使用固定路徑）
+        temp_start = time.time()
+        temp_dir = await self._prepare_temp_context(npc_id, npc_name, context or {}, session_id)
+        timing['temp_dir_preparation'] = time.time() - temp_start
         
-        # 載入共享記憶
-        shared_memory_path = self.memories_dir / "shared" / "GEMINI.md"
-        shared_context = ""
-        if shared_memory_path.exists():
-            shared_context = f"\n共享記憶：\n{shared_memory_path.read_text(encoding='utf-8')}"
+        # 4. 生成追蹤 ID
+        track_id = hashlib.md5(f"{npc_id}_{datetime.now().isoformat()}".encode()).hexdigest()[:8]
         
-        # 簡化提示詞 - 檢查message是否已包含完整上下文
-        if message.startswith("你是「") and "對話" in message:
-            # message已包含完整上下文，直接使用
-            prompt = message
-        else:
-            # message只是簡單內容，需要添加上下文
-            prompt = f"你是「{self._get_display_name(npc_id)}」，正在與玩家對話。玩家說：{message}"
+        # 5. 構建提示詞
+        prompt_start = time.time()
+        prompt = f"""使用者說：{message}
+
+請以你的角色身份自然地回應。"""
+        timing['prompt_construction'] = time.time() - prompt_start
         
-        # 生成追蹤 ID
-        track_id = f"mcp-{session_id or 'no-session'}-{int(time.time() * 1000)}"
+        # 6. 呼叫 Gemini
+        gemini_start = time.time()
+        response = await self._call_gemini_mcp(prompt, npc_id, temp_dir, track_id)
+        timing['gemini_call'] = time.time() - gemini_start
         
-        # 呼叫 Gemini MCP
-        response = await self._call_gemini_mcp(
-            prompt=prompt,
-            npc_id=npc_id,
-            include_dirs=[str(self.memories_dir / npc_name), str(self.memories_dir / "shared")],
-            track_id=track_id
-        )
+        # 7. 保存到 Redis 快取
+        save_start = time.time()
+        await self._save_to_redis(cache_key, response, ttl=7200)  # 2 小時
+        timing['redis_save'] = time.time() - save_start
         
-        # 更新會話歷史
+        # 8. 更新記憶系統
+        memory_start = time.time()
+        if npc_id in self.memory_managers:
+            try:
+                # 添加對話到短期記憶
+                self.memory_managers[npc_id].add_conversation(
+                    player_message=message,
+                    npc_response=response,
+                    context=context
+                )
+                logger.info(f"✅ 已儲存 {npc_name} 的對話記憶")
+            except Exception as e:
+                logger.error(f"儲存記憶失敗：{e}")
+        timing['memory_save'] = time.time() - memory_start
+        
+        # 9. 更新會話歷史
+        session_start = time.time()
         if session_id:
             if session_id not in self.sessions:
-                self.sessions[session_id] = {'history': [], 'npc_id': npc_id}
-            
-            self.sessions[session_id]['history'].append(
-                {'role': '玩家', 'content': message, 'timestamp': datetime.now().isoformat()}
-            )
-            self.sessions[session_id]['history'].append(
-                {'role': self._get_display_name(npc_id), 'content': response, 'timestamp': datetime.now().isoformat()}
-            )
-            
-            # 限制歷史長度
-            if len(self.sessions[session_id]['history']) > 20:
-                self.sessions[session_id]['history'] = self.sessions[session_id]['history'][-20:]
+                self.sessions[session_id] = {'history': []}
+            self.sessions[session_id]['history'].append({
+                'role': 'user',
+                'content': message,
+                'timestamp': datetime.now().isoformat()
+            })
+            self.sessions[session_id]['history'].append({
+                'role': npc_name,
+                'content': response,
+                'timestamp': datetime.now().isoformat()
+            })
+        timing['session_update'] = time.time() - session_start
         
-        # 更新快取
-        self._update_cache(cache_key, response)
+        timing['total'] = time.time() - total_start
         
-        # 保存對話到記憶（只保存有效對話）
-        if response and response != "抱歉，我現在有點困惑..." and npc_id in self.memory_managers:
+        # 記錄詳細時間日誌
+        logger.info(f"🕐 時間分析 - NPC {npc_id}:")
+        logger.info(f"  Redis 快取檢查: {timing['redis_cache_check']:.3f}s")
+        logger.info(f"  NPC 資料取得: {timing['npc_data_fetch']:.3f}s")
+        logger.info(f"  臨時目錄準備: {timing['temp_dir_preparation']:.3f}s")
+        logger.info(f"  Gemini 呼叫: {timing['gemini_call']:.3f}s")
+        logger.info(f"  Redis 儲存: {timing['redis_save']:.3f}s")
+        logger.info(f"  總計: {timing['total']:.3f}s")
+        
+        return {
+            "response": response,
+            "timing": timing,
+            "cached": False
+        }
+    
+    async def preheat_npcs(self):
+        """預熱所有 NPC（啟動時呼叫）"""
+        logger.info("🔥 開始預熱 NPC...")
+        
+        preheat_messages = [
+            "你好！",
+            "今天天氣真好",
+            "最近怎麼樣？"
+        ]
+        
+        for npc_id in self.npc_map.keys():
             try:
-                # 清理 message 中的 NPC 對話前綴
-                clean_message = message
-                if message.startswith("你是「") and "對話" in message:
-                    # 這是NPC間對話，不需要儲存
-                    logger.info(f"跳過儲存NPC間對話記憶")
+                # 隨機選一個預熱訊息
+                import random
+                message = random.choice(preheat_messages)
+                
+                logger.info(f"預熱 {npc_id}...")
+                start_time = time.time()
+                
+                result = await self.generate_response(
+                    npc_id=npc_id,
+                    message=message,
+                    context={'mood': 'neutral', 'relationship_level': 5},
+                    session_id=f"preheat-{npc_id}"
+                )
+                
+                elapsed = time.time() - start_time
+                
+                # 顯示詳細時間分析
+                if 'timing' in result:
+                    logger.info(f"✅ {npc_id} 預熱完成（總計 {elapsed:.2f}秒）")
+                    logger.info(f"   Gemini 呼叫: {result['timing'].get('gemini_call', 0):.2f}秒")
                 else:
-                    # 只儲存玩家的真實對話，不儲存context
-                    self.memory_managers[npc_id].add_conversation(
-                        player_message=clean_message,
-                        npc_response=response,
-                        context={}  # 不儲存冗餘的context
-                    )
-                    
-                    # 更新記憶檔案供Gemini載入
-                    memory_content = self.memory_managers[npc_id].export_memories_to_gemini_format()
-                    npc_name = self.npc_map.get(npc_id, "")
-                    memory_file = self.memories_dir / npc_name / f"{npc_name}_memories.md"
-                    memory_file.write_text(memory_content, encoding='utf-8')
-                    logger.info(f"💾 已保存 {npc_id} 的對話記憶")
+                    logger.info(f"✅ {npc_id} 預熱完成（{elapsed:.2f}秒）")
+                
+                # 短暫等待避免同時請求
+                await asyncio.sleep(1)
+                
             except Exception as e:
-                logger.error(f"保存記憶失敗: {e}")
+                logger.error(f"預熱 {npc_id} 失敗：{e}")
         
-        return response
+        logger.info("🔥 預熱完成！")
     
-    def _get_display_name(self, npc_id: str) -> str:
-        """獲取 NPC 顯示名稱"""
-        names = {
-            "npc-1": "鋁配咻",
-            "npc-2": "流羽岑",
-            "npc-3": "沉停鞍"
+    def get_status(self) -> Dict:
+        """獲取服務狀態"""
+        # 檢查固定快取資料夾
+        cache_dirs = []
+        for npc_name in self.npc_map.values():
+            cache_dir = self._get_fixed_temp_dir(npc_name)
+            if cache_dir.exists():
+                files = list(cache_dir.iterdir())
+                cache_dirs.append({
+                    'npc': npc_name,
+                    'files': len(files),
+                    'path': str(cache_dir)
+                })
+        
+        return {
+            "status": "running",
+            "npcs_loaded": len(self.personalities),
+            "memory_cache_size": len(self.memory_cache),
+            "active_sessions": len(self.sessions),
+            "redis_enabled": self.redis_enabled,
+            "fixed_cache_dirs": cache_dirs,
+            "memory_managers": list(self.memory_managers.keys())
         }
-        return names.get(npc_id, "NPC")
     
-    async def update_memory(self, npc_id: str, memory_type: str, content: str, importance: float = 0.5):
-        """更新 NPC 記憶"""
-        npc_name = self.npc_map.get(npc_id, "")
-        if not npc_name:
-            return False
+    async def clear_cache(self):
+        """清除所有快取"""
+        # 清除記憶快取
+        self.memory_cache.clear()
         
-        # 更新記憶檔案 - 使用新的檔案命名
-        name_mapping = {
-            'lupeixiu': 'LuPeiXiu',
-            'liuyucen': 'LiuYuCen', 
-            'chentingan': 'ChenTingAn'
-        }
-        formatted_name = name_mapping.get(npc_name, npc_name.title())
-        memory_file = self.memories_dir / npc_name / f"{formatted_name}_Personality.md"
-        if memory_file.exists():
-            current_memory = memory_file.read_text(encoding='utf-8')
-            
-            # 添加新記憶到對話記憶區
-            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            new_memory = f"\n- [{timestamp}] {content} (重要性: {importance})"
-            
-            # 找到對話記憶區並添加
-            if "## 對話記憶" in current_memory:
-                parts = current_memory.split("## 對話記憶")
-                if len(parts) > 1:
-                    before = parts[0] + "## 對話記憶"
-                    after_parts = parts[1].split("\n## ")
-                    memory_section = after_parts[0] + new_memory
-                    
-                    # 限制記憶數量（保留最近 50 條）
-                    memory_lines = memory_section.split('\n')
-                    if len(memory_lines) > 52:  # 標題 + 註釋 + 50 條記憶
-                        memory_lines = memory_lines[:2] + memory_lines[-50:]
-                    memory_section = '\n'.join(memory_lines)
-                    
-                    # 重組檔案
-                    if len(after_parts) > 1:
-                        after = "\n## " + "\n## ".join(after_parts[1:])
-                        updated_memory = before + memory_section + after
-                    else:
-                        updated_memory = before + memory_section
-                    
-                    memory_file.write_text(updated_memory, encoding='utf-8')
-                    logger.info(f"✅ 更新 {npc_name} 的記憶")
-                    return True
+        # 清除 Redis 快取
+        if self.redis_enabled and self.redis_client:
+            try:
+                await self.redis_client.flushdb()
+                logger.info("🗑️ Redis 快取已清除")
+            except Exception as e:
+                logger.error(f"清除 Redis 失敗：{e}")
         
-        return False
+        logger.info("🗑️ 快取已清除")
 
 # 創建服務實例
-server = NPCDialogueServer()
+dialogue_server = NPCDialogueServer()
 
-# API 端點
+# 定期更新記憶的背景任務
+async def periodic_memory_update():
+    """定期更新所有 NPC 的長期記憶"""
+    while True:
+        try:
+            await asyncio.sleep(3600)  # 每小時執行一次
+            logger.info("🔄 開始定期記憶更新...")
+            
+            for npc_id, memory_manager in dialogue_server.memory_managers.items():
+                try:
+                    # 更新長期記憶
+                    await memory_manager.update_memories_at_startup()
+                    
+                    # 導出記憶到 Gemini 格式
+                    memory_content = memory_manager.export_memories_to_gemini_format()
+                    npc_name = dialogue_server.npc_map.get(npc_id, npc_id)
+                    memory_file = Path(f"memories/{npc_name}/{npc_name}_memories.md")
+                    
+                    with open(memory_file, 'w', encoding='utf-8') as f:
+                        f.write(memory_content)
+                    
+                    logger.info(f"✅ 已更新 {npc_name} 的長期記憶")
+                    
+                except Exception as e:
+                    logger.error(f"更新 {npc_id} 記憶失敗：{e}")
+            
+            logger.info("✅ 定期記憶更新完成")
+            
+        except Exception as e:
+            logger.error(f"定期記憶更新失敗：{e}")
+
+# 啟動事件
+@app.on_event("startup")
+async def startup_event():
+    """服務啟動時執行"""
+    # 初始化 Redis
+    await dialogue_server.init_redis()
+    
+    # 預熱 NPC（背景執行）
+    asyncio.create_task(dialogue_server.preheat_npcs())
+    
+    # 啟動定期記憶更新任務
+    asyncio.create_task(periodic_memory_update())
+    
+    # 初始更新所有 NPC 記憶
+    for npc_id, memory_manager in dialogue_server.memory_managers.items():
+        try:
+            await memory_manager.update_memories_at_startup()
+            logger.info(f"✅ 初始化 {npc_id} 的記憶系統")
+        except Exception as e:
+            logger.error(f"初始化 {npc_id} 記憶失敗：{e}")
+
+# API 路由
 @app.post("/generate")
 async def generate_dialogue(request: DialogueRequest):
     """生成 NPC 對話"""
     try:
-        response = await server.generate_response(
+        result = await dialogue_server.generate_response(
             npc_id=request.npc_id,
             message=request.message,
             context=request.context,
             session_id=request.session_id
         )
-        return {"response": response, "status": "success"}
+        # 回傳完整結果（包含 timing 資訊）
+        return result
     except Exception as e:
-        logger.error(f"生成對話錯誤: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/memory/update")
-async def update_memory(update: MemoryUpdate):
-    """更新 NPC 記憶"""
-    try:
-        success = await server.update_memory(
-            npc_id=update.npc_id,
-            memory_type=update.memory_type,
-            content=update.content,
-            importance=update.importance
-        )
-        return {"success": success}
-    except Exception as e:
-        logger.error(f"更新記憶錯誤: {e}")
+        logger.error(f"生成對話失敗: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/status")
 async def get_status():
     """獲取服務狀態"""
-    return {
-        "status": "running",
-        "npcs_loaded": len(server.personalities),
-        "cache_size": len(server.memory_cache),
-        "active_sessions": len(server.sessions),
-        "timestamp": datetime.now().isoformat()
-    }
-
-@app.post("/cache/clear")
-async def clear_cache():
-    """清空快取"""
-    server.memory_cache.clear()
-    return {"message": "快取已清空"}
+    return dialogue_server.get_status()
 
 @app.get("/health")
 async def health_check():
     """健康檢查"""
-    return {"status": "healthy"}
+    return {"status": "healthy", "redis": dialogue_server.redis_enabled}
+
+@app.post("/cache/clear")
+async def clear_cache():
+    """清除快取"""
+    await dialogue_server.clear_cache()
+    return {"status": "cache cleared"}
 
 if __name__ == "__main__":
     import uvicorn
-    
-    # 設定日誌
-    logger.info("🚀 啟動 Heart Whisper MCP Server...")
-    logger.info(f"📁 個性目錄: {server.personalities_dir}")
-    logger.info(f"📁 記憶目錄: {server.memories_dir}")
-    logger.info(f"✅ 載入 NPC: {list(server.npc_map.values())}")
-    
-    # 啟動服務
-    uvicorn.run(
-        app,
-        host="0.0.0.0",
-        port=8765,
-        log_level="info",
-        access_log=True,
-        loop="uvloop"  # 使用高效能事件循環
-    )
+    logger.info("🚀 啟動優化版 MCP 服務器...")
+    uvicorn.run(app, host="0.0.0.0", port=8765)

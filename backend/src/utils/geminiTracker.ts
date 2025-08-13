@@ -158,7 +158,9 @@ export class GeminiTracker {
     this.currentRecord.responseTime = responseTime
     this.currentRecord.cacheHit = cacheHit
     
-    logger.info(`✅ 收到回應 (${responseTime}ms, 快取: ${cacheHit ? '是' : '否'}): "${response.substring(0, 50)}..."`)
+    // 安全處理 response 可能為 undefined 的情況
+    const responsePreview = response ? response.substring(0, 50) : '(空回應)'
+    logger.info(`✅ 收到回應 (${responseTime}ms, 快取: ${cacheHit ? '是' : '否'}): "${responsePreview}..."`)
     
     // 完成這條記錄
     this.finishTracking()
