@@ -242,7 +242,6 @@ export const NPCCharacter = ({ npc, position, conversationContent, isInConversat
             lineHeight={1.4}
             letterSpacing={0.02}
             textAlign="center"
-            font="/fonts/font.TTC"
             anchorX="center"
             anchorY="middle"
             color="#2C3E50"
@@ -327,7 +326,6 @@ export const NPCCharacter = ({ npc, position, conversationContent, isInConversat
         <Text
           position={[0, 0, 0.15]}
           fontSize={0.4}
-          font="/fonts/font.TTC"
           anchorX="center"
           anchorY="middle"
           color={isSelected ? "#FFFFFF" : "#4B0082"}
