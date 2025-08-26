@@ -2,6 +2,8 @@ import { useRef, useState, useEffect } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Text, Html, Billboard, RoundedBox } from '@react-three/drei'
 import { useGameStore } from '@/stores/gameStore'
+import { collisionSystem } from '@/utils/collision'
+import { getTerrainHeight, getTerrainRotation, getTerrainSlope, isValidGroundPosition, isPathClear } from './TerrainModel'
 import * as THREE from 'three'
 
 interface NPCCharacterProps {
@@ -25,7 +27,19 @@ export const NPCCharacter = ({ npc, position, conversationContent, isInConversat
   const [clicked, setClicked] = useState(false)
   const [currentPosition, setCurrentPosition] = useState(new THREE.Vector3(...position))
   const [targetPosition, setTargetPosition] = useState(new THREE.Vector3(...position))
-  const [walkSpeed] = useState(0.5) // 移動速度
+  
+  // 初始化時調整到正確的地形高度並同步回store
+  useEffect(() => {
+    const terrainHeight = getTerrainHeight(position[0], position[2])
+    const adjustedPosition = new THREE.Vector3(position[0], terrainHeight + 1.0, position[2])
+    setCurrentPosition(adjustedPosition)
+    setTargetPosition(adjustedPosition)
+    
+    // 立即同步初始位置回store
+    updateNpcPosition(npc.id, [adjustedPosition.x, adjustedPosition.y, adjustedPosition.z])
+    console.log(`NPC ${npc.name} 初始位置調整到地形高度並同步:`, adjustedPosition.toArray())
+  }, [])
+  const [walkSpeed] = useState(1.2) // 移動速度，增加以適應更大的活動範圍
   const [nextMoveTime, setNextMoveTime] = useState(Date.now() + Math.random() * 10000)
   const [facingDirection, setFacingDirection] = useState(0)
   const { setSelectedNpc, startConversation, selectedNpc, updateNpcPosition } = useGameStore()
@@ -49,18 +63,68 @@ export const NPCCharacter = ({ npc, position, conversationContent, isInConversat
   // 設置新的隨機目標位置
   const setNewTarget = () => {
     if (!isInConversation) {
-      const angle = Math.random() * Math.PI * 2
-      const distance = 3 + Math.random() * 5 // 3-8 單位的移動距離
-      const newX = currentPosition.x + Math.cos(angle) * distance
-      const newZ = currentPosition.z + Math.sin(angle) * distance
+      let attempts = 0
+      let validTarget = null
       
-      // 限制在地圖範圍內
-      const clampedX = Math.max(-40, Math.min(40, newX))
-      const clampedZ = Math.max(-40, Math.min(40, newZ))
+      // 30%機率進行長距離探索，70%機率進行短距離移動
+      const isLongExploration = Math.random() < 0.3
       
-      setTargetPosition(new THREE.Vector3(clampedX, position[1], clampedZ))
-      setFacingDirection(angle)
-      setNextMoveTime(Date.now() + 15000 + Math.random() * 20000) // 15-35秒後再次移動
+      // 嘗試找到一個有效的目標位置
+      while (attempts < 20 && !validTarget) {
+        let newX, newZ
+        
+        if (isLongExploration) {
+          // 長距離探索：隨機選擇地形上的任意位置
+          newX = -40 + Math.random() * 80 // -40 到 40 的範圍
+          newZ = -40 + Math.random() * 80
+        } else {
+          // 短距離移動：在當前位置附近
+          const angle = Math.random() * Math.PI * 2
+          const distance = 3 + Math.random() * 8 // 3-11 單位的移動距離
+          newX = currentPosition.x + Math.cos(angle) * distance
+          newZ = currentPosition.z + Math.sin(angle) * distance
+        }
+        
+        // 確保在地形範圍內
+        const clampedX = Math.max(-45, Math.min(45, newX))
+        const clampedZ = Math.max(-45, Math.min(45, newZ))
+        
+        // 檢查是否為有效的地面位置（不是雲朵）
+        if (!isValidGroundPosition(clampedX, clampedZ)) {
+          attempts++
+          continue
+        }
+        
+        // 檢查從當前位置到目標位置的路徑是否安全（不會穿越山脈）
+        if (!isPathClear(currentPosition.x, currentPosition.z, clampedX, clampedZ)) {
+          attempts++
+          continue
+        }
+        
+        // 獲取該位置的地形高度
+        const terrainHeight = getTerrainHeight(clampedX, clampedZ)
+        const testPosition = new THREE.Vector3(clampedX, terrainHeight + 1.0, clampedZ)
+        
+        // 檢查位置是否有效（碰撞檢測）
+        if (collisionSystem.isValidPosition(testPosition, 0.3)) {
+          validTarget = testPosition
+        }
+        
+        attempts++
+      }
+      
+      // 如果找到有效位置就設為目標，否則保持當前位置
+      if (validTarget) {
+        setTargetPosition(validTarget)
+        console.log(`NPC ${npc.name} ${isLongExploration ? '長距離探索' : '短距離移動'}到 (${validTarget.x.toFixed(1)}, ${validTarget.z.toFixed(1)})`)
+      }
+      
+      // 根據移動類型調整下次移動時間
+      const nextInterval = isLongExploration 
+        ? 20000 + Math.random() * 30000 // 長距離探索後休息更久：20-50秒
+        : 8000 + Math.random() * 12000  // 短距離移動：8-20秒
+      
+      setNextMoveTime(Date.now() + nextInterval)
     }
   }
 
@@ -85,27 +149,65 @@ export const NPCCharacter = ({ npc, position, conversationContent, isInConversat
         if (distance > 0.1) {
           direction.normalize()
           const moveDistance = Math.min(walkSpeed * delta, distance)
-          currentPosition.add(direction.multiplyScalar(moveDistance))
-          setCurrentPosition(currentPosition.clone())
+          const newPosition = currentPosition.clone().add(direction.clone().multiplyScalar(moveDistance))
           
-          // 更新位置
-          meshRef.current.position.x = currentPosition.x
-          meshRef.current.position.z = currentPosition.z
+          // 使用碰撞系統檢查新位置是否有效
+          const validPosition = collisionSystem.getClosestValidPosition(
+            currentPosition,
+            newPosition,
+            0.3 // NPC半徑稍小
+          )
+          
+          // 更新當前位置
+          setCurrentPosition(validPosition.clone())
+          
+          // 獲取地形高度並更新mesh位置
+          const terrainHeight = getTerrainHeight(validPosition.x, validPosition.z)
+          meshRef.current.position.x = validPosition.x
+          meshRef.current.position.z = validPosition.z
+          // Y軸會在下面的浮動動畫中設定
           
           // 更新 store 中的位置（每隔一段時間更新，避免過於頻繁）
           if (Math.random() < 0.1) { // 10% 機率更新，約每秒10次
-            updateNpcPosition(npc.id, [currentPosition.x, currentPosition.y, currentPosition.z])
+            const storeHeight = terrainHeight + 1.0 // 與實際顯示高度保持一致
+            updateNpcPosition(npc.id, [validPosition.x, storeHeight, validPosition.z])
           }
           
           // 面向移動方向
-          if (!hovered) {
-            meshRef.current.rotation.y = Math.atan2(direction.x, direction.z)
+          if (!hovered && validPosition.distanceTo(currentPosition) > 0.01) {
+            const actualDirection = new THREE.Vector3().subVectors(validPosition, currentPosition).normalize()
+            meshRef.current.rotation.y = Math.atan2(actualDirection.x, actualDirection.z)
           }
         }
       }
       
-      // 輕微的浮動動畫
-      meshRef.current.position.y = position[1] + Math.sin(state.clock.elapsedTime * 2 + position[0]) * 0.05
+      // 輕微的浮動動畫 - 基於實際地形高度並適應地形傾斜
+      const currentX = meshRef.current.position.x
+      const currentZ = meshRef.current.position.z
+      const terrainHeight = getTerrainHeight(currentX, currentZ)
+      const terrainRotation = getTerrainRotation(currentX, currentZ)
+      const terrainSlope = getTerrainSlope(currentX, currentZ)
+      
+      // NPC角色的高度調整：確保整個角色都在地形上方
+      const characterCenterHeight = 1.0 // 角色中心點高度
+      meshRef.current.position.y = terrainHeight + characterCenterHeight + Math.sin(state.clock.elapsedTime * 2 + position[0]) * 0.05
+      
+      // 根據地形傾斜調整NPC旋轉（比玩家更輕微的傾斜）
+      const maxTiltAngle = Math.PI / 6 // 30度最大傾斜，比玩家寬鬆一些
+      if (terrainSlope < maxTiltAngle && !hovered && selectedNpc !== npc.id) {
+        // 只有在不被選中或懸停時才適應地形
+        const lerpFactor = 0.03 // 很慢的適應速度，保持自然
+        meshRef.current.rotation.x = THREE.MathUtils.lerp(
+          meshRef.current.rotation.x, 
+          terrainRotation.x * 0.2, // 更輕微的傾斜
+          lerpFactor
+        )
+        meshRef.current.rotation.z = THREE.MathUtils.lerp(
+          meshRef.current.rotation.z, 
+          terrainRotation.z * 0.2,
+          lerpFactor
+        )
+      }
       
       // 如果被選中或懸停，面向攝影機
       if (hovered || selectedNpc === npc.id) {
@@ -153,7 +255,7 @@ export const NPCCharacter = ({ npc, position, conversationContent, isInConversat
   return (
     <group
       ref={meshRef}
-      position={position}
+      position={[currentPosition.x, currentPosition.y, currentPosition.z]}
       onClick={handleClick}
       onPointerOver={() => setHovered(true)}
       onPointerOut={() => setHovered(false)}

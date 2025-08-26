@@ -3,7 +3,22 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useGameStore } from '@/stores/gameStore'
 import { collisionSystem } from '@/utils/collision'
+import { getTerrainHeight, getTerrainRotation, getTerrainSlope, isPathClear } from './TerrainModel'
 import { CameraController } from './CameraController'
+
+// NPC 類型定義（與 gameStore 保持一致）
+interface NPC {
+  id: string
+  name: string
+  personality: string
+  currentMood: string
+  position: [number, number, number]
+  relationshipLevel: number
+  lastInteraction?: Date
+  isInConversation?: boolean
+  conversationContent?: string
+  conversationPartner?: string
+}
 
 interface PlayerProps {
   position?: [number, number, number]
@@ -32,14 +47,14 @@ export const Player = ({ position = [0, 0, 0] }: PlayerProps) => {
   const walkCycle = useRef(0)
   
   // 檢查附近的 NPC
-  const checkNearbyNPC = useCallback(() => {
+  const checkNearbyNPC = useCallback((): NPC | null => {
     if (!playerRef.current) return null
     
     const playerPos = new THREE.Vector3()
     playerRef.current.getWorldPosition(playerPos)
     
     // 尋找最近的 NPC
-    let nearestNPC = null
+    let nearestNPC: NPC | null = null
     let nearestDistance = Infinity
     
     npcs.forEach((npc) => {
@@ -57,7 +72,7 @@ export const Player = ({ position = [0, 0, 0] }: PlayerProps) => {
   
   // F鍵互動處理
   const handleInteraction = useCallback(() => {
-    const nearbyNPC = checkNearbyNPC()
+    const nearbyNPC: NPC | null = checkNearbyNPC()
     
     if (nearbyNPC) {
       console.log(`與 ${nearbyNPC.name} 開始對話 (距離: ${nearbyNPC.position})`)
@@ -186,20 +201,77 @@ export const Player = ({ position = [0, 0, 0] }: PlayerProps) => {
       const currentPosition = playerRef.current.position.clone()
       const targetPosition = currentPosition.clone().add(velocity.current)
       
-      // 使用碰撞系統檢查並獲取有效位置
-      const validPosition = collisionSystem.getClosestValidPosition(
+      // 檢查移動路徑是否會穿越山脈
+      let validPosition = targetPosition.clone()
+      
+      // 首先檢查是否會穿越山脈
+      if (!isPathClear(currentPosition.x, currentPosition.z, targetPosition.x, targetPosition.z)) {
+        // 如果路徑被山脈阻擋，嘗試找到可達的位置
+        const direction = new THREE.Vector3().subVectors(targetPosition, currentPosition).normalize()
+        let testDistance = 0.5
+        let safePosition = currentPosition.clone()
+        
+        // 逐步測試較短距離的移動
+        while (testDistance < currentPosition.distanceTo(targetPosition)) {
+          const testPos = currentPosition.clone().add(direction.clone().multiplyScalar(testDistance))
+          
+          if (isPathClear(currentPosition.x, currentPosition.z, testPos.x, testPos.z)) {
+            safePosition = testPos
+            testDistance += 0.5
+          } else {
+            break
+          }
+        }
+        
+        validPosition = safePosition
+      }
+      
+      // 使用碰撞系統檢查並獲取最終有效位置
+      validPosition = collisionSystem.getClosestValidPosition(
         currentPosition,
-        targetPosition,
+        validPosition,
         0.5 // 玩家半徑
       )
       
-      playerRef.current.position.copy(validPosition)
+      // 獲取地形高度和旋轉
+      const terrainHeight = getTerrainHeight(validPosition.x, validPosition.z)
+      const terrainRotation = getTerrainRotation(validPosition.x, validPosition.z)
+      const terrainSlope = getTerrainSlope(validPosition.x, validPosition.z)
+      
+      const adjustedPosition = validPosition.clone()
+      // 讓整個角色都在地形上方：地形高度 + 角色中心點高度
+      adjustedPosition.y = terrainHeight + 1.0
+      
+      playerRef.current.position.copy(adjustedPosition)
+      
+      // 根據地形傾斜調整角色旋轉（限制最大傾斜角度以保持自然）
+      const maxTiltAngle = Math.PI / 8 // 22.5度最大傾斜
+      if (terrainSlope < maxTiltAngle) {
+        // 平滑插值到地形角度
+        const lerpFactor = 0.1 // 插值係數，控制適應速度
+        const targetRotation = terrainRotation
+        
+        playerRef.current.rotation.x = THREE.MathUtils.lerp(
+          playerRef.current.rotation.x, 
+          targetRotation.x * 0.3, // 減少X軸傾斜
+          lerpFactor
+        )
+        playerRef.current.rotation.z = THREE.MathUtils.lerp(
+          playerRef.current.rotation.z, 
+          targetRotation.z * 0.3, // 減少Z軸傾斜
+          lerpFactor
+        )
+      } else {
+        // 地形太陡峭時回復垂直
+        playerRef.current.rotation.x = THREE.MathUtils.lerp(playerRef.current.rotation.x, 0, 0.1)
+        playerRef.current.rotation.z = THREE.MathUtils.lerp(playerRef.current.rotation.z, 0, 0.1)
+      }
       
       // 走路動畫
       isMoving.current = true
       walkCycle.current += delta * 10
       if (isMounted.current) {
-        setPlayerPosition([validPosition.x, validPosition.y, validPosition.z])
+        setPlayerPosition([adjustedPosition.x, adjustedPosition.y, adjustedPosition.z])
       }
 
       // PC遊戲：角色朝向邏輯
@@ -232,10 +304,42 @@ export const Player = ({ position = [0, 0, 0] }: PlayerProps) => {
       isMoving.current = false
     }
     
-    // 走路時的上下擺動
+    // 走路時的上下擺動 - 基於地形高度
     if (isMoving.current && playerRef.current) {
+      const currentX = playerRef.current.position.x
+      const currentZ = playerRef.current.position.z
+      const terrainHeight = getTerrainHeight(currentX, currentZ)
       const bobAmount = Math.sin(walkCycle.current) * 0.05
-      playerRef.current.position.y = 0.5 + bobAmount
+      // 確保整個角色都在地形上方
+      playerRef.current.position.y = terrainHeight + 1.0 + bobAmount
+    } else if (playerRef.current) {
+      // 靜止時也要保持在地形上方並適應地形傾斜
+      const currentX = playerRef.current.position.x
+      const currentZ = playerRef.current.position.z
+      const terrainHeight = getTerrainHeight(currentX, currentZ)
+      const terrainRotation = getTerrainRotation(currentX, currentZ)
+      const terrainSlope = getTerrainSlope(currentX, currentZ)
+      
+      playerRef.current.position.y = terrainHeight + 1.0
+      
+      // 靜止時也適應地形傾斜
+      const maxTiltAngle = Math.PI / 8 // 22.5度最大傾斜
+      if (terrainSlope < maxTiltAngle) {
+        const lerpFactor = 0.05 // 靜止時較慢的適應速度
+        playerRef.current.rotation.x = THREE.MathUtils.lerp(
+          playerRef.current.rotation.x, 
+          terrainRotation.x * 0.3,
+          lerpFactor
+        )
+        playerRef.current.rotation.z = THREE.MathUtils.lerp(
+          playerRef.current.rotation.z, 
+          terrainRotation.z * 0.3,
+          lerpFactor
+        )
+      } else {
+        playerRef.current.rotation.x = THREE.MathUtils.lerp(playerRef.current.rotation.x, 0, 0.05)
+        playerRef.current.rotation.z = THREE.MathUtils.lerp(playerRef.current.rotation.z, 0, 0.05)
+      }
     }
   })
 
@@ -249,9 +353,12 @@ export const Player = ({ position = [0, 0, 0] }: PlayerProps) => {
   // 初始化玩家位置
   useEffect(() => {
     if (playerRef.current && position && isMounted.current) {
-      playerRef.current.position.set(...position)
+      // 獲取初始位置的地形高度
+      const terrainHeight = getTerrainHeight(position[0], position[2])
+      const adjustedY = terrainHeight + 1.0
+      playerRef.current.position.set(position[0], adjustedY, position[2])
       // Only set position once on mount
-      setPlayerPosition(position)
+      setPlayerPosition([position[0], adjustedY, position[2]])
     }
   }, []) // Remove dependencies to prevent infinite loop
 

@@ -4,7 +4,7 @@ import * as THREE from 'three'
 export interface CollisionObject {
   position: THREE.Vector3
   radius: number
-  type: 'building' | 'tree' | 'rock' | 'npc' | 'fence' | 'water'
+  type: 'building' | 'tree' | 'rock' | 'npc' | 'fence' | 'water' | 'mountain'
   id: string
 }
 

@@ -97,7 +97,7 @@ export const useGameStore = create<GameState>()(
       // Initial state
       playerId: null,
       playerName: '',
-      playerPosition: [0, 0.5, 0],
+      playerPosition: [3, 0.5, 0],
       playerRotation: 0,
       joystickInput: { x: 0, y: 0 },
       npcs: [],
@@ -177,7 +177,7 @@ export const useGameStore = create<GameState>()(
                   name: '陸培修',
                   personality: '夢幻的藝術家',
                   currentMood: 'cheerful',
-                  position: [3, 0, 3],
+                  position: [6, 0, 3],
                   relationshipLevel: 1,
                 },
                 {
@@ -185,7 +185,7 @@ export const useGameStore = create<GameState>()(
                   name: '劉宇岑',
                   personality: '充滿活力的朋友',
                   currentMood: 'excited',
-                  position: [-3, 0, 3],
+                  position: [0, 0, 6],
                   relationshipLevel: 1,
                 },
                 {
@@ -193,7 +193,7 @@ export const useGameStore = create<GameState>()(
                   name: '陳庭安',
                   personality: '溫柔的靈魂',
                   currentMood: 'dreamy',
-                  position: [0, 0, 5],
+                  position: [-3, 0, -3],
                   relationshipLevel: 1,
                 },
               ],
@@ -212,7 +212,7 @@ export const useGameStore = create<GameState>()(
                 name: '陸培修',
                 personality: '夢幻的藝術家',
                 currentMood: 'cheerful',
-                position: [3, 0, 3],
+                position: [6, 0, 3],
                 relationshipLevel: 1,
               },
               {
@@ -220,7 +220,7 @@ export const useGameStore = create<GameState>()(
                 name: '劉宇岑',
                 personality: '充滿活力的朋友',
                 currentMood: 'excited',
-                position: [-3, 0, 3],
+                position: [0, 0, 6],
                 relationshipLevel: 1,
               },
               {
@@ -228,7 +228,7 @@ export const useGameStore = create<GameState>()(
                 name: '陳庭安',
                 personality: '溫柔的靈魂',
                 currentMood: 'dreamy',
-                position: [0, 0, 5],
+                position: [-3, 0, -3],
                 relationshipLevel: 1,
               },
             ],
