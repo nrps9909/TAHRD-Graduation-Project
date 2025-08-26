@@ -149,11 +149,11 @@ export const useGameStore = create<GameState>()(
           const data = await response.json()
           
           if (data.data && data.data.npcs) {
-            // 預設的3D模型內安全位置（基於安全性檢查結果）
+            // 預設的3D模型內安全位置（更靠近中心）
             const defaultPositions: Record<string, [number, number, number]> = {
-              'npc-1': [9, 0, 0],     // 陸培修 - 安全區域
-              'npc-2': [-35, 0, -35], // 劉宇岑 - 西北最邊角
-              'npc-3': [35, 0, 35]    // 陳庭安 - 東南最邊角
+              'npc-1': [12, 0, 15],   // 陸培修 - 東南安全區域
+              'npc-2': [-15, 0, -12], // 劉宇岑 - 西北安全區域  
+              'npc-3': [8, 0, 5]      // 陳庭安 - 中央安全區域
             }
             
             // 將後端資料轉換為前端格式，使用預設3D安全位置
@@ -166,7 +166,7 @@ export const useGameStore = create<GameState>()(
               relationshipLevel: 1,
             }))
             
-            console.log('從後端載入的NPC資料（使用3D安全位置）:', npcs.map((n: any) => ({ name: n.name, position: n.position })))
+            console.log('從後端載入的NPC資料（使用3D模型中心安全位置）:', npcs.map((n: any) => ({ name: n.name, position: n.position })))
             
             set({
               playerId: 'player-1',
@@ -186,7 +186,7 @@ export const useGameStore = create<GameState>()(
                   name: '陸培修',
                   personality: '夢幻的藝術家',
                   currentMood: 'cheerful',
-                  position: [9, 0, 0],
+                  position: [12, 0, 15],
                   relationshipLevel: 1,
                 },
                 {
@@ -194,7 +194,7 @@ export const useGameStore = create<GameState>()(
                   name: '劉宇岑',
                   personality: '充滿活力的朋友',
                   currentMood: 'excited',
-                  position: [-35, 0, -35],
+                  position: [-15, 0, -12],
                   relationshipLevel: 1,
                 },
                 {
@@ -202,7 +202,7 @@ export const useGameStore = create<GameState>()(
                   name: '陳庭安',
                   personality: '溫柔的靈魂',
                   currentMood: 'dreamy',
-                  position: [35, 0, 35],
+                  position: [8, 0, 5],
                   relationshipLevel: 1,
                 },
               ],
@@ -221,7 +221,7 @@ export const useGameStore = create<GameState>()(
                 name: '陸培修',
                 personality: '夢幻的藝術家',
                 currentMood: 'cheerful',
-                position: [9, 0, 0],
+                position: [12, 0, 15],
                 relationshipLevel: 1,
               },
               {
@@ -229,7 +229,7 @@ export const useGameStore = create<GameState>()(
                 name: '劉宇岑',
                 personality: '充滿活力的朋友',
                 currentMood: 'excited',
-                position: [-35, 0, -35],
+                position: [-15, 0, -12],
                 relationshipLevel: 1,
               },
               {
@@ -237,7 +237,7 @@ export const useGameStore = create<GameState>()(
                 name: '陳庭安',
                 personality: '溫柔的靈魂',
                 currentMood: 'dreamy',
-                position: [35, 0, 35],
+                position: [8, 0, 5],
                 relationshipLevel: 1,
               },
             ],

@@ -620,5 +620,35 @@ export const validateCharacterPositions = (positions: Array<[number, number, num
   console.log('=========================')
 }
 
+// 調試中央區域地形情況
+export const debugCentralAreaTerrain = () => {
+  console.log('=== 中央區域地形調試 ===')
+  const centralPoints = [
+    [0, 0], [5, 5], [10, 10], [8, 5], [3, 0],
+    [-5, -5], [-10, -10], [5, -5], [-5, 5]
+  ]
+  
+  centralPoints.forEach(([x, z]) => {
+    const height = getTerrainHeight(x, z)
+    const isBrown = isOnBrownMountain(x, z)
+    const isValid = isValidGroundPosition(x, z)
+    const slope = getTerrainSlope(x, z)
+    
+    console.log(`中央點 [${x}, ${z}]:`)
+    console.log(`  - 高度: ${height.toFixed(2)}`)
+    console.log(`  - 棕色山體: ${isBrown}`)
+    console.log(`  - 有效位置: ${isValid}`)
+    console.log(`  - 地形傾斜: ${slope.toFixed(3)} 弧度 (${(slope * 180 / Math.PI).toFixed(1)}°)`)
+    
+    if (slope > Math.PI / 6) {
+      console.warn(`  ⚠️ 地形傾斜過陡: ${(slope * 180 / Math.PI).toFixed(1)}°`)
+    }
+    if (isBrown) {
+      console.warn(`  ⚠️ 檢測到棕色山體材質`)
+    }
+  })
+  console.log('=== 中央區域調試完成 ===')
+}
+
 // 預載模型
 useGLTF.preload('/terrain_low_poly/scene.gltf')
