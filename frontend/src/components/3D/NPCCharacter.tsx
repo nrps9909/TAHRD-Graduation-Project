@@ -27,20 +27,31 @@ export const NPCCharacter = ({ npc, position, conversationContent, isInConversat
   const [clicked, setClicked] = useState(false)
   const [currentPosition, setCurrentPosition] = useState(new THREE.Vector3(...position))
   const [targetPosition, setTargetPosition] = useState(new THREE.Vector3(...position))
+  const [isNon3DPosition] = useState(Math.abs(position[0]) > 40 || Math.abs(position[2]) > 40)
   
-  // 初始化時調整到正確的地形高度並同步回store
+  // 初始化時處理位置設定
   useEffect(() => {
-    const terrainHeight = getTerrainHeight(position[0], position[2])
-    const adjustedPosition = new THREE.Vector3(position[0], terrainHeight + 1.0, position[2])
-    setCurrentPosition(adjustedPosition)
-    setTargetPosition(adjustedPosition)
+    console.log(`NPC ${npc.name} 接收到的位置:`, position, `是否非3D:`, isNon3DPosition)
     
-    // 立即同步初始位置回store
-    updateNpcPosition(npc.id, [adjustedPosition.x, adjustedPosition.y, adjustedPosition.z])
-    console.log(`NPC ${npc.name} 初始位置調整到地形高度並同步:`, adjustedPosition.toArray())
+    if (isNon3DPosition) {
+      // 非3D位置：直接使用設定的位置，不進行地形調整
+      const adjustedPosition = new THREE.Vector3(position[0], position[1], position[2])
+      setCurrentPosition(adjustedPosition)
+      setTargetPosition(adjustedPosition)
+      updateNpcPosition(npc.id, [adjustedPosition.x, adjustedPosition.y, adjustedPosition.z])
+      console.log(`NPC ${npc.name} 設定為非3D位置:`, adjustedPosition.toArray())
+    } else {
+      // 3D模型內位置：調整到地形高度
+      const terrainHeight = getTerrainHeight(position[0], position[2])
+      const adjustedPosition = new THREE.Vector3(position[0], terrainHeight + 1.0, position[2])
+      setCurrentPosition(adjustedPosition)
+      setTargetPosition(adjustedPosition)
+      updateNpcPosition(npc.id, [adjustedPosition.x, adjustedPosition.y, adjustedPosition.z])
+      console.log(`NPC ${npc.name} 調整到地形高度:`, adjustedPosition.toArray())
+    }
   }, [])
-  const [walkSpeed] = useState(1.2) // 移動速度，增加以適應更大的活動範圍
-  const [nextMoveTime, setNextMoveTime] = useState(Date.now() + Math.random() * 10000)
+  const [walkSpeed] = useState(2.5) // 提高移動速度，讓NPCs更活躍
+  const [nextMoveTime, setNextMoveTime] = useState(Date.now() + 3000 + Math.random() * 5000) // 等待3-8秒即可開始移動
   const [facingDirection, setFacingDirection] = useState(0)
   const { setSelectedNpc, startConversation, selectedNpc, updateNpcPosition } = useGameStore()
   const { camera } = useThree()
@@ -74,9 +85,9 @@ export const NPCCharacter = ({ npc, position, conversationContent, isInConversat
         let newX, newZ
         
         if (isLongExploration) {
-          // 長距離探索：隨機選擇地形上的任意位置
-          newX = -40 + Math.random() * 80 // -40 到 40 的範圍
-          newZ = -40 + Math.random() * 80
+          // 長距離探索：擴大範圍讓NPCs更自由
+          newX = -20 + Math.random() * 40 // -20 到 20 的探索範圍
+          newZ = -20 + Math.random() * 40
         } else {
           // 短距離移動：在當前位置附近
           const angle = Math.random() * Math.PI * 2
@@ -106,8 +117,11 @@ export const NPCCharacter = ({ npc, position, conversationContent, isInConversat
         const testPosition = new THREE.Vector3(clampedX, terrainHeight + 1.0, clampedZ)
         
         // 檢查位置是否有效（碰撞檢測）
-        if (collisionSystem.isValidPosition(testPosition, 0.3)) {
+        const isValid = collisionSystem.isValidPosition(testPosition, 0.3)
+        if (isValid) {
           validTarget = testPosition
+        } else {
+          console.log(`NPC ${npc.name} 位置 (${clampedX.toFixed(1)}, ${clampedZ.toFixed(1)}) 被碰撞物體阻擋`)
         }
         
         attempts++
@@ -119,10 +133,10 @@ export const NPCCharacter = ({ npc, position, conversationContent, isInConversat
         console.log(`NPC ${npc.name} ${isLongExploration ? '長距離探索' : '短距離移動'}到 (${validTarget.x.toFixed(1)}, ${validTarget.z.toFixed(1)})`)
       }
       
-      // 根據移動類型調整下次移動時間
+      // 根據移動類型調整下次移動時間（縮短間隔讓NPCs更活躍）
       const nextInterval = isLongExploration 
-        ? 20000 + Math.random() * 30000 // 長距離探索後休息更久：20-50秒
-        : 8000 + Math.random() * 12000  // 短距離移動：8-20秒
+        ? 10000 + Math.random() * 15000 // 長距離探索後休息：10-25秒
+        : 4000 + Math.random() * 6000   // 短距離移動：4-10秒
       
       setNextMoveTime(Date.now() + nextInterval)
     }
@@ -131,7 +145,7 @@ export const NPCCharacter = ({ npc, position, conversationContent, isInConversat
   // 定期更新目標位置
   useEffect(() => {
     const interval = setInterval(() => {
-      if (Date.now() > nextMoveTime && !isInConversation) {
+      if (Date.now() > nextMoveTime && !isInConversation && !isNon3DPosition) {
         setNewTarget()
       }
     }, 1000)
@@ -141,8 +155,8 @@ export const NPCCharacter = ({ npc, position, conversationContent, isInConversat
   // 動畫和移動
   useFrame((state, delta) => {
     if (meshRef.current) {
-      // 移動到目標位置
-      if (!isInConversation) {
+      // 移動到目標位置（只有3D位置內的NPCs才移動）
+      if (!isInConversation && !isNon3DPosition) {
         const direction = new THREE.Vector3().subVectors(targetPosition, currentPosition)
         const distance = direction.length()
         

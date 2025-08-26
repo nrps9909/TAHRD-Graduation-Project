@@ -197,41 +197,70 @@ export const Player = ({ position = [0, 0, 0] }: PlayerProps) => {
       if (keys.current.shift) speed = 15  // Shift - 奔跑
       velocity.current.copy(moveDirection.multiplyScalar(speed * delta))
 
-      // 計算新位置
-      const currentPosition = playerRef.current.position.clone()
-      const targetPosition = currentPosition.clone().add(velocity.current)
+      // 分步移動防止跳過碰撞檢測
+      let currentPos = playerRef.current.position.clone()
+      const totalMovement = velocity.current.clone()
+      const maxStepSize = 0.1 // 最大步長，防止跳過碰撞
+      const steps = Math.ceil(totalMovement.length() / maxStepSize)
+      const stepMovement = totalMovement.divideScalar(steps)
       
-      // 檢查移動路徑是否會穿越山脈
-      let validPosition = targetPosition.clone()
+      // 只在第一次檢查時顯示樹木數量
+      if (Math.random() < 0.01) { // 1%機率輸出樹木數量
+        const treeCount = collisionSystem.getTreeCount()
+        console.log(`已註冊樹木數量: ${treeCount}`)
+      }
       
-      // 首先檢查是否會穿越山脈
-      if (!isPathClear(currentPosition.x, currentPosition.z, targetPosition.x, targetPosition.z)) {
-        // 如果路徑被山脈阻擋，嘗試找到可達的位置
-        const direction = new THREE.Vector3().subVectors(targetPosition, currentPosition).normalize()
-        let testDistance = 0.5
-        let safePosition = currentPosition.clone()
+      let validPosition = currentPos.clone()
+      let blocked = false
+      
+      // 逐步移動，每步都檢查碰撞
+      for (let i = 0; i < steps && !blocked; i++) {
+        const nextPosition = validPosition.clone().add(stepMovement)
         
-        // 逐步測試較短距離的移動
-        while (testDistance < currentPosition.distanceTo(targetPosition)) {
-          const testPos = currentPosition.clone().add(direction.clone().multiplyScalar(testDistance))
+        if (collisionSystem.isValidPosition(nextPosition, 0.5)) {
+          validPosition = nextPosition
+        } else {
+          // 被阻擋，嘗試找到部分有效的移動
+          const partialMovement = collisionSystem.getClosestValidPosition(
+            validPosition,
+            nextPosition,
+            0.5
+          )
           
-          if (isPathClear(currentPosition.x, currentPosition.z, testPos.x, testPos.z)) {
+          if (partialMovement.distanceTo(validPosition) > 0.001) {
+            validPosition = partialMovement
+            console.log(`玩家被樹木阻擋，部分移動到: (${validPosition.x.toFixed(1)}, ${validPosition.z.toFixed(1)})`)
+          } else {
+            console.log(`玩家被樹木完全阻擋`)
+          }
+          blocked = true
+        }
+      }
+      
+      // 然後檢查山脈路徑是否暢通
+      if (!isPathClear(currentPos.x, currentPos.z, validPosition.x, validPosition.z)) {
+        // 如果路徑被山脈阻擋，嘗試找到可達的位置
+        const direction = new THREE.Vector3().subVectors(validPosition, currentPos).normalize()
+        let testDistance = 0.5
+        let safePosition = currentPos.clone()
+        
+        // 更細粒度地測試移動，防止擠過樹木
+        while (testDistance < currentPos.distanceTo(validPosition)) {
+          const testPos = currentPos.clone().add(direction.clone().multiplyScalar(testDistance))
+          
+          // 檢查山脈和樹木碰撞
+          if (isPathClear(currentPos.x, currentPos.z, testPos.x, testPos.z) &&
+              collisionSystem.isValidPosition(testPos, 0.5)) {
             safePosition = testPos
-            testDistance += 0.5
+            testDistance += 0.1 // 使用更小的步長，防止擠過樹木
           } else {
             break
           }
         }
         
         validPosition = safePosition
+        console.log(`玩家被山脈阻擋，最終位置: (${validPosition.x.toFixed(1)}, ${validPosition.z.toFixed(1)})`)
       }
-      
-      // 使用碰撞系統檢查並獲取最終有效位置
-      validPosition = collisionSystem.getClosestValidPosition(
-        currentPosition,
-        validPosition,
-        0.5 // 玩家半徑
-      )
       
       // 獲取地形高度和旋轉
       const terrainHeight = getTerrainHeight(validPosition.x, validPosition.z)

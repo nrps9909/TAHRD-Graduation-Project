@@ -105,18 +105,33 @@ export const TerrainModel = ({ position = [0, 0, 0], scale = 1 }: TerrainModelPr
   // 載入GLTF模型
   const { scene } = useGLTF('/terrain_low_poly/scene.gltf')
   
+  // 全局變數儲存樹木網格
+  const treeMeshes = useRef<THREE.Mesh[]>([])
+
   // 初始化射線檢測器和地形參考
   useEffect(() => {
     if (!raycaster) {
       raycaster = new THREE.Raycaster()
     }
     
-    // 尋找地形mesh和棕色山體mesh，排除雲朵等空中物件
+    // 尋找地形mesh、棕色山體mesh和樹木mesh
     brownMountainMeshes = [] // 重置棕色山體陣列
+    treeMeshes.current = [] // 重置樹木陣列
     
     scene.traverse((child) => {
       if (child instanceof THREE.Mesh) {
         const name = child.name.toLowerCase()
+        
+        // 檢查是否為樹木
+        if (name.includes('arbol') || name.includes('tree') || 
+            (child.material && Array.isArray(child.material) ? 
+             child.material.some(mat => mat.name?.toLowerCase().includes('leaves') || mat.name?.toLowerCase().includes('leaf')) :
+             child.material && 'name' in child.material && (child.material.name?.toLowerCase().includes('leaves') || child.material.name?.toLowerCase().includes('leaf')))) {
+          treeMeshes.current.push(child)
+          const position = new THREE.Vector3()
+          child.getWorldPosition(position)
+          console.log('找到樹木mesh:', child.name, '位置:', position.toArray())
+        }
         
         // 檢查材質是否為棕色山體材質
         if (child.material) {
@@ -133,8 +148,10 @@ export const TerrainModel = ({ position = [0, 0, 0], scale = 1 }: TerrainModelPr
               console.log('找到棕色山體mesh:', child.name, '材質:', material.name)
             }
             
-            // 記錄所有材質以供調試
-            console.log('發現材質:', material.name, 'mesh:', child.name)
+            // 記錄所有材質以供調試（減少輸出）
+            if (materialName.includes('leaves') || materialName.includes('tree') || materialName.includes('arbol')) {
+              console.log('發現樹木材質:', material.name, 'mesh:', child.name)
+            }
           }
         }
         
@@ -238,56 +255,114 @@ export const TerrainModel = ({ position = [0, 0, 0], scale = 1 }: TerrainModelPr
       }
     }, 1000) // 等待1秒讓地形完全載入
     
-    // 添加樹木的碰撞檢測 - 預估樹木位置，分散在整個地形上
-    const treePositions = [
-      { x: 15, z: 12, radius: 1.2 },
-      { x: -18, z: 25, radius: 1.2 },
-      { x: 28, z: -15, radius: 1.2 },
-      { x: -25, z: -18, radius: 1.2 },
-      { x: 35, z: 20, radius: 1.2 },
-      { x: -30, z: 35, radius: 1.2 },
-      { x: 20, z: -30, radius: 1.2 },
-      { x: -35, z: 10, radius: 1.2 },
-      { x: 12, z: 35, radius: 1.2 },
-      { x: -12, z: -35, radius: 1.2 },
-      { x: 30, z: 8, radius: 1.2 },
-      { x: -8, z: 30, radius: 1.2 },
-    ]
-    
-    treePositions.forEach((tree, index) => {
+    // 使用真實的樹木網格位置來添加碰撞檢測
+    treeMeshes.current.forEach((treeMesh, index) => {
+      const position = new THREE.Vector3()
+      treeMesh.getWorldPosition(position)
+      
+      // 計算樹木的邊界盒來確定合適的碰撞半徑
+      const box = new THREE.Box3().setFromObject(treeMesh)
+      const size = box.getSize(new THREE.Vector3())
+      const radius = Math.max(size.x, size.z) * 0.6 // 使用XZ平面較大的尺寸作為半徑，稍微放寬
+      
       colliders.push({
-        position: new THREE.Vector3(tree.x, 0, tree.z),
-        radius: tree.radius,
-        id: `tree_${index}`
+        position: new THREE.Vector3(position.x, 0, position.z), // Y設為0用於2D碰撞檢測
+        radius: Math.max(radius, 1.5), // 至少1.5單位半徑
+        id: `real_tree_${index}`
       })
+      
+      console.log(`真實樹木碰撞器 ${index}: 位置(${position.x.toFixed(1)}, ${position.z.toFixed(1)}), 半徑: ${Math.max(radius, 1.5).toFixed(1)}`)
     })
     
+    // 如果沒有找到真實樹木，使用備用預設位置
+    if (treeMeshes.current.length === 0) {
+      console.warn('未找到真實樹木網格，使用預設樹木位置')
+      const fallbackTreePositions = [
+        { x: 15, z: 12, radius: 2.0 },
+        { x: -18, z: 25, radius: 2.0 },
+        { x: 28, z: -15, radius: 2.0 },
+        { x: -25, z: -18, radius: 2.0 },
+        { x: 35, z: 20, radius: 2.0 },
+        { x: -30, z: 35, radius: 2.0 },
+      ]
+      
+      fallbackTreePositions.forEach((tree, index) => {
+        colliders.push({
+          position: new THREE.Vector3(tree.x, 0, tree.z),
+          radius: tree.radius,
+          id: `fallback_tree_${index}`
+        })
+      })
+    }
+    
     return colliders
-  }, [])
+  }, [scene]) // 依賴scene變化來重新計算碰撞器
   
-  // 註冊碰撞物體到碰撞系統
+  // 註冊真實樹木碰撞物體到碰撞系統
   useEffect(() => {
-    // 清除舊的地形碰撞物體（包括山脈屏障）
+    if (treeMeshes.current.length === 0) return
+    
+    const timer = setTimeout(() => {
+      // 清除舊的樹木碰撞物體
+      const oldTreeColliders = collisionSystem.getCollisionObjects()
+        .filter(obj => obj.id.startsWith('tree_') || obj.id.startsWith('real_tree_') || obj.id.startsWith('fallback_tree_'))
+      
+      oldTreeColliders.forEach(obj => {
+        collisionSystem.removeCollisionObject(obj.id)
+      })
+      
+      // 添加真實樹木碰撞物體
+      treeMeshes.current.forEach((treeMesh, index) => {
+        const position = new THREE.Vector3()
+        treeMesh.getWorldPosition(position)
+        
+        // 計算樹木的邊界盒來確定合適的碰撞半徑（縮小以便通過）
+        const box = new THREE.Box3().setFromObject(treeMesh)
+        const size = box.getSize(new THREE.Vector3())
+        const radius = Math.max(size.x, size.z) * 0.4 // 使用XZ平面較大尺寸的0.4倍，更容易通過
+        const finalRadius = Math.max(radius, 1.2) // 最小1.2單位半徑，允許角色更容易通過
+        
+        console.log(`註冊真實樹木碰撞器 ${index}: 位置(${position.x.toFixed(1)}, ${position.z.toFixed(1)}), 計算半徑: ${radius.toFixed(1)}, 最終半徑: ${finalRadius}`)
+        
+        collisionSystem.addCollisionObject({
+          position: new THREE.Vector3(position.x, 0, position.z), // Y設為0用於2D碰撞檢測
+          radius: finalRadius,
+          type: 'tree',
+          id: `real_tree_${index}`
+        })
+      })
+      
+      console.log(`已註冊 ${treeMeshes.current.length} 個真實樹木碰撞器`)
+    }, 1500) // 等待1.5秒讓樹木網格完全載入
+    
+    return () => clearTimeout(timer)
+  }, [scene]) // 依賴scene載入
+
+  // 註冊其他碰撞物體到碰撞系統
+  useEffect(() => {
+    // 清除舊的地形碰撞物體（不包括樹木）
     const oldTerrainColliders = collisionSystem.getCollisionObjects()
-      .filter(obj => obj.id.startsWith('terrain_') || obj.id.startsWith('tree_') || obj.id.startsWith('mountain_barrier_'))
+      .filter(obj => obj.id.startsWith('terrain_') || obj.id.startsWith('mountain_barrier_'))
     
     oldTerrainColliders.forEach(obj => {
       collisionSystem.removeCollisionObject(obj.id)
     })
     
-    // 添加新的碰撞物體
-    terrainColliders.forEach(collider => {
+    // 添加地形碰撞物體（不包括樹木）
+    const nonTreeColliders = terrainColliders.filter(c => !c.id.includes('tree'))
+    nonTreeColliders.forEach(collider => {
+      const objType = collider.id.startsWith('mountain_barrier_') ? 'mountain' : 'rock'
       collisionSystem.addCollisionObject({
         position: collider.position,
         radius: collider.radius,
-        type: collider.id.startsWith('tree_') ? 'tree' : collider.id.startsWith('mountain_barrier_') ? 'mountain' : 'rock',
+        type: objType,
         id: collider.id
       })
     })
     
     return () => {
       // 清理碰撞物體
-      terrainColliders.forEach(collider => {
+      nonTreeColliders.forEach(collider => {
         collisionSystem.removeCollisionObject(collider.id)
       })
     }

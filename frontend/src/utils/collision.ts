@@ -33,10 +33,22 @@ export class CollisionSystem {
 
     // 檢查與其他物體的碰撞
     for (const obj of this.collisionObjects) {
-      const distance = position.distanceTo(obj.position)
+      let distance: number
+      
+      // 對於樹木和地面物件，只檢查2D距離（X和Z軸）
+      if (obj.type === 'tree' || obj.type === 'building' || obj.type === 'rock') {
+        const dx = position.x - obj.position.x
+        const dz = position.z - obj.position.z
+        distance = Math.sqrt(dx * dx + dz * dz)
+      } else {
+        // 其他物體使用3D距離
+        distance = position.distanceTo(obj.position)
+      }
+      
       const minDistance = playerRadius + obj.radius
       
       if (distance < minDistance) {
+        console.log(`碰撞檢測失敗: 物件 ${obj.id} (${obj.type}), 距離: ${distance.toFixed(2)} < 最小距離: ${minDistance.toFixed(2)}`)
         return false
       }
     }
@@ -60,12 +72,12 @@ export class CollisionSystem {
       .subVectors(targetPosition, currentPosition)
       .normalize()
 
-    // 二分搜尋找到最遠的有效位置
+    // 二分搜尋找到最遠的有效位置（提高精度防止擠過樹木）
     let low = 0
     let high = currentPosition.distanceTo(targetPosition)
     let bestDistance = 0
 
-    while (high - low > 0.01) {
+    while (high - low > 0.005) { // 提高精度到0.005
       const mid = (low + high) / 2
       const testPosition = currentPosition.clone()
         .add(direction.clone().multiplyScalar(mid))
@@ -91,6 +103,18 @@ export class CollisionSystem {
   // 獲取所有碰撞物體（用於調試）
   getCollisionObjects() {
     return [...this.collisionObjects]
+  }
+  
+  // 調試方法：顯示註冊的樹木數量
+  getTreeCount() {
+    return this.collisionObjects.filter(obj => obj.type === 'tree').length
+  }
+  
+  // 調試方法：顯示所有樹木位置
+  getTreePositions() {
+    return this.collisionObjects
+      .filter(obj => obj.type === 'tree')
+      .map(tree => ({ id: tree.id, position: tree.position, radius: tree.radius }))
   }
 }
 
