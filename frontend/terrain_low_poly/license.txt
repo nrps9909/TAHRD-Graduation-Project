@@ -1,0 +1,11 @@
+Model Information:
+* title:	Terrain Low Poly
+* source:	https://sketchfab.com/3d-models/terrain-low-poly-248b21331315466e98d20c441935d99d
+* author:	PublicAudiovisual_XR (https://sketchfab.com/Jordi_Martos77)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Terrain Low Poly" (https://sketchfab.com/3d-models/terrain-low-poly-248b21331315466e98d20c441935d99d) by PublicAudiovisual_XR (https://sketchfab.com/Jordi_Martos77) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
