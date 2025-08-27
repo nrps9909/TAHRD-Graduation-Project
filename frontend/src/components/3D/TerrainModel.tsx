@@ -1,7 +1,8 @@
 import { useGLTF } from '@react-three/drei'
-import { useRef, useEffect, useMemo } from 'react'
+import { useRef, useEffect, useMemo, useState } from 'react'
 import * as THREE from 'three'
 import { collisionSystem } from '@/utils/collision'
+import { TreeGlow } from './TreeGlow'
 
 // 全域地形參考，用於高度檢測
 let terrainMesh: THREE.Mesh | null = null
@@ -101,9 +102,88 @@ interface TerrainModelProps {
 
 export const TerrainModel = ({ position = [0, 0, 0], scale = 1 }: TerrainModelProps) => {
   const groupRef = useRef<THREE.Group>(null)
+  const [terrainScene, setTerrainScene] = useState<THREE.Group | null>(null)
   
   // 載入GLTF模型
   const { scene } = useGLTF('/terrain_low_poly/scene.gltf')
+  
+  // 精確移除白雲物件，完全保留樹木
+  useEffect(() => {
+    console.log('🔍 開始精確移除白雲物件...')
+    const cloudsToRemove: THREE.Object3D[] = []
+    
+    scene.traverse((child) => {
+      const name = child.name.toLowerCase()
+      const position = new THREE.Vector3()
+      child.getWorldPosition(position)
+      
+      // 根據之前的觀察，精確識別白雲物件
+      // 只移除明確是天空中的白色塊狀雲朵
+      const isCloudObject = (
+        // 明確的雲朵命名
+        name === 'clouds' || 
+        name === 'cloud' || 
+        name.includes('雲') ||
+        // 高空的白色球體或冰球體（通常是雲朵）
+        (position.y > 25 && (name.includes('icosphere') || name.includes('sphere'))) ||
+        // 檢查材質是否為白色雲朵材質
+        (child instanceof THREE.Mesh && child.material && (() => {
+          const materials = Array.isArray(child.material) ? child.material : [child.material]
+          return materials.some(mat => {
+            if ('name' in mat && mat.name) {
+              const matName = mat.name.toLowerCase()
+              return matName.includes('cloud') || 
+                     matName.includes('sky') || 
+                     (matName.includes('white') && position.y > 20)
+            }
+            return false
+          })
+        })())
+      )
+      
+      // 確保不是樹木相關物件
+      const isTreeRelated = name.includes('arbol') || 
+                           name.includes('tree') || 
+                           name.includes('樹') ||
+                           name.includes('trunk') || 
+                           name.includes('wood') ||
+                           name.includes('leaf') ||
+                           name.includes('branch')
+      
+      if (isCloudObject && !isTreeRelated) {
+        console.log(`🎯 找到白雲物件: "${child.name}", 位置Y: ${position.y.toFixed(2)}`)
+        cloudsToRemove.push(child)
+      } else {
+        console.log(`✅ 保留物件: "${child.name}", Y位置: ${position.y.toFixed(2)}`)
+      }
+    })
+    
+    // 移除識別出的雲朵物件
+    cloudsToRemove.forEach(cloudObj => {
+      console.log(`🗑️ 移除白雲: "${cloudObj.name}"`)
+      
+      if (cloudObj.parent) {
+        cloudObj.parent.remove(cloudObj)
+      }
+      
+      // 清理資源
+      if (cloudObj instanceof THREE.Mesh) {
+        if (cloudObj.geometry) {
+          cloudObj.geometry.dispose()
+        }
+        if (cloudObj.material) {
+          if (Array.isArray(cloudObj.material)) {
+            cloudObj.material.forEach(mat => mat.dispose())
+          } else {
+            cloudObj.material.dispose()
+          }
+        }
+      }
+    })
+    
+    console.log(`✨ 白雲移除完成！共移除了 ${cloudsToRemove.length} 個白雲物件`)
+    console.log(`🌳 所有樹木已完整保留`)
+  }, [scene])
   
   // 全局變數儲存樹木網格
   const treeMeshes = useRef<THREE.Mesh[]>([])
@@ -118,15 +198,28 @@ export const TerrainModel = ({ position = [0, 0, 0], scale = 1 }: TerrainModelPr
     brownMountainMeshes = [] // 重置棕色山體陣列
     treeMeshes.current = [] // 重置樹木陣列
     
+    console.log('🏞️ 初始化地形和物件檢測...')
     scene.traverse((child) => {
+      const name = child.name.toLowerCase()
+      
       if (child instanceof THREE.Mesh) {
-        const name = child.name.toLowerCase()
         
-        // 檢查是否為樹木
-        if (name.includes('arbol') || name.includes('tree') || 
+        // 檢查是否為樹木（包括樹幹和樹葉）
+        if (name.includes('arbol') || name.includes('tree') || name.includes('樹') ||
+            name.includes('trunk') || name.includes('tronco') || name.includes('木') || name.includes('bark') ||
             (child.material && Array.isArray(child.material) ? 
-             child.material.some(mat => mat.name?.toLowerCase().includes('leaves') || mat.name?.toLowerCase().includes('leaf')) :
-             child.material && 'name' in child.material && (child.material.name?.toLowerCase().includes('leaves') || child.material.name?.toLowerCase().includes('leaf')))) {
+             child.material.some(mat => {
+               const matName = mat.name?.toLowerCase() || ''
+               return matName.includes('leaves') || matName.includes('leaf') ||
+                      matName.includes('wood') || matName.includes('trunk') ||
+                      matName.includes('bark') || matName.includes('madera')
+             }) :
+             child.material && 'name' in child.material && (() => {
+               const matName = child.material.name?.toLowerCase() || ''
+               return matName.includes('leaves') || matName.includes('leaf') ||
+                      matName.includes('wood') || matName.includes('trunk') ||
+                      matName.includes('bark') || matName.includes('madera')
+             })())) {
           treeMeshes.current.push(child)
           const position = new THREE.Vector3()
           child.getWorldPosition(position)
@@ -139,11 +232,18 @@ export const TerrainModel = ({ position = [0, 0, 0], scale = 1 }: TerrainModelPr
           if (material && 'name' in material) {
             const materialName = material.name?.toLowerCase() || ''
             
-            // 識別棕色山體材質
-            if (materialName.includes('brown') || 
+            // 識別棕色山體材質 - 但排除樹木相關材質
+            const isTreeMaterial = materialName.includes('wood') || 
+                                 materialName.includes('trunk') || 
+                                 materialName.includes('bark') || 
+                                 materialName.includes('madera') ||
+                                 materialName.includes('leaves') || 
+                                 materialName.includes('leaf')
+            
+            if (!isTreeMaterial && (materialName.includes('brown') || 
                 materialName.includes('montaña') || 
                 materialName.includes('montana') ||
-                materialName.includes('mountain')) {
+                materialName.includes('mountain'))) {
               brownMountainMeshes.push(child)
               console.log('找到棕色山體mesh:', child.name, '材質:', material.name)
             }
@@ -172,13 +272,14 @@ export const TerrainModel = ({ position = [0, 0, 0], scale = 1 }: TerrainModelPr
         if (child instanceof THREE.Mesh && !terrainMesh) {
           const name = child.name.toLowerCase()
           
-          // 排除雲朵和其他空中物件
+          // 排除雲朵和其他空中物件 - 更全面的檢查
           if (name.includes('clouds') || 
               name.includes('cloud') || 
               name.includes('sky') ||
               name.includes('arbol') || // 樹木
               name.includes('tree') ||
-              name.includes('icosphere')) { // 可能是雲朵的球體
+              name.includes('icosphere') || // 可能是雲朵的球體
+              name.includes('sphere')) { // 球體通常是雲朵
             return
           }
           
@@ -351,12 +452,25 @@ export const TerrainModel = ({ position = [0, 0, 0], scale = 1 }: TerrainModelPr
     }
   }, [terrainColliders])
   
+  // 直接使用原始場景，雲朵已被移除
+  const cleanedScene = scene
+
+  // 設置地形場景供TreeGlow使用
+  useEffect(() => {
+    if (cleanedScene && groupRef.current) {
+      setTerrainScene(groupRef.current)
+    }
+  }, [cleanedScene])
+
   return (
     <group ref={groupRef} position={position}>
       {/* 讓XZ軸10倍擴展，Y軸5倍擴展以保持比例協調 */}
       <group scale={[10, 5, 10]}>
-        <primitive object={scene} />
+        <primitive object={cleanedScene} />
       </group>
+      
+      {/* 樹幹發光效果 */}
+      <TreeGlow terrainScene={terrainScene} />
       
       {/* 調試用：顯示碰撞區域（可選） */}
       {/* {terrainColliders.map(collider => (

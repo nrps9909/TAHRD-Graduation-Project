@@ -1,14 +1,15 @@
-import { useRef, useEffect } from 'react'
-import { useFrame } from '@react-three/fiber'
+import { useEffect } from 'react'
 import { NPCCharacter } from './3D/NPCCharacter'
 import { Player } from './3D/Player'
 import { TerrainModel, validateCharacterPositions } from './3D/TerrainModel'
+import { EnvironmentLighting } from './3D/EnvironmentLighting'
+import { WeatherEffects } from './3D/WeatherEffects'
+import { SkyDome } from './3D/SkyDome'
+import { NightSky } from './3D/NightSky'
 import { useGameStore } from '@/stores/gameStore'
-import * as THREE from 'three'
 
 export const Scene = () => {
   const { npcs, playerPosition } = useGameStore()
-  const lightRef = useRef<THREE.DirectionalLight>(null)
   
   // 驗證角色位置安全性（開發模式）
   useEffect(() => {
@@ -27,14 +28,17 @@ export const Scene = () => {
 
   return (
     <>
-      {/* 基本光源 */}
-      <ambientLight intensity={0.5} />
-      <directionalLight 
-        ref={lightRef}
-        position={[10, 20, 5]} 
-        intensity={1}
-        castShadow
-      />
+      {/* 固定夜晚模式不需要動態天空穹頂 */}
+      {/* <SkyDome /> */}
+      
+      {/* 夜空系統 */}
+      <NightSky />
+      
+      {/* 固定夜晚環境光照系統 */}
+      <EnvironmentLighting />
+      
+      {/* 天氣效果 */}
+      <WeatherEffects />
       
       {/* GLTF地形模型 */}
       <TerrainModel position={[0, 0, 0]} scale={1} />

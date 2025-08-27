@@ -1,9 +1,9 @@
 import { useEffect } from 'react'
 import { Canvas } from '@react-three/fiber'
-import { Environment } from '@react-three/drei'
 import { Scene } from './components/Scene'
 import { TestScene } from './components/TestScene'
 import { UI } from './components/UI'
+import { TimeControl } from './components/TimeControl'
 import { PointerLockManager } from './components/3D/PointerLockManager'
 import { FontPreloader } from './components/FontPreloader'
 // import { NookPhone } from './components/UI/NookPhone' // 已移除，使用 AnimalCrossingPhone
@@ -97,17 +97,6 @@ function App() {
             left: 0
           }}
         >
-          <ambientLight intensity={0.4} />
-          <directionalLight
-            position={[10, 10, 5]}
-            intensity={1}
-            castShadow
-            shadow-mapSize-width={2048}
-            shadow-mapSize-height={2048}
-          />
-          
-          <Environment preset="sunset" background={true} blur={0} />
-          
           <Scene />
         </Canvas>
       </div>
@@ -115,6 +104,9 @@ function App() {
       <div className="game-ui">
         <UI />
       </div>
+      
+      {/* 時間控制面板 */}
+      <TimeControl />
       
       {/* Animal Crossing Style Phone UI - 已移除，使用 UI 組件中的 AnimalCrossingPhone */}
       {/* <NookPhone /> */}
