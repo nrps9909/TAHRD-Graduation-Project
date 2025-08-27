@@ -8,14 +8,14 @@ let terrainMesh: THREE.Mesh | null = null
 let brownMountainMeshes: THREE.Mesh[] = [] // 專門儲存棕色山體mesh
 let raycaster: THREE.Raycaster | null = null
 
-// 地形高度檢測功能
+// 地形高度檢測功能 - 適應XZ軸5倍擴展，Y軸2.5倍擴展
 export const getTerrainHeight = (x: number, z: number): number => {
   if (!terrainMesh || !raycaster) {
-    return 0 // 如果地形還未載入，返回預設高度
+    return 5 // 如果地形還未載入，返回安全的預設高度
   }
 
-  // 從上方向下發射射線
-  const origin = new THREE.Vector3(x, 100, z) // 從高處開始
+  // 從上方向下發射射線，調整高度以適應Y軸5倍擴展
+  const origin = new THREE.Vector3(x, 500, z) // 從更高處開始（100 * 5）
   const direction = new THREE.Vector3(0, -1, 0) // 向下
   
   raycaster.set(origin, direction)
@@ -24,10 +24,10 @@ export const getTerrainHeight = (x: number, z: number): number => {
   const intersects = raycaster.intersectObject(terrainMesh, true)
   
   if (intersects.length > 0) {
-    // 過濾掉異常高的交點（可能是雲朵或其他空中物件）
+    // 過濾掉異常高的交點，調整範圍以適應Y軸5倍擴展
     const validIntersects = intersects.filter(intersect => {
       const y = intersect.point.y
-      return y >= -10 && y <= 25 // 合理的地形高度範圍
+      return y >= -50 && y <= 125 // 調整高度範圍（-10*5 到 25*5）
     })
     
     if (validIntersects.length > 0) {
@@ -39,17 +39,17 @@ export const getTerrainHeight = (x: number, z: number): number => {
     }
   }
   
-  return 0 // 如果沒有有效交點，返回預設高度
+  return 5 // 如果沒有有效交點，返回安全的預設高度
 }
 
-// 獲取地形法向量（用於計算地形傾斜）
+// 獲取地形法向量（用於計算地形傾斜）- XZ軸10倍擴展，Y軸5倍擴展
 export const getTerrainNormal = (x: number, z: number): THREE.Vector3 => {
   if (!terrainMesh || !raycaster) {
     return new THREE.Vector3(0, 1, 0) // 預設向上
   }
 
-  // 從上方向下發射射線
-  const origin = new THREE.Vector3(x, 100, z)
+  // 從上方向下發射射線，調整高度以適應Y軸2.5倍擴展
+  const origin = new THREE.Vector3(x, 250, z)
   const direction = new THREE.Vector3(0, -1, 0)
   
   raycaster.set(origin, direction)
@@ -57,10 +57,10 @@ export const getTerrainNormal = (x: number, z: number): THREE.Vector3 => {
   const intersects = raycaster.intersectObject(terrainMesh, true)
   
   if (intersects.length > 0) {
-    // 過濾掉異常高的交點並找到最低的有效交點
+    // 過濾掉異常高的交點並找到最低的有效交點，調整範圍以適應Y軸5倍擴展
     const validIntersects = intersects.filter(intersect => {
       const y = intersect.point.y
-      return y >= -10 && y <= 25 && intersect.face // 必須有face數據
+      return y >= -50 && y <= 125 && intersect.face // Y軸5倍的高度範圍
     })
     
     if (validIntersects.length > 0) {
@@ -202,13 +202,13 @@ export const TerrainModel = ({ position = [0, 0, 0], scale = 1 }: TerrainModelPr
     }
   }, [scene])
   
-  // 創建地形碰撞箱
+  // 創建地形碰撞箱 - 適應10倍擴展的地形
   const terrainColliders = useMemo(() => {
     const colliders: Array<{position: THREE.Vector3, radius: number, id: string}> = []
     
-    // 創建基於實際地形高度的智能碰撞檢測
-    const terrainSize = 80
-    const gridSize = 12 // 適中的密度平衡性能和精確度
+    // 創建基於實際地形高度的智能碰撞檢測，極度降低密度如平地般行走
+    const terrainSize = 800 // 10倍擴展：80 * 10 = 800
+    const gridSize = 6 // 極度降低密度，讓任何地形都如平地般通過
     const step = terrainSize / gridSize
     
     // 延遲創建碰撞，等待地形載入
@@ -233,24 +233,7 @@ export const TerrainModel = ({ position = [0, 0, 0], scale = 1 }: TerrainModelPr
           
           const maxHeightDiff = Math.max(...validHeights.map(h => Math.abs(h - centerHeight)))
           
-          // 山脈禁越規則：創建更強的山脈碰撞邊界
-          if (maxHeightDiff > 2 || centerHeight > 8 || isMountainArea(x, z)) {
-            colliders.push({
-              position: new THREE.Vector3(x, centerHeight, z),
-              radius: step * 0.6, // 增大碰撞半徑，創建更強的屏障
-              id: `mountain_barrier_${x}_${z}`
-            })
-          }
-          
-          // 地圖邊界碰撞
-          const isEdge = Math.abs(x) > terrainSize/2 - step || Math.abs(z) > terrainSize/2 - step
-          if (isEdge) {
-            colliders.push({
-              position: new THREE.Vector3(x, centerHeight, z),
-              radius: step * 0.4,
-              id: `boundary_${x}_${z}`
-            })
-          }
+          // 移除所有地形和邊界碰撞檢測
         }
       }
     }, 1000) // 等待1秒讓地形完全載入
@@ -260,30 +243,30 @@ export const TerrainModel = ({ position = [0, 0, 0], scale = 1 }: TerrainModelPr
       const position = new THREE.Vector3()
       treeMesh.getWorldPosition(position)
       
-      // 計算樹木的邊界盒來確定合適的碰撞半徑
+      // 計算樹木的邊界盒來確定合適的碰撞半徑，極度減小讓移動如平地般順暢
       const box = new THREE.Box3().setFromObject(treeMesh)
       const size = box.getSize(new THREE.Vector3())
-      const radius = Math.max(size.x, size.z) * 0.6 // 使用XZ平面較大的尺寸作為半徑，稍微放寬
+      const radius = 0 // 移除樹木碰撞半徑
       
       colliders.push({
         position: new THREE.Vector3(position.x, 0, position.z), // Y設為0用於2D碰撞檢測
-        radius: Math.max(radius, 1.5), // 至少1.5單位半徑
+        radius: 0, // 移除碰撞半徑
         id: `real_tree_${index}`
       })
       
-      console.log(`真實樹木碰撞器 ${index}: 位置(${position.x.toFixed(1)}, ${position.z.toFixed(1)}), 半徑: ${Math.max(radius, 1.5).toFixed(1)}`)
+      console.log(`真實樹木碰撞器 ${index}: 位置(${position.x.toFixed(1)}, ${position.z.toFixed(1)}), 半徑: ${Math.max(radius, 0.8).toFixed(1)}`)
     })
     
-    // 如果沒有找到真實樹木，使用備用預設位置
+    // 如果沒有找到真實樹木，使用備用預設位置，也減小半徑
     if (treeMeshes.current.length === 0) {
       console.warn('未找到真實樹木網格，使用預設樹木位置')
       const fallbackTreePositions = [
-        { x: 15, z: 12, radius: 2.0 },
-        { x: -18, z: 25, radius: 2.0 },
-        { x: 28, z: -15, radius: 2.0 },
-        { x: -25, z: -18, radius: 2.0 },
-        { x: 35, z: 20, radius: 2.0 },
-        { x: -30, z: 35, radius: 2.0 },
+        { x: 15, z: 12, radius: 0 }, // 移除碰撞半徑
+        { x: -18, z: 25, radius: 0 },
+        { x: 28, z: -15, radius: 0 },
+        { x: -25, z: -18, radius: 0 },
+        { x: 35, z: 20, radius: 0 },
+        { x: -30, z: 35, radius: 0 },
       ]
       
       fallbackTreePositions.forEach((tree, index) => {
@@ -316,11 +299,11 @@ export const TerrainModel = ({ position = [0, 0, 0], scale = 1 }: TerrainModelPr
         const position = new THREE.Vector3()
         treeMesh.getWorldPosition(position)
         
-        // 計算樹木的邊界盒來確定合適的碰撞半徑（縮小以便通過）
+        // 計算樹木的邊界盒來確定合適的碰撞半徑（極度縮小如平地般通過）
         const box = new THREE.Box3().setFromObject(treeMesh)
         const size = box.getSize(new THREE.Vector3())
-        const radius = Math.max(size.x, size.z) * 0.4 // 使用XZ平面較大尺寸的0.4倍，更容易通過
-        const finalRadius = Math.max(radius, 1.2) // 最小1.2單位半徑，允許角色更容易通過
+        const radius = 0 // 移除碰撞半徑
+        const finalRadius = 0 // 移除所有碰撞半徑限制
         
         console.log(`註冊真實樹木碰撞器 ${index}: 位置(${position.x.toFixed(1)}, ${position.z.toFixed(1)}), 計算半徑: ${radius.toFixed(1)}, 最終半徑: ${finalRadius}`)
         
@@ -369,8 +352,11 @@ export const TerrainModel = ({ position = [0, 0, 0], scale = 1 }: TerrainModelPr
   }, [terrainColliders])
   
   return (
-    <group ref={groupRef} position={position} scale={scale}>
-      <primitive object={scene} />
+    <group ref={groupRef} position={position}>
+      {/* 讓XZ軸10倍擴展，Y軸5倍擴展以保持比例協調 */}
+      <group scale={[10, 5, 10]}>
+        <primitive object={scene} />
+      </group>
       
       {/* 調試用：顯示碰撞區域（可選） */}
       {/* {terrainColliders.map(collider => (
@@ -383,123 +369,26 @@ export const TerrainModel = ({ position = [0, 0, 0], scale = 1 }: TerrainModelPr
   )
 }
 
-// 檢查路徑上是否有山脈障礙（增強版山脈禁越規則）
+// 檢查路徑上是否有山脈障礙 - 移除所有障礙檢測，適應XZ軸10倍擴展，Y軸5倍擴展
 export const hasTerrainObstacle = (fromX: number, fromZ: number, toX: number, toZ: number): boolean => {
-  const steps = 20 // 增加檢查點數到20個，更精確
-  const fromHeight = getTerrainHeight(fromX, fromZ)
-  const toHeight = getTerrainHeight(toX, toZ)
-  
-  // 嚴格規則：絕對高度檢查
-  const MOUNTAIN_HEIGHT_THRESHOLD = 8 // 高於8單位視為山脈
-  const OBSTACLE_HEIGHT_DIFF = 2 // 高度差2單位以上視為障礙
-  
-  for (let i = 1; i < steps; i++) {
-    const t = i / steps
-    const checkX = fromX + (toX - fromX) * t
-    const checkZ = fromZ + (toZ - fromZ) * t
-    const checkHeight = getTerrainHeight(checkX, checkZ)
-    
-    // 規則1：絕對禁止穿越高山區域
-    if (checkHeight > MOUNTAIN_HEIGHT_THRESHOLD) {
-      return true
-    }
-    
-    // 規則2：相對高度差檢查 - 比起點終點高太多
-    const maxStartEndHeight = Math.max(fromHeight, toHeight)
-    if (checkHeight > maxStartEndHeight + OBSTACLE_HEIGHT_DIFF) {
-      return true
-    }
-    
-    // 規則3：檢查前後點的高度變化，避免穿越陡峭山壁
-    if (i > 1 && i < steps - 1) {
-      const prevT = (i - 1) / steps
-      const nextT = (i + 1) / steps
-      const prevX = fromX + (toX - fromX) * prevT
-      const prevZ = fromZ + (toZ - fromZ) * prevT
-      const nextX = fromX + (toX - fromX) * nextT
-      const nextZ = fromZ + (toZ - fromZ) * nextT
-      
-      const prevHeight = getTerrainHeight(prevX, prevZ)
-      const nextHeight = getTerrainHeight(nextX, nextZ)
-      
-      // 如果高度急劇變化，可能是山壁或懸崖
-      const heightChange = Math.abs(checkHeight - prevHeight) + Math.abs(nextHeight - checkHeight)
-      if (heightChange > 4) { // 總高度變化超過4單位視為不可通行
-        return true
-      }
-    }
-  }
-  
+  // 移除所有地形障礙檢測，允許自由通行
   return false
 }
 
-// 檢查某個位置是否在真正的地面上（不是雲朵）並且可達（山脈禁越規則）
+// 檢查某個位置是否在真正的地面上 - 移除崎嶇路面限制，允許自由行走
 export const isValidGroundPosition = (x: number, z: number): boolean => {
-  // 絕對禁止規則：禁止在棕色山體材質上
-  if (isOnBrownMountain(x, z)) {
-    return false
-  }
-  
-  const height = getTerrainHeight(x, z)
-  
-  // 嚴格山脈禁越規則：降低可接受高度上限
-  const MOUNTAIN_EXCLUSION_HEIGHT = 8 // 高於8單位絕對禁止
-  const SAFE_HEIGHT_MAX = 6 // 安全高度上限降至6單位
-  
-  // 基本高度檢查 - 更嚴格的山脈禁入
-  if (height < -2 || height > SAFE_HEIGHT_MAX) {
-    return false
-  }
-  
-  // 絕對禁止進入高山區域
-  if (height > MOUNTAIN_EXCLUSION_HEIGHT) {
-    return false
-  }
-  
-  // 檢查周圍高度的一致性，雲朵通常會有突然的高度變化
-  const checkRadius = 2
-  const samplePoints = [
-    { x: x + checkRadius, z: z },
-    { x: x - checkRadius, z: z },
-    { x: x, z: z + checkRadius },
-    { x: x, z: z - checkRadius },
-    { x: x + checkRadius, z: z + checkRadius },
-    { x: x - checkRadius, z: z - checkRadius }
-  ]
-  
-  let validSamples = 0
-  let totalHeightDiff = 0
-  let maxHeightDiff = 0
-  
-  for (const point of samplePoints) {
-    const sampleHeight = getTerrainHeight(point.x, point.z)
-    const heightDiff = Math.abs(height - sampleHeight)
-    
-    if (heightDiff < 4) { // 4單位以內的高度差視為正常地形
-      validSamples++
-    }
-    totalHeightDiff += heightDiff
-    maxHeightDiff = Math.max(maxHeightDiff, heightDiff)
-  }
-  
-  // 如果高度差異太大，可能是山脈或懸崖邊緣
-  if (maxHeightDiff > 8) {
-    return false
-  }
-  
-  // 如果大部分周圍點的高度都相似，則認為是有效地面
-  const avgHeightDiff = totalHeightDiff / samplePoints.length
-  return validSamples >= 4 && avgHeightDiff < 2.5
+  // 移除所有崎嶇路面限制，允許在任何地形上自由行走
+  return true
 }
 
-// 檢測位置是否在棕色山體材質上
+// 檢測位置是否在棕色山體材質上 - XZ軸5倍擴展，Y軸2.5倍擴展
 export const isOnBrownMountain = (x: number, z: number): boolean => {
   if (!raycaster || brownMountainMeshes.length === 0) {
     return false
   }
 
-  // 從上方向下發射射線檢測棕色山體
-  const origin = new THREE.Vector3(x, 100, z)
+  // 從上方向下發射射線檢測棕色山體，調整高度以適應Y軸2.5倍擴展
+  const origin = new THREE.Vector3(x, 250, z)
   const direction = new THREE.Vector3(0, -1, 0)
   raycaster.set(origin, direction)
 
@@ -508,10 +397,10 @@ export const isOnBrownMountain = (x: number, z: number): boolean => {
     const intersects = raycaster.intersectObject(brownMesh, true)
     
     if (intersects.length > 0) {
-      // 檢查是否有有效的交點（合理的高度範圍）
+      // 檢查是否有有效的交點（合理的高度範圍），調整以適應Y軸2.5倍擴展
       const validIntersects = intersects.filter(intersect => {
         const y = intersect.point.y
-        return y >= -10 && y <= 50 // 棕色山體可能比較高
+        return y >= -25 && y <= 125 // 棕色山體高度範圍（-10*2.5 到 50*2.5）
       })
       
       if (validIntersects.length > 0) {
@@ -523,82 +412,15 @@ export const isOnBrownMountain = (x: number, z: number): boolean => {
   return false
 }
 
-// 檢測是否為山脈區域（新增嚴格山脈檢測）
+// 檢測是否為山脈區域 - 移除山脈檢測限制，適應XZ軸10倍擴展，Y軸5倍擴展
 export const isMountainArea = (x: number, z: number): boolean => {
-  // 優先檢查：如果位置在棕色山體材質上，直接視為山脈區域
-  if (isOnBrownMountain(x, z)) {
-    return true
-  }
-  
-  const height = getTerrainHeight(x, z)
-  const MOUNTAIN_THRESHOLD = 8
-  
-  // 直接高度判斷
-  if (height > MOUNTAIN_THRESHOLD) {
-    return true
-  }
-  
-  // 檢查周圍區域是否為高山地形
-  const checkRadius = 3
-  const mountainCheckPoints = [
-    { x: x + checkRadius, z: z },
-    { x: x - checkRadius, z: z },
-    { x: x, z: z + checkRadius },
-    { x: x, z: z - checkRadius },
-    { x: x + checkRadius, z: z + checkRadius },
-    { x: x - checkRadius, z: z - checkRadius },
-    { x: x + checkRadius, z: z - checkRadius },
-    { x: x - checkRadius, z: z + checkRadius }
-  ]
-  
-  let mountainPointCount = 0
-  for (const point of mountainCheckPoints) {
-    // 檢查是否在棕色山體上
-    if (isOnBrownMountain(point.x, point.z)) {
-      mountainPointCount++
-      continue
-    }
-    
-    // 檢查高度
-    const checkHeight = getTerrainHeight(point.x, point.z)
-    if (checkHeight > MOUNTAIN_THRESHOLD) {
-      mountainPointCount++
-    }
-  }
-  
-  // 如果周圍50%以上的點都是山脈高度，則認為此區域為山脈
-  return mountainPointCount >= mountainCheckPoints.length * 0.5
+  // 移除所有山脈區域檢測，允許在任何地形自由行走
+  return false
 }
 
-// 檢查兩點之間是否可以安全通行（不會穿越山脈）- 增強版山脈禁越
+// 檢查兩點之間是否可以安全通行 - 移除所有路徑限制，適應XZ軸10倍擴展，Y軸5倍擴展
 export const isPathClear = (fromX: number, fromZ: number, toX: number, toZ: number): boolean => {
-  // 規則1：檢查起點和終點是否都是有效地面
-  if (!isValidGroundPosition(fromX, fromZ) || !isValidGroundPosition(toX, toZ)) {
-    return false
-  }
-  
-  // 規則2：絕對禁止起點或終點在山脈區域
-  if (isMountainArea(fromX, fromZ) || isMountainArea(toX, toZ)) {
-    return false
-  }
-  
-  // 規則3：檢查路徑上是否有山脈障礙
-  if (hasTerrainObstacle(fromX, fromZ, toX, toZ)) {
-    return false
-  }
-  
-  // 規則4：額外檢查路徑中點是否經過山脈區域
-  const steps = 15
-  for (let i = 1; i < steps; i++) {
-    const t = i / steps
-    const checkX = fromX + (toX - fromX) * t
-    const checkZ = fromZ + (toZ - fromZ) * t
-    
-    if (isMountainArea(checkX, checkZ)) {
-      return false
-    }
-  }
-  
+  // 移除所有路徑檢查限制，允許自由通行
   return true
 }
 

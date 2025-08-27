@@ -36,7 +36,8 @@ export class NPCInteractionService extends EventEmitter {
 
   constructor() {
     super()
-    this.startRandomConversations()
+    // 暫時關閉自動對話功能
+    // this.startRandomConversations()
   }
 
   // 啟動隨機NPC對話

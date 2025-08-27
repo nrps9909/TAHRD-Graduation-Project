@@ -110,6 +110,23 @@ export const Player = ({ position = [0, 0, 0] }: PlayerProps) => {
           // F鍵互動 - 檢查附近的NPC
           handleInteraction()
           break
+        case 'KeyR':
+          // R鍵重置人物位置到安全地點
+          if (playerRef.current) {
+            const safePosition = [0, 0, 0] // 安全的中心位置
+            // 先設置到較高位置避免沉入地下
+            playerRef.current.position.set(safePosition[0], 15, safePosition[2])
+            
+            // 延遲檢測地形高度
+            setTimeout(() => {
+              const terrainHeight = getTerrainHeight(safePosition[0], safePosition[2])
+              const adjustedY = Math.max(terrainHeight + 2.0, 8.0) // 確保最少8單位高度
+              playerRef.current!.position.set(safePosition[0], adjustedY, safePosition[2])
+              setPlayerPosition([safePosition[0], adjustedY, safePosition[2]])
+              console.log(`按R鍵重置人物位置: [${safePosition[0]}, ${adjustedY.toFixed(2)}, ${safePosition[2]}], 地形高度: ${terrainHeight.toFixed(2)}`)
+            }, 100)
+          }
+          break
       }
     }
 
@@ -192,9 +209,9 @@ export const Player = ({ position = [0, 0, 0] }: PlayerProps) => {
       
       moveDirection.normalize()
 
-      // 移動速度設定
-      let speed = 8  // 正常行走速度
-      if (keys.current.shift) speed = 15  // Shift - 奔跑
+      // 移動速度設定 - 適應10倍擴展地形，提高移動速度
+      let speed = 25  // 正常行走速度 (從8提高到25)
+      if (keys.current.shift) speed = 45  // Shift - 奔跑 (從15提高到45)
       velocity.current.copy(moveDirection.multiplyScalar(speed * delta))
 
       // 分步移動防止跳過碰撞檢測
@@ -299,9 +316,10 @@ export const Player = ({ position = [0, 0, 0] }: PlayerProps) => {
       // 走路動畫
       isMoving.current = true
       walkCycle.current += delta * 10
-      if (isMounted.current) {
-        setPlayerPosition([adjustedPosition.x, adjustedPosition.y, adjustedPosition.z])
-      }
+      // 移除持續的位置更新，避免觸發重複重置
+      // if (isMounted.current) {
+      //   setPlayerPosition([adjustedPosition.x, adjustedPosition.y, adjustedPosition.z])
+      // }
 
       // PC遊戲：角色朝向邏輯
       if (moveDirection.length() > 0 && !isPointerLocked) {
@@ -312,9 +330,10 @@ export const Player = ({ position = [0, 0, 0] }: PlayerProps) => {
           targetRotation,
           8 * delta
         )
-        if (isMounted.current) {
-          setPlayerRotation(targetRotation)
-        }
+        // 移除不必要的旋轉更新，避免觸發重複重置
+        // if (isMounted.current) {
+        //   setPlayerRotation(targetRotation)
+        // }
       } else if (isPointerLocked) {
         // Pointer Lock 模式下，角色朝向跟隨移動方向
         if (moveDirection.length() > 0) {
@@ -339,8 +358,9 @@ export const Player = ({ position = [0, 0, 0] }: PlayerProps) => {
       const currentZ = playerRef.current.position.z
       const terrainHeight = getTerrainHeight(currentX, currentZ)
       const bobAmount = Math.sin(walkCycle.current) * 0.05
-      // 確保整個角色都在地形上方
-      playerRef.current.position.y = terrainHeight + 1.0 + bobAmount
+      // 確保整個角色都在地形上方，設定最小高度避免沉入地下
+      const safeY = Math.max(terrainHeight + 2.0, 3.0) + bobAmount
+      playerRef.current.position.y = safeY
     } else if (playerRef.current) {
       // 靜止時也要保持在地形上方並適應地形傾斜
       const currentX = playerRef.current.position.x
@@ -349,7 +369,9 @@ export const Player = ({ position = [0, 0, 0] }: PlayerProps) => {
       const terrainRotation = getTerrainRotation(currentX, currentZ)
       const terrainSlope = getTerrainSlope(currentX, currentZ)
       
-      playerRef.current.position.y = terrainHeight + 1.0
+      // 確保人物不會沉入地下，設定最小高度
+      const safeY = Math.max(terrainHeight + 2.0, 3.0)
+      playerRef.current.position.y = safeY
       
       // 靜止時也適應地形傾斜
       const maxTiltAngle = Math.PI / 8 // 22.5度最大傾斜
@@ -379,17 +401,61 @@ export const Player = ({ position = [0, 0, 0] }: PlayerProps) => {
     }
   }, [])
 
-  // 初始化玩家位置
+  // 使用ref跟踪是否已經初始化，避免重複初始化
+  const hasInitialized = useRef(false)
+  
+  // 初始化玩家位置 - 只在組件首次掛載時執行一次
   useEffect(() => {
-    if (playerRef.current && position && isMounted.current) {
-      // 獲取初始位置的地形高度
-      const terrainHeight = getTerrainHeight(position[0], position[2])
-      const adjustedY = terrainHeight + 1.0
-      playerRef.current.position.set(position[0], adjustedY, position[2])
-      // Only set position once on mount
-      setPlayerPosition([position[0], adjustedY, position[2]])
+    if (playerRef.current && !hasInitialized.current && isMounted.current) {
+      hasInitialized.current = true // 立即標記為已初始化，防止重複執行
+      console.log('開始初始化玩家位置...')
+      
+      // 使用固定的初始位置，不依賴props
+      const initialPosition = [0, 10, 0]
+      playerRef.current.position.set(initialPosition[0], initialPosition[1], initialPosition[2])
+      
+      // 添加標記防止重複初始化
+      let isInitializing = true
+      
+      // 添加更長的延遲確保地形完全載入，並進行多次檢測
+      const attemptTerrainDetection = (attempts: number = 0) => {
+        if (!isInitializing) return // 如果已經初始化完成，停止檢測
+        
+        if (attempts >= 10) {
+          console.warn('地形檢測失敗，使用預設高度')
+          const safeY = Math.max(initialPosition[1], 10) // 至少10單位高度
+          if (playerRef.current) {
+            playerRef.current.position.y = safeY
+          }
+          isInitializing = false // 標記初始化完成
+          return
+        }
+        
+        const terrainHeight = getTerrainHeight(initialPosition[0], initialPosition[2])
+        console.log(`初始化嘗試 ${attempts + 1}: 地形高度檢測結果: ${terrainHeight.toFixed(2)}`)
+        
+        if (terrainHeight > -100 && terrainHeight < 100) { // 有效的地形高度
+          const adjustedY = Math.max(terrainHeight + 2.0, 5.0) // 確保最少5單位高度
+          if (playerRef.current) {
+            playerRef.current.position.set(initialPosition[0], adjustedY, initialPosition[2])
+          }
+          console.log(`人物初始化完成: [${initialPosition[0]}, ${adjustedY.toFixed(2)}, ${initialPosition[2]}], 地形高度: ${terrainHeight.toFixed(2)}`)
+          isInitializing = false // 標記初始化完成
+        } else {
+          // 地形還未載入，繼續嘗試
+          setTimeout(() => attemptTerrainDetection(attempts + 1), 200)
+        }
+      }
+      
+      // 延遲500ms後開始檢測
+      setTimeout(() => attemptTerrainDetection(), 500)
+      
+      // 清理函數
+      return () => {
+        isInitializing = false
+      }
     }
-  }, []) // Remove dependencies to prevent infinite loop
+  }, []) // 不依賴任何props，只在組件掛載時執行一次
 
   return (
     <>
