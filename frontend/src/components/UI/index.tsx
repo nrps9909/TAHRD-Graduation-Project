@@ -7,6 +7,8 @@ import { PointerLockHint } from './PointerLockHint'
 import { InteractionHint } from './InteractionHint'
 import { HotkeyManager, HotkeyHints } from './HotkeyManager'
 import { PointerLockStatus } from './PointerLockStatus'
+import { WeatherTimeDisplay } from './WeatherTimeDisplay'
+import { DebugPanel } from './DebugPanel'
 import { useGameStore } from '@/stores/gameStore'
 
 export const UI = () => {
@@ -38,6 +40,12 @@ export const UI = () => {
       
       {/* PC遊戲：Pointer Lock 狀態提示 */}
       <PointerLockStatus />
+      
+      {/* 天氣和時間顯示 */}
+      <WeatherTimeDisplay />
+      
+      {/* Debug 控制面板 */}
+      <DebugPanel />
       
       {/* 互動提示 - 靠近 NPC 時顯示 */}
       <InteractionHint />

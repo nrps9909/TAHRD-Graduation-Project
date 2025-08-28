@@ -3,245 +3,368 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useTimeStore, WEATHER_SETTINGS } from '@/stores/timeStore'
 
-// 雨滴效果
+// 雨滴效果 - 使用線條幾何體創建真實雨滴形狀
 export const RainEffect = ({ intensity = 1 }: { intensity?: number }) => {
-  const rainRef = useRef<THREE.Points>(null)
+  const rainRef = useRef<THREE.Group>(null)
   
-  const rainGeometry = useMemo(() => {
-    const geometry = new THREE.BufferGeometry()
-    const positions = new Float32Array(3000 * 3) // 減少到3000個雨滴
-    const velocities = new Float32Array(3000 * 3)
+  const rainDrops = useMemo(() => {
+    const drops = []
+    const dropCount = 1500 // 減少數量以提高性能
     
-    for (let i = 0; i < 3000; i++) {
-      const i3 = i * 3
-      positions[i3] = (Math.random() - 0.5) * 200 // x
-      positions[i3 + 1] = Math.random() * 100 + 50 // y
-      positions[i3 + 2] = (Math.random() - 0.5) * 200 // z
+    for (let i = 0; i < dropCount; i++) {
+      // 創建每個雨滴的線條幾何體
+      const geometry = new THREE.BufferGeometry()
+      const positions = new Float32Array([
+        0, 0, 0,     // 起點
+        0, -0.8, 0   // 終點 - 創建向下的線條
+      ])
+      geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
       
-      velocities[i3] = Math.random() * 0.1 - 0.05 // 微小的x速度（風吹效果）
-      velocities[i3 + 1] = -Math.random() * 0.3 - 0.2 // 放慢y速度（向下）
-      velocities[i3 + 2] = Math.random() * 0.05 - 0.025 // 微小的z速度
+      // 雨滴材質
+      const material = new THREE.LineBasicMaterial({
+        color: 0xB0C4DE,
+        transparent: true,
+        opacity: 0.6 * intensity,
+        linewidth: 2
+      })
+      
+      const line = new THREE.Line(geometry, material)
+      
+      // 設置初始位置
+      line.position.set(
+        (Math.random() - 0.5) * 200, // x
+        Math.random() * 100 + 50,    // y
+        (Math.random() - 0.5) * 200  // z
+      )
+      
+      // 儲存速度資料
+      line.userData = {
+        velocity: {
+          x: Math.random() * 0.1 - 0.05,
+          y: -Math.random() * 0.3 - 0.2,
+          z: Math.random() * 0.05 - 0.025
+        }
+      }
+      
+      drops.push(line)
     }
     
-    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
-    geometry.setAttribute('velocity', new THREE.BufferAttribute(velocities, 3))
-    
-    return geometry
-  }, [])
-  
-  const rainMaterial = useMemo(() => {
-    return new THREE.PointsMaterial({
-      color: 0xB0C4DE, // 更柔和的藍色
-      size: 0.15, // 大幅減小雨滴大小
-      transparent: true,
-      opacity: 0.7 * intensity
-    })
+    return drops
   }, [intensity])
   
   useFrame(() => {
     if (!rainRef.current) return
     
-    const positions = rainRef.current.geometry.attributes.position.array as Float32Array
-    const velocities = rainRef.current.geometry.attributes.velocity.array as Float32Array
-    
-    for (let i = 0; i < positions.length; i += 3) {
-      // 更新所有軸的位置
-      positions[i] += velocities[i] * intensity * 0.5 // x軸移動（風效果）
-      positions[i + 1] += velocities[i + 1] * intensity * 0.3 // 更慢的y軸下降
-      positions[i + 2] += velocities[i + 2] * intensity * 0.5 // z軸移動
+    // 更新每個雨滴線條的位置
+    rainRef.current.children.forEach((drop) => {
+      const line = drop as THREE.Line
+      const velocity = line.userData.velocity
+      
+      // 更新位置
+      line.position.x += velocity.x * intensity * 0.5
+      line.position.y += velocity.y * intensity * 0.3
+      line.position.z += velocity.z * intensity * 0.5
       
       // 重置到頂部
-      if (positions[i + 1] < -10) {
-        positions[i + 1] = 100 + Math.random() * 20 // 隨機高度
-        positions[i] = (Math.random() - 0.5) * 200
-        positions[i + 2] = (Math.random() - 0.5) * 200
+      if (line.position.y < -10) {
+        line.position.y = 100 + Math.random() * 20
+        line.position.x = (Math.random() - 0.5) * 200
+        line.position.z = (Math.random() - 0.5) * 200
       }
       
       // 邊界檢查
-      if (Math.abs(positions[i]) > 100) {
-        positions[i] = (Math.random() - 0.5) * 200
+      if (Math.abs(line.position.x) > 100) {
+        line.position.x = (Math.random() - 0.5) * 200
       }
-      if (Math.abs(positions[i + 2]) > 100) {
-        positions[i + 2] = (Math.random() - 0.5) * 200
+      if (Math.abs(line.position.z) > 100) {
+        line.position.z = (Math.random() - 0.5) * 200
       }
-    }
-    
-    rainRef.current.geometry.attributes.position.needsUpdate = true
+      
+      // 根據強度調整透明度
+      if (line.material instanceof THREE.LineBasicMaterial) {
+        line.material.opacity = 0.6 * intensity
+      }
+    })
   })
   
   if (intensity === 0) return null
   
   return (
-    <points ref={rainRef} geometry={rainGeometry} material={rainMaterial} />
+    <group ref={rainRef}>
+      {rainDrops.map((drop, index) => (
+        <primitive key={index} object={drop} />
+      ))}
+    </group>
   )
 }
 
-// 雪花效果
+// 雪花效果 - 使用六角星形幾何體創建真實雪花形狀
 export const SnowEffect = ({ intensity = 1 }: { intensity?: number }) => {
-  const snowRef = useRef<THREE.Points>(null)
+  const snowRef = useRef<THREE.Group>(null)
   
-  const snowGeometry = useMemo(() => {
+  // 創建六角星形雪花幾何體
+  const createSnowflakeGeometry = (size: number) => {
     const geometry = new THREE.BufferGeometry()
-    const positions = new Float32Array(1500 * 3) // 減少到1500個雪花
-    const velocities = new Float32Array(1500 * 3)
-    const sizes = new Float32Array(1500) // 添加大小屬性
+    const positions = []
     
-    for (let i = 0; i < 1500; i++) {
-      const i3 = i * 3
-      positions[i3] = (Math.random() - 0.5) * 200
-      positions[i3 + 1] = Math.random() * 100 + 50
-      positions[i3 + 2] = (Math.random() - 0.5) * 200
+    // 創建六角星形 - 6條主要射線 + 6條副射線
+    const mainRays = 6
+    const angleStep = (Math.PI * 2) / mainRays
+    
+    for (let i = 0; i < mainRays; i++) {
+      const angle = i * angleStep
+      const cos = Math.cos(angle)
+      const sin = Math.sin(angle)
       
-      velocities[i3] = (Math.random() - 0.5) * 0.05 // 大幅減小x速度
-      velocities[i3 + 1] = -Math.random() * 0.08 - 0.02 // 更緩慢的下降
-      velocities[i3 + 2] = (Math.random() - 0.5) * 0.05 // 大幅減小z速度
+      // 主射線
+      positions.push(0, 0, 0)  // 中心
+      positions.push(cos * size, sin * size, 0)  // 端點
       
-      sizes[i] = Math.random() * 0.3 + 0.1 // 隨機雪花大小 0.1-0.4
+      // 副射線（較短）
+      const subRayLength = size * 0.6
+      positions.push(cos * subRayLength * 0.5, sin * subRayLength * 0.5, 0)
+      positions.push(
+        cos * subRayLength * 0.5 + Math.cos(angle + Math.PI/3) * subRayLength * 0.3,
+        sin * subRayLength * 0.5 + Math.sin(angle + Math.PI/3) * subRayLength * 0.3,
+        0
+      )
+      
+      positions.push(cos * subRayLength * 0.5, sin * subRayLength * 0.5, 0)
+      positions.push(
+        cos * subRayLength * 0.5 + Math.cos(angle - Math.PI/3) * subRayLength * 0.3,
+        sin * subRayLength * 0.5 + Math.sin(angle - Math.PI/3) * subRayLength * 0.3,
+        0
+      )
     }
     
-    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
-    geometry.setAttribute('velocity', new THREE.BufferAttribute(velocities, 3))
-    geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1))
-    
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
     return geometry
-  }, [])
+  }
   
-  const snowMaterial = useMemo(() => {
-    return new THREE.PointsMaterial({
-      color: 0xFFFFFF,
-      size: 0.4, // 大幅減小基礎大小
-      transparent: true,
-      opacity: 0.8 * intensity,
-      sizeAttenuation: true // 啟用距離衰減
-    })
+  const snowflakes = useMemo(() => {
+    const flakes = []
+    const flakeCount = 800 // 減少數量以提高性能
+    
+    for (let i = 0; i < flakeCount; i++) {
+      const size = Math.random() * 0.3 + 0.1 // 0.1-0.4
+      const geometry = createSnowflakeGeometry(size)
+      
+      // 雪花材質
+      const material = new THREE.LineBasicMaterial({
+        color: 0xFFFFFF,
+        transparent: true,
+        opacity: 0.8 * intensity,
+        linewidth: 1
+      })
+      
+      const snowflake = new THREE.LineSegments(geometry, material)
+      
+      // 設置初始位置
+      snowflake.position.set(
+        (Math.random() - 0.5) * 200, // x
+        Math.random() * 100 + 50,    // y
+        (Math.random() - 0.5) * 200  // z
+      )
+      
+      // 隨機旋轉
+      snowflake.rotation.z = Math.random() * Math.PI * 2
+      
+      // 儲存速度和旋轉速度
+      snowflake.userData = {
+        velocity: {
+          x: (Math.random() - 0.5) * 0.05,
+          y: -Math.random() * 0.08 - 0.02,
+          z: (Math.random() - 0.5) * 0.05
+        },
+        rotationSpeed: (Math.random() - 0.5) * 0.02
+      }
+      
+      flakes.push(snowflake)
+    }
+    
+    return flakes
   }, [intensity])
   
   useFrame((state) => {
     if (!snowRef.current) return
     
-    const positions = snowRef.current.geometry.attributes.position.array as Float32Array
-    const velocities = snowRef.current.geometry.attributes.velocity.array as Float32Array
+    const time = state.clock.elapsedTime
     
-    for (let i = 0; i < positions.length; i += 3) {
-      // 更慢的移動速度
-      positions[i] += velocities[i] * intensity * 0.2 // 大幅減慢x軸
-      positions[i + 1] += velocities[i + 1] * intensity * 0.15 // 大幅減慢下降
-      positions[i + 2] += velocities[i + 2] * intensity * 0.2 // 大幅減慢z軸
+    // 更新每個雪花的位置和旋轉
+    snowRef.current.children.forEach((flake, index) => {
+      const snowflake = flake as THREE.LineSegments
+      const velocity = snowflake.userData.velocity
+      const rotationSpeed = snowflake.userData.rotationSpeed
       
-      // 更輕柔的飄散效果
-      const time = state.clock.elapsedTime
-      positions[i] += Math.sin(time * 0.3 + i * 0.01) * 0.003 // 減小飄散幅度
-      positions[i + 2] += Math.cos(time * 0.2 + i * 0.01) * 0.003
+      // 更新位置
+      snowflake.position.x += velocity.x * intensity * 0.2
+      snowflake.position.y += velocity.y * intensity * 0.15
+      snowflake.position.z += velocity.z * intensity * 0.2
+      
+      // 輕柔的飄散效果
+      snowflake.position.x += Math.sin(time * 0.3 + index * 0.01) * 0.003
+      snowflake.position.z += Math.cos(time * 0.2 + index * 0.01) * 0.003
+      
+      // 旋轉效果
+      snowflake.rotation.z += rotationSpeed * intensity
       
       // 重置到頂部
-      if (positions[i + 1] < -10) {
-        positions[i + 1] = 100 + Math.random() * 30 // 更大的高度範圍
-        positions[i] = (Math.random() - 0.5) * 200
-        positions[i + 2] = (Math.random() - 0.5) * 200
+      if (snowflake.position.y < -10) {
+        snowflake.position.y = 100 + Math.random() * 30
+        snowflake.position.x = (Math.random() - 0.5) * 200
+        snowflake.position.z = (Math.random() - 0.5) * 200
       }
       
       // 邊界檢查
-      if (Math.abs(positions[i]) > 100) {
-        positions[i] = (Math.random() - 0.5) * 200
+      if (Math.abs(snowflake.position.x) > 100) {
+        snowflake.position.x = (Math.random() - 0.5) * 200
       }
-      if (Math.abs(positions[i + 2]) > 100) {
-        positions[i + 2] = (Math.random() - 0.5) * 200
+      if (Math.abs(snowflake.position.z) > 100) {
+        snowflake.position.z = (Math.random() - 0.5) * 200
       }
-    }
-    
-    snowRef.current.geometry.attributes.position.needsUpdate = true
+      
+      // 根據強度調整透明度
+      if (snowflake.material instanceof THREE.LineBasicMaterial) {
+        snowflake.material.opacity = 0.8 * intensity
+      }
+    })
   })
   
   if (intensity === 0) return null
   
   return (
-    <points ref={snowRef} geometry={snowGeometry} material={snowMaterial} />
+    <group ref={snowRef}>
+      {snowflakes.map((flake, index) => (
+        <primitive key={index} object={flake} />
+      ))}
+    </group>
   )
 }
 
-// 霧氣效果
+// 霧氣效果 - 使用柔和圓形精靈創建真實霧氣形狀
 export const FogEffect = ({ intensity = 1 }: { intensity?: number }) => {
-  const fogRef = useRef<THREE.Points>(null)
+  const fogRef = useRef<THREE.Group>(null)
   
-  const fogGeometry = useMemo(() => {
-    const geometry = new THREE.BufferGeometry()
-    const positions = new Float32Array(500 * 3) // 500個霧粒子
-    const velocities = new Float32Array(500 * 3)
-    const sizes = new Float32Array(500)
+  // 創建圓形霧氣貼圖
+  const createFogTexture = () => {
+    const canvas = document.createElement('canvas')
+    canvas.width = 64
+    canvas.height = 64
+    const context = canvas.getContext('2d')
     
-    for (let i = 0; i < 500; i++) {
-      const i3 = i * 3
-      positions[i3] = (Math.random() - 0.5) * 150     // x
-      positions[i3 + 1] = Math.random() * 20 + 2      // y (低空)
-      positions[i3 + 2] = (Math.random() - 0.5) * 150 // z
+    if (context) {
+      // 創建徑向漸變
+      const gradient = context.createRadialGradient(32, 32, 0, 32, 32, 32)
+      gradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)')
+      gradient.addColorStop(0.3, 'rgba(255, 255, 255, 0.4)')
+      gradient.addColorStop(0.7, 'rgba(255, 255, 255, 0.1)')
+      gradient.addColorStop(1, 'rgba(255, 255, 255, 0)')
       
-      velocities[i3] = (Math.random() - 0.5) * 0.03
-      velocities[i3 + 1] = Math.random() * 0.01 + 0.005
-      velocities[i3 + 2] = (Math.random() - 0.5) * 0.03
-      
-      sizes[i] = Math.random() * 0.8 + 0.3
+      context.fillStyle = gradient
+      context.fillRect(0, 0, 64, 64)
     }
     
-    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
-    geometry.setAttribute('velocity', new THREE.BufferAttribute(velocities, 3))
-    geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1))
-    
-    return geometry
-  }, [])
+    return new THREE.CanvasTexture(canvas)
+  }
   
-  const fogMaterial = useMemo(() => {
-    return new THREE.PointsMaterial({
-      color: 0xCCCCCC, // 灰白色
-      size: 1.5,
-      transparent: true,
-      opacity: 0,
-      sizeAttenuation: true
-    })
-  }, [])
+  const fogParticles = useMemo(() => {
+    const particles = []
+    const particleCount = 300 // 減少數量以提高性能
+    const texture = createFogTexture()
+    
+    for (let i = 0; i < particleCount; i++) {
+      // 使用精靈創建圓形霧氣粒子
+      const material = new THREE.SpriteMaterial({
+        map: texture,
+        transparent: true,
+        opacity: intensity * 0.4,
+        color: 0xCCCCCC,
+        blending: THREE.AdditiveBlending // 讓霧氣可以相互混合
+      })
+      
+      const sprite = new THREE.Sprite(material)
+      const size = Math.random() * 8 + 3 // 3-11的隨機大小
+      sprite.scale.set(size, size, size)
+      
+      // 設置初始位置（低空）
+      sprite.position.set(
+        (Math.random() - 0.5) * 150,     // x
+        Math.random() * 20 + 2,          // y (低空)
+        (Math.random() - 0.5) * 150      // z
+      )
+      
+      // 儲存速度資料
+      sprite.userData = {
+        velocity: {
+          x: (Math.random() - 0.5) * 0.03,
+          y: Math.random() * 0.01 + 0.005,
+          z: (Math.random() - 0.5) * 0.03
+        },
+        originalOpacity: material.opacity,
+        baseSize: size
+      }
+      
+      particles.push(sprite)
+    }
+    
+    return particles
+  }, [intensity])
   
   useFrame((state) => {
     if (!fogRef.current) return
     
     const time = state.clock.elapsedTime
-    const positions = fogRef.current.geometry.attributes.position.array as Float32Array
-    const velocities = fogRef.current.geometry.attributes.velocity.array as Float32Array
     
-    // 設置霧氣透明度
-    fogRef.current.material.opacity = intensity * 0.4
-    
-    if (intensity > 0) {
-      for (let i = 0; i < positions.length; i += 3) {
-        positions[i] += velocities[i] * intensity * 0.3
-        positions[i + 1] += velocities[i + 1] * intensity * 0.2
-        positions[i + 2] += velocities[i + 2] * intensity * 0.3
-        
-        // 緩慢飄動
-        positions[i] += Math.sin(time * 0.05 + i * 0.01) * 0.02
-        positions[i + 2] += Math.cos(time * 0.04 + i * 0.01) * 0.02
-        
-        // 重置邊界
-        if (positions[i + 1] > 25) {
-          positions[i + 1] = 2
-          positions[i] = (Math.random() - 0.5) * 150
-          positions[i + 2] = (Math.random() - 0.5) * 150
-        }
-        
-        if (Math.abs(positions[i]) > 75) {
-          positions[i] = (Math.random() - 0.5) * 150
-        }
-        if (Math.abs(positions[i + 2]) > 75) {
-          positions[i + 2] = (Math.random() - 0.5) * 150
-        }
+    // 更新每個霧氣粒子
+    fogRef.current.children.forEach((particle, index) => {
+      const sprite = particle as THREE.Sprite
+      const velocity = sprite.userData.velocity
+      const originalOpacity = sprite.userData.originalOpacity
+      
+      // 更新位置
+      sprite.position.x += velocity.x * intensity * 0.3
+      sprite.position.y += velocity.y * intensity * 0.2
+      sprite.position.z += velocity.z * intensity * 0.3
+      
+      // 緩慢飄動效果
+      sprite.position.x += Math.sin(time * 0.05 + index * 0.01) * 0.02
+      sprite.position.z += Math.cos(time * 0.04 + index * 0.01) * 0.02
+      
+      // 根據高度調整透明度（越高越淡）
+      const heightFactor = Math.max(0, 1 - sprite.position.y / 20)
+      if (sprite.material instanceof THREE.SpriteMaterial) {
+        sprite.material.opacity = intensity * 0.4 * heightFactor
       }
       
-      fogRef.current.geometry.attributes.position.needsUpdate = true
-    }
+      // 輕微的大小變化（呼吸效果）
+      const sizeMultiplier = 1 + Math.sin(time * 0.1 + index * 0.05) * 0.1
+      const baseSize = sprite.userData.baseSize
+      sprite.scale.setScalar(baseSize * sizeMultiplier)
+      
+      // 重置邊界
+      if (sprite.position.y > 25) {
+        sprite.position.y = 2
+        sprite.position.x = (Math.random() - 0.5) * 150
+        sprite.position.z = (Math.random() - 0.5) * 150
+      }
+      
+      if (Math.abs(sprite.position.x) > 75) {
+        sprite.position.x = (Math.random() - 0.5) * 150
+      }
+      if (Math.abs(sprite.position.z) > 75) {
+        sprite.position.z = (Math.random() - 0.5) * 150
+      }
+    })
   })
   
   if (intensity === 0) return null
   
   return (
-    <points ref={fogRef} geometry={fogGeometry} material={fogMaterial} />
+    <group ref={fogRef}>
+      {fogParticles.map((particle, index) => (
+        <primitive key={index} object={particle} />
+      ))}
+    </group>
   )
 }
 
@@ -283,8 +406,8 @@ export const StormEffect = ({ intensity = 1 }: { intensity?: number }) => {
   )
 }
 
-// 主天氣效果組件 - 固定夜晚模式不顯示粒子效果
+// 主天氣效果組件 - 選擇性啟用特定天氣效果
 export const WeatherEffects = () => {
-  // 固定夜晚模式，不顯示任何天氣粒子效果以保持清潔的夜空
+  // 完全關閉舊的天氣粒子效果，使用新的DrizzleEffect
   return null
 }

@@ -6,7 +6,7 @@ import { useTimeStore, TIME_SETTINGS } from '@/stores/timeStore'
 // 天空穹頂組件
 export const SkyDome = () => {
   const skyRef = useRef<THREE.Mesh>(null)
-  const { timeOfDay, hour } = useTimeStore()
+  const { timeOfDay, hour, weather } = useTimeStore()
   
   // 創建天空穹頂幾何體
   const skyGeometry = useMemo(() => {
@@ -22,7 +22,9 @@ export const SkyDome = () => {
         dayColor: { value: new THREE.Color('#87CEEB') },
         nightColor: { value: new THREE.Color('#000080') },
         sunsetColor: { value: new THREE.Color('#FF6347') },
-        mixFactor: { value: 0.5 }
+        mixFactor: { value: 0.5 },
+        weatherDarkness: { value: 0.0 }, // 天氣陰暗度
+        stormColor: { value: new THREE.Color('#6b6d75') } // 山雷天空顏色 - 濃厚灰色
       },
       vertexShader: `
         varying vec3 vWorldPosition;
@@ -39,6 +41,8 @@ export const SkyDome = () => {
         uniform vec3 nightColor;
         uniform vec3 sunsetColor;
         uniform float mixFactor;
+        uniform float weatherDarkness;
+        uniform vec3 stormColor;
         varying vec3 vWorldPosition;
         
         void main() {
@@ -114,6 +118,13 @@ export const SkyDome = () => {
           vec3 atmosphereColor = vec3(0.8, 0.9, 1.0);
           color = mix(color, atmosphereColor, atmosphere * 0.1);
           
+          // 天氣效果 - 山雷時天空變得濃厚陰沉的灰色
+          if (weatherDarkness > 0.5) {
+            // 山雷天空：濃厚灰色，保持可見度但陰沉
+            color = mix(color, stormColor, 0.75); // 75%混入風暴灰色
+            color *= 0.45; // 適度降低亮度，保持灰色質感
+          }
+          
           gl_FragColor = vec4(color, 1.0);
         }
       `,
@@ -142,6 +153,10 @@ export const SkyDome = () => {
         Math.sin(sunAngle) * 80   // 南北方向的弧形軌跡
       )
       skyRef.current.material.uniforms.sunPosition.value = sunPos
+      
+      // 根據天氣設定陰暗度
+      const weatherDarkness = weather === 'storm' ? 1.0 : 0.0
+      skyRef.current.material.uniforms.weatherDarkness.value = weatherDarkness
     }
   })
   
@@ -290,7 +305,8 @@ export const ThinWhiteClouds = () => {
       
       // 根據天氣調整雲朵透明度
       let opacity = 0.8 // 基礎透明度
-      if (weather === 'rain' || weather === 'storm') opacity = 1.2
+      if (weather === 'rain') opacity = 1.2
+      else if (weather === 'storm') opacity = 0.0  // 山雷時不顯示稀薄白雲
       else if (weather === 'fog') opacity = 1.5
       else if (weather === 'clear') opacity = 0.6
       

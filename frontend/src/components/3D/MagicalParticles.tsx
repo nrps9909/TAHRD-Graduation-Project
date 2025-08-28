@@ -6,7 +6,7 @@ import { useTimeStore } from '@/stores/timeStore'
 // 魔法懸浮光粒子組件
 export const MagicalFloatingParticles = () => {
   const particlesRef = useRef<THREE.Points>(null)
-  const { timeOfDay, hour } = useTimeStore()
+  const { timeOfDay, hour, weather } = useTimeStore()
   
   const particleGeometry = useMemo(() => {
     const geometry = new THREE.BufferGeometry()
@@ -26,7 +26,7 @@ export const MagicalFloatingParticles = () => {
       const phi = Math.random() * Math.PI * 0.7 // 主要在上半空間
       
       positions[i3] = Math.sin(phi) * Math.cos(theta) * radius
-      positions[i3 + 1] = Math.random() * 40 + 5 // 5-45米高度
+      positions[i3 + 1] = Math.random() * 40 + 10 // 10-50米高度，避免貼地
       positions[i3 + 2] = Math.sin(phi) * Math.sin(theta) * radius
       
       // 非常緩慢優雅的飄動
@@ -204,12 +204,16 @@ export const MagicalFloatingParticles = () => {
       // 更新shader參數
       material.uniforms.time.value = time
       
-      // 根據時間調整環境光影響
+      // 根據天氣和時間調整環境光影響
       const normalizedHour = hour % 24
       let ambientBrightness = 1.0
       let globalOpacity = 0.8
       
-      if (timeOfDay === 'day') {
+      // 山雨時完全隱藏魔法粒子，其他下雨天氣只在白天隱藏
+      if (weather === 'rain' || ((weather === 'drizzle' || weather === 'storm') && timeOfDay === 'day')) {
+        ambientBrightness = 0.0
+        globalOpacity = 0.0
+      } else if (timeOfDay === 'day') {
         // 白天 - 光粒子較淡但依然可見
         if (normalizedHour >= 6 && normalizedHour < 18) {
           ambientBrightness = 0.6
@@ -241,9 +245,9 @@ export const MagicalFloatingParticles = () => {
         positions[i] += Math.cos(time * 0.08 + particleIndex * 0.2) * spiralRadius * 0.01
         positions[i + 2] += Math.sin(time * 0.08 + particleIndex * 0.2) * spiralRadius * 0.01
         
-        // 邊界重置 - 保持粒子在場景範圍內
+        // 邊界重置 - 保持粒子在場景範圍內，避免太低
         if (positions[i + 1] > 50) {
-          positions[i + 1] = 5 + Math.random() * 10
+          positions[i + 1] = 8 + Math.random() * 15
           positions[i] = (Math.random() - 0.5) * 200
           positions[i + 2] = (Math.random() - 0.5) * 200
         }
@@ -255,9 +259,9 @@ export const MagicalFloatingParticles = () => {
           positions[i + 2] = (Math.random() - 0.5) * 240
         }
         
-        // 防止粒子沉到地面以下
-        if (positions[i + 1] < 3) {
-          positions[i + 1] = 3 + Math.random() * 5
+        // 防止粒子沉到地面以下 - 提高最低高度避免貼地
+        if (positions[i + 1] < 8) {
+          positions[i + 1] = 8 + Math.random() * 10
         }
       }
       
@@ -273,7 +277,7 @@ export const MagicalFloatingParticles = () => {
 // 環境光塵粒子 - 更細小、更多數量的光點
 export const AmbientLightDust = () => {
   const dustRef = useRef<THREE.Points>(null)
-  const { timeOfDay } = useTimeStore()
+  const { timeOfDay, weather } = useTimeStore()
   
   const dustGeometry = useMemo(() => {
     const geometry = new THREE.BufferGeometry()
@@ -285,9 +289,9 @@ export const AmbientLightDust = () => {
     for (let i = 0; i < 150; i++) {
       const i3 = i * 3
       
-      // 更廣泛的分布
+      // 更廣泛的分布，避免貼地
       positions[i3] = (Math.random() - 0.5) * 300
-      positions[i3 + 1] = Math.random() * 60 + 2
+      positions[i3 + 1] = Math.random() * 50 + 8 // 8-58米高度，避免貼地
       positions[i3 + 2] = (Math.random() - 0.5) * 300
       
       // 極其緩慢的飄動
@@ -389,8 +393,13 @@ export const AmbientLightDust = () => {
       
       material.uniforms.time.value = time
       
-      // 白天較淡，夜晚較明顯 - 進一步降低
-      const opacity = timeOfDay === 'day' ? 0.08 : 0.18
+      // 山雨時完全隱藏光塵粒子，其他下雨天氣只在白天隱藏
+      let opacity = 0.0
+      if (weather === 'rain' || ((weather === 'drizzle' || weather === 'storm') && timeOfDay === 'day')) {
+        opacity = 0.0
+      } else {
+        opacity = timeOfDay === 'day' ? 0.08 : 0.18
+      }
       material.uniforms.opacity.value = opacity
       
       // 極其緩慢的飄動
@@ -399,9 +408,9 @@ export const AmbientLightDust = () => {
         positions[i + 1] += velocities[i + 1]
         positions[i + 2] += velocities[i + 2]
         
-        // 邊界重置
+        // 邊界重置，避免太低
         if (positions[i + 1] > 65) {
-          positions[i + 1] = 2 + Math.random() * 8
+          positions[i + 1] = 8 + Math.random() * 12
           positions[i] = (Math.random() - 0.5) * 300
           positions[i + 2] = (Math.random() - 0.5) * 300
         }

@@ -194,12 +194,14 @@ export const MountainClouds = () => {
       // 更新shader參數
       material.uniforms.time.value = time
       
-      // 根據天氣調整雲層強度 - 保持稀薄
+      // 根據天氣調整雲層強度 - 多雲時顯著增強
       let weatherIntensity = 0.4
-      if (weather === 'clear') weatherIntensity = 0.6    // 晴天雲層稍明顯
-      else if (weather === 'fog') weatherIntensity = 0.2 // 霧天時雲層較淡
-      else if (weather === 'rain') weatherIntensity = 0.1 // 雨天雲層幾乎看不見
-      else if (weather === 'storm') weatherIntensity = 0.05 // 暴風雨時基本消失
+      if (weather === 'clear') weatherIntensity = 0.0      // 晴天完全沒有雲層
+      else if (weather === 'cloudy') weatherIntensity = 1.2 // 多雲時雲層很明顯
+      else if (weather === 'fog') weatherIntensity = 0.2   // 霧天時雲層較淡
+      else if (weather === 'rain') weatherIntensity = 0.8  // 雨天雲層較厚
+      else if (weather === 'drizzle') weatherIntensity = 0.0 // 細雨天不要雲層
+      else if (weather === 'storm') weatherIntensity = 0.0  // 山雷時完全不顯示
       
       // 根據時間調整雲層可見度
       const normalizedHour = hour % 24

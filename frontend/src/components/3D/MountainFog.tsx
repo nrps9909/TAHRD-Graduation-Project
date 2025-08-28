@@ -311,7 +311,7 @@ export const MountainFog = () => {
       if (weather === 'fog') weatherIntensity = 0.5    // 霧天時適度可見
       else if (weather === 'rain') weatherIntensity = 0.3   // 雨天微霧
       else if (weather === 'clear') weatherIntensity = 0.05  // 晴天幾乎不可見
-      else if (weather === 'storm') weatherIntensity = 0.2  // 暴雨前輕霧
+      else if (weather === 'storm') weatherIntensity = 0.0  // 山雷時不顯示霧塊
       
       // 根據時間調整霧塊的可見度 - 整體保持淡雅
       const normalizedHour = hour % 24
@@ -732,7 +732,7 @@ export const HighAltitudeMist = () => {
       let opacity = 0.08 // 大幅降低基礎透明度
       if (weather === 'fog') opacity = 0.15 // 霧天時稍微明顯
       else if (weather === 'clear') opacity = 0.03 // 晴天時幾乎不可見
-      else if (weather === 'storm') opacity = 0.12 // 暴風雨時輕微可見
+      else if (weather === 'storm') opacity = 0.0  // 山雷時不顯示高山雲霧
       
       // 早晨和傍晚雲霧稍微明顯
       const normalizedHour = hour % 24

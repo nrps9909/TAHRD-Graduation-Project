@@ -1,8 +1,11 @@
 import { useGLTF } from '@react-three/drei'
 import { useRef, useEffect, useMemo, useState } from 'react'
+import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { collisionSystem } from '@/utils/collision'
 import { TreeGlow } from './TreeGlow'
+import { TerrainGlow } from './TerrainGlow'
+import { useTimeStore } from '@/stores/timeStore'
 
 // 全域地形參考，用於高度檢測
 let terrainMesh: THREE.Mesh | null = null
@@ -95,15 +98,123 @@ export const getTerrainRotation = (x: number, z: number): THREE.Euler => {
   return new THREE.Euler().setFromQuaternion(quaternion)
 }
 
+// 樹木位置和信息接口
+export interface TreeInfo {
+  mesh: THREE.Mesh
+  name: string
+  position: THREE.Vector3
+  distance: number
+  isTrunk: boolean
+  isLeaves: boolean
+}
+
+// 全域樹木位置數組
+let globalTreePositions: TreeInfo[] = []
+
+// 更新全域樹木位置（在場景載入完成後調用）
+export const updateGlobalTreePositions = (trees: THREE.Mesh[]) => {
+  globalTreePositions = trees.map(tree => {
+    const position = tree.position.clone()
+    // 考慮地形縮放轉換為世界座標
+    position.multiply(new THREE.Vector3(10, 5, 10))
+    
+    const name = tree.name.toLowerCase()
+    const isTrunk = name.includes('trunk') || name.includes('tronco') || 
+                   name.includes('bark') || name.includes('木')
+    const isLeaves = name.includes('leaves') || name.includes('leaf') ||
+                    name.includes('hoja') || name.includes('foliage')
+    
+    return {
+      mesh: tree,
+      name: tree.name,
+      position: position.clone(),
+      distance: 0, // 將在查詢時計算
+      isTrunk,
+      isLeaves
+    }
+  })
+  
+  console.log(`🌳 已更新全域樹木位置數據，共 ${globalTreePositions.length} 個樹木物件`)
+}
+
+// 獲取玩家附近的樹木
+export const getNearbyTrees = (playerX: number, playerZ: number, maxDistance: number = 20): TreeInfo[] => {
+  if (globalTreePositions.length === 0) {
+    console.warn('⚠️ 樹木位置數據尚未初始化，請確保場景已完全載入')
+    return []
+  }
+  
+  
+  // 計算所有樹木與玩家的距離並篩選
+  const nearbyTrees = globalTreePositions
+    .map(tree => ({
+      ...tree,
+      distance: Math.sqrt(
+        Math.pow(tree.position.x - playerX, 2) + 
+        Math.pow(tree.position.z - playerZ, 2)
+      )
+    }))
+    .filter(tree => tree.distance <= maxDistance)
+    .sort((a, b) => a.distance - b.distance) // 按距離排序
+  
+  console.log(`🎯 玩家位置 (${playerX.toFixed(1)}, ${playerZ.toFixed(1)}) 附近 ${maxDistance} 單位內找到 ${nearbyTrees.length} 個樹木:`)
+  nearbyTrees.forEach((tree, index) => {
+    const type = tree.isTrunk ? '🌲樹幹' : tree.isLeaves ? '🍃樹葉' : '🌳樹木'
+    console.log(`  ${index + 1}. ${type} "${tree.name}" - 距離: ${tree.distance.toFixed(1)} - 位置: (${tree.position.x.toFixed(1)}, ${tree.position.z.toFixed(1)})`)
+  })
+  
+  return nearbyTrees
+}
+
+// 獲取最近的樹木
+export const getClosestTree = (playerX: number, playerZ: number): TreeInfo | null => {
+  const nearbyTrees = getNearbyTrees(playerX, playerZ, 100) // 搜索範圍100單位
+  return nearbyTrees.length > 0 ? nearbyTrees[0] : null
+}
+
+// 獲取最近的樹幹（用於交互）
+export const getClosestTrunk = (playerX: number, playerZ: number, maxDistance: number = 15): TreeInfo | null => {
+  const nearbyTrees = getNearbyTrees(playerX, playerZ, maxDistance)
+  const nearbyTrunks = nearbyTrees.filter(tree => tree.isTrunk)
+  
+  if (nearbyTrunks.length > 0) {
+    console.log(`🎯 找到最近的可交互樹幹: "${nearbyTrunks[0].name}" 距離 ${nearbyTrunks[0].distance.toFixed(1)} 單位`)
+    return nearbyTrunks[0]
+  }
+  
+  return null
+}
+
+// 檢查玩家是否在樹木附近（用於觸發事件）
+export const isPlayerNearTree = (playerX: number, playerZ: number, triggerDistance: number = 10): boolean => {
+  const closestTree = getClosestTree(playerX, playerZ)
+  return closestTree !== null && closestTree.distance <= triggerDistance
+}
+
+// 實時監控玩家與樹木的距離（調試用）
+export const monitorPlayerTreeProximity = (playerX: number, playerZ: number) => {
+  const nearbyTrees = getNearbyTrees(playerX, playerZ, 25)
+  const closestTrunk = getClosestTrunk(playerX, playerZ)
+  
+  console.log(`📍 玩家樹木距離監控 - 位置 (${playerX.toFixed(1)}, ${playerZ.toFixed(1)}):`)
+  console.log(`  - 25單位內樹木數量: ${nearbyTrees.length}`)
+  console.log(`  - 最近可交互樹幹: ${closestTrunk ? `"${closestTrunk.name}" 距離${closestTrunk.distance.toFixed(1)}` : '無'}`)
+  
+  if (nearbyTrees.length > 0) {
+    console.log(`  - 最近樹木: "${nearbyTrees[0].name}" 距離${nearbyTrees[0].distance.toFixed(1)}`)
+  }
+}
+
 
 interface TerrainModelProps {
   position?: [number, number, number]
   scale?: number
 }
 
-export const TerrainModel = ({ position = [0, 0, 0], scale = 1 }: TerrainModelProps) => {
+export const TerrainModel = ({ position = [0, 0, 0] }: TerrainModelProps) => {
   const groupRef = useRef<THREE.Group>(null)
   const [terrainScene, setTerrainScene] = useState<THREE.Group | null>(null)
+  const { timeOfDay } = useTimeStore()
   
   // 載入GLTF模型
   const { scene } = useGLTF('/terrain_low_poly/scene.gltf')
@@ -115,8 +226,9 @@ export const TerrainModel = ({ position = [0, 0, 0], scale = 1 }: TerrainModelPr
     
     scene.traverse((child) => {
       const name = child.name.toLowerCase()
-      const position = new THREE.Vector3()
-      child.getWorldPosition(position)
+      const position = child.position.clone()
+      // 考慮地形縮放轉換座標
+      position.multiply(new THREE.Vector3(10, 5, 10))
       
       // 更保守地識別白雲物件，避免誤刪樹葉
       // 只移除非常明確是雲朵的物件
@@ -229,6 +341,8 @@ export const TerrainModel = ({ position = [0, 0, 0], scale = 1 }: TerrainModelPr
     treeMeshes.current = [] // 重置樹木陣列
     
     console.log('🏞️ 初始化地形和物件檢測...')
+    console.log('🔍 掃描場景中的所有樹木位置...')
+    
     scene.traverse((child) => {
       const name = child.name.toLowerCase()
       
@@ -251,6 +365,51 @@ export const TerrainModel = ({ position = [0, 0, 0], scale = 1 }: TerrainModelPr
                       matName.includes('bark') || matName.includes('madera')
              })())) {
           
+          // 檢查樹木位置，如果在指定座標附近則刪除
+          const localPosition = child.position.clone()
+          
+          // 轉換為實際座標（考慮10倍XZ縮放）
+          const actualX = localPosition.x * 10
+          const actualZ = localPosition.z * 10
+          
+          // 檢查是否在要刪除的座標附近（允許一定的誤差範圍）
+          const deleteTargets = [
+            { x: -200.5, z: -133, tolerance: 5.0 },     // 原始刪除目標
+            { x: -212.4, z: -136.1, tolerance: 40.0 }   // 3D場景邊界附近40單位範圍的樹木
+          ]
+          
+          for (const target of deleteTargets) {
+            const distanceX = Math.abs(actualX - target.x)
+            const distanceZ = Math.abs(actualZ - target.z)
+            
+            if (distanceX <= target.tolerance && distanceZ <= target.tolerance) {
+              console.log(`🗑️ 刪除指定位置的樹木: "${child.name}"`)
+              console.log(`  目標位置: (${target.x}, ${target.z})`)
+              console.log(`  實際位置: (${actualX.toFixed(2)}, ${actualZ.toFixed(2)})`)
+              console.log(`  距離差: X=${distanceX.toFixed(2)}, Z=${distanceZ.toFixed(2)}`)
+              
+              // 從父物件中移除這個樹木
+              if (child.parent) {
+                child.parent.remove(child)
+              }
+              
+              // 清理資源
+              if (child.geometry) {
+                child.geometry.dispose()
+              }
+              if (child.material) {
+                if (Array.isArray(child.material)) {
+                  child.material.forEach(mat => mat.dispose())
+                } else {
+                  child.material.dispose()
+                }
+              }
+              
+              console.log(`✅ 樹木已成功刪除`)
+              return // 跳過後續處理
+            }
+          }
+          
           // 檢查是否為樹幹mesh（棕色部分）
           const isTrunk = name.includes('trunk') || name.includes('tronco') || 
                          name.includes('bark') || name.includes('木') ||
@@ -263,30 +422,84 @@ export const TerrainModel = ({ position = [0, 0, 0], scale = 1 }: TerrainModelPr
                            })
                          })())
           
-          // 如果是樹幹，向下延伸縮放
+          // 如果是樹幹，向下延伸並完全穿透整個地形模型
           if (isTrunk) {
-            // 保存原始縮放
+            // 保存原始縮放和位置
             const originalScale = child.scale.clone()
-            
-            // Y軸向下延伸1.5倍，保持X和Z軸不變
-            child.scale.set(originalScale.x, originalScale.y * 1.5, originalScale.z)
-            
-            // 向下移動位置以保持樹幹頂部位置不變
             const originalPosition = child.position.clone()
-            child.position.set(
-              originalPosition.x, 
-              originalPosition.y - (originalScale.y * 0.25), // 向下移動25%的原始高度
-              originalPosition.z
-            )
             
-            console.log(`樹幹mesh延伸: "${child.name}", 原始縮放:`, originalScale.toArray(), '新縮放:', child.scale.toArray())
-            console.log(`位置調整: 原始:`, originalPosition.toArray(), '新位置:', child.position.toArray())
+            // 延遲處理，確保地形mesh已經初始化
+            setTimeout(() => {
+              // 使用樹幹的本地位置，避免受相機或父物件變換影響
+              // 考慮地形的10倍XZ縮放，將本地位置轉換為地形座標系
+              const localPosition = child.position.clone()
+              const terrainX = localPosition.x * 10 // 地形XZ軸10倍縮放
+              const terrainZ = localPosition.z * 10
+              
+              // 獲取該位置的實際地面高度
+              const groundHeight = getTerrainHeight(terrainX, terrainZ)
+              
+              // 計算地形的邊界框以確定完全穿透所需的高度
+              let terrainBounds = { min: -50, max: 125 } // 預設範圍
+              if (terrainMesh) {
+                const box = new THREE.Box3().setFromObject(terrainMesh)
+                terrainBounds.min = box.min.y
+                terrainBounds.max = box.max.y
+              }
+              
+              // 計算穿透整個地形所需的總高度（從地形頂部到底部，再加上額外延伸）
+              const terrainHeight = terrainBounds.max - terrainBounds.min
+              const extraExtension = 50 // 額外向下延伸50單位確保完全穿透
+              const totalRequiredHeight = terrainHeight + extraExtension
+              
+              // 計算所需的縮放倍數來達到完全穿透
+              const extensionFactor = Math.max(10.0, totalRequiredHeight / originalScale.y)
+              child.scale.set(originalScale.x, originalScale.y * extensionFactor, originalScale.z)
+              
+              // 計算樹幹延伸後的總高度
+              const extendedHeight = originalScale.y * extensionFactor
+              
+              // 設置樹幹位置：讓樹幹扎根到地底，但地面部分保持可見
+              // 樹幹應該向下延伸到地底，但地面以上保持原始高度
+              const visibleAboveGround = originalScale.y // 地面以上保持原始高度
+              const undergroundDepth = extendedHeight - visibleAboveGround // 地下部分深度
+              
+              // 樹幹中心位置：地面高度 + 可見部分的一半 - 地下部分的一半
+              const treeCenterY = groundHeight + (visibleAboveGround / 2) - (undergroundDepth / 2)
+              
+              child.position.set(
+                originalPosition.x, 
+                treeCenterY,
+                originalPosition.z
+              )
+              
+              console.log(`樹幹錨定地面並穿透地形: "${child.name}"`)
+              console.log(`  世界位置 (${terrainX.toFixed(1)}, ${terrainZ.toFixed(1)})`)
+              console.log(`  地面高度: ${groundHeight.toFixed(2)}`)
+              console.log(`  地形邊界: Y ${terrainBounds.min.toFixed(2)} 到 ${terrainBounds.max.toFixed(2)}`)
+              console.log(`  地形總高度: ${terrainHeight.toFixed(2)}`)
+              console.log(`  延伸倍數: ${extensionFactor.toFixed(2)}x`)
+              console.log(`  延伸後總高度: ${extendedHeight.toFixed(2)}`)
+              console.log(`  地面以上高度: ${visibleAboveGround.toFixed(2)}`)
+              console.log(`  地下深度: ${undergroundDepth.toFixed(2)}`)
+              console.log(`  樹中心Y位置: ${treeCenterY.toFixed(2)} (扎根地底)`)
+              console.log(`  樹頂Y位置: ${(treeCenterY + extendedHeight/2).toFixed(2)}`)
+              console.log(`  樹底Y位置: ${(treeCenterY - extendedHeight/2).toFixed(2)} (地底)`)
+              console.log(`  原始位置:`, originalPosition.toArray())
+              console.log(`  最終位置:`, child.position.toArray())
+            }, 1000) // 等待1秒確保地形初始化完成
           }
           
+          // 儲存原始材質資訊用於發光效果
+          child.userData.originalMaterials = Array.isArray(child.material) 
+            ? child.material.map(mat => ({ ...mat })) 
+            : { ...child.material }
+          
           treeMeshes.current.push(child)
-          const position = new THREE.Vector3()
-          child.getWorldPosition(position)
-          console.log('找到樹木mesh:', child.name, '位置:', position.toArray())
+          const position = child.position.clone()
+          // 轉換為世界座標用於顯示
+          const worldPos = position.clone().multiply(new THREE.Vector3(10, 5, 10))
+          console.log(`🌳 找到樹木mesh: "${child.name}", 本地位置: (${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)}), 世界位置: (${worldPos.x.toFixed(2)}, ${worldPos.y.toFixed(2)}, ${worldPos.z.toFixed(2)})`)
         }
         
         // 檢查材質是否為棕色山體材質
@@ -347,9 +560,10 @@ export const TerrainModel = ({ position = [0, 0, 0], scale = 1 }: TerrainModelPr
           }
           
           // 檢查物件的Y位置，雲朵通常在較高位置
-          const position = new THREE.Vector3()
-          child.getWorldPosition(position)
-          if (position.y > 10) { // 高於10單位的可能是雲朵
+          const position = child.position.clone()
+          // 考慮地形5倍Y縮放
+          const worldY = position.y * 5
+          if (worldY > 10) { // 高於10單位的可能是雲朵
             return
           }
           
@@ -359,10 +573,25 @@ export const TerrainModel = ({ position = [0, 0, 0], scale = 1 }: TerrainModelPr
       })
     }
     
+    // 在所有樹木載入完成後更新全域樹木位置
+    const timer = setTimeout(() => {
+      if (treeMeshes.current.length > 0) {
+        updateGlobalTreePositions(treeMeshes.current)
+        
+        // 檢查玩家被困位置附近的樹木
+        console.log('🔍 檢查玩家被困位置附近的樹木：')
+        console.log('位置1: (-211.6, -142.6)')
+        monitorPlayerTreeProximity(-211.6, -142.6)
+        console.log('位置2: (-212.4, -136.1)')
+        monitorPlayerTreeProximity(-212.4, -136.1)
+      }
+    }, 1500) // 等待1.5秒確保所有樹木處理完成
+    
     return () => {
       // 清理時重置
       terrainMesh = null
       brownMountainMeshes = []
+      clearTimeout(timer)
     }
   }, [scene])
   
@@ -395,7 +624,6 @@ export const TerrainModel = ({ position = [0, 0, 0], scale = 1 }: TerrainModelPr
           const validHeights = surroundingHeights.filter(h => h > -5 && h < 25)
           if (validHeights.length === 0) continue
           
-          const maxHeightDiff = Math.max(...validHeights.map(h => Math.abs(h - centerHeight)))
           
           // 移除所有地形和邊界碰撞檢測
         }
@@ -404,13 +632,12 @@ export const TerrainModel = ({ position = [0, 0, 0], scale = 1 }: TerrainModelPr
     
     // 使用真實的樹木網格位置來添加碰撞檢測
     treeMeshes.current.forEach((treeMesh, index) => {
-      const position = new THREE.Vector3()
-      treeMesh.getWorldPosition(position)
+      const position = treeMesh.position.clone()
+      // 轉換為世界座標
+      position.multiply(new THREE.Vector3(10, 5, 10))
       
-      // 計算樹木的邊界盒來確定合適的碰撞半徑，極度減小讓移動如平地般順暢
-      const box = new THREE.Box3().setFromObject(treeMesh)
-      const size = box.getSize(new THREE.Vector3())
-      const radius = 0 // 移除樹木碰撞半徑
+      // 移除樹木碰撞半徑
+      const radius = 0
       
       colliders.push({
         position: new THREE.Vector3(position.x, 0, position.z), // Y設為0用於2D碰撞檢測
@@ -460,14 +687,13 @@ export const TerrainModel = ({ position = [0, 0, 0], scale = 1 }: TerrainModelPr
       
       // 添加真實樹木碰撞物體
       treeMeshes.current.forEach((treeMesh, index) => {
-        const position = new THREE.Vector3()
-        treeMesh.getWorldPosition(position)
+        const position = treeMesh.position.clone()
+        // 轉換為世界座標
+        position.multiply(new THREE.Vector3(10, 5, 10))
         
-        // 計算樹木的邊界盒來確定合適的碰撞半徑（極度縮小如平地般通過）
-        const box = new THREE.Box3().setFromObject(treeMesh)
-        const size = box.getSize(new THREE.Vector3())
-        const radius = 0 // 移除碰撞半徑
-        const finalRadius = 0 // 移除所有碰撞半徑限制
+        // 移除碰撞半徑限制
+        const radius = 0
+        const finalRadius = 0
         
         console.log(`註冊真實樹木碰撞器 ${index}: 位置(${position.x.toFixed(1)}, ${position.z.toFixed(1)}), 計算半徑: ${radius.toFixed(1)}, 最終半徑: ${finalRadius}`)
         
@@ -484,6 +710,106 @@ export const TerrainModel = ({ position = [0, 0, 0], scale = 1 }: TerrainModelPr
     
     return () => clearTimeout(timer)
   }, [scene]) // 依賴scene載入
+  
+  // 處理樹木夜間發光效果
+  useEffect(() => {
+    if (treeMeshes.current.length === 0) return
+    
+    console.log(`🌙 ${timeOfDay === 'night' ? '啟用' : '關閉'}樹木夜間發光效果`)
+    
+    treeMeshes.current.forEach(treeMesh => {
+      if (treeMesh.material) {
+        const materials = Array.isArray(treeMesh.material) ? treeMesh.material : [treeMesh.material]
+        
+        materials.forEach(material => {
+          if (!material.name) return
+          
+          // 檢查材質是否支持發光屬性
+          if (!(material instanceof THREE.MeshStandardMaterial || 
+                material instanceof THREE.MeshLambertMaterial ||
+                material instanceof THREE.MeshPhongMaterial)) {
+            return
+          }
+          
+          // 移除夜晚树叶和树干发光效果
+          material.emissive = new THREE.Color(0x000000) // 黑色 = 不發光
+          if ('emissiveIntensity' in material) {
+            (material as THREE.MeshStandardMaterial).emissiveIntensity = 0
+          }
+          
+          // 標記材質需要更新
+          material.needsUpdate = true
+        })
+      }
+    })
+  }, [timeOfDay]) // 監聽日夜變化
+
+  // 大風天氣時的樹木晃動效果
+  useFrame((state) => {
+    if (treeMeshes.current.length === 0) return
+    
+    const { weather } = useTimeStore.getState()
+    const time = state.clock.elapsedTime
+    
+    // 大風和山雷天氣時都有搖晃效果
+    if (weather === 'windy' || weather === 'storm') {
+      // 處理所有樹木mesh（包括樹葉和樹幹）
+      treeMeshes.current.forEach((treeMesh, index) => {
+        if (!treeMesh.userData.originalRotation) {
+          // 儲存原始旋轉值
+          treeMesh.userData.originalRotation = treeMesh.rotation.clone()
+        }
+        
+        const originalRotation = treeMesh.userData.originalRotation
+        const name = treeMesh.name.toLowerCase()
+        
+        // 判斷是否為樹幹
+        const isTrunk = name.includes('trunk') || name.includes('tronco') || 
+                       name.includes('bark') || name.includes('木') ||
+                       (treeMesh.material && (() => {
+                         const materials = Array.isArray(treeMesh.material) ? treeMesh.material : [treeMesh.material]
+                         return materials.some(mat => {
+                           const matName = mat.name?.toLowerCase() || ''
+                           return matName.includes('trunk') || matName.includes('bark') || 
+                                  matName.includes('wood') || matName.includes('madera')
+                         })
+                       })())
+        
+        let swayAmount, swaySpeed
+        
+        if (isTrunk) {
+          // 樹幹搖晃：較小幅度，較慢速度，更穩重
+          swayAmount = 0.002 // 樹幹搖晃幅度降低
+          swaySpeed = 0.15 + index * 0.015 // 搖晃速度保持
+        } else {
+          // 樹葉搖晃：保持原有設定
+          swayAmount = 0.004 // 樹葉搖晃幅度降低
+          swaySpeed = 0.25 + index * 0.025 // 樹葉搖晃速度保持
+        }
+        
+        // 左右搖晃 (Z軸) - 根據類型調整
+        const sway = Math.sin(time * swaySpeed + index) * swayAmount
+        
+        // 樹幹還可以有輕微的前後搖晃 (X軸)
+        if (isTrunk) {
+          const swayX = Math.sin(time * swaySpeed * 0.4 + index * 0.75) * swayAmount * 0.3
+          treeMesh.rotation.x = originalRotation.x + swayX
+        }
+        
+        // 應用Z軸搖晃
+        treeMesh.rotation.z = originalRotation.z + sway
+      })
+    } else {
+      // 非大風天氣時，恢復原始姿態
+      treeMeshes.current.forEach((treeMesh) => {
+        if (treeMesh.userData.originalRotation) {
+          // 平滑過渡回原始姿態
+          treeMesh.rotation.x = THREE.MathUtils.lerp(treeMesh.rotation.x, treeMesh.userData.originalRotation.x, 0.025)
+          treeMesh.rotation.z = THREE.MathUtils.lerp(treeMesh.rotation.z, treeMesh.userData.originalRotation.z, 0.025)
+        }
+      })
+    }
+  })
 
   // 註冊其他碰撞物體到碰撞系統
   useEffect(() => {
@@ -535,6 +861,9 @@ export const TerrainModel = ({ position = [0, 0, 0], scale = 1 }: TerrainModelPr
       {/* 樹幹發光效果 */}
       <TreeGlow terrainScene={terrainScene} />
       
+      {/* 地形夜晚发光效果 - A方案：材质发光 + C方案：边缘发光 */}
+      <TerrainGlow terrainScene={terrainScene} />
+      
       {/* 調試用：顯示碰撞區域（可選） */}
       {/* {terrainColliders.map(collider => (
         <mesh key={collider.id} position={collider.position}>
@@ -547,13 +876,13 @@ export const TerrainModel = ({ position = [0, 0, 0], scale = 1 }: TerrainModelPr
 }
 
 // 檢查路徑上是否有山脈障礙 - 移除所有障礙檢測，適應XZ軸10倍擴展，Y軸5倍擴展
-export const hasTerrainObstacle = (fromX: number, fromZ: number, toX: number, toZ: number): boolean => {
+export const hasTerrainObstacle = (_fromX: number, _fromZ: number, _toX: number, _toZ: number): boolean => {
   // 移除所有地形障礙檢測，允許自由通行
   return false
 }
 
 // 檢查某個位置是否在真正的地面上 - 移除崎嶇路面限制，允許自由行走
-export const isValidGroundPosition = (x: number, z: number): boolean => {
+export const isValidGroundPosition = (_x: number, _z: number): boolean => {
   // 移除所有崎嶇路面限制，允許在任何地形上自由行走
   return true
 }
@@ -590,13 +919,13 @@ export const isOnBrownMountain = (x: number, z: number): boolean => {
 }
 
 // 檢測是否為山脈區域 - 移除山脈檢測限制，適應XZ軸10倍擴展，Y軸5倍擴展
-export const isMountainArea = (x: number, z: number): boolean => {
+export const isMountainArea = (_x: number, _z: number): boolean => {
   // 移除所有山脈區域檢測，允許在任何地形自由行走
   return false
 }
 
 // 檢查兩點之間是否可以安全通行 - 移除所有路徑限制，適應XZ軸10倍擴展，Y軸5倍擴展
-export const isPathClear = (fromX: number, fromZ: number, toX: number, toZ: number): boolean => {
+export const isPathClear = (_fromX: number, _fromZ: number, _toX: number, _toZ: number): boolean => {
   // 移除所有路徑檢查限制，允許自由通行
   return true
 }

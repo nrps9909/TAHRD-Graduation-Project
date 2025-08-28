@@ -4,6 +4,12 @@ import { Player } from './3D/Player'
 import { TerrainModel, validateCharacterPositions } from './3D/TerrainModel'
 import { EnvironmentLighting } from './3D/EnvironmentLighting'
 import { WeatherEffects } from './3D/WeatherEffects'
+import { WindEffect } from './3D/WindEffect'
+import { DrizzleEffect } from './3D/DrizzleEffect'
+import { StormDustEffect } from './3D/StormDustEffect'
+import { MountainStormEffect } from './3D/MountainStormEffect'
+import { CloudyEffect } from './3D/CloudyEffect'
+import { MountainCloudLayer } from './3D/MountainCloudLayer'
 import { SkyDome, ThinWhiteClouds } from './3D/SkyDome'
 import { NightSky } from './3D/NightSky'
 import { MountainFog, HighAltitudeMist, DawnMist } from './3D/MountainFog'
@@ -84,6 +90,24 @@ export const Scene = () => {
       
       {/* 天氣效果 */}
       <WeatherEffects />
+      
+      {/* 大風效果 */}
+      <WindEffect />
+      
+      {/* 細雨效果 */}
+      <DrizzleEffect />
+      
+      {/* 山雷風揚塵土效果 */}
+      <StormDustEffect />
+      
+      {/* 山雷雷電效果 */}
+      <MountainStormEffect />
+      
+      {/* 多雲效果 */}
+      <CloudyEffect />
+      
+      {/* 山脈厚重雲霧層 */}
+      <MountainCloudLayer />
       
       {/* GLTF地形模型 */}
       <TerrainModel position={[0, 0, 0]} scale={1} />

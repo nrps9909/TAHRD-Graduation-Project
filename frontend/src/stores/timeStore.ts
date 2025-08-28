@@ -6,10 +6,12 @@ export type WeatherType = 'clear' | 'rain' | 'snow' | 'fog' | 'storm' | 'cloudy'
 interface TimeState {
   timeOfDay: TimeOfDay
   hour: number
+  minute: number
   weather: WeatherType
   previousWeather: WeatherType | null // 前一個天氣狀態
   weatherTransitionProgress: number // 天氣轉換進度 (0-1)
   isAutoMode: boolean
+  isPlaying: boolean // 播放暫停狀態
   timeSpeed: number
   dayDuration: number // 一天的持續時間（秒）
   weatherChangeInterval: number // 天氣變化間隔（秒）
@@ -18,8 +20,10 @@ interface TimeState {
   weatherVariability: number // 天氣變化的隨機性 (0-1)
   setTimeOfDay: (time: TimeOfDay) => void
   setHour: (hour: number) => void
+  setMinute: (minute: number) => void
   setWeather: (weather: WeatherType) => void
   setAutoMode: (auto: boolean) => void
+  setIsPlaying: (playing: boolean) => void
   setTimeSpeed: (speed: number) => void
   setWeatherVariability: (variability: number) => void
   tick: () => void
@@ -271,13 +275,15 @@ const getBiasedMountainWeather = (hour: number, bonus: Partial<Record<WeatherTyp
 export const useTimeStore = create<TimeState>((set, get) => ({
   timeOfDay: 'day',
   hour: 6, // 從早晨6點開始
+  minute: 0, // 分鐘
   weather: 'clear',
   previousWeather: null,
   weatherTransitionProgress: 1.0, // 開始時完全轉換完成
   isAutoMode: true, // 啟用自動模式
+  isPlaying: true, // 預設播放中
   timeSpeed: 1,
   dayDuration: 30 * 60, // 30分鐘 = 1800秒
-  weatherChangeInterval: 150, // 150秒(2.5分鐘)變化一次天氣，按比例調整
+  weatherChangeInterval: 150, // 150秒(2.5分鐘)變化一次天氣，保持比例協調
   lastWeatherChange: Date.now(),
   realStartTime: Date.now(),
   weatherVariability: 0.8, // 80% 的天氣變化隨機性
@@ -291,6 +297,11 @@ export const useTimeStore = create<TimeState>((set, get) => ({
     const normalizedHour = ((hour % 24) + 24) % 24
     const timeOfDay = getTimeOfDayFromHour(normalizedHour)
     set({ hour: normalizedHour, timeOfDay })
+  },
+
+  setMinute: (minute: number) => {
+    const normalizedMinute = ((minute % 60) + 60) % 60
+    set({ minute: normalizedMinute })
   },
 
   setWeather: (weather: WeatherType) => {
@@ -319,6 +330,10 @@ export const useTimeStore = create<TimeState>((set, get) => ({
     }
   },
 
+  setIsPlaying: (playing: boolean) => {
+    set({ isPlaying: playing })
+  },
+
   setTimeSpeed: (speed: number) => {
     set({ timeSpeed: Math.max(0.1, Math.min(10, speed)) })
   },
@@ -338,7 +353,7 @@ export const useTimeStore = create<TimeState>((set, get) => ({
 
   tick: () => {
     const state = get()
-    if (!state.isAutoMode) return
+    if (!state.isAutoMode || !state.isPlaying) return
 
     const now = Date.now()
     const elapsed = (now - state.realStartTime) / 1000 // 轉換為秒

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useTimeStore, TIME_SETTINGS, WEATHER_SETTINGS, WeatherType } from '@/stores/timeStore'
@@ -147,45 +147,164 @@ export const EnvironmentLighting = () => {
   const { hour, weather, timeOfDay } = useTimeStore()
   const weatherSettings = WEATHER_SETTINGS[weather]
   
+  // 暴風雨閃電效果狀態
+  const [lightningActive, setLightningActive] = useState(false)
+  const [lightningIntensity, setLightningIntensity] = useState(0)
+  
   // 獲取動態時間設定
   const currentSettings = interpolateTimeSettings(hour)
 
   // 設置動態背景和霧效
   useFrame((state) => {
-    // 動態背景色
-    let bgColor = new THREE.Color('#' + currentSettings.backgroundColor)
+    // 暴風雨閃電邏輯
     if (weather === 'storm') {
-      bgColor.multiplyScalar(0.4) // 暴風雨時更暗
-    } else if (weather === 'rain') {
-      bgColor.multiplyScalar(0.7) // 雨天時偏暗
-    } else if (weather === 'fog') {
-      bgColor.multiplyScalar(0.6) // 霧天時偏暗
+      if (!lightningActive && Math.random() < 0.002) { // 0.2% 機率每幀
+        setLightningActive(true)
+        setLightningIntensity(2 + Math.random() * 3) // 2-5倍強度
+        
+        // 閃電持續時間
+        const duration = 100 + Math.random() * 200 // 100-300ms
+        setTimeout(() => {
+          setLightningActive(false)
+          setLightningIntensity(0)
+        }, duration)
+      }
+    } else {
+      // 非暴風雨天氣時確保閃電效果關閉
+      if (lightningActive) {
+        setLightningActive(false)
+        setLightningIntensity(0)
+      }
     }
+    
+    // 動態背景色 - 根據天氣和閃電調整
+    let bgColor = new THREE.Color('#' + currentSettings.backgroundColor)
+    
+    if (weather === 'storm') {
+      if (lightningActive) {
+        bgColor = bgColor.lerp(new THREE.Color('#E6E6FA'), 0.6) // 閃電時變亮
+      } else {
+        // 暴風雨時濃厚陰沉灰色
+        bgColor = bgColor.multiply(new THREE.Color(0.25, 0.27, 0.30)) // 保持灰色調
+        bgColor = bgColor.lerp(new THREE.Color('#4a4c52'), 0.4) // 混入中灰色
+      }
+    } else if (weather === 'rain' || weather === 'drizzle') {
+      bgColor.multiplyScalar(0.7) // 雨天時偏暗
+    } else if (weather === 'fog' || weather === 'mist') {
+      bgColor.multiplyScalar(0.6) // 霧天時偏暗
+    } else if (weather === 'snow') {
+      bgColor = bgColor.lerp(new THREE.Color('#F0F8FF'), 0.2) // 雪天偏冷白色
+    } else if (weather === 'windy') {
+      // 大風天氣 - 天空更明亮清澈，雲層被吹散
+      bgColor.multiplyScalar(1.1) // 比晴天更亮
+      bgColor = bgColor.lerp(new THREE.Color('#E0F6FF'), 0.1) // 略微偏向冷白色
+    }
+    
     state.scene.background = bgColor
     
-    // 更新霧效
+    // 更新霧效 - 根據天氣調整能見度
     if (!state.scene.fog) {
       state.scene.fog = new THREE.Fog('#' + currentSettings.fogColor, 50, 800)
     } else {
       state.scene.fog.color.setStyle('#' + currentSettings.fogColor)
-      state.scene.fog.near = weather === 'fog' ? 10 : 80
-      state.scene.fog.far = weather === 'fog' ? 300 : (weatherSettings.fogIntensity * 1000)
+      
+      // 根據天氣調整霧的距離
+      let fogNear = 80
+      let fogFar = weatherSettings.fogIntensity * 1000
+      
+      switch(weather) {
+        case 'fog':
+          fogNear = 15  // 濃霧，能見度很低
+          fogFar = 200
+          break
+        case 'mist':
+          fogNear = 30  // 薄霧，能見度低
+          fogFar = 400
+          break
+        case 'rain':
+        case 'drizzle':
+          fogNear = 50  // 雨天降低能見度
+          fogFar = 500
+          break
+        case 'storm':
+          fogNear = 25  // 暴風雨能見度很差
+          fogFar = 300
+          break
+        case 'snow':
+          fogNear = 40  // 雪天輕微影響能見度
+          fogFar = 600
+          break
+        case 'windy':
+          fogNear = 120 // 大風吹散霧氣，能見度極佳
+          fogFar = 1200 // 比晴天看得更遠
+          break
+        default:
+          fogNear = 100 // 晴天能見度佳
+          fogFar = 1000
+      }
+      
+      state.scene.fog.near = fogNear
+      state.scene.fog.far = fogFar
     }
   })
 
+  // 根據天氣調整環境光顏色
+  const getWeatherAmbientColor = () => {
+    const baseColor = timeOfDay === 'day' ? "#FFFFFF" : "#6495ED"
+    
+    switch(weather) {
+      case 'rain':
+      case 'drizzle':
+        return timeOfDay === 'day' ? "#B0C4DE" : "#4682B4" // 藍灰色調
+      case 'storm':
+        return timeOfDay === 'day' ? "#708090" : "#2F4F4F" // 暗灰色調
+      case 'fog':
+      case 'mist':
+        return timeOfDay === 'day' ? "#F5F5DC" : "#D3D3D3" // 米色/淺灰調
+      case 'snow':
+        return timeOfDay === 'day' ? "#F0F8FF" : "#E6E6FA" // 偏冷白色
+      case 'windy':
+        return timeOfDay === 'day' ? "#F0F8FF" : "#87CEEB" // 大風時天空清澈明亮
+      default:
+        return baseColor
+    }
+  }
+
+  // 根據天氣調整太陽光顏色
+  const getWeatherSunColor = () => {
+    const baseColor = currentSettings.sunColor
+    
+    switch(weather) {
+      case 'rain':
+      case 'drizzle':
+        return 'B0C4DE' // 淡藍色
+      case 'storm':
+        return '778899' // 淡石板灰
+      case 'fog':
+      case 'mist':
+        return 'F5DEB3' // 小麥色
+      case 'snow':
+        return 'F0F8FF' // 愛麗絲藍
+      case 'windy':
+        return 'FFFFFF' // 大風天陽光更純淨
+      default:
+        return baseColor
+    }
+  }
+
   return (
     <>
-      {/* 動態環境光 */}
+      {/* 動態環境光 - 根據天氣調整顏色 */}
       <ambientLight 
-        color={timeOfDay === 'day' ? "#FFFFFF" : "#6495ED"} 
-        intensity={currentSettings.ambientIntensity * weatherSettings.lightMultiplier} 
+        color={getWeatherAmbientColor()} 
+        intensity={(currentSettings.ambientIntensity * weatherSettings.lightMultiplier) + (weather === 'storm' && lightningActive ? lightningIntensity : 0)} 
       />
       
-      {/* 主要太陽光/月光 */}
+      {/* 主要太陽光/月光 - 根據天氣調整顏色 */}
       <directionalLight
         position={currentSettings.sunPosition}
-        color={'#' + currentSettings.sunColor}
-        intensity={currentSettings.sunIntensity * weatherSettings.lightMultiplier}
+        color={'#' + getWeatherSunColor()}
+        intensity={(currentSettings.sunIntensity * weatherSettings.lightMultiplier) + (weather === 'storm' && lightningActive ? lightningIntensity * 0.5 : 0)}
         castShadow={timeOfDay === 'day'}
         shadow-mapSize-width={2048}
         shadow-mapSize-height={2048}

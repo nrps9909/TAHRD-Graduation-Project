@@ -145,7 +145,7 @@ export const MountainAtmosphere = () => {
 // 山峰反照效果
 export const MountainReflection = () => {
   const reflectionRef = useRef<THREE.Mesh>(null)
-  const { hour, timeOfDay } = useTimeStore()
+  const { hour, timeOfDay, weather } = useTimeStore()
   
   const reflectionGeometry = useMemo(() => {
     // 創建地面反射平面
@@ -209,6 +209,9 @@ export const MountainReflection = () => {
   useFrame((state) => {
     if (reflectionRef.current && reflectionRef.current.material instanceof THREE.ShaderMaterial) {
       const normalizedHour = hour % 24
+      
+      // 在山雷時隱藏地面反射平面
+      reflectionRef.current.visible = weather !== 'storm'
       
       reflectionRef.current.material.uniforms.time.value = state.clock.elapsedTime
       reflectionRef.current.material.uniforms.hour.value = normalizedHour
@@ -339,15 +342,22 @@ export const MountainWind = () => {
       
       // 根據天氣調整風強度
       let windStrength = 1.0
-      if (weather === 'storm') windStrength = 3.0
-      else if (weather === 'clear') windStrength = 0.5
+      if (weather === 'windy') windStrength = 4.0        // 大風天氣時顯著增強
+      else if (weather === 'storm') windStrength = 5.0   // 山雷時風力更強
+      else if (weather === 'clear') windStrength = 0.0   // 晴天完全沒有風效粒子
       else if (weather === 'fog') windStrength = 0.3
       
-      // 根據時間調整風的可見度 - 大幅降低
+      // 根據時間調整風的可見度 - 大風天氣時增強可見度
       const normalizedHour = hour % 24
-      let visibility = 0.01 // 基礎可見度大幅降低
-      if (normalizedHour >= 6 && normalizedHour < 18) {
-        visibility = 0.005 // 白天風粒子幾乎不可見
+      let visibility = 0.01 // 基礎可見度
+      if (weather === 'clear') {
+        visibility = 0.0 // 晴天完全不可見
+      } else if (weather === 'windy') {
+        visibility = 0.08 // 大風天氣時顯著提升可見度
+      } else if (weather === 'storm') {
+        visibility = 0.15 // 山雷天氣時最高可見度，比大風更明顯
+      } else if (normalizedHour >= 6 && normalizedHour < 18) {
+        visibility = 0.005 // 白天風粒子較不可見
       }
       
       (windRef.current.material as THREE.ShaderMaterial).uniforms.opacity.value = visibility * windStrength
@@ -374,7 +384,5 @@ export const MountainWind = () => {
     }
   })
   
-  return (
-    <points ref={windRef} geometry={windGeometry} material={windMaterial} />
-  )
+  return null // MountainWind 白色圓點已移除
 }
