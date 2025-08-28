@@ -4,12 +4,27 @@ import { Player } from './3D/Player'
 import { TerrainModel, validateCharacterPositions } from './3D/TerrainModel'
 import { EnvironmentLighting } from './3D/EnvironmentLighting'
 import { WeatherEffects } from './3D/WeatherEffects'
-import { SkyDome } from './3D/SkyDome'
+import { SkyDome, ThinWhiteClouds } from './3D/SkyDome'
 import { NightSky } from './3D/NightSky'
+import { MountainFog, HighAltitudeMist, DawnMist } from './3D/MountainFog'
+import { MountainAtmosphere, MountainReflection, MountainWind } from './3D/MountainAtmosphere'
+import { MountainClouds } from './3D/MountainClouds'
+import { MagicalFloatingParticles, AmbientLightDust } from './3D/MagicalParticles'
 import { useGameStore } from '@/stores/gameStore'
+import { useTimeStore } from '@/stores/timeStore'
 
 export const Scene = () => {
   const { npcs, playerPosition } = useGameStore()
+  const { timeOfDay, tick } = useTimeStore()
+  
+  // 啟動時間系統更新
+  useEffect(() => {
+    const interval = setInterval(() => {
+      tick()
+    }, 100) // 每100ms更新一次時間
+    
+    return () => clearInterval(interval)
+  }, [tick])
   
   // 驗證角色位置安全性（開發模式）
   useEffect(() => {
@@ -28,11 +43,41 @@ export const Scene = () => {
 
   return (
     <>
-      {/* 固定夜晚模式不需要動態天空穹頂 */}
-      {/* <SkyDome /> */}
+      {/* 動態天空穹頂系統 */}
+      <SkyDome />
       
-      {/* 夜空系統 */}
-      <NightSky />
+      {/* 稀薄白雲 */}
+      <ThinWhiteClouds />
+      
+      {/* 山地霧效系統 */}
+      <MountainFog />
+      
+      {/* 破曉薄霧 - 真實山谷晨霧效果 */}
+      <DawnMist />
+      
+      {/* 高海拔雲霧 */}
+      <HighAltitudeMist />
+      
+      {/* 山脈雲層移動特效 */}
+      <MountainClouds />
+      
+      {/* 山地大氣層效果 */}
+      <MountainAtmosphere />
+      
+      {/* 山地反射效果 */}
+      <MountainReflection />
+      
+      {/* 山地風效 */}
+      <MountainWind />
+      
+      {/* 夜空系統 - 只在夜晚顯示星星 */}
+      {timeOfDay === 'night' && <NightSky />}
+      
+      {/* 魔法懸浮光粒子 - 溫馨魔幻的發光微塵 */}
+      <MagicalFloatingParticles />
+      
+      {/* 環境光塵粒子 - 細小閃爍的光點 */}
+      <AmbientLightDust />
       
       {/* 固定夜晚環境光照系統 */}
       <EnvironmentLighting />

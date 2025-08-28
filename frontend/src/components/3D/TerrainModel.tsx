@@ -95,6 +95,7 @@ export const getTerrainRotation = (x: number, z: number): THREE.Euler => {
   return new THREE.Euler().setFromQuaternion(quaternion)
 }
 
+
 interface TerrainModelProps {
   position?: [number, number, number]
   scale?: number
@@ -117,44 +118,73 @@ export const TerrainModel = ({ position = [0, 0, 0], scale = 1 }: TerrainModelPr
       const position = new THREE.Vector3()
       child.getWorldPosition(position)
       
-      // 根據之前的觀察，精確識別白雲物件
-      // 只移除明確是天空中的白色塊狀雲朵
+      // 更保守地識別白雲物件，避免誤刪樹葉
+      // 只移除非常明確是雲朵的物件
       const isCloudObject = (
-        // 明確的雲朵命名
-        name === 'clouds' || 
-        name === 'cloud' || 
-        name.includes('雲') ||
-        // 高空的白色球體或冰球體（通常是雲朵）
-        (position.y > 25 && (name.includes('icosphere') || name.includes('sphere'))) ||
-        // 檢查材質是否為白色雲朵材質
+        // 只有非常明確的雲朵命名才刪除
+        (name === 'clouds' || name === 'cloud' || name.includes('雲')) &&
+        // 並且位置要在高空
+        position.y > 15 &&
+        // 檢查材質是否明確為雲朵材質
         (child instanceof THREE.Mesh && child.material && (() => {
           const materials = Array.isArray(child.material) ? child.material : [child.material]
           return materials.some(mat => {
             if ('name' in mat && mat.name) {
               const matName = mat.name.toLowerCase()
-              return matName.includes('cloud') || 
-                     matName.includes('sky') || 
-                     (matName.includes('white') && position.y > 20)
+              // 只有明確包含雲朵關鍵字的材質才認為是雲朵
+              return matName.includes('cloud') || matName.includes('sky')
             }
             return false
           })
-        })())
+        })()) ||
+        // 或者是非常高空（50以上）的球體
+        (position.y > 50 && (name.includes('icosphere') || name.includes('sphere')))
       )
       
-      // 確保不是樹木相關物件
+      // 確保不是樹木相關物件 - 加強樹葉保護
       const isTreeRelated = name.includes('arbol') || 
                            name.includes('tree') || 
                            name.includes('樹') ||
                            name.includes('trunk') || 
+                           name.includes('tronco') ||
                            name.includes('wood') ||
+                           name.includes('madera') ||
                            name.includes('leaf') ||
-                           name.includes('branch')
+                           name.includes('leaves') ||
+                           name.includes('hoja') ||
+                           name.includes('foliage') ||
+                           name.includes('branch') ||
+                           name.includes('bark') ||
+                           // 檢查材質名稱是否包含樹木相關關鍵字
+                           (child instanceof THREE.Mesh && child.material && (() => {
+                             const materials = Array.isArray(child.material) ? child.material : [child.material]
+                             return materials.some(mat => {
+                               if ('name' in mat && mat.name) {
+                                 const matName = mat.name.toLowerCase()
+                                 return matName.includes('leaf') || 
+                                        matName.includes('leaves') ||
+                                        matName.includes('tree') ||
+                                        matName.includes('wood') ||
+                                        matName.includes('bark') ||
+                                        matName.includes('trunk') ||
+                                        matName.includes('foliage') ||
+                                        matName.includes('arbol') ||
+                                        matName.includes('madera')
+                               }
+                               return false
+                             })
+                           })())
       
       if (isCloudObject && !isTreeRelated) {
         console.log(`🎯 找到白雲物件: "${child.name}", 位置Y: ${position.y.toFixed(2)}`)
         cloudsToRemove.push(child)
       } else {
-        console.log(`✅ 保留物件: "${child.name}", Y位置: ${position.y.toFixed(2)}`)
+        // 特別記錄樹木相關物件
+        if (isTreeRelated) {
+          console.log(`🌳 保留樹木物件: "${child.name}", Y位置: ${position.y.toFixed(2)}`)
+        } else {
+          console.log(`✅ 保留物件: "${child.name}", Y位置: ${position.y.toFixed(2)}`)
+        }
       }
     })
     
@@ -220,6 +250,39 @@ export const TerrainModel = ({ position = [0, 0, 0], scale = 1 }: TerrainModelPr
                       matName.includes('wood') || matName.includes('trunk') ||
                       matName.includes('bark') || matName.includes('madera')
              })())) {
+          
+          // 檢查是否為樹幹mesh（棕色部分）
+          const isTrunk = name.includes('trunk') || name.includes('tronco') || 
+                         name.includes('bark') || name.includes('木') ||
+                         (child.material && (() => {
+                           const materials = Array.isArray(child.material) ? child.material : [child.material]
+                           return materials.some(mat => {
+                             const matName = mat.name?.toLowerCase() || ''
+                             return matName.includes('trunk') || matName.includes('bark') || 
+                                    matName.includes('wood') || matName.includes('madera')
+                           })
+                         })())
+          
+          // 如果是樹幹，向下延伸縮放
+          if (isTrunk) {
+            // 保存原始縮放
+            const originalScale = child.scale.clone()
+            
+            // Y軸向下延伸1.5倍，保持X和Z軸不變
+            child.scale.set(originalScale.x, originalScale.y * 1.5, originalScale.z)
+            
+            // 向下移動位置以保持樹幹頂部位置不變
+            const originalPosition = child.position.clone()
+            child.position.set(
+              originalPosition.x, 
+              originalPosition.y - (originalScale.y * 0.25), // 向下移動25%的原始高度
+              originalPosition.z
+            )
+            
+            console.log(`樹幹mesh延伸: "${child.name}", 原始縮放:`, originalScale.toArray(), '新縮放:', child.scale.toArray())
+            console.log(`位置調整: 原始:`, originalPosition.toArray(), '新位置:', child.position.toArray())
+          }
+          
           treeMeshes.current.push(child)
           const position = new THREE.Vector3()
           child.getWorldPosition(position)

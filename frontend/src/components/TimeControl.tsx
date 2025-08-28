@@ -36,6 +36,7 @@ export const TimeControl = () => {
   }
 
   const timeOptions: { key: TimeOfDay; label: string }[] = [
+    { key: 'day', label: '白天' },
     { key: 'night', label: '夜晚' }
   ]
 
@@ -62,21 +63,80 @@ export const TimeControl = () => {
         </div>
       </div>
 
-      {/* 固定夜晚模式提示 */}
-      <div className="mb-4 text-center">
-        <div className="text-sm opacity-75 bg-blue-900/50 rounded p-2">
-          🌙 固定夜晚模式 - 享受寧靜星空
+      {/* 日夜循環進度 */}
+      <div className="mb-4">
+        <div className="text-sm opacity-75 mb-2">🔄 循環進度 (6分鐘/天)</div>
+        <div className="w-full bg-gray-600 rounded-full h-2">
+          <div 
+            className="bg-gradient-to-r from-yellow-400 to-blue-600 h-2 rounded-full transition-all duration-200" 
+            style={{width: `${getDayProgress()}%`}}
+          ></div>
+        </div>
+        <div className="text-xs opacity-75 mt-1">
+          天氣變化倒計時: {Math.floor(getWeatherCountdown())}秒
         </div>
       </div>
 
-      {/* 固定夜晚按鈕 */}
+      {/* 自動模式控制 */}
       <div className="mb-4">
-        <button
-          className="w-full px-3 py-2 rounded text-sm bg-blue-500 text-white cursor-default"
-          disabled
-        >
-          🌙 夜晚模式
-        </button>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={isAutoMode}
+            onChange={(e) => setAutoMode(e.target.checked)}
+            className="rounded"
+          />
+          <span className="text-sm">⏰ 自動日夜循環</span>
+        </label>
+      </div>
+
+      {/* 手動時間控制 */}
+      {!isAutoMode && (
+        <div className="mb-4">
+          <h4 className="text-sm font-semibold mb-2">🕐 時間控制</h4>
+          <div className="grid grid-cols-2 gap-2">
+            {timeOptions.map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => setTimeOfDay(key)}
+                className={`px-2 py-2 rounded text-sm transition-colors ${
+                  timeOfDay === key
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-gray-600 hover:bg-gray-500 text-gray-200'
+                }`}
+              >
+                {key === 'day' ? '☀️' : '🌙'} {label}
+              </button>
+            ))}
+          </div>
+          
+          {/* 時間滑桿 */}
+          <div className="mt-2">
+            <label className="text-xs opacity-75">時間: {Math.floor(hour)}:00</label>
+            <input
+              type="range"
+              min="0"
+              max="23"
+              value={Math.floor(hour)}
+              onChange={(e) => setHour(parseInt(e.target.value))}
+              className="w-full mt-1"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* 時間速度控制 */}
+      <div className="mb-4">
+        <label className="text-xs opacity-75">時間速度: {timeSpeed}x</label>
+        <input
+          type="range"
+          min="0.1"
+          max="5"
+          step="0.1"
+          value={timeSpeed}
+          onChange={(e) => setTimeSpeed(parseFloat(e.target.value))}
+          className="w-full mt-1"
+        />
       </div>
 
       {/* 天氣控制 */}
@@ -98,6 +158,16 @@ export const TimeControl = () => {
             </button>
           ))}
         </div>
+      </div>
+
+      {/* 重置按鈕 */}
+      <div className="mb-2">
+        <button
+          onClick={resetDay}
+          className="w-full px-3 py-2 rounded text-sm bg-red-600 hover:bg-red-700 text-white transition-colors"
+        >
+          🔄 重置為早晨6點
+        </button>
       </div>
 
     </div>
