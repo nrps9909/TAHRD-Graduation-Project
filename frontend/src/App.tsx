@@ -1,7 +1,6 @@
 import { useEffect } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { Scene } from './components/Scene'
-import { TestScene } from './components/TestScene'
 import { UI } from './components/UI'
 import { TimeControl } from './components/TimeControl'
 import { PointerLockManager } from './components/3D/PointerLockManager'
@@ -20,7 +19,7 @@ function App() {
 
   useEffect(() => {
     initializeGame()
-  }, [initializeGame])
+  }, []) // 只在組件掛載時初始化一次
 
   if (isLoading) {
     return (

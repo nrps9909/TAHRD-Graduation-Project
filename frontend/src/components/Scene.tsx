@@ -18,6 +18,7 @@ import { MountainClouds } from './3D/MountainClouds'
 import { MagicalFloatingParticles, AmbientLightDust } from './3D/MagicalParticles'
 import { Ocean } from './3D/Ocean'
 import { BoundaryWall } from './3D/BoundaryWall'
+import { preloadAllCharacterModels } from './CharacterSkinSystem'
 import { useGameStore } from '@/stores/gameStore'
 import { useTimeStore } from '@/stores/timeStore'
 import { collisionSystem } from '@/utils/collision'
@@ -25,6 +26,11 @@ import { collisionSystem } from '@/utils/collision'
 export const Scene = () => {
   const { npcs, playerPosition } = useGameStore()
   const { timeOfDay, tick } = useTimeStore()
+  
+  // 預載入所有角色模型
+  useEffect(() => {
+    preloadAllCharacterModels()
+  }, [])
   
   // 啟動時間系統更新
   useEffect(() => {

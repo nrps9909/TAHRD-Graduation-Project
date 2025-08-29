@@ -149,22 +149,33 @@ export const useGameStore = create<GameState>()(
           const data = await response.json()
           
           if (data.data && data.data.npcs) {
-            // 預設的3D模型內安全位置（適應10倍擴展地形）
+            // 預設的3D模型內安全位置（空中飄浮）
             const defaultPositions: Record<string, [number, number, number]> = {
-              'npc-1': [25, 0, 30],   // 陸培修 - 東南安全區域 (擴展分布)
-              'npc-2': [-30, 0, -25], // 劉宇岑 - 西北安全區域 (擴展分布)
-              'npc-3': [15, 0, 10]    // 陳庭安 - 中央安全區域 (擴展分布)
+              'npc-1': [5, 15, 8],     // 陸培修 - 中央附近安全位置，空中飄浮
+              'npc-2': [-8, 15, 5],    // 劉宇岑 - 中央附近安全位置，空中飄浮
+              'npc-3': [3, 15, -6]     // 陳庭安 - 中央附近安全位置，空中飄浮
             }
             
             // 將後端資料轉換為前端格式，使用預設3D安全位置
-            const npcs = data.data.npcs.map((npc: any) => ({
-              id: npc.id,
-              name: npc.name,
-              personality: npc.personality || '載入中...',
-              currentMood: npc.currentMood || 'neutral',
-              position: defaultPositions[npc.id] || [npc.location?.x || 0, npc.location?.y || 0, npc.location?.z || 0] as [number, number, number],
-              relationshipLevel: 1,
-            }))
+            const npcs = data.data.npcs.map((npc: any) => {
+              const defaultPos = defaultPositions[npc.id]
+              const backendPos = [npc.location?.x || 0, npc.location?.y || 0, npc.location?.z || 0]
+              const finalPos = defaultPos || backendPos as [number, number, number]
+              
+              console.log(`NPC ${npc.name} (${npc.id}):`)
+              console.log('  預設位置:', defaultPos)
+              console.log('  後端位置:', backendPos) 
+              console.log('  最終位置:', finalPos)
+              
+              return {
+                id: npc.id,
+                name: npc.name,
+                personality: npc.personality || '載入中...',
+                currentMood: npc.currentMood || 'neutral',
+                position: finalPos,
+                relationshipLevel: 1,
+              }
+            })
             
             console.log('從後端載入的NPC資料（使用3D模型中心安全位置）:', npcs.map((n: any) => ({ name: n.name, position: n.position })))
             
@@ -187,7 +198,7 @@ export const useGameStore = create<GameState>()(
                   name: '陸培修',
                   personality: '夢幻的藝術家',
                   currentMood: 'cheerful',
-                  position: [25, 0, 30],
+                  position: [5, 15, -20],  // 中央附近的安全位置，空中飄浮
                   relationshipLevel: 1,
                 },
                 {
@@ -195,7 +206,7 @@ export const useGameStore = create<GameState>()(
                   name: '劉宇岑',
                   personality: '充滿活力的朋友',
                   currentMood: 'excited',
-                  position: [-30, 0, -25],
+                  position: [-8, 15, 5], // 中央附近的安全位置，空中飄浮
                   relationshipLevel: 1,
                 },
                 {
@@ -203,7 +214,7 @@ export const useGameStore = create<GameState>()(
                   name: '陳庭安',
                   personality: '溫柔的靈魂',
                   currentMood: 'dreamy',
-                  position: [15, 0, 10],
+                  position: [3, 15, -6], // 中央附近的安全位置，空中飄浮
                   relationshipLevel: 1,
                 },
               ],
@@ -223,7 +234,7 @@ export const useGameStore = create<GameState>()(
                 name: '陸培修',
                 personality: '夢幻的藝術家',
                 currentMood: 'cheerful',
-                position: [25, 0, 30],
+                position: [5, 0, -20],  // 中央附近的安全位置，地面高度
                 relationshipLevel: 1,
               },
               {
@@ -231,7 +242,7 @@ export const useGameStore = create<GameState>()(
                 name: '劉宇岑',
                 personality: '充滿活力的朋友',
                 currentMood: 'excited',
-                position: [-30, 0, -25],
+                position: [-8, 15, 5], // 中央附近的安全位置，空中飄浮
                 relationshipLevel: 1,
               },
               {
@@ -239,7 +250,7 @@ export const useGameStore = create<GameState>()(
                 name: '陳庭安',
                 personality: '溫柔的靈魂',
                 currentMood: 'dreamy',
-                position: [15, 0, 10],
+                position: [3, 20, -6], // 中央附近的安全位置，半空中
                 relationshipLevel: 1,
               },
             ],
@@ -350,7 +361,7 @@ export const useGameStore = create<GameState>()(
       },
     }),
     {
-      name: 'heart-whisper-town-game',
+      name: 'heart-whisper-town-game-v4',
     }
   )
 )

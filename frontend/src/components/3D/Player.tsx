@@ -1,5 +1,6 @@
-import { useRef, useEffect, useCallback } from 'react'
-import { useFrame } from '@react-three/fiber'
+import { useRef, useEffect, useCallback, useState, forwardRef, useImperativeHandle } from 'react'
+import { useFrame, useLoader } from '@react-three/fiber'
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import * as THREE from 'three'
 import { useGameStore } from '@/stores/gameStore'
 import { collisionSystem } from '@/utils/collision'
@@ -22,13 +23,52 @@ interface NPC {
 
 interface PlayerProps {
   position?: [number, number, number]
+  modelPath?: string
+  modelFile?: string
 }
 
-export const Player = ({ position = [0, 0, 0] }: PlayerProps) => {
+interface PlayerRef {
+  getPosition: () => THREE.Vector3
+  getRef: () => THREE.Group | null
+}
+
+export const Player = forwardRef<PlayerRef, PlayerProps>(({ 
+  position = [0, 0, 0], 
+  modelPath = '/characters/CHAR-F-A',
+  modelFile = '/CHAR-F-A.glb'
+}: PlayerProps, ref) => {
   const playerRef = useRef<THREE.Group>(null)
   const { setPlayerPosition, setPlayerRotation, npcs, startConversation } = useGameStore()
   const isMounted = useRef(true)
   const interactionDistance = 5 // 互動距離（單位） - 增加到5單位
+
+  // 使用與 NPC 相同的 Kenney Assets 載入邏輯
+  const fullModelPath = `${modelPath}${modelFile}`
+  console.log('📁 Loading Player model from:', fullModelPath)
+  console.log('🎮 Player組件已渲染，位置:', position)
+  
+  // 使用useLoader載入GLB模型 - 與NPC相同的方式
+  const kenneyModel = useLoader(GLTFLoader, fullModelPath, (loader) => {
+    const basePath = fullModelPath.substring(0, fullModelPath.lastIndexOf('/') + 1)
+    loader.setResourcePath(basePath)
+    console.log(`📁 設定Player資源路徑: ${basePath}`)
+  })
+  
+  // 克隆場景避免多個實例間的衝突
+  const [playerScene, setPlayerScene] = useState<THREE.Group | null>(null)
+
+  const [animationMixer, setAnimationMixer] = useState<THREE.AnimationMixer | null>(null)
+
+  // 提供 ref 介面給父組件
+  useImperativeHandle(ref, () => ({
+    getPosition: () => {
+      if (playerRef.current) {
+        return playerRef.current.position.clone()
+      }
+      return new THREE.Vector3(...position)
+    },
+    getRef: () => playerRef.current
+  }), [])
 
   // 移動相關狀態
   const velocity = useRef(new THREE.Vector3())
@@ -45,6 +85,69 @@ export const Player = ({ position = [0, 0, 0] }: PlayerProps) => {
   // 玩家狀態
   const isMoving = useRef(false)
   const walkCycle = useRef(0)
+
+  // 處理模型載入完成 - 與 NPC 完全相同的邏輯
+  useEffect(() => {
+    if (kenneyModel?.scene) {
+      console.log(`✅ Player ${fullModelPath} 模型載入成功:`, kenneyModel.scene)
+      
+      kenneyModel.scene.traverse((child: any) => {
+        if (child.isMesh || child.isSkinnedMesh) {
+          child.visible = true
+          child.frustumCulled = false
+          child.castShadow = true
+          child.receiveShadow = false
+          
+          if (child.material) {
+            if (child.isSkinnedMesh) {
+              child.material.skinning = true
+            }
+            
+            if (child.material.map) {
+              child.material.map.colorSpace = THREE.SRGBColorSpace
+              child.material.map.needsUpdate = true
+            }
+            
+            child.material.metalness = 0
+            child.material.roughness = 0.8
+            child.material.side = THREE.DoubleSide
+            child.material.transparent = false
+            child.material.opacity = 1
+            child.material.depthWrite = true
+            child.material.colorWrite = true
+            child.material.needsUpdate = true
+          }
+        }
+      })
+      
+      kenneyModel.scene.visible = true
+      kenneyModel.scene.frustumCulled = false
+    }
+  }, [kenneyModel, fullModelPath])
+
+  // 處理動畫 - 與 NPC 相同邏輯
+  useEffect(() => {
+    if (kenneyModel?.scene && kenneyModel.animations && kenneyModel.animations.length > 0) {
+      const mixer = new THREE.AnimationMixer(kenneyModel.scene)
+      setAnimationMixer(mixer)
+      
+      const idleAnimation = kenneyModel.animations.find((clip: THREE.AnimationClip) => 
+        clip.name.toLowerCase().includes('idle') || 
+        clip.name.toLowerCase().includes('stand')
+      ) || kenneyModel.animations[0]
+      
+      if (idleAnimation) {
+        const action = mixer.clipAction(idleAnimation)
+        action.setLoop(THREE.LoopRepeat, Infinity)
+        action.play()
+      }
+      
+      return () => {
+        mixer.stopAllAction()
+        mixer.uncacheRoot(kenneyModel.scene)
+      }
+    }
+  }, [kenneyModel])
   
   // 檢查附近的 NPC
   const checkNearbyNPC = useCallback((): NPC | null => {
@@ -168,6 +271,11 @@ export const Player = ({ position = [0, 0, 0] }: PlayerProps) => {
   useFrame((_, delta) => {
     if (!playerRef.current) return
 
+    // 更新動畫混合器
+    if (animationMixer) {
+      animationMixer.update(delta)
+    }
+
     // 重置方向向量
     direction.current.set(0, 0, 0)
 
@@ -280,39 +388,16 @@ export const Player = ({ position = [0, 0, 0] }: PlayerProps) => {
         console.log(`玩家被山脈阻擋，最終位置: (${validPosition.x.toFixed(1)}, ${validPosition.z.toFixed(1)})`)
       }
       
-      // 獲取地形高度和旋轉
-      const terrainHeight = getTerrainHeight(validPosition.x, validPosition.z)
-      const terrainRotation = getTerrainRotation(validPosition.x, validPosition.z)
-      const terrainSlope = getTerrainSlope(validPosition.x, validPosition.z)
-      
+      // Player浮空模式：保持固定高度，不貼合地形
       const adjustedPosition = validPosition.clone()
-      // 讓整個角色都在地形上方：地形高度 + 角色中心點高度
-      adjustedPosition.y = terrainHeight + 1.0
+      // 保持浮空高度，不進行地形調整
+      adjustedPosition.y = 15 // 固定浮在高度15
       
       playerRef.current.position.copy(adjustedPosition)
       
-      // 根據地形傾斜調整角色旋轉（限制最大傾斜角度以保持自然）
-      const maxTiltAngle = Math.PI / 8 // 22.5度最大傾斜
-      if (terrainSlope < maxTiltAngle) {
-        // 平滑插值到地形角度
-        const lerpFactor = 0.1 // 插值係數，控制適應速度
-        const targetRotation = terrainRotation
-        
-        playerRef.current.rotation.x = THREE.MathUtils.lerp(
-          playerRef.current.rotation.x, 
-          targetRotation.x * 0.3, // 減少X軸傾斜
-          lerpFactor
-        )
-        playerRef.current.rotation.z = THREE.MathUtils.lerp(
-          playerRef.current.rotation.z, 
-          targetRotation.z * 0.3, // 減少Z軸傾斜
-          lerpFactor
-        )
-      } else {
-        // 地形太陡峭時回復垂直
-        playerRef.current.rotation.x = THREE.MathUtils.lerp(playerRef.current.rotation.x, 0, 0.1)
-        playerRef.current.rotation.z = THREE.MathUtils.lerp(playerRef.current.rotation.z, 0, 0.1)
-      }
+      // Player浮空模式：保持垂直姿態，不適應地形傾斜
+      playerRef.current.rotation.x = THREE.MathUtils.lerp(playerRef.current.rotation.x, 0, 0.1)
+      playerRef.current.rotation.z = THREE.MathUtils.lerp(playerRef.current.rotation.z, 0, 0.1)
       
       // 走路動畫
       isMoving.current = true
@@ -353,45 +438,18 @@ export const Player = ({ position = [0, 0, 0] }: PlayerProps) => {
       isMoving.current = false
     }
     
-    // 走路時的上下擺動 - 基於地形高度
+    // Player浮空模式：走路時的上下擺動，但保持固定高度
     if (isMoving.current && playerRef.current) {
-      const currentX = playerRef.current.position.x
-      const currentZ = playerRef.current.position.z
-      const terrainHeight = getTerrainHeight(currentX, currentZ)
       const bobAmount = Math.sin(walkCycle.current) * 0.05
-      // 確保整個角色都在地形上方，設定最小高度避免沉入地下
-      const safeY = Math.max(terrainHeight + 2.0, 3.0) + bobAmount
-      playerRef.current.position.y = safeY
+      // 固定浮空高度加上輕微的走路擺動
+      playerRef.current.position.y = 15 + bobAmount
     } else if (playerRef.current) {
-      // 靜止時也要保持在地形上方並適應地形傾斜
-      const currentX = playerRef.current.position.x
-      const currentZ = playerRef.current.position.z
-      const terrainHeight = getTerrainHeight(currentX, currentZ)
-      const terrainRotation = getTerrainRotation(currentX, currentZ)
-      const terrainSlope = getTerrainSlope(currentX, currentZ)
+      // 靜止時保持固定浮空高度和垂直姿態
+      playerRef.current.position.y = 15
       
-      // 確保人物不會沉入地下，設定最小高度
-      const safeY = Math.max(terrainHeight + 2.0, 3.0)
-      playerRef.current.position.y = safeY
-      
-      // 靜止時也適應地形傾斜
-      const maxTiltAngle = Math.PI / 8 // 22.5度最大傾斜
-      if (terrainSlope < maxTiltAngle) {
-        const lerpFactor = 0.05 // 靜止時較慢的適應速度
-        playerRef.current.rotation.x = THREE.MathUtils.lerp(
-          playerRef.current.rotation.x, 
-          terrainRotation.x * 0.3,
-          lerpFactor
-        )
-        playerRef.current.rotation.z = THREE.MathUtils.lerp(
-          playerRef.current.rotation.z, 
-          terrainRotation.z * 0.3,
-          lerpFactor
-        )
-      } else {
-        playerRef.current.rotation.x = THREE.MathUtils.lerp(playerRef.current.rotation.x, 0, 0.05)
-        playerRef.current.rotation.z = THREE.MathUtils.lerp(playerRef.current.rotation.z, 0, 0.05)
-      }
+      // 保持垂直姿態
+      playerRef.current.rotation.x = THREE.MathUtils.lerp(playerRef.current.rotation.x, 0, 0.05)
+      playerRef.current.rotation.z = THREE.MathUtils.lerp(playerRef.current.rotation.z, 0, 0.05)
     }
   })
 
@@ -405,56 +463,17 @@ export const Player = ({ position = [0, 0, 0] }: PlayerProps) => {
   // 使用ref跟踪是否已經初始化，避免重複初始化
   const hasInitialized = useRef(false)
   
-  // 初始化玩家位置 - 只在組件首次掛載時執行一次
+  // 初始化玩家位置 - 像 NPC 一樣浮在半空中，不進行地形檢測
   useEffect(() => {
     if (playerRef.current && !hasInitialized.current && isMounted.current) {
-      hasInitialized.current = true // 立即標記為已初始化，防止重複執行
+      hasInitialized.current = true
       console.log('開始初始化玩家位置...')
       
-      // 使用固定的初始位置，不依賴props
-      const initialPosition = [-3, 10, -3]
+      // 使用固定的浮空位置，像 NPC 一樣
+      const initialPosition = [-3, 15, -3] // 固定浮在高度15
       playerRef.current.position.set(initialPosition[0], initialPosition[1], initialPosition[2])
       
-      // 添加標記防止重複初始化
-      let isInitializing = true
-      
-      // 添加更長的延遲確保地形完全載入，並進行多次檢測
-      const attemptTerrainDetection = (attempts: number = 0) => {
-        if (!isInitializing) return // 如果已經初始化完成，停止檢測
-        
-        if (attempts >= 10) {
-          console.warn('地形檢測失敗，使用預設高度')
-          const safeY = Math.max(initialPosition[1], 10) // 至少10單位高度
-          if (playerRef.current) {
-            playerRef.current.position.y = safeY
-          }
-          isInitializing = false // 標記初始化完成
-          return
-        }
-        
-        const terrainHeight = getTerrainHeight(initialPosition[0], initialPosition[2])
-        console.log(`初始化嘗試 ${attempts + 1}: 地形高度檢測結果: ${terrainHeight.toFixed(2)}`)
-        
-        if (terrainHeight > -100 && terrainHeight < 100) { // 有效的地形高度
-          const adjustedY = Math.max(terrainHeight + 2.0, 5.0) // 確保最少5單位高度
-          if (playerRef.current) {
-            playerRef.current.position.set(initialPosition[0], adjustedY, initialPosition[2])
-          }
-          console.log(`人物初始化完成: [${initialPosition[0]}, ${adjustedY.toFixed(2)}, ${initialPosition[2]}], 地形高度: ${terrainHeight.toFixed(2)}`)
-          isInitializing = false // 標記初始化完成
-        } else {
-          // 地形還未載入，繼續嘗試
-          setTimeout(() => attemptTerrainDetection(attempts + 1), 200)
-        }
-      }
-      
-      // 延遲500ms後開始檢測
-      setTimeout(() => attemptTerrainDetection(), 500)
-      
-      // 清理函數
-      return () => {
-        isInitializing = false
-      }
+      console.log(`玩家設定為浮空位置: [${initialPosition[0]}, ${initialPosition[1]}, ${initialPosition[2]}]`)
     }
   }, []) // 不依賴任何props，只在組件掛載時執行一次
 
@@ -471,40 +490,24 @@ export const Player = ({ position = [0, 0, 0] }: PlayerProps) => {
       />
       
       <group ref={playerRef} position={position}>
-      {/* 玩家身體 */}
-      <mesh castShadow receiveShadow position={[0, 1, 0]}>
-        <capsuleGeometry args={[0.5, 1]} />
-        <meshLambertMaterial color="#87CEEB" />
-      </mesh>
-      
-      {/* 玩家頭部 */}
-      <mesh castShadow receiveShadow position={[0, 2.2, 0]}>
-        <sphereGeometry args={[0.3, 16, 16]} />
-        <meshLambertMaterial color="#FDBCB4" />
-      </mesh>
-      
-      {/* 簡單的眼睛 */}
-      <mesh position={[-0.1, 2.3, 0.25]}>
-        <sphereGeometry args={[0.03, 8, 8]} />
-        <meshBasicMaterial color="#000000" />
-      </mesh>
-      <mesh position={[0.1, 2.3, 0.25]}>
-        <sphereGeometry args={[0.03, 8, 8]} />
-        <meshBasicMaterial color="#000000" />
-      </mesh>
-      
-      {/* 簡單的嘴巴 */}
-      <mesh position={[0, 2.1, 0.28]}>
-        <sphereGeometry args={[0.02, 8, 8]} />
-        <meshBasicMaterial color="#FF69B4" />
-      </mesh>
+        {/* Kenney GLB 角色模型 - 與 NPC 完全相同的渲染方式 */}
+        {kenneyModel?.scene && (
+          <group scale={[2.2, 2.2, 2.2]} position={[0, -1.1, 0]}>
+            <primitive 
+              object={kenneyModel.scene} 
+              frustumCulled={false}
+              visible={true}
+            />
+          </group>
+        )}
 
-      {/* 玩家陰影圓圈 */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]} receiveShadow>
-        <circleGeometry args={[0.8, 16]} />
-        <meshBasicMaterial color="#000000" transparent opacity={0.3} />
-      </mesh>
+
+        {/* 玩家陰影圓圈 */}
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]} receiveShadow>
+          <circleGeometry args={[0.8, 16]} />
+          <meshBasicMaterial color="#000000" transparent opacity={0.3} />
+        </mesh>
       </group>
     </>
   )
-}
+})

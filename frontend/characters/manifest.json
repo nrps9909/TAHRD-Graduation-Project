@@ -1,0 +1,229 @@
+{
+  "package_info": {
+    "name": "Kenney Mini Characters 1",
+    "version": "1.0",
+    "license": "CC0 1.0 Universal",
+    "total_characters": 12,
+    "total_accessories": 12,
+    "total_vehicles": 4,
+    "shared_texture": "colormap.png"
+  },
+  "characters": [
+    {
+      "id": "CHAR-F-A",
+      "name": "character-female-a",
+      "gender": "female",
+      "vertices": 1576,
+      "animations": 32,
+      "texture": "colormap.png",
+      "files": {
+        "glb": "CHAR-F-A/CHAR-F-A.glb",
+        "fbx": "CHAR-F-A/CHAR-F-A.fbx"
+      }
+    },
+    {
+      "id": "CHAR-F-B", 
+      "name": "character-female-b",
+      "gender": "female",
+      "vertices": 1322,
+      "animations": 32,
+      "texture": "colormap.png",
+      "files": {
+        "glb": "CHAR-F-B/CHAR-F-B.glb",
+        "fbx": "CHAR-F-B/CHAR-F-B.fbx"
+      }
+    },
+    {
+      "id": "CHAR-F-C",
+      "name": "character-female-c", 
+      "gender": "female",
+      "vertices": 1322,
+      "animations": 32,
+      "texture": "colormap.png",
+      "files": {
+        "glb": "CHAR-F-C/CHAR-F-C.glb",
+        "fbx": "CHAR-F-C/CHAR-F-C.fbx"
+      }
+    },
+    {
+      "id": "CHAR-F-D",
+      "name": "character-female-d",
+      "gender": "female", 
+      "vertices": 1401,
+      "animations": 32,
+      "texture": "colormap.png",
+      "files": {
+        "glb": "CHAR-F-D/CHAR-F-D.glb",
+        "fbx": "CHAR-F-D/CHAR-F-D.fbx"
+      }
+    },
+    {
+      "id": "CHAR-F-E",
+      "name": "character-female-e",
+      "gender": "female",
+      "vertices": 1270, 
+      "animations": 32,
+      "texture": "colormap.png",
+      "files": {
+        "glb": "CHAR-F-E/CHAR-F-E.glb",
+        "fbx": "CHAR-F-E/CHAR-F-E.fbx"
+      }
+    },
+    {
+      "id": "CHAR-F-F",
+      "name": "character-female-f",
+      "gender": "female",
+      "vertices": 1410,
+      "animations": 32,
+      "texture": "colormap.png",
+      "files": {
+        "glb": "CHAR-F-F/CHAR-F-F.glb", 
+        "fbx": "CHAR-F-F/CHAR-F-F.fbx"
+      }
+    },
+    {
+      "id": "CHAR-M-A",
+      "name": "character-male-a",
+      "gender": "male",
+      "vertices": 1259,
+      "animations": 32,
+      "texture": "colormap.png", 
+      "files": {
+        "glb": "CHAR-M-A/CHAR-M-A.glb",
+        "fbx": "CHAR-M-A/CHAR-M-A.fbx"
+      }
+    },
+    {
+      "id": "CHAR-M-B", 
+      "name": "character-male-b",
+      "gender": "male",
+      "vertices": 1266,
+      "animations": 32,
+      "texture": "colormap.png",
+      "files": {
+        "glb": "CHAR-M-B/CHAR-M-B.glb",
+        "fbx": "CHAR-M-B/CHAR-M-B.fbx"
+      }
+    },
+    {
+      "id": "CHAR-M-C",
+      "name": "character-male-c",
+      "gender": "male", 
+      "vertices": 1455,
+      "animations": 32,
+      "texture": "colormap.png",
+      "files": {
+        "glb": "CHAR-M-C/CHAR-M-C.glb",
+        "fbx": "CHAR-M-C/CHAR-M-C.fbx"
+      }
+    },
+    {
+      "id": "CHAR-M-D",
+      "name": "character-male-d",
+      "gender": "male",
+      "vertices": 1239,
+      "animations": 32,
+      "texture": "colormap.png",
+      "files": {
+        "glb": "CHAR-M-D/CHAR-M-D.glb",
+        "fbx": "CHAR-M-D/CHAR-M-D.fbx"
+      }
+    },
+    {
+      "id": "CHAR-M-E",
+      "name": "character-male-e", 
+      "gender": "male",
+      "vertices": 1208,
+      "animations": 32,
+      "texture": "colormap.png",
+      "files": {
+        "glb": "CHAR-M-E/CHAR-M-E.glb",
+        "fbx": "CHAR-M-E/CHAR-M-E.fbx"
+      }
+    },
+    {
+      "id": "CHAR-M-F",
+      "name": "character-male-f",
+      "gender": "male",
+      "vertices": 1291,
+      "animations": 32, 
+      "texture": "colormap.png",
+      "files": {
+        "glb": "CHAR-M-F/CHAR-M-F.glb",
+        "fbx": "CHAR-M-F/CHAR-M-F.fbx"
+      }
+    }
+  ],
+  "accessories": [
+    {
+      "name": "aid-glasses",
+      "type": "eyewear",
+      "vertices": 82
+    },
+    {
+      "name": "aid-sunglasses", 
+      "type": "eyewear",
+      "vertices": 90
+    },
+    {
+      "name": "aid-mask",
+      "type": "face_protection",
+      "vertices": 268
+    },
+    {
+      "name": "aid_hearing",
+      "type": "hearing_aid",
+      "vertices": 88
+    },
+    {
+      "name": "aid-cane",
+      "type": "mobility",
+      "vertices": 132
+    },
+    {
+      "name": "aid-cane-blind",
+      "type": "mobility",
+      "vertices": 84
+    },
+    {
+      "name": "aid-cane-low-vision",
+      "type": "mobility", 
+      "vertices": 92
+    },
+    {
+      "name": "aid-crutch",
+      "type": "mobility",
+      "vertices": 256
+    },
+    {
+      "name": "aid-defibrillator-green",
+      "type": "medical_equipment",
+      "vertices": 144
+    },
+    {
+      "name": "aid-defibrillator-red",
+      "type": "medical_equipment",
+      "vertices": 144
+    },
+    {
+      "name": "wheelchair",
+      "type": "mobility_vehicle",
+      "vertices": 1058
+    },
+    {
+      "name": "wheelchair-deluxe",
+      "type": "mobility_vehicle", 
+      "vertices": 1134
+    },
+    {
+      "name": "wheelchair-power",
+      "type": "mobility_vehicle",
+      "vertices": 1446
+    },
+    {
+      "name": "wheelchair-power-deluxe",
+      "type": "mobility_vehicle",
+      "vertices": 1714
+    }
+  ]
+}

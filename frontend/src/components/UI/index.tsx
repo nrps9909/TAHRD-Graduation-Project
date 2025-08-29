@@ -2,18 +2,23 @@ import { useState, useEffect } from 'react'
 import { DialogueBox } from './DialogueBox'
 import { AnimalCrossingPhone } from './AnimalCrossingPhone'
 import { GameModals } from './GameModals'
-import { Crosshair } from './Crosshair'
 import { PointerLockHint } from './PointerLockHint'
 import { InteractionHint } from './InteractionHint'
 import { HotkeyManager, HotkeyHints } from './HotkeyManager'
 import { PointerLockStatus } from './PointerLockStatus'
 import { WeatherTimeDisplay } from './WeatherTimeDisplay'
 import { DebugPanel } from './DebugPanel'
+import { SkinSelector, SkinSelectorTrigger } from './SkinSelector'
 import { useGameStore } from '@/stores/gameStore'
+import { useCharacterSkin } from '../CharacterSkinSystem'
 
 export const UI = () => {
-  const { showDialogue, selectedNpc, isLoading } = useGameStore()
+  const { showDialogue } = useGameStore()
   const [showControls, setShowControls] = useState(false)
+  const [showSkinSelector, setShowSkinSelector] = useState(false)
+  
+  // 皮膚系統
+  const { currentSkinId, changeSkin } = useCharacterSkin('player-female-main')
 
   // Show controls hint with keyboard shortcut
   useEffect(() => {
@@ -65,6 +70,21 @@ export const UI = () => {
           <DialogueBox />
         </div>
       )}
+      
+      {/* 皮膚選擇器觸發按鈕 */}
+      <SkinSelectorTrigger 
+        onOpen={() => setShowSkinSelector(true)}
+        characterType="player"
+      />
+      
+      {/* 皮膚選擇器 */}
+      <SkinSelector 
+        currentSkinId={currentSkinId}
+        onSkinChange={changeSkin}
+        characterType="player"
+        isOpen={showSkinSelector}
+        onClose={() => setShowSkinSelector(false)}
+      />
 
     </>
   )

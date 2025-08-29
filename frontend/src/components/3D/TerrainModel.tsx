@@ -887,6 +887,95 @@ export const isValidGroundPosition = (_x: number, _z: number): boolean => {
   return true
 }
 
+// 檢查位置是否在路面上（模擬道路系統）
+export const isOnRoadSurface = (x: number, z: number): boolean => {
+  // 定義幾條主要道路路徑（適應10倍擴展的地形）
+  const roads = [
+    // 主要十字路口 - 中央區域
+    { centerX: 0, centerZ: 0, width: 12, length: 12, type: 'intersection' },
+    
+    // 東西向主幹道
+    { centerX: 0, centerZ: 0, width: 60, length: 8, type: 'horizontal' },
+    
+    // 南北向主幹道  
+    { centerX: 0, centerZ: 0, width: 8, length: 60, type: 'vertical' },
+    
+    // 分支道路 - 東北區域
+    { centerX: 15, centerZ: -15, width: 30, length: 6, type: 'horizontal' },
+    { centerX: 15, centerZ: -15, width: 6, length: 20, type: 'vertical' },
+    
+    // 分支道路 - 西南區域
+    { centerX: -15, centerZ: 15, width: 25, length: 6, type: 'horizontal' },
+    { centerX: -15, centerZ: 15, width: 6, length: 25, type: 'vertical' },
+    
+    // 環形道路 - 連接各區域
+    { centerX: 20, centerZ: 0, width: 6, length: 25, type: 'vertical' },
+    { centerX: -20, centerZ: 0, width: 6, length: 25, type: 'vertical' },
+    { centerX: 0, centerZ: 20, width: 25, length: 6, type: 'horizontal' },
+    { centerX: 0, centerZ: -20, width: 25, length: 6, type: 'horizontal' },
+  ]
+  
+  // 檢查是否在任何道路範圍內
+  for (const road of roads) {
+    const deltaX = Math.abs(x - road.centerX)
+    const deltaZ = Math.abs(z - road.centerZ)
+    
+    if (road.type === 'horizontal') {
+      // 東西向道路：寬度檢查Z軸，長度檢查X軸
+      if (deltaZ <= road.length / 2 && deltaX <= road.width / 2) {
+        return true
+      }
+    } else if (road.type === 'vertical') {
+      // 南北向道路：寬度檢查X軸，長度檢查Z軸
+      if (deltaX <= road.length / 2 && deltaZ <= road.width / 2) {
+        return true
+      }
+    } else if (road.type === 'intersection') {
+      // 十字路口：檢查是否在方形範圍內
+      if (deltaX <= road.width / 2 && deltaZ <= road.length / 2) {
+        return true
+      }
+    }
+  }
+  
+  return false
+}
+
+// 獲取最近的道路點（用於路徑規劃）
+export const getNearestRoadPoint = (x: number, z: number): [number, number] => {
+  const roadPoints = [
+    // 主要十字路口附近的連接點
+    [0, 0], [6, 0], [-6, 0], [0, 6], [0, -6],
+    
+    // 東西向主幹道上的點
+    [15, 0], [30, 0], [-15, 0], [-30, 0],
+    
+    // 南北向主幹道上的點
+    [0, 15], [0, 30], [0, -15], [0, -30],
+    
+    // 分支道路連接點
+    [15, -15], [15, -25], [25, -15],
+    [-15, 15], [-15, 25], [-25, 15],
+    
+    // 環形道路連接點
+    [20, 10], [20, -10], [-20, 10], [-20, -10],
+    [10, 20], [-10, 20], [10, -20], [-10, -20],
+  ]
+  
+  let nearestPoint: [number, number] = [0, 0]
+  let minDistance = Infinity
+  
+  for (const point of roadPoints) {
+    const distance = Math.sqrt((x - point[0]) ** 2 + (z - point[1]) ** 2)
+    if (distance < minDistance) {
+      minDistance = distance
+      nearestPoint = [point[0], point[1]]
+    }
+  }
+  
+  return nearestPoint
+}
+
 // 檢測位置是否在棕色山體材質上 - XZ軸5倍擴展，Y軸2.5倍擴展
 export const isOnBrownMountain = (x: number, z: number): boolean => {
   if (!raycaster || brownMountainMeshes.length === 0) {
