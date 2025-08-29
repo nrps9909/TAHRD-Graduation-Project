@@ -221,10 +221,11 @@ export const Player = ({ position = [0, 0, 0] }: PlayerProps) => {
       const steps = Math.ceil(totalMovement.length() / maxStepSize)
       const stepMovement = totalMovement.divideScalar(steps)
       
-      // 只在第一次檢查時顯示樹木數量
-      if (Math.random() < 0.01) { // 1%機率輸出樹木數量
+      // 只在第一次檢查時顯示碰撞物體數量
+      if (Math.random() < 0.01) { // 1%機率輸出碰撞物體數量
         const treeCount = collisionSystem.getTreeCount()
-        console.log(`已註冊樹木數量: ${treeCount}`)
+        const waterCount = collisionSystem.getWaterCount()
+        console.log(`已註冊樹木數量: ${treeCount}, 水域邊界數量: ${waterCount}`)
       }
       
       let validPosition = currentPos.clone()
@@ -246,9 +247,9 @@ export const Player = ({ position = [0, 0, 0] }: PlayerProps) => {
           
           if (partialMovement.distanceTo(validPosition) > 0.001) {
             validPosition = partialMovement
-            console.log(`玩家被樹木阻擋，部分移動到: (${validPosition.x.toFixed(1)}, ${validPosition.z.toFixed(1)})`)
+            console.log(`玩家被物體阻擋，部分移動到: (${validPosition.x.toFixed(1)}, ${validPosition.z.toFixed(1)})`)
           } else {
-            console.log(`玩家被樹木完全阻擋`)
+            console.log(`玩家被物體完全阻擋`)
           }
           blocked = true
         }
@@ -261,15 +262,15 @@ export const Player = ({ position = [0, 0, 0] }: PlayerProps) => {
         let testDistance = 0.5
         let safePosition = currentPos.clone()
         
-        // 更細粒度地測試移動，防止擠過樹木
+        // 更細粒度地測試移動，防止擠過物體
         while (testDistance < currentPos.distanceTo(validPosition)) {
           const testPos = currentPos.clone().add(direction.clone().multiplyScalar(testDistance))
           
-          // 檢查山脈和樹木碰撞
+          // 檢查山脈和物體碰撞
           if (isPathClear(currentPos.x, currentPos.z, testPos.x, testPos.z) &&
               collisionSystem.isValidPosition(testPos, 0.5)) {
             safePosition = testPos
-            testDistance += 0.1 // 使用更小的步長，防止擠過樹木
+            testDistance += 0.1 // 使用更小的步長，防止擠過物體
           } else {
             break
           }
@@ -411,7 +412,7 @@ export const Player = ({ position = [0, 0, 0] }: PlayerProps) => {
       console.log('開始初始化玩家位置...')
       
       // 使用固定的初始位置，不依賴props
-      const initialPosition = [0, 10, 0]
+      const initialPosition = [-3, 10, -3]
       playerRef.current.position.set(initialPosition[0], initialPosition[1], initialPosition[2])
       
       // 添加標記防止重複初始化

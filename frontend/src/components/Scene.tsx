@@ -16,8 +16,11 @@ import { MountainFog, HighAltitudeMist, DawnMist } from './3D/MountainFog'
 import { MountainAtmosphere, MountainReflection, MountainWind } from './3D/MountainAtmosphere'
 import { MountainClouds } from './3D/MountainClouds'
 import { MagicalFloatingParticles, AmbientLightDust } from './3D/MagicalParticles'
+import { Ocean } from './3D/Ocean'
+import { BoundaryWall } from './3D/BoundaryWall'
 import { useGameStore } from '@/stores/gameStore'
 import { useTimeStore } from '@/stores/timeStore'
+import { collisionSystem } from '@/utils/collision'
 
 export const Scene = () => {
   const { npcs, playerPosition } = useGameStore()
@@ -31,6 +34,16 @@ export const Scene = () => {
     
     return () => clearInterval(interval)
   }, [tick])
+
+  // 清理所有邊界相關的碰撞物體
+  useEffect(() => {
+    // 清理所有邊界系統
+    collisionSystem.clearByIdPattern('fog_wall')
+    collisionSystem.clearByIdPattern('ocean_boundary')
+    collisionSystem.clearByIdPattern('world_boundary')
+    collisionSystem.clearByIdPattern('coastline_boundary')
+    console.log('🧹 已清理所有邊界碰撞物體')
+  }, [])
   
   // 驗證角色位置安全性（開發模式）
   useEffect(() => {
@@ -109,8 +122,14 @@ export const Scene = () => {
       {/* 山脈厚重雲霧層 */}
       <MountainCloudLayer />
       
+      {/* 海洋環境 */}
+      <Ocean />
+      
       {/* GLTF地形模型 */}
       <TerrainModel position={[0, 0, 0]} scale={1} />
+      
+      {/* 邊界牆壁 */}
+      <BoundaryWall />
       
       {/* 玩家角色 */}
       <Player position={playerPosition} />

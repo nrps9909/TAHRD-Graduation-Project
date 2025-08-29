@@ -26,7 +26,8 @@
       "Bash(docker-compose up:*)",
       "Bash(docker-compose build:*)",
       "Bash(docker-compose restart:*)",
-      "Bash(kill:*)"
+      "Bash(kill:*)",
+      "mcp__ide__getDiagnostics"
     ],
     "deny": []
   }

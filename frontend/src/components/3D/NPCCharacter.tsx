@@ -27,7 +27,7 @@ export const NPCCharacter = ({ npc, position, conversationContent, isInConversat
   const [clicked, setClicked] = useState(false)
   const [currentPosition, setCurrentPosition] = useState(new THREE.Vector3(...position))
   const [targetPosition, setTargetPosition] = useState(new THREE.Vector3(...position))
-  const [isNon3DPosition] = useState(Math.abs(position[0]) > 40 || Math.abs(position[2]) > 40)
+  const [isNon3DPosition] = useState(Math.abs(position[0]) > 65 || Math.abs(position[2]) > 65)
   
   // 初始化時處理位置設定
   useEffect(() => {
@@ -85,9 +85,9 @@ export const NPCCharacter = ({ npc, position, conversationContent, isInConversat
         let newX, newZ
         
         if (isLongExploration) {
-          // 長距離探索：擴大範圍讓NPCs更自由
-          newX = -20 + Math.random() * 40 // -20 到 20 的探索範圍
-          newZ = -20 + Math.random() * 40
+          // 長距離探索：在島嶼和沙灘範圍內探索
+          newX = -50 + Math.random() * 100 // -50 到 50 的探索範圍
+          newZ = -50 + Math.random() * 100
         } else {
           // 短距離移動：在當前位置附近
           const angle = Math.random() * Math.PI * 2
@@ -96,9 +96,9 @@ export const NPCCharacter = ({ npc, position, conversationContent, isInConversat
           newZ = currentPosition.z + Math.sin(angle) * distance
         }
         
-        // 確保在地形範圍內
-        const clampedX = Math.max(-45, Math.min(45, newX))
-        const clampedZ = Math.max(-45, Math.min(45, newZ))
+        // 使用計算出的新位置
+        const clampedX = newX
+        const clampedZ = newZ
         
         // 檢查是否為有效的地面位置（不是雲朵）
         if (!isValidGroundPosition(clampedX, clampedZ)) {
