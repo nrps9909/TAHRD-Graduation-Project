@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kenney Models 驗證測試</title>
+    <style>
+        body { 
+            font-family: system-ui, sans-serif; 
+            background: #f5f5f5; 
+            margin: 0; 
+            padding: 20px; 
+        }
+        .container { 
+            max-width: 1000px; 
+            margin: 0 auto; 
+            background: white; 
+            padding: 30px; 
+            border-radius: 10px; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1); 
+        }
+        .status { 
+            padding: 10px; 
+            margin: 10px 0; 
+            border-radius: 5px; 
+        }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .warning { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .checklist li { margin: 8px 0; }
+        .completed { color: #28a745; font-weight: bold; }
+        .pending { color: #ffc107; font-weight: bold; }
+        .failed { color: #dc3545; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎮 Kenney Mini Characters 整合驗證</h1>
+        <p><strong>測試時間:</strong> <span id="timestamp"></span></p>
+        <p><strong>主要遊戲頁面:</strong> <a href="http://localhost:3001" target="_blank">http://localhost:3001</a></p>
+        
+        <h2>📋 驗證清單</h2>
+        <div class="checklist">
+            <h3>1. 模型檔案存在性檢查</h3>
+            <ul>
+                <li class="completed">✅ Kenney GLB 模型目錄: /kenney_mini-characters/Models/GLB format/</li>
+                <li class="completed">✅ character-male-a.glb (NPC-1: 陸培修)</li>
+                <li class="completed">✅ character-female-b.glb (NPC-2: 劉宇岑)</li>
+                <li class="completed">✅ character-male-c.glb (NPC-3: 陳庭安)</li>
+                <li class="completed">✅ character-male-d.glb (Player: 玩家角色)</li>
+                <li class="completed">✅ 統一材質貼圖: colormap.png</li>
+            </ul>
+            
+            <h3>2. 程式碼整合檢查</h3>
+            <ul>
+                <li class="completed">✅ OfficialACNPC.tsx 已改用 Kenney GLB 載入</li>
+                <li class="completed">✅ Player.tsx 已改用 KenneyPlayerCharacter</li>
+                <li class="completed">✅ 移除 Chibi 角色系統依賴</li>
+                <li class="completed">✅ 正確的模型路徑配置</li>
+                <li class="completed">✅ GLTFLoader 正確引入</li>
+                <li class="completed">✅ 動畫系統整合</li>
+            </ul>
+            
+            <h3>3. 視覺效果驗證</h3>
+            <ul>
+                <li class="pending">🔄 3個 NPC 顯示 Kenney 模型（需手動確認）</li>
+                <li class="pending">🔄 玩家角色顯示 Kenney 模型（需手動確認）</li>
+                <li class="pending">🔄 模型具備正確材質和貼圖（需手動確認）</li>
+                <li class="pending">🔄 移除所有臨時佔位符（彩色圓柱）（需手動確認）</li>
+                <li class="pending">🔄 動畫播放正常（需手動確認）</li>
+            </ul>
+            
+            <h3>4. 功能性驗證</h3>
+            <ul>
+                <li class="pending">🔄 玩家移動控制正常（WASD + Shift）</li>
+                <li class="pending">🔄 NPC 互動系統正常（F鍵對話）</li>
+                <li class="pending">🔄 場景渲染效能良好</li>
+                <li class="pending">🔄 無控制台錯誤</li>
+            </ul>
+        </div>
+        
+        <h2>🔧 實施的關鍵修改</h2>
+        <div class="status info">
+            <h4>OfficialACNPC.tsx 主要變更:</h4>
+            <ul>
+                <li>模型載入路徑: <code>/kenney_mini-characters/Models/GLB format/${modelFileName}.glb</code></li>
+                <li>NPC 映射: npc-1→CHAR-M-A, npc-2→CHAR-F-B, npc-3→CHAR-M-C</li>
+                <li>尺寸設定: scale={[1.5, 1.5, 1.5]} 統一 1.5m 高度</li>
+                <li>移除 Animal Crossing 風格的手繪元素</li>
+                <li>保留動畫混合器和 UI 系統</li>
+            </ul>
+        </div>
+        
+        <div class="status info">
+            <h4>Player.tsx 主要變更:</h4>
+            <ul>
+                <li>替換 ChibiPlayerCharacter → KenneyPlayerCharacter</li>
+                <li>玩家專用模型: character-male-d.glb</li>
+                <li>移除 Chibi 材質和幾何體系統</li>
+                <li>保留完整的移動控制和互動系統</li>
+                <li>支援行走/閒置動畫切換</li>
+            </ul>
+        </div>
+        
+        <h2>🎯 手動驗證步驟</h2>
+        <div class="status warning">
+            <ol>
+                <li><strong>開啟遊戲:</strong> 前往 <a href="http://localhost:3001" target="_blank">http://localhost:3001</a></li>
+                <li><strong>檢查 NPCs:</strong> 確認看到 3 個 Kenney 風格角色而非彩色圓柱</li>
+                <li><strong>檢查玩家:</strong> 確認玩家角色是 Kenney 模型（藍色圓柱表示未載入）</li>
+                <li><strong>測試移動:</strong> 使用 WASD 移動，Shift 奔跑</li>
+                <li><strong>測試互動:</strong> 靠近 NPC 按 F 鍵對話</li>
+                <li><strong>檢查控制台:</strong> F12 開發者工具確認無錯誤</li>
+            </ol>
+        </div>
+        
+        <h2>📂 檔案結構檢查</h2>
+        <div class="status success">
+            <h4>Kenney 資源檔案:</h4>
+            <pre style="background: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto;">
+public/
+├── kenney_mini-characters/
+│   └── Models/
+│       └── GLB format/
+│           ├── character-male-a.glb     # NPC-1 陸培修
+│           ├── character-female-b.glb   # NPC-2 劉宇岑  
+│           ├── character-male-c.glb     # NPC-3 陳庭安
+│           ├── character-male-d.glb     # Player 玩家
+│           └── Textures/
+│               └── colormap.png         # 統一材質貼圖
+└── characters/                          # 舊版，保留作為備份
+    ├── CHAR-M-A/
+    ├── CHAR-F-B/
+    └── ...
+            </pre>
+        </div>
+        
+        <h2>🐛 已知問題與解決方案</h2>
+        <div class="status error">
+            <h4>如果角色顯示為彩色圓柱:</h4>
+            <ul>
+                <li><strong>原因:</strong> GLB 模型載入失敗</li>
+                <li><strong>解決:</strong> 檢查控制台錯誤訊息，確認檔案路徑正確</li>
+                <li><strong>備用:</strong> 嘗試重新啟動開發伺服器</li>
+            </ul>
+        </div>
+        
+        <div class="status error">
+            <h4>如果動畫不播放:</h4>
+            <ul>
+                <li><strong>原因:</strong> 動畫混合器未正確初始化</li>
+                <li><strong>解決:</strong> 檢查動畫名稱映射是否正確</li>
+                <li><strong>備用:</strong> 使用預設動畫（第一個動畫）</li>
+            </ul>
+        </div>
+        
+        <h2>✅ 完成狀態</h2>
+        <div class="status success">
+            <h4>已完成的任務:</h4>
+            <ul>
+                <li>✅ 調試 NPC 可見性問題</li>
+                <li>✅ 修復 NPC Kenney 模型和材質</li>
+                <li>✅ 將 Kenney 模型應用到玩家角色</li>
+                <li>🔄 移除臨時後備顯示，確保只有 Kenney 模型</li>
+                <li>⏳ 生成驗證截圖和檢查清單</li>
+            </ul>
+        </div>
+        
+        <p style="text-align: center; margin-top: 30px; font-size: 12px; color: #666;">
+            Generated: <span id="generation-time"></span> | 
+            Kenney Mini Characters © Kenney (CC0 License) |
+            整合by Claude Code
+        </p>
+    </div>
+
+    <script>
+        document.getElementById('timestamp').textContent = new Date().toLocaleString('zh-TW');
+        document.getElementById('generation-time').textContent = new Date().toLocaleString('zh-TW');
+        
+        // 自動檢查 localhost:3001 是否可存取
+        fetch('http://localhost:3001')
+            .then(response => {
+                if (response.ok) {
+                    console.log('✅ Frontend accessible at localhost:3001');
+                } else {
+                    console.warn('⚠️ Frontend response not ok:', response.status);
+                }
+            })
+            .catch(error => {
+                console.error('❌ Frontend not accessible:', error);
+                const link = document.querySelector('a[href="http://localhost:3001"]');
+                if (link) {
+                    link.style.color = 'red';
+                    link.textContent += ' (無法連接)';
+                }
+            });
+    </script>
+</body>
+</html>

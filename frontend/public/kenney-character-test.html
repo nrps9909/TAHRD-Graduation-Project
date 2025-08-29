@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kenney Characters Test</title>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            background: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .character-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        .character-card {
+            background: #fff;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+        .character-viewer {
+            width: 300px;
+            height: 300px;
+            border: 1px solid #ddd;
+            margin: 0 auto 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        .character-info h3 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .character-details {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+        .model-links {
+            margin-top: 15px;
+        }
+        .model-links a {
+            display: inline-block;
+            margin: 5px;
+            padding: 8px 16px;
+            background: #4CAF50;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 12px;
+        }
+        .model-links a:hover {
+            background: #45a049;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-size: 12px;
+        }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .status.loading { background: #d1ecf1; color: #0c5460; }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Kenney Mini Characters 3D 模型測試</h1>
+        <p style="text-align: center; color: #666; margin-bottom: 30px;">
+            測試三個主要 NPC 角色的 Kenney 風格 3D 模型載入
+        </p>
+        
+        <div class="character-grid" id="characterGrid">
+            <!-- Characters will be populated by JavaScript -->
+        </div>
+        
+        <div style="text-align: center; margin-top: 30px; color: #666; font-size: 14px;">
+            如果看到 3D 模型，表示 Kenney 角色替換成功！
+        </div>
+    </div>
+
+    <script>
+        // NPC 角色映射
+        const npcCharacters = [
+            {
+                npcId: '1',
+                name: '陸培修',
+                description: '夢想家藝術家',
+                kenneyChar: 'CHAR-M-A',
+                dialogue: '你好！我是陸培修，一個充滿夢想的藝術家！✨'
+            },
+            {
+                npcId: '2', 
+                name: '劉宇岑',
+                description: '活潑朋友',
+                kenneyChar: 'CHAR-F-B',
+                dialogue: '嗨～我是劉宇岑！今天也要充滿活力地度過呢！💫'
+            },
+            {
+                npcId: '3',
+                name: '陳庭安', 
+                description: '溫柔心靈',
+                kenneyChar: 'CHAR-M-C',
+                dialogue: '您好，我是陳庭安。很高興能在這裡遇見您。🌸'
+            }
+        ];
+
+        // 創建 3D 場景
+        function createThreeScene(container, kenneyChar) {
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            
+            renderer.setSize(300, 300);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+            
+            // 添加光源
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(5, 10, 5);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+            
+            // 載入 GLB 模型
+            const loader = new THREE.GLTFLoader();
+            const modelPath = `/characters/${kenneyChar}/${kenneyChar}.glb`;
+            
+            loader.load(
+                modelPath,
+                (gltf) => {
+                    console.log(`Successfully loaded: ${modelPath}`);
+                    const model = gltf.scene;
+                    model.scale.setScalar(1);
+                    model.position.set(0, -1, 0);
+                    scene.add(model);
+                    
+                    // 如果有動畫，播放第一個
+                    if (gltf.animations && gltf.animations.length > 0) {
+                        const mixer = new THREE.AnimationMixer(model);
+                        const action = mixer.clipAction(gltf.animations[0]);
+                        action.play();
+                        
+                        function animate() {
+                            requestAnimationFrame(animate);
+                            mixer.update(0.01);
+                            model.rotation.y += 0.005;
+                            renderer.render(scene, camera);
+                        }
+                        animate();
+                    } else {
+                        function animate() {
+                            requestAnimationFrame(animate);
+                            model.rotation.y += 0.005;
+                            renderer.render(scene, camera);
+                        }
+                        animate();
+                    }
+                    
+                    updateStatus(container, 'success', '✓ 模型載入成功！');
+                },
+                (progress) => {
+                    console.log(`Loading progress: ${modelPath}`, progress);
+                    updateStatus(container, 'loading', '載入中...');
+                },
+                (error) => {
+                    console.error(`Failed to load: ${modelPath}`, error);
+                    updateStatus(container, 'error', `✗ 載入失敗: ${error.message}`);
+                    
+                    // 顯示替代內容
+                    container.innerHTML = `
+                        <div style="width: 300px; height: 300px; background: linear-gradient(135deg, #ff6b6b 0%, #feca57 100%); 
+                                    border-radius: 8px; display: flex; flex-direction: column; justify-content: center; 
+                                    align-items: center; color: white; font-weight: bold;">
+                            <div style="font-size: 18px;">${kenneyChar}</div>
+                            <div style="font-size: 12px; margin-top: 10px;">模型載入失敗</div>
+                            <div style="font-size: 10px; margin-top: 5px;">${error.message}</div>
+                        </div>
+                    `;
+                }
+            );
+            
+            camera.position.set(0, 0, 3);
+            renderer.render(scene, camera);
+        }
+        
+        function updateStatus(container, type, message) {
+            let statusDiv = container.querySelector('.status');
+            if (!statusDiv) {
+                statusDiv = document.createElement('div');
+                statusDiv.className = 'status';
+                container.parentNode.appendChild(statusDiv);
+            }
+            statusDiv.className = `status ${type}`;
+            statusDiv.textContent = message;
+        }
+        
+        // 初始化角色卡片
+        function initializeCharacters() {
+            const grid = document.getElementById('characterGrid');
+            
+            npcCharacters.forEach(character => {
+                const card = document.createElement('div');
+                card.className = 'character-card';
+                
+                card.innerHTML = `
+                    <div class="character-viewer" id="viewer-${character.npcId}">
+                        載入 3D 模型中...
+                    </div>
+                    <div class="character-info">
+                        <h3>${character.name}</h3>
+                        <div class="character-details">
+                            ${character.description}<br>
+                            對應角色: ${character.kenneyChar}
+                        </div>
+                        <div style="font-style: italic; color: #888; margin: 10px 0;">
+                            "${character.dialogue}"
+                        </div>
+                        <div class="model-links">
+                            <a href="/characters/${character.kenneyChar}/${character.kenneyChar}.glb" target="_blank">GLB 模型</a>
+                            <a href="/characters/${character.kenneyChar}/${character.kenneyChar}.fbx" target="_blank">FBX 模型</a>
+                        </div>
+                    </div>
+                `;
+                
+                grid.appendChild(card);
+                
+                // 創建 3D 場景
+                const viewer = document.getElementById(`viewer-${character.npcId}`);
+                viewer.innerHTML = '';
+                createThreeScene(viewer, character.kenneyChar);
+            });
+        }
+        
+        // 頁面載入完成後初始化
+        document.addEventListener('DOMContentLoaded', initializeCharacters);
+    </script>
+</body>
+</html>

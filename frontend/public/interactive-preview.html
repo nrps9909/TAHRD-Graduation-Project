@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kenney Mini Characters - 互動預覽</title>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            background: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 30px;
+        }
+        .main-area {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+        .controls-info {
+            text-align: center;
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .controls-info strong {
+            color: #1976d2;
+        }
+        .character-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .character-card {
+            background: #fff;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        .character-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+        }
+        .character-card.selected {
+            border-color: #4CAF50;
+            background: #f8fff8;
+            transform: scale(1.05);
+            box-shadow: 0 8px 25px rgba(76, 175, 80, 0.3);
+        }
+        .character-card.focused {
+            border-color: #2196F3;
+            background: #f3f9ff;
+        }
+        .character-image {
+            width: 120px;
+            height: 120px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            margin: 0 auto 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #ddd;
+            position: relative;
+            overflow: hidden;
+        }
+        .character-image img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        .character-image img.loaded {
+            display: block;
+        }
+        .character-image .fallback {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-size: 10px;
+            text-align: center;
+            box-sizing: border-box;
+        }
+        .female-fallback {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
+        }
+        .male-fallback {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%) !important;
+        }
+        .character-info h3 {
+            color: #333;
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        .character-details {
+            color: #666;
+            font-size: 11px;
+            margin: 5px 0;
+        }
+        .gender-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+            margin: 3px 0;
+        }
+        .female { background: #fce4ec; color: #c2185b; }
+        .male { background: #e3f2fd; color: #1976d2; }
+        
+        .info-panel {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            padding: 25px;
+            position: sticky;
+            top: 20px;
+            height: fit-content;
+        }
+        .info-panel h2 {
+            color: #333;
+            margin-top: 0;
+            margin-bottom: 20px;
+        }
+        .info-detail {
+            margin-bottom: 15px;
+        }
+        .info-detail label {
+            font-weight: 600;
+            color: #555;
+            display: block;
+            margin-bottom: 5px;
+        }
+        .info-detail value {
+            color: #333;
+            font-size: 14px;
+        }
+        .file-links {
+            margin-top: 20px;
+        }
+        .file-links a {
+            display: inline-block;
+            margin: 5px 5px 5px 0;
+            padding: 8px 16px;
+            background: #4CAF50;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 12px;
+        }
+        .file-links a:hover {
+            background: #45a049;
+        }
+        .no-selection {
+            text-align: center;
+            color: #999;
+            font-style: italic;
+            padding: 50px 20px;
+        }
+        
+        .keyboard-hint {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 12px;
+            z-index: 1000;
+        }
+        .keyboard-hint kbd {
+            background: #555;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="main-area">
+            <div style="text-align: left; margin-bottom: 15px;">
+                <a href="/" style="display: inline-flex; align-items: center; gap: 5px; color: #666; text-decoration: none; font-size: 14px; padding: 5px 10px; border-radius: 5px; background: #f0f0f0; transition: all 0.2s;">
+                    ← 返回首頁
+                </a>
+            </div>
+            <h1>Kenney Mini Characters - 互動預覽</h1>
+            <p class="subtitle">使用鍵盤與滑鼠選擇角色 • 12個完整角色模型</p>
+            
+            <div class="controls-info">
+                <strong>操作說明:</strong> 
+                <kbd>WASD</kbd> / <kbd>方向鍵</kbd> 移動選取框 • 
+                <kbd>Enter</kbd> / <kbd>滑鼠點擊</kbd> 選擇角色 • 
+                <kbd>R</kbd> 重置視圖
+            </div>
+
+            <div class="character-grid" id="characterGrid">
+                <!-- Characters will be populated by JavaScript -->
+            </div>
+        </div>
+
+        <div class="info-panel">
+            <h2>角色資訊</h2>
+            <div id="characterInfo" class="no-selection">
+                請選擇一個角色來檢視詳細資訊
+            </div>
+        </div>
+    </div>
+
+    <div class="keyboard-hint">
+        <kbd>WASD</kbd> 移動 • <kbd>Enter</kbd> 選擇 • <kbd>R</kbd> 重置
+    </div>
+
+    <script>
+        // Character data from manifest
+        const characters = [
+            { id: 'CHAR-F-A', name: 'character-female-a', gender: 'female', vertices: 1576, animations: 32 },
+            { id: 'CHAR-F-B', name: 'character-female-b', gender: 'female', vertices: 1322, animations: 32 },
+            { id: 'CHAR-F-C', name: 'character-female-c', gender: 'female', vertices: 1322, animations: 32 },
+            { id: 'CHAR-F-D', name: 'character-female-d', gender: 'female', vertices: 1401, animations: 32 },
+            { id: 'CHAR-F-E', name: 'character-female-e', gender: 'female', vertices: 1270, animations: 32 },
+            { id: 'CHAR-F-F', name: 'character-female-f', gender: 'female', vertices: 1410, animations: 32 },
+            { id: 'CHAR-M-A', name: 'character-male-a', gender: 'male', vertices: 1259, animations: 32 },
+            { id: 'CHAR-M-B', name: 'character-male-b', gender: 'male', vertices: 1266, animations: 32 },
+            { id: 'CHAR-M-C', name: 'character-male-c', gender: 'male', vertices: 1455, animations: 32 },
+            { id: 'CHAR-M-D', name: 'character-male-d', gender: 'male', vertices: 1239, animations: 32 },
+            { id: 'CHAR-M-E', name: 'character-male-e', gender: 'male', vertices: 1208, animations: 32 },
+            { id: 'CHAR-M-F', name: 'character-male-f', gender: 'male', vertices: 1291, animations: 32 }
+        ];
+
+        let currentFocus = 0;
+        let selectedCharacter = null;
+
+        function createCharacterCard(character, index) {
+            const card = document.createElement('div');
+            card.className = 'character-card';
+            card.dataset.index = index;
+            
+            const imageDiv = document.createElement('div');
+            imageDiv.className = 'character-image';
+            
+            const img = document.createElement('img');
+            img.src = `previews/${character.name}.png`;
+            img.alt = `${character.id}`;
+            
+            // 預設先顯示 fallback，圖片載入成功後替換
+            const fallback = document.createElement('div');
+            fallback.className = `fallback ${character.gender}-fallback`;
+            fallback.innerHTML = `<div style="font-weight: bold; margin-bottom: 5px;">${character.id}</div><div style="font-size: 9px;">${character.gender === 'female' ? '女性' : '男性'}角色</div><div style="font-size: 8px;">${character.vertices.toLocaleString()} 頂點</div>`;
+            imageDiv.appendChild(fallback);
+            
+            img.onload = function() {
+                // 圖片載入成功，替換 fallback
+                imageDiv.removeChild(fallback);
+                imageDiv.appendChild(img);
+                this.classList.add('loaded');
+            };
+            
+            img.onerror = function() {
+                // 圖片載入失敗，保持 fallback 顯示
+                console.log(`Failed to load image: ${character.name}.png, using fallback`);
+            };
+            
+            const infoDiv = document.createElement('div');
+            infoDiv.className = 'character-info';
+            infoDiv.innerHTML = `
+                <h3>${character.id}</h3>
+                <span class="gender-badge ${character.gender}">${character.gender === 'female' ? '女性' : '男性'}</span>
+                <div class="character-details">${character.vertices.toLocaleString()} 頂點 | ${character.animations} 動畫</div>
+            `;
+            
+            card.appendChild(imageDiv);
+            card.appendChild(infoDiv);
+            
+            card.addEventListener('click', () => selectCharacter(index));
+            
+            return card;
+        }
+
+        function renderCharacters() {
+            const grid = document.getElementById('characterGrid');
+            grid.innerHTML = '';
+            
+            characters.forEach((character, index) => {
+                const card = createCharacterCard(character, index);
+                grid.appendChild(card);
+            });
+            
+            updateFocus();
+        }
+
+        function updateFocus() {
+            const cards = document.querySelectorAll('.character-card');
+            cards.forEach((card, index) => {
+                card.classList.toggle('focused', index === currentFocus);
+            });
+        }
+
+        function selectCharacter(index) {
+            selectedCharacter = characters[index];
+            currentFocus = index;
+            
+            const cards = document.querySelectorAll('.character-card');
+            cards.forEach((card, i) => {
+                card.classList.toggle('selected', i === index);
+            });
+            
+            updateCharacterInfo();
+            updateFocus();
+        }
+
+        function updateCharacterInfo() {
+            const infoDiv = document.getElementById('characterInfo');
+            
+            if (!selectedCharacter) {
+                infoDiv.className = 'no-selection';
+                infoDiv.innerHTML = '請選擇一個角色來檢視詳細資訊';
+                return;
+            }
+            
+            infoDiv.className = '';
+            infoDiv.innerHTML = `
+                <div class="info-detail">
+                    <label>角色代號:</label>
+                    <value>${selectedCharacter.id}</value>
+                </div>
+                <div class="info-detail">
+                    <label>模型名稱:</label>
+                    <value>${selectedCharacter.name}</value>
+                </div>
+                <div class="info-detail">
+                    <label>性別:</label>
+                    <value>${selectedCharacter.gender === 'female' ? '女性' : '男性'}</value>
+                </div>
+                <div class="info-detail">
+                    <label>頂點數量:</label>
+                    <value>${selectedCharacter.vertices.toLocaleString()}</value>
+                </div>
+                <div class="info-detail">
+                    <label>動畫數量:</label>
+                    <value>${selectedCharacter.animations}</value>
+                </div>
+                <div class="info-detail">
+                    <label>共用材質:</label>
+                    <value>colormap.png</value>
+                </div>
+                <div class="file-links">
+                    <a href="${selectedCharacter.id}/${selectedCharacter.id}.glb" target="_blank">下載 GLB</a>
+                    <a href="${selectedCharacter.id}/${selectedCharacter.id}.fbx" target="_blank">下載 FBX</a>
+                </div>
+            `;
+        }
+
+        function moveFocus(direction) {
+            const gridCols = 4;
+            const gridRows = Math.ceil(characters.length / gridCols);
+            const currentRow = Math.floor(currentFocus / gridCols);
+            const currentCol = currentFocus % gridCols;
+            
+            let newFocus = currentFocus;
+            
+            switch(direction) {
+                case 'up':
+                    if (currentRow > 0) {
+                        newFocus = currentFocus - gridCols;
+                    }
+                    break;
+                case 'down':
+                    if (currentRow < gridRows - 1) {
+                        const newIndex = currentFocus + gridCols;
+                        if (newIndex < characters.length) {
+                            newFocus = newIndex;
+                        }
+                    }
+                    break;
+                case 'left':
+                    if (currentCol > 0) {
+                        newFocus = currentFocus - 1;
+                    }
+                    break;
+                case 'right':
+                    if (currentCol < gridCols - 1 && currentFocus + 1 < characters.length) {
+                        newFocus = currentFocus + 1;
+                    }
+                    break;
+            }
+            
+            currentFocus = newFocus;
+            updateFocus();
+            
+            // Scroll focused card into view
+            const focusedCard = document.querySelector('.character-card.focused');
+            if (focusedCard) {
+                focusedCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+
+        function resetView() {
+            currentFocus = 0;
+            selectedCharacter = null;
+            
+            const cards = document.querySelectorAll('.character-card');
+            cards.forEach(card => card.classList.remove('selected'));
+            
+            updateFocus();
+            updateCharacterInfo();
+            
+            // Scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Keyboard event handling
+        document.addEventListener('keydown', (e) => {
+            switch(e.key.toLowerCase()) {
+                case 'w':
+                case 'arrowup':
+                    e.preventDefault();
+                    moveFocus('up');
+                    break;
+                case 's':
+                case 'arrowdown':
+                    e.preventDefault();
+                    moveFocus('down');
+                    break;
+                case 'a':
+                case 'arrowleft':
+                    e.preventDefault();
+                    moveFocus('left');
+                    break;
+                case 'd':
+                case 'arrowright':
+                    e.preventDefault();
+                    moveFocus('right');
+                    break;
+                case 'enter':
+                case ' ':
+                    e.preventDefault();
+                    selectCharacter(currentFocus);
+                    break;
+                case 'r':
+                    e.preventDefault();
+                    resetView();
+                    break;
+            }
+        });
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            renderCharacters();
+            updateCharacterInfo();
+        });
+    </script>
+</body>
+</html>

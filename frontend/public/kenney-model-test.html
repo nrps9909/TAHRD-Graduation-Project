@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Kenney Model Loading Test</title>
+    <style>
+        body { margin: 0; padding: 20px; font-family: monospace; }
+        canvas { border: 1px solid #ccc; margin: 10px 0; }
+        .status { padding: 10px; margin: 5px 0; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+    </style>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.158.0/build/three.module.js",
+            "three/examples/jsm/": "https://unpkg.com/three@0.158.0/examples/jsm/"
+        }
+    }
+    </script>
+</head>
+<body>
+    <h1>🎮 Kenney Model Loading Test</h1>
+    
+    <div id="status" class="status info">正在測試模型載入...</div>
+    
+    <h2>測試結果</h2>
+    <div id="results"></div>
+    
+    <canvas id="canvas" width="800" height="400"></canvas>
+    
+    <script type="module">
+        import * as THREE from 'three';
+        import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+        
+        // 設置場景
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, 800/400, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas') });
+        renderer.setSize(800, 400);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        
+        // 添加光源
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+        directionalLight.position.set(5, 10, 5);
+        directionalLight.castShadow = true;
+        scene.add(directionalLight);
+        
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
+        scene.add(ambientLight);
+        
+        camera.position.set(0, 2, 5);
+        camera.lookAt(0, 0, 0);
+        
+        // 添加地面
+        const groundGeometry = new THREE.PlaneGeometry(10, 10);
+        const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x90EE90 });
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+        
+        const loader = new GLTFLoader();
+        const statusDiv = document.getElementById('status');
+        const resultsDiv = document.getElementById('results');
+        
+        // 測試路徑和對應的 NPC
+        const testModels = [
+            {
+                name: 'NPC-1 (陸培修)',
+                path: '/kenney-models/character-male-a.glb',
+                position: [-2, 0, 0]
+            },
+            {
+                name: 'NPC-2 (劉宇岑)', 
+                path: '/kenney-models/character-female-b.glb',
+                position: [0, 0, 0]
+            },
+            {
+                name: 'NPC-3 (陳庭安)',
+                path: '/kenney-models/character-male-c.glb', 
+                position: [2, 0, 0]
+            }
+        ];
+        
+        let loadedCount = 0;
+        let failedCount = 0;
+        
+        testModels.forEach((model, index) => {
+            const resultDiv = document.createElement('div');
+            resultDiv.className = 'status info';
+            resultDiv.innerHTML = `載入中: ${model.name}...`;
+            resultsDiv.appendChild(resultDiv);
+            
+            loader.load(
+                model.path,
+                function(gltf) {
+                    // 成功載入
+                    loadedCount++;
+                    resultDiv.className = 'status success';
+                    resultDiv.innerHTML = `✅ ${model.name} 載入成功！動畫數: ${gltf.animations.length}`;
+                    
+                    // 添加到場景
+                    const modelGroup = new THREE.Group();
+                    modelGroup.add(gltf.scene);
+                    modelGroup.position.set(...model.position);
+                    modelGroup.scale.setScalar(1.5);
+                    modelGroup.traverse((child) => {
+                        if (child.isMesh) {
+                            child.castShadow = true;
+                            child.receiveShadow = true;
+                        }
+                    });
+                    scene.add(modelGroup);
+                    
+                    // 播放動畫
+                    if (gltf.animations.length > 0) {
+                        const mixer = new THREE.AnimationMixer(gltf.scene);
+                        const action = mixer.clipAction(gltf.animations[0]);
+                        action.play();
+                        
+                        // 動畫更新
+                        function animate() {
+                            mixer.update(0.016);
+                            requestAnimationFrame(animate);
+                        }
+                        animate();
+                    }
+                    
+                    updateStatus();
+                },
+                function(progress) {
+                    console.log('Loading progress:', model.name, progress);
+                },
+                function(error) {
+                    // 載入失敗
+                    failedCount++;
+                    resultDiv.className = 'status error';
+                    resultDiv.innerHTML = `❌ ${model.name} 載入失敗: ${error.message}`;
+                    console.error('Loading error:', error);
+                    
+                    updateStatus();
+                }
+            );
+        });
+        
+        function updateStatus() {
+            const totalTests = testModels.length;
+            const completedTests = loadedCount + failedCount;
+            
+            if (completedTests === totalTests) {
+                if (failedCount === 0) {
+                    statusDiv.className = 'status success';
+                    statusDiv.innerHTML = `🎉 所有 ${totalTests} 個模型載入成功！`;
+                } else if (loadedCount === 0) {
+                    statusDiv.className = 'status error';
+                    statusDiv.innerHTML = `❌ 所有 ${totalTests} 個模型載入失敗！`;
+                } else {
+                    statusDiv.className = 'status info';
+                    statusDiv.innerHTML = `⚠️ ${loadedCount}/${totalTests} 個模型載入成功，${failedCount} 個失敗`;
+                }
+            }
+        }
+        
+        // 渲染循環
+        function render() {
+            requestAnimationFrame(render);
+            renderer.render(scene, camera);
+        }
+        render();
+        
+    </script>
+</body>
+</html>
