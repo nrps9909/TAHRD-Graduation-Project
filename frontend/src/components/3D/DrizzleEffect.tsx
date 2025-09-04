@@ -6,56 +6,127 @@ import { useTimeStore } from '@/stores/timeStore'
 // 細雨效果組件 - 比大雨更細緻輕柔
 export const DrizzleRain = ({ intensity = 1 }: { intensity?: number }) => {
   const drizzleRef = useRef<THREE.Group>(null)
+  const { timeOfDay, hour } = useTimeStore()
   
   const drizzleDrops = useMemo(() => {
     const drops = []
     // 提高雨滴密度 - 山雷時極大幅增加雨滴數量
-    const dropCount = intensity >= 4 ? 20000 : intensity > 2 ? 15000 : 6500 // 山雷時暴增到20000個雨滴！
+    // 大幅增加雨滴數量讓雨效更明顯
+    const baseDrop = intensity >= 4 ? 20000 : intensity > 2 ? 15000 : 6500
+    const dropCount = (timeOfDay === 'day') ? baseDrop * 2.5 : baseDrop // 白天增加150%雨滴數量，雨量更大
     
     for (let i = 0; i < dropCount; i++) {
-      // 創建雨滴線條 - 長度會根據強度調整
-      const geometry = new THREE.BufferGeometry()
-      const dropLength = intensity >= 4 ? -2.8 : intensity > 2 ? -0.8 : -2.5 // 山雷時雨滴更長，表現急促感
-      const positions = new Float32Array([
-        0, 0, 0,        // 起點
-        0, dropLength, 0 // 終點 - 山雨時雨滴更長
-      ])
-      geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+      // 創建動森風格的雨滴圓柱體 - 可愛且明顯
+      const dropLength = Math.abs(intensity >= 4 ? -2.8 : intensity > 2 ? -0.8 : -2.5)
       
-      // 雨滴材質 - 山雷使用純淨藍灰色，避免紅色成分
-      const rainColor = intensity >= 4 ? 0x8BC4E0 : intensity > 2 ? 0x9BBDD8 : 0x87CEEB // 山雷用純淨藍灰色
-      const rainOpacity = intensity >= 4 ? 1.0 : intensity > 2 ? 0.7 : 0.8 // 山雷時完全不透明
-      const material = new THREE.LineBasicMaterial({
-        color: rainColor,
-        transparent: true,
-        opacity: rainOpacity,
-        linewidth: intensity >= 4 ? 5 : intensity > 2 ? 2 : 4, // 山雷時線寬增加到5，更粗的雨線
-        fog: false, // 不受霧效影響
-        toneMapped: false // 不受色調映射影響，保持原始顏色
-      })
+      // 白天雨滴更粗更明顯
+      let radius: number
+      if (timeOfDay === 'day' && hour >= 6 && hour < 12) {
+        radius = 0.03 // 早上較粗，更明顯
+      } else if (timeOfDay === 'day') {
+        radius = 0.035 // 下午更粗，最明顯
+      } else {
+        radius = 0.02  // 夜晚稍細
+      }
       
-      const line = new THREE.Line(geometry, material)
+      const geometry = new THREE.CylinderGeometry(radius, radius * 0.8, dropLength, 6) // 6邊形，稍微錐形，更像真實雨滴
+      
+      // 根據時間動態調整雨滴顏色 - 早上用美麗的漸變色，夜晚用亮色
+      let rainColor: number
+      let rainOpacity: number
+      let emissive: number = 0x000000 // 發光色
+      let emissiveIntensity: number = 0
+      
+      if (intensity >= 4) {
+        // 山雷時使用純淨藍灰色
+        rainColor = 0x8BC4E0
+        rainOpacity = 1.0
+      } else if (intensity > 2) {
+        rainColor = 0x9BBDD8
+        rainOpacity = 0.7
+      } else {
+        // 細雨時根據時間調整顏色和發光效果 - 動森風格
+        if (timeOfDay === 'day') {
+          // 白天（6-18點）：使用動森風格的明亮清晰顏色
+          if (hour >= 6 && hour < 12) {
+            // 早上：使用白色線條
+            rainColor = 0xFFFFFF  // 純白色
+            rainOpacity = 1.0     // 完全不透明，最大可見度
+            emissive = 0x000000   // 無發光
+            emissiveIntensity = 0 // 無發光效果
+          } else {
+            // 下午：稍微溫暖的白藍色調，也增強可見度
+            rainColor = 0x00BFFF  // 深天空藍，更明顯的對比
+            rainOpacity = 0.95    // 高透明度
+            emissive = 0x87CEEB   // 天空藍發光
+            emissiveIntensity = 0.15 // 增強發光
+          }
+        } else {
+          // 夜晚（18-6點）：動森風格的柔和藍白光
+          rainColor = 0xE6F3FF  // 非常淡的藍白色
+          rainOpacity = 0.85
+          emissive = 0xB0E0E6   // 淺藍發光
+          emissiveIntensity = 0.18 // 夜晚發光更明顯
+        }
+      }
+      
+      // 白天使用更好的材質來增加可見度
+      let material: THREE.Material
+      
+      if (timeOfDay === 'day') {
+        // 白天使用帶陰影的材質，增加立體感和可見度
+        material = new THREE.MeshLambertMaterial({
+          color: rainColor,
+          transparent: true,
+          opacity: rainOpacity,
+          emissive: emissive,
+          emissiveIntensity: emissiveIntensity,
+          fog: false,
+          toneMapped: false
+        })
+      } else {
+        // 夜晚使用基礎材質
+        material = new THREE.MeshBasicMaterial({
+          color: rainColor,
+          transparent: true,
+          opacity: rainOpacity,
+          emissive: emissive,
+          emissiveIntensity: emissiveIntensity,
+          fog: false,
+          toneMapped: false
+        })
+      }
+      
+      const mesh = new THREE.Mesh(geometry, material)
       
       // 設置初始位置 - 覆蓋整個小島範圍
-      line.position.set(
+      mesh.position.set(
         (Math.random() - 0.5) * 2000, // 擴展到整個小島範圍
         Math.random() * 200 + 100,    // 更高的起始高度
         (Math.random() - 0.5) * 2000  // Z軸也擴展到2000
       )
       
-      // 儲存速度資料 - 山雷時速度極快極急促
-      const fallSpeed = intensity >= 4 ? -Math.random() * 4.0 - 3.5 : intensity > 2 ? -Math.random() * 2.5 - 2.0 : -Math.random() * 0.8 - 0.6 // 山雷時下降速度3.5-7.5
-      const horizontalSpeed = intensity >= 4 ? Math.random() * 0.8 - 0.4 : intensity > 2 ? Math.random() * 0.25 - 0.125 : Math.random() * 0.1 - 0.05 // 山雷時橫向擺動更劇烈
-      line.userData = {
+      // 隨機旋轉讓雨滴角度更自然
+      mesh.rotation.x = Math.random() * 0.2 - 0.1
+      mesh.rotation.z = Math.random() * 0.2 - 0.1
+      
+      // 儲存速度資料和美麗效果參數
+      const fallSpeed = intensity >= 4 ? -Math.random() * 4.0 - 3.5 : intensity > 2 ? -Math.random() * 2.5 - 2.0 : -Math.random() * 0.8 - 0.6
+      const horizontalSpeed = intensity >= 4 ? Math.random() * 0.8 - 0.4 : intensity > 2 ? Math.random() * 0.25 - 0.125 : Math.random() * 0.1 - 0.05
+      mesh.userData = {
         velocity: {
-          x: horizontalSpeed, // 山雨時橫向漂移更大
-          y: fallSpeed,  // 山雨時下降更快
+          x: horizontalSpeed,
+          y: fallSpeed,
           z: horizontalSpeed * 0.8
         },
-        originalOpacity: rainOpacity
+        originalOpacity: rainOpacity,
+        originalEmissive: emissive,
+        originalEmissiveIntensity: emissiveIntensity,
+        shimmerPhase: Math.random() * Math.PI * 2, // 閃爍相位
+        shimmerSpeed: 0.5 + Math.random() * 1.0     // 閃爍速度
       }
       
-      drops.push(line)
+      drops.push(mesh)
     }
     
     return drops
@@ -66,41 +137,61 @@ export const DrizzleRain = ({ intensity = 1 }: { intensity?: number }) => {
     
     const time = state.clock.elapsedTime
     
-    // 更新每個細雨滴的位置
+    // 更新每個細雨滴的位置和美麗效果
     drizzleRef.current.children.forEach((drop, index) => {
-      const line = drop as THREE.Line
-      const velocity = line.userData.velocity
+      const mesh = drop as THREE.Mesh
+      const velocity = mesh.userData.velocity
       
       // 更新位置 - 山雷時移動極快
-      const speedMultiplier = intensity >= 4 ? 3.5 : intensity > 2 ? 2.0 : 1.2 // 山雷時速度倍數3.5
-      line.position.x += velocity.x * intensity * speedMultiplier
-      line.position.y += velocity.y * intensity * speedMultiplier
-      line.position.z += velocity.z * intensity * speedMultiplier
+      const speedMultiplier = intensity >= 4 ? 3.5 : intensity > 2 ? 2.0 : 1.2
+      mesh.position.x += velocity.x * intensity * speedMultiplier
+      mesh.position.y += velocity.y * intensity * speedMultiplier
+      mesh.position.z += velocity.z * intensity * speedMultiplier
       
-      // 飄散效果 - 山雷時極劇烈
-      const driftIntensity = intensity >= 4 ? 0.12 : intensity > 2 ? 0.05 : 0.008 // 山雷時飄散強度0.12
-      const driftSpeed = intensity >= 4 ? 5.0 : intensity > 2 ? 2.5 : 0.5 // 山雷時飄散速度5.0
-      line.position.x += Math.sin(time * driftSpeed + index * 0.02) * driftIntensity
-      line.position.z += Math.cos(time * driftSpeed * 0.8 + index * 0.02) * (driftIntensity * 0.75)
+      // 優美的飄散效果
+      const driftIntensity = intensity >= 4 ? 0.12 : intensity > 2 ? 0.05 : 0.008
+      const driftSpeed = intensity >= 4 ? 5.0 : intensity > 2 ? 2.5 : 0.5
+      mesh.position.x += Math.sin(time * driftSpeed + index * 0.02) * driftIntensity
+      mesh.position.z += Math.cos(time * driftSpeed * 0.8 + index * 0.02) * (driftIntensity * 0.75)
+      
+      // 輕微旋轉讓雨滴更生動
+      mesh.rotation.x += 0.002 * intensity
+      mesh.rotation.z += 0.001 * intensity
       
       // 重置到頂部
-      if (line.position.y < -5) {
-        line.position.y = 200 + Math.random() * 100
-        line.position.x = (Math.random() - 0.5) * 2000
-        line.position.z = (Math.random() - 0.5) * 2000
+      if (mesh.position.y < -5) {
+        mesh.position.y = 200 + Math.random() * 100
+        mesh.position.x = (Math.random() - 0.5) * 2000
+        mesh.position.z = (Math.random() - 0.5) * 2000
+        // 重置旋轉
+        mesh.rotation.x = Math.random() * 0.2 - 0.1
+        mesh.rotation.z = Math.random() * 0.2 - 0.1
       }
       
       // 邊界檢查
-      if (Math.abs(line.position.x) > 1000) {
-        line.position.x = (Math.random() - 0.5) * 2000
+      if (Math.abs(mesh.position.x) > 1000) {
+        mesh.position.x = (Math.random() - 0.5) * 2000
       }
-      if (Math.abs(line.position.z) > 1000) {
-        line.position.z = (Math.random() - 0.5) * 2000
+      if (Math.abs(mesh.position.z) > 1000) {
+        mesh.position.z = (Math.random() - 0.5) * 2000
       }
       
-      // 根據強度調整透明度
-      if (line.material instanceof THREE.LineBasicMaterial) {
-        line.material.opacity = line.userData.originalOpacity
+      // 美麗的閃爍發光效果
+      if (mesh.material instanceof THREE.MeshBasicMaterial || mesh.material instanceof THREE.MeshLambertMaterial) {
+        const shimmerPhase = mesh.userData.shimmerPhase
+        const shimmerSpeed = mesh.userData.shimmerSpeed
+        const shimmerValue = Math.sin(time * shimmerSpeed + shimmerPhase) * 0.5 + 0.5
+        
+        // 動態調整透明度和發光強度
+        mesh.material.opacity = mesh.userData.originalOpacity * (0.8 + shimmerValue * 0.2)
+        
+        // 恢復原始簡單效果
+        if (timeOfDay === 'day' && hour >= 6 && hour < 12) {
+          // 早上：無特殊效果，保持原始簡潔
+          mesh.material.emissiveIntensity = mesh.userData.originalEmissiveIntensity
+        } else {
+          mesh.material.emissiveIntensity = mesh.userData.originalEmissiveIntensity * (0.8 + shimmerValue * 0.2)
+        }
       }
     })
   })
@@ -397,6 +488,7 @@ export const WaterRipples = ({ intensity = 1 }: { intensity?: number }) => {
 // 細細雨滴效果組件 - 點粒子系統
 export const DrizzleDroplets = ({ intensity = 1 }: { intensity?: number }) => {
   const dropletsRef = useRef<THREE.Points>(null)
+  const { timeOfDay, hour } = useTimeStore()
   
   const dropletsGeometry = useMemo(() => {
     const particleCount = 4000 // 4000個細小雨滴粒子
@@ -443,10 +535,34 @@ export const DrizzleDroplets = ({ intensity = 1 }: { intensity?: number }) => {
     
     context.clearRect(0, 0, 16, 16)
     
+    // 根據時間動態創建雨滴漸變顏色
+    let centerColor: string
+    let middleColor: string
+    let particleColor: number
+    
+    if (timeOfDay === 'day') {
+      if (hour >= 6 && hour < 12) {
+        // 早上：使用深色雨滴，在明亮背景下更明顯
+        centerColor = 'rgba(70, 130, 180, 1)'     // 深鋼藍色中心
+        middleColor = 'rgba(95, 158, 160, 0.8)'   // 深軍艦灰藍
+        particleColor = 0x4682B4  // 鋼藍色
+      } else {
+        // 下午：中等深度
+        centerColor = 'rgba(95, 158, 160, 1)'     // 軍艦灰藍中心
+        middleColor = 'rgba(135, 206, 235, 0.8)'  // 天空藍
+        particleColor = 0x5F9EA0  // 軍艦灰藍
+      }
+    } else {
+      // 夜晚：使用亮色雨滴，在暗背景下明顯
+      centerColor = 'rgba(176, 224, 230, 1)'     // 淺藍色中心
+      middleColor = 'rgba(200, 230, 255, 0.8)'   // 亮藍白色
+      particleColor = 0xB0E0E6  // 淺藍色
+    }
+    
     // 創建細小雨滴的漸變
     const gradient = context.createRadialGradient(8, 8, 0, 8, 8, 8)
-    gradient.addColorStop(0, 'rgba(200, 230, 255, 1)')    // 明亮的中心
-    gradient.addColorStop(0.6, 'rgba(170, 210, 240, 0.8)') // 中間藍色
+    gradient.addColorStop(0, centerColor)    // 動態中心色
+    gradient.addColorStop(0.6, middleColor)  // 動態中間色
     gradient.addColorStop(1, 'rgba(170, 210, 240, 0)')     // 邊緣透明
     
     context.fillStyle = gradient
@@ -458,15 +574,15 @@ export const DrizzleDroplets = ({ intensity = 1 }: { intensity?: number }) => {
     
     return new THREE.PointsMaterial({
       map: texture,
-      color: 0xC8E6FF, // 淡藍色
+      color: particleColor, // 動態顏色
       transparent: true,
-      opacity: 0.8,     // 高透明度讓雨滴明顯
-      size: 3,          // 適中大小
+      opacity: timeOfDay === 'day' ? 0.9 : 0.8,     // 白天更不透明
+      size: timeOfDay === 'day' ? 3.5 : 3,          // 白天稍大一些
       sizeAttenuation: true,
       blending: THREE.AdditiveBlending,
       depthWrite: false
     })
-  }, [])
+  }, [timeOfDay, hour])
   
   useFrame((state) => {
     if (!dropletsRef.current) return
@@ -541,36 +657,20 @@ export const DrizzleDroplets = ({ intensity = 1 }: { intensity?: number }) => {
   )
 }
 
-// 主細雨和山雨效果組件
+// 主細雨效果組件
 export const DrizzleEffect = () => {
   const { weather } = useTimeStore()
   
-  // 同時支援細雨、山雨和山雷天氣
+  // 只支援細雨天氣
   const isDrizzle = weather === 'drizzle'
-  const isRain = weather === 'rain'
-  const isStorm = weather === 'storm'
-  const showEffect = isDrizzle || isRain || isStorm
+  const intensity = isDrizzle ? 1.0 : 0.0
   
-  // 根據天氣類型設定強度：細雨1.0，山雨2.5，山雷4.5（更急促）
-  const intensity = isDrizzle ? 1.0 : isRain ? 2.5 : isStorm ? 4.5 : 0.0
-  
-  if (!showEffect) return null
+  if (!isDrizzle) return null
   
   return (
     <group>
-      {/* 細雨粒子 */}
+      {/* 細雨線條 */}
       <DrizzleRain intensity={intensity} />
-      
-      {/* 只在細雨時顯示地面水花和漣漪，山雨時不顯示 */}
-      {isDrizzle && (
-        <>
-          {/* 地面水花 */}
-          <RainSplash intensity={intensity} />
-          
-          {/* 水波漣漪 */}
-          <WaterRipples intensity={intensity * 0.8} />
-        </>
-      )}
     </group>
   )
 }
