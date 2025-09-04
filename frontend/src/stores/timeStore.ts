@@ -344,5 +344,5 @@ export const WEATHER_SETTINGS = {
     snowIntensity: 0,
     lightMultiplier: 0.9,   // 溫柔光線
     sparkleEffect: false
-  }
+  },
 }
