@@ -156,6 +156,8 @@ export const ClearSkyWhiteClouds = () => {
     const excludeAzimuth = (20 / 180) * Math.PI
     // 三個半徑環（近/中/遠），以極座標均勻分布角度，完整覆蓋 360 度
     const rings = [
+      // 內環：補藍天中間的空白（高度高、數量適中）
+      { radius: 160, y: 92, count: 10, width: 60, height: 12, depth: 22, speed: 0.24 },
       { radius: 220, y: 70, count: 16, width: 70, height: 14, depth: 24, speed: 0.22 },
       { radius: 280, y: 85, count: 18, width: 80, height: 16, depth: 26, speed: 0.18 },
       { radius: 340, y: 100, count: 20, width: 90, height: 18, depth: 28, speed: 0.14 }
@@ -213,7 +215,7 @@ export const ClearSkyWhiteClouds = () => {
       }
     })
     // 額外的高空零散雲團，用於填補空白（數量少、尺寸小）
-    const scatterCount = 8
+    const scatterCount = 14
     for (let s = 0; s < scatterCount; s++) {
       const theta = Math.random() * Math.PI * 2
       // 也避開太陽附近
@@ -266,13 +268,14 @@ export const ClearSkyWhiteClouds = () => {
     canvas.height = size
     const ctx = canvas.getContext('2d')!
     ctx.clearRect(0, 0, size, size)
-    // 雲主體 - 更自然的雲朵形狀
+    // 雲主體 - 動森風：圓潤泡泡、略扁、下緣較平
     const puffs = [
-      { x: 0.30, y: 0.55, r: 0.22 },
-      { x: 0.50, y: 0.50, r: 0.26 },
-      { x: 0.70, y: 0.58, r: 0.20 },
-      { x: 0.45, y: 0.68, r: 0.16 },
-      { x: 0.60, y: 0.72, r: 0.14 } // 增加一個小雲團
+      { x: 0.28, y: 0.58, r: 0.22 },
+      { x: 0.45, y: 0.53, r: 0.27 },
+      { x: 0.64, y: 0.58, r: 0.23 },
+      { x: 0.37, y: 0.66, r: 0.18 },
+      { x: 0.55, y: 0.68, r: 0.16 },
+      { x: 0.74, y: 0.64, r: 0.14 }
     ]
     puffs.forEach(p => {
       const g = ctx.createRadialGradient(p.x * size, p.y * size, 0, p.x * size, p.y * size, p.r * size)
@@ -283,12 +286,7 @@ export const ClearSkyWhiteClouds = () => {
       ctx.arc(p.x * size, p.y * size, p.r * size, 0, Math.PI * 2)
       ctx.fill()
     })
-    // 更自然的雲朵底部陰影
-    ctx.globalAlpha = 0.12
-    ctx.fillStyle = '#a8c8e0' // 更淺的藍灰色陰影
-    ctx.beginPath()
-    ctx.ellipse(size * 0.48, size * 0.75, size * 0.30, size * 0.12, 0, 0, Math.PI * 2)
-    ctx.fill()
+    // 不做陰影，保持純白雲
     ctx.globalAlpha = 1
     const tex = new THREE.CanvasTexture(canvas)
     tex.anisotropy = 8
@@ -305,6 +303,7 @@ export const ClearSkyWhiteClouds = () => {
       color: new THREE.Color('#FFFFFF')
     })
   }, [acCloudTexture])
+  // 不使用陰影材質（保持純白）
   
   // 移除動森風格雲朵飄動動畫 - 雲朵保持靜止
   // useFrame 已被移除，雲朵不再有移動動畫
@@ -325,17 +324,17 @@ export const ClearSkyWhiteClouds = () => {
           {cluster.chunks.map((chunk, chunkIndex) => {
             const baseScale = Math.max(chunk.scaleX, chunk.scaleY, chunk.scaleZ)
             const mat = spriteBaseMaterial.clone()
-            // 降低單朵不透明，減輕高密度的壓迫感
-            mat.opacity = 0.5 + Math.random() * 0.15
+            // 純白柔邊
+            mat.opacity = 0.7 + Math.random() * 0.12
             return (
               <sprite
                 key={chunkIndex}
                 material={mat}
                 position={[chunk.offsetX, chunk.offsetY, chunk.offsetZ]}
-                scale={[14 * chunk.scaleX, 8.5 * chunk.scaleY, 1]}
+                scale={[15.5 * chunk.scaleX, 9.0 * chunk.scaleY, 1]}
                 rotation={[0, chunk.rotationY, 0]}
-                userData={{
-                  originalX: chunk.offsetX,
+                userData={{ 
+                  originalX: chunk.offsetX, 
                   originalY: chunk.offsetY,
                   baseScale: baseScale,
                   baseScaleX: 16 * chunk.scaleX,
