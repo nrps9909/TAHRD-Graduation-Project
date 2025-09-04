@@ -8,7 +8,8 @@ import { WindEffect } from './3D/WindEffect'
 import { DrizzleEffect } from './3D/DrizzleEffect'
 import { StormDustEffect } from './3D/StormDustEffect'
 import { MountainStormEffect } from './3D/MountainStormEffect'
-import { SkyDome } from './3D/SkyDome'
+import { SkyDome, ClearSkyWhiteClouds } from './3D/SkyDome'
+import { CuteCloudySky } from './3D/CuteCloudySky'
 import { NightSky } from './3D/NightSky'
 import { Moon } from './3D/Moon'
 import { Sun } from './3D/Sun'
@@ -70,6 +71,9 @@ export const Scene = () => {
     <>
       {/* 動態天空穹頂系統 */}
       <SkyDome />
+      
+      {/* 晴天藍天白雲效果 */}
+      <ClearSkyWhiteClouds />
       
       {/* 移除多雲效果：山地霧效系統、破曉薄霧、高海拔雲霧、山脈雲層、山地大氣層、山地反射、山地風效 */}
       

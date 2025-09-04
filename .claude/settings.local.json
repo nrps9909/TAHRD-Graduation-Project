@@ -34,7 +34,8 @@
       "WebFetch(domain:localhost)",
       "Read(/home/louis_lu/0830_test/TAHRD-Graduation-Project/frontend/src/components/3D/**)",
       "Read(/home/louis_lu/0830_test/TAHRD-Graduation-Project/frontend/**)",
-      "Read(/tmp/**)"
+      "Read(/tmp/**)",
+      "Bash(cursor:*)"
     ],
     "deny": []
   }

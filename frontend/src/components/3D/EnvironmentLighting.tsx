@@ -165,9 +165,9 @@ export const EnvironmentLighting = () => {
       
       {/* 可愛的天空半球光 */}
       <hemisphereLight
-        color={timeOfDay === 'day' ? "#87CEEB" : "#B0E0E6"} // 天空藍色 / 更亮夜晚粉水藍
-        groundColor={timeOfDay === 'day' ? "#FFF8DC" : "#87CEEB"} // 古董白 / 更亮夜空天藍色  
-        intensity={timeOfDay === 'day' ? 2.0 : 0.9} // 調亮白天半球光到最亮（從1.2提升到2.0）
+        color={timeOfDay === 'day' ? "#87CEEB" : "#E8F4FF"} // 天空藍色 / 夜晚月光色
+        groundColor={timeOfDay === 'day' ? "#FFF8DC" : "#F0F8FF"} // 古董白 / 夜晚潔白地面色
+        intensity={timeOfDay === 'day' ? 2.0 : 1.8} // 提高夜晚半球光強度
       />
       
       {/* 柔和的填充光系統 */}
@@ -187,15 +187,15 @@ export const EnvironmentLighting = () => {
         decay={1.8} // 減少衰減，讓光線傳播更遠
       />
       
-      {/* 太陽白光照射效果 - 讓3D模型有被陽光直射的感覺 */}
-      {timeOfDay === 'day' && weather === 'clear' && (
+      {/* 白天全域白光籠罩效果 - 讓每一處都被白光包圍 */}
+      {timeOfDay === 'day' && (
         <>
-          {/* 強烈的太陽白光 - 主要照射光源 */}
+          {/* 主要太陽白光 - 從太陽位置的強烈照射 */}
           <directionalLight
             position={sunPosition}
             color="#FFFFFF" // 純白太陽光
-            intensity={3.5 * sparkleIntensity} // 非常強烈的光線
-            castShadow={true} // 產生清晰陰影增強立體感
+            intensity={weather === 'clear' ? 4.0 * sparkleIntensity : 3.0 * sparkleIntensity} // 晴天更亮
+            castShadow={true}
             shadow-mapSize-width={2048}
             shadow-mapSize-height={2048}
             shadow-camera-far={500}
@@ -206,62 +206,198 @@ export const EnvironmentLighting = () => {
             shadow-camera-bottom={-150}
           />
           
-          {/* 太陽高光效果 - 產生物體表面的白光反射 */}
+          {/* 全方位白光包圍 - 東南西北四個方向的白光 */}
           <directionalLight
-            position={[sunPosition[0] * 0.9, sunPosition[1] * 1.1, sunPosition[2] * 0.9]} // 略微偏移
-            color="#FFFFF0" // 極亮的象牙白
-            intensity={2.8 * sparkleIntensity}
+            position={[100, 80, 0]} // 東方
+            color="#FFFEF7"
+            intensity={1.8 * sparkleIntensity}
+            castShadow={false}
+          />
+          <directionalLight
+            position={[-100, 80, 0]} // 西方
+            color="#FFFEF7"
+            intensity={1.8 * sparkleIntensity}
+            castShadow={false}
+          />
+          <directionalLight
+            position={[0, 80, 100]} // 南方
+            color="#FFFEF7"
+            intensity={1.8 * sparkleIntensity}
+            castShadow={false}
+          />
+          <directionalLight
+            position={[0, 80, -100]} // 北方
+            color="#FFFEF7"
+            intensity={1.8 * sparkleIntensity}
             castShadow={false}
           />
           
-          {/* 邊緣光效果 - 模擬物體邊緣的太陽反光 */}
+          {/* 頂部全域白光 - 從上方灑下的全面照明 */}
+          <pointLight
+            position={[0, 150, 0]}
+            color="#FFFFFF"
+            intensity={3.0 * sparkleIntensity}
+            distance={400}
+            decay={1.0} // 減少衰減，讓光線更均勻
+          />
+          
+          {/* 多角度補充白光 */}
           <directionalLight
-            position={[sunPosition[0] * 1.2, sunPosition[1] * 0.8, sunPosition[2] * 1.1]}
-            color="#FEFEFE" // 接近純白
-            intensity={2.2 * sparkleIntensity}
+            position={[sunPosition[0] * 0.7, sunPosition[1] * 1.3, sunPosition[2] * 0.8]}
+            color="#FFFFF0"
+            intensity={2.5 * sparkleIntensity}
             castShadow={false}
+          />
+          <directionalLight
+            position={[sunPosition[0] * 1.4, sunPosition[1] * 0.9, sunPosition[2] * 1.2]}
+            color="#FEFEFE"
+            intensity={2.0 * sparkleIntensity}
+            castShadow={false}
+          />
+          
+          {/* 地面反射白光陣列 - 模擬地面全方位反射 */}
+          <pointLight
+            position={[50, 10, 50]}
+            color="#F8F8FF"
+            intensity={1.5 * sparkleIntensity}
+            distance={200}
+            decay={1.2}
+          />
+          <pointLight
+            position={[-50, 10, 50]}
+            color="#F8F8FF"
+            intensity={1.5 * sparkleIntensity}
+            distance={200}
+            decay={1.2}
+          />
+          <pointLight
+            position={[50, 10, -50]}
+            color="#F8F8FF"
+            intensity={1.5 * sparkleIntensity}
+            distance={200}
+            decay={1.2}
+          />
+          <pointLight
+            position={[-50, 10, -50]}
+            color="#F8F8FF"
+            intensity={1.5 * sparkleIntensity}
+            distance={200}
+            decay={1.2}
+          />
+          
+          {/* 空氣中的散射白光 - 模擬陽光在大氣中的散射 */}
+          <pointLight
+            position={[30, 60, 30]}
+            color="#FFFFFE"
+            intensity={1.2 * sparkleIntensity}
+            distance={250}
+            decay={1.3}
+          />
+          <pointLight
+            position={[-30, 60, 30]}
+            color="#FFFFFE"
+            intensity={1.2 * sparkleIntensity}
+            distance={250}
+            decay={1.3}
+          />
+          <pointLight
+            position={[30, 60, -30]}
+            color="#FFFFFE"
+            intensity={1.2 * sparkleIntensity}
+            distance={250}
+            decay={1.3}
+          />
+          <pointLight
+            position={[-30, 60, -30]}
+            color="#FFFFFE"
+            intensity={1.2 * sparkleIntensity}
+            distance={250}
+            decay={1.3}
           />
         </>
       )}
       
-      {/* 細雨天的柔和白光 */}
-      {timeOfDay === 'day' && weather === 'drizzle' && (
-        <directionalLight
-          position={sunPosition}
-          color="#F8F8FF" // 柔和的白色帶一點藍調
-          intensity={1.5 * sparkleIntensity} // 增強一些，讓模型也有白光感
-          castShadow={true}
-          shadow-mapSize-width={1024}
-          shadow-mapSize-height={1024}
-        />
-      )}
 
-      {/* 夜晚月光灑落大地效果 */}
+      {/* 夜晚月光籠罩大地效果 */}
       {timeOfDay === 'night' && (
         <>
-          {/* 主要月光 - 從月亮位置灑下的銀色光芒 */}
+          {/* 主要月光 - 從月亮位置灑下的潔白光芒 */}
           <directionalLight
             position={timeSettings.sunPosition} // 使用夜晚的月亮位置
-            color="#E6F3FF" // 清冷的月光藍白色
-            intensity={1.8 * sparkleIntensity} // 強烈的月光
+            color="#F8FAFF" // 更潔白的月光色
+            intensity={2.5 * sparkleIntensity} // 增強月光強度
             castShadow={true}
-            shadow-mapSize-width={1024}
-            shadow-mapSize-height={1024}
-            shadow-camera-far={300}
+            shadow-mapSize-width={2048}
+            shadow-mapSize-height={2048}
+            shadow-camera-far={500}
             shadow-camera-near={1}
-            shadow-camera-left={-100}
-            shadow-camera-right={100}
-            shadow-camera-top={100}
-            shadow-camera-bottom={-100}
+            shadow-camera-left={-150}
+            shadow-camera-right={150}
+            shadow-camera-top={150}
+            shadow-camera-bottom={-150}
           />
           
-          {/* 月光高光效果 - 物體表面的月光反射 */}
+          {/* 月光地面漫射 - 創造潔白大地效果 */}
           <directionalLight
-            position={[timeSettings.sunPosition[0] * 0.8, timeSettings.sunPosition[1] * 1.2, timeSettings.sunPosition[2] * 1.1]}
-            color="#F0F8FF" // 淡藍月光白
-            intensity={1.2 * sparkleIntensity}
+            position={[timeSettings.sunPosition[0], timeSettings.sunPosition[1] - 50, timeSettings.sunPosition[2]]}
+            color="#FFFFFF" // 純白月光
+            intensity={1.8 * sparkleIntensity}
             castShadow={false}
           />
+          
+          {/* 全方位月光地面照明 - 360度覆蓋 */}
+          {Array.from({ length: 8 }).map((_, i) => {
+            const angle = (i / 8) * Math.PI * 2
+            const x = Math.cos(angle) * 200
+            const z = Math.sin(angle) * 200
+            const y = 100 + Math.sin(i * 1.2) * 30
+            
+            return (
+              <directionalLight
+                key={`moonlight-ground-${i}`}
+                position={[x, y, z]}
+                target-position={[0, 0, 0]}
+                color="#F0F8FF" // 潔白月光
+                intensity={0.8 * sparkleIntensity}
+                castShadow={false}
+              />
+            )
+          })}
+          
+          {/* 月光環境填充 - 確保無死角照明 */}
+          <ambientLight
+            color="#E8F4FF" // 淡月光色
+            intensity={0.6 * sparkleIntensity}
+          />
+          
+          {/* 月光大氣散射效果 - 營造飄渺的月光氛圍 */}
+          <pointLight
+            position={[0, 120, 0]} // 高空大氣散射點
+            color="#FFFFFF" // 純白大氣光
+            intensity={1.2 * sparkleIntensity}
+            distance={600}
+            decay={0.6} // 低衰減讓大氣效果更廣泛
+          />
+          
+          {/* 月光地面反射點 - 模擬月光在地面的反射 */}
+          {Array.from({ length: 12 }).map((_, i) => {
+            const angle = (i / 12) * Math.PI * 2
+            const radius = 80 + (i % 4) * 25
+            const x = Math.cos(angle) * radius
+            const z = Math.sin(angle) * radius
+            const y = 5 // 接近地面
+            
+            return (
+              <pointLight
+                key={`moonlight-reflection-${i}`}
+                position={[x, y, z]}
+                color="#F8FAFF" // 月光反射色
+                intensity={0.5 * sparkleIntensity}
+                distance={120}
+                decay={1.2}
+              />
+            )
+          })}
           
           {/* 月光邊緣光 - 營造朦朧的夜晚輪廓 */}
           <directionalLight

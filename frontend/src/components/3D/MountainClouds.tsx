@@ -30,10 +30,10 @@ export const MountainClouds = () => {
       scales[i] = Math.random() * 2 + 1.5 // 1.5-3.5倍大小
       heights[i] = height
       
-      // 雲層移動速度 - 比霧更快的飄動
-      velocities[i3] = (Math.random() - 0.5) * 0.03 + 0.01     // X方向有整體風向
-      velocities[i3 + 1] = (Math.random() - 0.5) * 0.005       // Y方向輕微浮動
-      velocities[i3 + 2] = (Math.random() - 0.5) * 0.02        // Z方向飄動
+      // 移除雲層移動效果 - 雲朵保持靜止
+      velocities[i3] = 0     // X方向無移動
+      velocities[i3 + 1] = 0 // Y方向無移動
+      velocities[i3 + 2] = 0 // Z方向無移動
     }
     
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
@@ -140,9 +140,9 @@ export const MountainClouds = () => {
                               (1.0 - smoothstep(55.0, 65.0, initialHeight));
           vOpacity = heightFactor * weatherIntensity * timeOfDayFactor;
           
-          // 風向影響雲層形狀拉伸
-          pos.x += sin(time * 0.1 + position.z * 0.01) * windDirection.x * 2.0;
-          pos.z += cos(time * 0.08 + position.x * 0.01) * windDirection.y * 1.5;
+          // 移除風向影響雲層形狀拉伸
+          // pos.x += sin(time * 0.04 + position.z * 0.005) * windDirection.x * 1.0;
+          // pos.z += cos(time * 0.03 + position.x * 0.005) * windDirection.y * 0.8;
           
           vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
           
@@ -191,12 +191,12 @@ export const MountainClouds = () => {
       const velocities = cloudsRef.current.geometry.attributes.velocity.array as Float32Array
       const initialHeights = cloudsRef.current.geometry.attributes.initialHeight.array as Float32Array
       
-      // 更新shader參數
-      material.uniforms.time.value = time
+      // 移除shader時間更新 - 保持雲朵靜止
+      // material.uniforms.time.value = time
       
       // 根據天氣調整雲層強度 - 多雲時顯著增強
       let weatherIntensity = 0.4
-      if (weather === 'clear') weatherIntensity = 0.0      // 晴天完全沒有雲層
+      if (weather === 'clear') weatherIntensity = 0.3      // 晴天也有適量雲層
       else if (weather === 'cloudy') weatherIntensity = 1.2 // 多雲時雲層很明顯
       else if (weather === 'fog') weatherIntensity = 0.2   // 霧天時雲層較淡
       else if (weather === 'rain') weatherIntensity = 0.8  // 雨天雲層較厚
@@ -220,53 +220,16 @@ export const MountainClouds = () => {
       material.uniforms.weatherIntensity.value = weatherIntensity
       material.uniforms.timeOfDayFactor.value = timeOfDayFactor
       
-      // 風向變化 - 模擬高空風
-      const windX = Math.sin(time * 0.02) * 0.5 + 0.5
-      const windY = Math.cos(time * 0.015) * 0.3
-      material.uniforms.windDirection.value.set(windX, windY)
+      // 移除風向變化 - 保持固定風向
+      // const windX = Math.sin(time * 0.02) * 0.5 + 0.5
+      // const windY = Math.cos(time * 0.015) * 0.3
+      material.uniforms.windDirection.value.set(1.0, 0.0) // 固定風向
       
-      // 雲層移動動畫
-      for (let i = 0; i < positions.length; i += 3) {
-        // 持續的風向移動
-        positions[i] += velocities[i]
-        positions[i + 1] += velocities[i + 1]
-        positions[i + 2] += velocities[i + 2]
-        
-        // 添加風的擾動
-        positions[i] += Math.sin(time * 0.03 + i * 0.01) * 0.02
-        positions[i + 2] += Math.cos(time * 0.025 + i * 0.01) * 0.015
-        
-        // 高度輕微浮動
-        const waveY = Math.sin(time * 0.04 + i * 0.008) * 1.5
-        positions[i + 1] = initialHeights[i / 3] + waveY
-        
-        // 邊界重置 - 雲層循環移動
-        if (positions[i] > 200) {
-          positions[i] = -200
-        } else if (positions[i] < -200) {
-          positions[i] = 200
-        }
-        
-        if (positions[i + 2] > 200) {
-          positions[i + 2] = -200
-        } else if (positions[i + 2] < -200) {
-          positions[i + 2] = 200
-        }
-        
-        // 高度限制在山脈區域
-        if (positions[i + 1] > 70) {
-          positions[i + 1] = 40
-        }
-        if (positions[i + 1] < 25) {
-          positions[i + 1] = 35
-        }
-      }
-      
-      cloudsRef.current.geometry.attributes.position.needsUpdate = true
+      // 移除雲層移動動畫 - 雲朵保持靜止
+      // 不再更新位置，雲朵保持固定
     }
   })
   
-  return (
-    <points ref={cloudsRef} geometry={cloudsGeometry} material={cloudsMaterial} />
-  )
+  // 暫時移除所有山脈雲效果
+  return null
 }

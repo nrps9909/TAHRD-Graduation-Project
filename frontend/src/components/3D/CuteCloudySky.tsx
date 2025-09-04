@@ -80,28 +80,29 @@ export const CuteCloudySky = () => {
           // 基於UV座標創造可愛的雲朵圖案
           vec2 cloudUV = vUv;
           
-          // 添加時間流動效果
-          cloudUV.x += time * 0.02; // 慢速飄動
-          cloudUV.y += sin(time * 0.01) * 0.01; // 輕微上下浮動
+          // 移除時間流動效果 - 雲朵保持靜止
+          // cloudUV.x += time * 0.008; // 更慢速飄動
+          // cloudUV.y += sin(time * 0.005) * 0.005; // 更輕微上下浮動
           
-          // 創造可愛的雲朵形狀
-          float cloud1 = cloudNoise(cloudUV + vec2(0.0, 0.0), 3.0);
-          float cloud2 = cloudNoise(cloudUV + vec2(1.5, 0.8), 2.5);
-          float cloud3 = cloudNoise(cloudUV + vec2(-1.2, 1.3), 4.0);
+          // 減少雲朵密度，使太陽可見
           
-          // 混合多層雲朵
-          float cloudPattern = cloud1 * 0.5 + cloud2 * 0.3 + cloud3 * 0.2;
+          // 使用更簡單的噶聲創建稀疏雲朵
+          float cloud1 = cloudNoise(cloudUV * 1.5, 2.0);
+          float cloud2 = cloudNoise(cloudUV * 2.0 + vec2(100.0, 50.0), 1.8);
           
-          // 創造可愛的雲朵邊緣
-          float cloudMask = smoothstep(0.4, 0.7, cloudPattern);
-          cloudMask *= smoothstep(0.95, 0.7, cloudPattern); // 避免過於密集
+          // 減少雲朵密度
+          float cloudPattern = cloud1 * 0.4 + cloud2 * 0.3;
           
-          // 根據高度調整雲朵密度（天空上方多雲朵）
-          float heightFactor = smoothstep(0.1, 0.8, vUv.y);
+          // 創建稀疏的雲朵區域
+          float cloudMask = smoothstep(0.5, 0.7, cloudPattern); // 提高闾值，減少雲朵數量
+          cloudMask *= smoothstep(0.9, 0.7, cloudPattern); // 保持雲朵形狀
+          
+          // 限制雲朵只在中高度出現，不遮擋太陽
+          float heightFactor = smoothstep(0.3, 0.6, vUv.y) * (1.0 - smoothstep(0.7, 0.9, vUv.y));
           cloudMask *= heightFactor;
           
-          // 可愛的雲朵形狀調整
-          cloudMask = smoothstep(0.2, 0.8, cloudMask);
+          // 最終調整，保持柔和的雲朵邊緣
+          cloudMask = smoothstep(0.2, 0.4, cloudMask);
           
           // 根據天氣調整雲朵強度
           cloudMask *= weatherIntensity;
@@ -117,7 +118,8 @@ export const CuteCloudySky = () => {
         }
       `,
       side: THREE.BackSide,
-      transparent: false
+      transparent: true,
+      depthWrite: false
     })
   }, [])
   
@@ -125,8 +127,8 @@ export const CuteCloudySky = () => {
     if (cloudMeshRef.current && cloudMeshRef.current.material instanceof THREE.ShaderMaterial) {
       const material = cloudMeshRef.current.material
       
-      // 更新時間
-      material.uniforms.time.value = state.clock.elapsedTime
+      // 移除時間更新 - 保持雲朵靜止
+      // material.uniforms.time.value = state.clock.elapsedTime
       
       // 直接設置日夜模式，無過渡
       material.uniforms.isNight.value = timeOfDay === 'night' ? 1.0 : 0.0
@@ -144,26 +146,12 @@ export const CuteCloudySky = () => {
       let weatherIntensity = 0
       let cloudOpacity = 0.6
       
-      switch (weather) {
-        case 'cloudy':
-          weatherIntensity = 1.0
-          cloudOpacity = 0.8
-          break
-        case 'drizzle':
-          weatherIntensity = 0.6
-          cloudOpacity = 0.7
-          if (timeOfDay === 'day') {
-            material.uniforms.cloudColor.value.setStyle('#E0E0E0') // 灰白雲
-          } else {
-            material.uniforms.cloudColor.value.setStyle('#F0F8FF') // 更亮夜晚細雨雲 - 愛麗絲藍
-          }
-          break
-        case 'clear':
-        default:
-          weatherIntensity = 0.2
-          cloudOpacity = 0.3
-          break
-      }
+      // 作為天空布景，不受天氣影響，保持自然的白雲效果
+      weatherIntensity = 0.6 // 減少密度，作為背景元素
+      cloudOpacity = 0.4 // 低透明度，不遮擋太陽
+      
+      // 始終保持白雲色彩
+      material.uniforms.cloudColor.value.setStyle('#FFFFFF')
       
       // 直接設置數值，無過渡
       material.uniforms.weatherIntensity.value = weatherIntensity
@@ -171,11 +159,8 @@ export const CuteCloudySky = () => {
     }
   })
   
-  // 只在白天有雲的天氣時顯示
-  const shouldShow = timeOfDay === 'day' && (
-    weather === 'cloudy' || weather === 'drizzle' || 
-    (weather === 'clear' && Math.random() > 0.7)
-  )
+  // 完全移除雲朵效果
+  const shouldShow = false // 不顯示雲朵
   
   if (!shouldShow) return null
   

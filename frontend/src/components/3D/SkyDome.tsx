@@ -137,156 +137,215 @@ export const SkyDome = () => {
   )
 }
 
-// 稀薄白雲系統
-export const ThinWhiteClouds = () => {
-  const cloudsRef = useRef<THREE.Points>(null)
-  const { weather, timeOfDay } = useTimeStore()
+// 真實片狀塊狀雲朵系統 - 只在白天晴天顯示
+export const ClearSkyWhiteClouds = () => {
+  const cloudsGroupRef = useRef<THREE.Group>(null)
+  const { weather, timeOfDay, hour } = useTimeStore()
   
-  const cloudGeometry = useMemo(() => {
-    const geometry = new THREE.BufferGeometry()
-    const positions = new Float32Array(300 * 3) // 減少到300個雲點，更稀薄
-    const scales = new Float32Array(300)
-    const opacities = new Float32Array(300)
-    
-    for (let i = 0; i < 300; i++) {
-      const i3 = i * 3
-      
-      // 在天空中更稀疏分布
-      const radius = 150 + Math.random() * 250
+  // 創建動森風格的可愛雲朵集群（360度環繞分布，覆蓋整個藍天）
+  const cloudClusters = useMemo(() => {
+    const clusters: Array<any> = []
+    // 計算當前太陽方位角（與 SkyDome 相同邏輯）
+    const normalizedHour = (hour ?? 12) % 24
+    const sunAngle = (normalizedHour / 24) * Math.PI * 2 - Math.PI / 2
+    const sunHeight = Math.sin((normalizedHour - 6) / 12 * Math.PI) * 80
+    const sunX = Math.cos(sunAngle) * 200
+    const sunZ = Math.sin(sunAngle) * 80
+    const sunAzimuth = Math.atan2(sunZ, sunX) // -pi..pi
+    // 避免太陽附近的雲：方位±20°，且雲高度偏高時更嚴格
+    const excludeAzimuth = (20 / 180) * Math.PI
+    // 三個半徑環（近/中/遠），以極座標均勻分布角度，完整覆蓋 360 度
+    const rings = [
+      { radius: 220, y: 70, count: 16, width: 70, height: 14, depth: 24, speed: 0.22 },
+      { radius: 280, y: 85, count: 18, width: 80, height: 16, depth: 26, speed: 0.18 },
+      { radius: 340, y: 100, count: 20, width: 90, height: 18, depth: 28, speed: 0.14 }
+    ]
+    const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5)) // 約 2.39996，均勻分佈角度
+    rings.forEach((ring, ringIndex) => {
+      for (let i = 0; i < ring.count; i++) {
+        // 使用黃金角序列讓角度分佈更均勻，再加極小抖動避免完全規則
+        const theta = (i * GOLDEN_ANGLE + ringIndex * 0.7) % (Math.PI * 2)
+        const jitterTheta = theta + (Math.random() - 0.5) * (Math.PI / ring.count) * 0.2
+        const r = ring.radius + (Math.random() - 0.5) * 10
+        const centerX = Math.cos(jitterTheta) * r
+        const centerZ = Math.sin(jitterTheta) * r
+        // 擴大垂直隨機範圍，避免只形成地平線一條帶
+        const centerY = 65 + Math.random() * 45
+        // 避開太陽方位：量測角度差
+        const clusterAzimuth = Math.atan2(centerZ, centerX)
+        let delta = clusterAzimuth - sunAzimuth
+        // 正規化到 -pi..pi
+        delta = ((delta + Math.PI) % (Math.PI * 2)) - Math.PI
+        // 高度越高容忍角度越小
+        const heightFactor = Math.min(1, Math.max(0, (centerY - 70) / 40)) // 0~1
+        const dynamicExclude = excludeAzimuth * (0.6 + 0.6 * heightFactor)
+        if (Math.abs(delta) < dynamicExclude) {
+          continue
+        }
+        const cluster = {
+          id: ringIndex * 100 + i,
+          centerX,
+          centerY,
+          centerZ,
+          width: ring.width,
+          height: ring.height,
+          depth: ring.depth,
+          speed: ring.speed,
+          chunks: [] as any[]
+        }
+        const numChunks = 16 + Math.floor(Math.random() * 8)
+        for (let c = 0; c < numChunks; c++) {
+          cluster.chunks.push({
+            offsetX: (Math.random() - 0.5) * cluster.width,
+            offsetY: (Math.random() - 0.3) * cluster.height * 0.7,
+            offsetZ: (Math.random() - 0.5) * cluster.depth,
+            scaleX: 0.85 + Math.random() * 1.1,
+            scaleY: 0.65 + Math.random() * 0.8,
+            scaleZ: 1.0,
+            rotationX: 0,
+            rotationY: Math.random() * Math.PI * 2,
+            rotationZ: 0,
+            opacity: 0.12 + Math.random() * 0.18,
+            type: 'fluffy'
+          })
+        }
+        clusters.push(cluster)
+      }
+    })
+    // 額外的高空零散雲團，用於填補空白（數量少、尺寸小）
+    const scatterCount = 8
+    for (let s = 0; s < scatterCount; s++) {
       const theta = Math.random() * Math.PI * 2
-      const phi = Math.random() * Math.PI * 0.25 + Math.PI * 0.25 // 限制在更高的天空
-      
-      positions[i3] = radius * Math.sin(phi) * Math.cos(theta)
-      positions[i3 + 1] = radius * Math.cos(phi) + 60 // 提高雲的高度
-      positions[i3 + 2] = radius * Math.sin(phi) * Math.sin(theta)
-      
-      scales[i] = Math.random() * 0.8 + 0.3 // 更多樣的大小
-      opacities[i] = Math.random() * 0.3 + 0.1 // 隨機透明度
+      // 也避開太陽附近
+      let delta = theta - sunAzimuth
+      delta = ((delta + Math.PI) % (Math.PI * 2)) - Math.PI
+      if (Math.abs(delta) < excludeAzimuth * 0.8) {
+        continue
+      }
+      const r = 200 + Math.random() * 180
+      const centerX = Math.cos(theta) * r
+      const centerZ = Math.sin(theta) * r
+      const centerY = 90 + Math.random() * 30
+      const cluster = {
+        id: 9000 + s,
+        centerX,
+        centerY,
+        centerZ,
+        width: 60,
+        height: 14,
+        depth: 20,
+        speed: 0.18,
+        chunks: [] as any[]
+      }
+      const numChunks = 8 + Math.floor(Math.random() * 4)
+      for (let c = 0; c < numChunks; c++) {
+        cluster.chunks.push({
+          offsetX: (Math.random() - 0.5) * cluster.width,
+          offsetY: (Math.random() - 0.3) * cluster.height * 0.7,
+          offsetZ: (Math.random() - 0.5) * cluster.depth,
+          scaleX: 0.6 + Math.random() * 0.7,
+          scaleY: 0.5 + Math.random() * 0.6,
+          scaleZ: 1.0,
+          rotationX: 0,
+          rotationY: Math.random() * Math.PI * 2,
+          rotationZ: 0,
+          opacity: 0.12 + Math.random() * 0.18,
+          type: 'fluffy'
+        })
+      }
+      clusters.push(cluster)
     }
-    
-    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
-    geometry.setAttribute('scale', new THREE.BufferAttribute(scales, 1))
-    geometry.setAttribute('opacity', new THREE.BufferAttribute(opacities, 1))
-    
-    return geometry
+    return clusters
   }, [])
   
-  const cloudMaterial = useMemo(() => {
-    // 創建更柔和的雲朵紋理
+  // 生成一次性的動森風雲紋理（圓形泡泡拼接 + 扁平陰影）
+  const acCloudTexture = useMemo(() => {
+    const size = 256
     const canvas = document.createElement('canvas')
-    canvas.width = 128
-    canvas.height = 128
-    const context = canvas.getContext('2d')!
-    
-    // 多層漸變效果，模擬真實雲朵
-    const gradient1 = context.createRadialGradient(64, 64, 0, 64, 64, 40)
-    gradient1.addColorStop(0, 'rgba(255, 255, 255, 0.8)')
-    gradient1.addColorStop(0.4, 'rgba(255, 255, 255, 0.4)')
-    gradient1.addColorStop(1, 'rgba(255, 255, 255, 0)')
-    
-    context.fillStyle = gradient1
-    context.fillRect(0, 0, 128, 128)
-    
-    // 添加第二層更大的漸變
-    const gradient2 = context.createRadialGradient(64, 64, 20, 64, 64, 64)
-    gradient2.addColorStop(0, 'rgba(255, 255, 255, 0.2)')
-    gradient2.addColorStop(0.6, 'rgba(255, 255, 255, 0.1)')
-    gradient2.addColorStop(1, 'rgba(255, 255, 255, 0)')
-    
-    context.globalCompositeOperation = 'screen'
-    context.fillStyle = gradient2
-    context.fillRect(0, 0, 128, 128)
-    
-    const texture = new THREE.CanvasTexture(canvas)
-    
-    return new THREE.ShaderMaterial({
-      uniforms: {
-        map: { value: texture },
-        time: { value: 0 },
-        opacity: { value: 1 },
-        timeOfDay: { value: 1 } // 1 = day, 0 = night
-      },
-      vertexShader: `
-        attribute float scale;
-        attribute float opacity;
-        varying float vOpacity;
-        varying vec2 vUv;
-        uniform float time;
-        
-        void main() {
-          vOpacity = opacity;
-          vUv = uv;
-          
-          vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-          
-          // 輕微的飄動效果
-          float drift = sin(time * 0.1 + position.x * 0.001) * 0.5;
-          mvPosition.x += drift;
-          
-          gl_PointSize = scale * 25.0 * (300.0 / -mvPosition.z);
-          gl_Position = projectionMatrix * mvPosition;
-        }
-      `,
-      fragmentShader: `
-        uniform sampler2D map;
-        uniform float opacity;
-        uniform float timeOfDay;
-        varying float vOpacity;
-        
-        void main() {
-          vec2 center = gl_PointCoord - 0.5;
-          float dist = length(center);
-          if (dist > 0.5) discard;
-          
-          vec4 texColor = texture2D(map, gl_PointCoord);
-          
-          // 白天雲朵更明顯，夜晚幾乎透明
-          float dayNightOpacity = timeOfDay * 0.6 + 0.1;
-          float finalOpacity = texColor.a * vOpacity * opacity * dayNightOpacity;
-          
-          // 白雲顏色 - 白天純白，夜晚略帶藍色
-          vec3 cloudColor = mix(vec3(0.8, 0.9, 1.0), vec3(1.0), timeOfDay);
-          
-          gl_FragColor = vec4(cloudColor, finalOpacity);
-        }
-      `,
+    canvas.width = size
+    canvas.height = size
+    const ctx = canvas.getContext('2d')!
+    ctx.clearRect(0, 0, size, size)
+    // 雲主體 - 更自然的雲朵形狀
+    const puffs = [
+      { x: 0.30, y: 0.55, r: 0.22 },
+      { x: 0.50, y: 0.50, r: 0.26 },
+      { x: 0.70, y: 0.58, r: 0.20 },
+      { x: 0.45, y: 0.68, r: 0.16 },
+      { x: 0.60, y: 0.72, r: 0.14 } // 增加一個小雲團
+    ]
+    puffs.forEach(p => {
+      const g = ctx.createRadialGradient(p.x * size, p.y * size, 0, p.x * size, p.y * size, p.r * size)
+      g.addColorStop(0, 'rgba(255,255,255,1)')
+      g.addColorStop(1, 'rgba(255,255,255,0)')
+      ctx.fillStyle = g
+      ctx.beginPath()
+      ctx.arc(p.x * size, p.y * size, p.r * size, 0, Math.PI * 2)
+      ctx.fill()
+    })
+    // 更自然的雲朵底部陰影
+    ctx.globalAlpha = 0.12
+    ctx.fillStyle = '#a8c8e0' // 更淺的藍灰色陰影
+    ctx.beginPath()
+    ctx.ellipse(size * 0.48, size * 0.75, size * 0.30, size * 0.12, 0, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.globalAlpha = 1
+    const tex = new THREE.CanvasTexture(canvas)
+    tex.anisotropy = 8
+    tex.needsUpdate = true
+    return tex
+  }, [])
+  
+  // Sprite 材質（透明、柔邊，不寫入深度便於疊加）
+  const spriteBaseMaterial = useMemo(() => {
+    return new THREE.SpriteMaterial({
+      map: acCloudTexture,
       transparent: true,
       depthWrite: false,
-      blending: THREE.NormalBlending
+      color: new THREE.Color('#FFFFFF')
     })
-  }, [])
+  }, [acCloudTexture])
   
-  useFrame((state) => {
-    if (cloudsRef.current) {
-      const time = state.clock.elapsedTime
-      const material = cloudsRef.current.material as THREE.ShaderMaterial
-      
-      // 更新shader uniforms
-      material.uniforms.time.value = time
-      
-      // 根據時間設定日夜狀態
-      const dayNightValue = timeOfDay === 'day' ? 1.0 : 0.0
-      material.uniforms.timeOfDay.value = dayNightValue
-      
-      // 非常緩慢的整體旋轉模擬風的效果
-      cloudsRef.current.rotation.y += 0.0001
-      
-      // 輕微的整體飄移
-      cloudsRef.current.position.x = Math.sin(time * 0.02) * 5
-      cloudsRef.current.position.z = Math.cos(time * 0.015) * 3
-      
-      // 根據天氣調整雲朵透明度
-      let opacity = 0.8 // 基礎透明度
-      if (weather === 'rain') opacity = 1.2
-      else if (weather === 'storm') opacity = 0.0  // 山雷時不顯示稀薄白雲
-      else if (weather === 'fog') opacity = 1.5
-      else if (weather === 'clear') opacity = 0.6
-      
-      material.uniforms.opacity.value = opacity
-    }
-  })
+  // 移除動森風格雲朵飄動動畫 - 雲朵保持靜止
+  // useFrame 已被移除，雲朵不再有移動動畫
+  
+  // 白天晴天的藍天白雲效果
+  const shouldShow = timeOfDay === 'day' && weather === 'clear'
+  if (!shouldShow) {
+    return null
+  }
   
   return (
-    <points ref={cloudsRef} geometry={cloudGeometry} material={cloudMaterial} />
+    <group ref={cloudsGroupRef}>
+      {cloudClusters.map((cluster) => (
+        <group
+          key={cluster.id}
+          position={[cluster.centerX, cluster.centerY, cluster.centerZ]}
+        >
+          {cluster.chunks.map((chunk, chunkIndex) => {
+            const baseScale = Math.max(chunk.scaleX, chunk.scaleY, chunk.scaleZ)
+            const mat = spriteBaseMaterial.clone()
+            // 降低單朵不透明，減輕高密度的壓迫感
+            mat.opacity = 0.5 + Math.random() * 0.15
+            return (
+              <sprite
+                key={chunkIndex}
+                material={mat}
+                position={[chunk.offsetX, chunk.offsetY, chunk.offsetZ]}
+                scale={[14 * chunk.scaleX, 8.5 * chunk.scaleY, 1]}
+                rotation={[0, chunk.rotationY, 0]}
+                userData={{
+                  originalX: chunk.offsetX,
+                  originalY: chunk.offsetY,
+                  baseScale: baseScale,
+                  baseScaleX: 16 * chunk.scaleX,
+                  baseScaleY: 10 * chunk.scaleY
+                }}
+              />
+            )
+          })}
+        </group>
+      ))}
+    </group>
   )
 }

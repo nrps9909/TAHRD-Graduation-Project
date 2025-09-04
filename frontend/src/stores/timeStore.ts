@@ -307,7 +307,7 @@ export const TIME_SETTINGS = {
   day: {
     name: '白天',
     skyColor: '#87CEEB', // 天空藍色
-    fogColor: '#B8E6FF', // 移除霧氣影響，使用純淨的淺藍
+    fogColor: '#B8E6FF', // 淺藍霧氣
     ambientIntensity: 2.5, // 調到最亮的環境光（從1.6提升到2.5）
     sunIntensity: 3.5, // 調到最亮的陽光（從2.2提升到3.5）
     sunPosition: [0, 200, 0], // 天空正上方的陽光位置（會被動態計算覆蓋）

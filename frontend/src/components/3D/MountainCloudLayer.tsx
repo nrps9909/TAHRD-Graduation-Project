@@ -35,10 +35,10 @@ export const MountainCloudLayer = () => {
       densities[i] = Math.random() * 0.3 + 0.2 // 0.2-0.5低密度，更淡
       distances[i] = distance
       
-      // 緩慢環繞移動
-      velocities[i3] = (Math.random() - 0.5) * 0.008     // 很慢的環繞速度
-      velocities[i3 + 1] = (Math.random() - 0.5) * 0.002 // 輕微上下浮動
-      velocities[i3 + 2] = (Math.random() - 0.5) * 0.008 // 環繞移動
+      // 移除雲層移動效果 - 雲朵保持靜止
+      velocities[i3] = 0     // X方向無移動
+      velocities[i3 + 1] = 0 // Y方向無移動
+      velocities[i3 + 2] = 0 // Z方向無移動
     }
     
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
@@ -151,13 +151,8 @@ export const MountainCloudLayer = () => {
           // 淡淡雲霧
           vOpacity = density * weatherIntensity * timeOfDayFactor * 0.3;
           
-          // 緩慢環繞山脈運動
-          float angle = time * 0.01 + distance * 0.001;
-          pos.x += cos(angle + time * 0.005) * 2.0;
-          pos.z += sin(angle + time * 0.005) * 2.0;
-          
-          // 高度緩慢浮動
-          pos.y += sin(time * 0.03 + distance * 0.01) * 3.0;
+          // 移除環繞移動和高度浮動效果 - 雲朵保持靜止
+          // pos不再變動，雲朵保持固定位置
           
           vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
           
@@ -216,8 +211,8 @@ export const MountainCloudLayer = () => {
       const initialHeights = cloudLayerRef.current.geometry.attributes.initialHeight.array as Float32Array
       const distances = cloudLayerRef.current.geometry.attributes.distance.array as Float32Array
       
-      // 更新shader參數
-      material.uniforms.time.value = time
+      // 移除shader時間更新 - 保持雲朵靜止
+      // material.uniforms.time.value = time
       
       // 根據天氣調整雲霧強度 - 整體調淡
       let weatherIntensity = 0.4 // 基礎強度降低
@@ -253,36 +248,11 @@ export const MountainCloudLayer = () => {
       }
       material.uniforms.fogColor.value = fogColor
       
-      // 雲霧緩慢環繞運動
-      for (let i = 0; i < positions.length; i += 3) {
-        const distance = distances[i / 3]
-        
-        // 環繞山脈的圓周運動
-        const angle = time * 0.002 + (i / 3) * 0.1
-        const baseX = Math.cos(angle) * distance
-        const baseZ = Math.sin(angle) * distance
-        
-        positions[i] = baseX + velocities[i] * time * 0.1
-        positions[i + 2] = baseZ + velocities[i + 2] * time * 0.1
-        
-        // 高度緩慢浮動
-        const waveY = Math.sin(time * 0.02 + distance * 0.01) * 4.0
-        positions[i + 1] = initialHeights[i / 3] + waveY + velocities[i + 1] * time * 0.05
-        
-        // 高度限制 - 確保雲霧只在山腰部分，不超過山峰
-        if (positions[i + 1] > 40) {
-          positions[i + 1] = 25  // 重置到山腰中部
-        }
-        if (positions[i + 1] < 12) {
-          positions[i + 1] = 18  // 不能太低，保持在山腰
-        }
-      }
-      
-      cloudLayerRef.current.geometry.attributes.position.needsUpdate = true
+      // 移除雲霧環繞運動 - 雲朵保持靜止
+      // 不再更新位置，雲朵保持固定
     }
   })
   
-  return (
-    <points ref={cloudLayerRef} geometry={cloudGeometry} material={cloudMaterial} />
-  )
+  // 暫時移除所有山脈雲層效果
+  return null
 }
