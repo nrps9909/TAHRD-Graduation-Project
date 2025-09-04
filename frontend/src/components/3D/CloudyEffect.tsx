@@ -10,7 +10,16 @@ export const CloudyEffect = () => {
   
   const cloudsGeometry = useMemo(() => {
     const geometry = new THREE.BufferGeometry()
-    const cloudCount = weather === 'rain' ? 300 : 100 // 山雨時使用更多雲粒子
+    // 平地環境的雲朵數量：白天多雲，夜晚適量用於遮蔽星星
+    let cloudCount = 100
+    if (weather === 'cloudy') {
+      cloudCount = timeOfDay === 'day' ? 400 : 200 // 白天很多雲，夜晚適量
+    } else if (weather === 'clear') {
+      cloudCount = timeOfDay === 'day' ? 80 : 0 // 晴天少量雲，夜晚無雲
+    } else if (weather === 'drizzle') {
+      cloudCount = timeOfDay === 'day' ? 300 : 150 // 細雨天較多雲
+    }
+    
     const positions = new Float32Array(cloudCount * 3)
     const scales = new Float32Array(cloudCount)
     const velocities = new Float32Array(cloudCount * 3)
@@ -20,91 +29,60 @@ export const CloudyEffect = () => {
     for (let i = 0; i < cloudCount; i++) {
       const i3 = i * 3
       
-      if (weather === 'rain') {
-        // 山雨時使用類似山雷的積雨雲結構
-        const layerType = Math.random()
-        let radius, yOffset, density
-        
-        if (layerType < 0.4) {
-          // 核心雲層 (40% 粒子) - 最密集
-          radius = Math.random() * 60 + 25 // 25-85米
-          yOffset = 45 + (Math.random() - 0.5) * 12 // 39-51米
-          density = 0.9 + Math.random() * 0.1 // 高密度
-        } else if (layerType < 0.7) {
-          // 中層雲團 (30% 粒子) - 中等密度
-          radius = Math.random() * 90 + 50 // 50-140米
-          yOffset = 42 + (Math.random() - 0.5) * 18 // 33-51米
+      // 平地環境的雲朵分布
+      const cloudType = Math.random()
+      let radius, height, density, scale
+      
+      if (timeOfDay === 'day') {
+        // 白天：多層次雲朵，覆蓋整個天空
+        if (cloudType < 0.3) {
+          // 高積雲 - 高空大片雲朵
+          radius = 200 + Math.random() * 300
+          height = 80 + Math.random() * 40 // 80-120米高度
           density = 0.6 + Math.random() * 0.3
+          scale = 15 + Math.random() * 25
+        } else if (cloudType < 0.6) {
+          // 層雲 - 中空連續雲層
+          radius = 150 + Math.random() * 250
+          height = 50 + Math.random() * 30 // 50-80米高度
+          density = 0.7 + Math.random() * 0.2
+          scale = 12 + Math.random() * 18
         } else {
-          // 外圍雲霧 (30% 粒子) - 輕柔邊緣
-          radius = Math.random() * 130 + 80 // 80-210米
-          yOffset = 38 + (Math.random() - 0.5) * 25 // 25.5-50.5米
-          density = 0.3 + Math.random() * 0.4
+          // 層積雲 - 低空塊狀雲
+          radius = 100 + Math.random() * 200
+          height = 30 + Math.random() * 25 // 30-55米高度
+          density = 0.8 + Math.random() * 0.15
+          scale = 8 + Math.random() * 15
         }
-        
-        // 創造更美觀的雲團形狀
-        const theta = Math.random() * Math.PI * 2
-        const phi = Math.random() * Math.PI * 0.7 + 0.15
-        
-        // 多層次噪聲創造更自然的雲邊緣
-        const noise1 = Math.sin(theta * 4) * Math.cos(phi * 3) * 0.15
-        const noise2 = Math.sin(theta * 8) * Math.cos(phi * 6) * 0.08
-        const noise3 = Math.sin(theta * 16) * Math.cos(phi * 12) * 0.04
-        const combinedNoise = noise1 + noise2 + noise3
-        const adjustedRadius = radius * (1 + combinedNoise)
-        
-        // 創造更立體的雲團形狀
-        const x = Math.sin(phi) * Math.cos(theta) * adjustedRadius * 1.1
-        const y = Math.cos(phi) * adjustedRadius * 0.3 + yOffset
-        const z = Math.sin(phi) * Math.sin(theta) * adjustedRadius * 0.85
-        
-        positions[i3] = x
-        positions[i3 + 1] = Math.max(20, Math.min(70, y))
-        positions[i3 + 2] = z
-        
-        densities[i] = density * (0.5 + Math.random() * 0.3)
-        
-        // 更小的風力，保持積雨雲形狀
-        const windStrength = 0.03 + Math.random() * 0.08
-        velocities[i3] = (Math.random() - 0.5) * windStrength
-        velocities[i3 + 1] = (Math.random() - 0.5) * windStrength * 0.3
-        velocities[i3 + 2] = (Math.random() - 0.5) * windStrength
-        
-        // 根據距離中心和密度調整大小，創造更美的漸變
-        const distanceFromCenter = Math.sqrt(x*x + z*z) / 160
-        const heightFactor = (y - 30) / 40 // 高度因子
-        const sizeFactor = Math.max(0.3, (1.2 - distanceFromCenter) * (0.8 + heightFactor * 0.4))
-        
-        // 不同層次的雲有不同大小
-        let baseSize
-        if (layerType < 0.4) {
-          baseSize = 25 + Math.random() * 20 // 核心層較大
-        } else if (layerType < 0.7) {
-          baseSize = 18 + Math.random() * 15 // 中層適中
-        } else {
-          baseSize = 12 + Math.random() * 12 // 外層較小
-        }
-        
-        scales[i] = baseSize * sizeFactor * density
-        
       } else {
-        // 普通多雲天氣的雲層
-        const radius = 100 + Math.random() * 120
-        const theta = Math.random() * Math.PI * 2
-        const height = Math.random() * 20 + 15 // 15-35米高度
-        
-        positions[i3] = Math.cos(theta) * radius + (Math.random() - 0.5) * 180
-        positions[i3 + 1] = height
-        positions[i3 + 2] = Math.sin(theta) * radius + (Math.random() - 0.5) * 180
-        
-        scales[i] = Math.random() * 3 + 2 // 2-5倍大小
-        densities[i] = Math.random() * 0.8 + 0.4
-        
-        // 雲層移動速度 - 慢速飄動
-        velocities[i3] = (Math.random() - 0.5) * 0.02
-        velocities[i3 + 1] = (Math.random() - 0.5) * 0.003
-        velocities[i3 + 2] = (Math.random() - 0.5) * 0.015
+        // 夜晚：較稀疏的雲朵，用於遮蔽星星
+        radius = 120 + Math.random() * 180
+        height = 60 + Math.random() * 50 // 60-110米高度
+        density = 0.4 + Math.random() * 0.4 // 較透明，部分遮蔽
+        scale = 20 + Math.random() * 30 // 較大的雲塊
       }
+      
+      // 在平地上方隨機分布
+      const theta = Math.random() * Math.PI * 2
+      const phi = Math.random() * Math.PI * 0.4 + 0.1 // 限制在上半球
+      
+      // 平地雲朵分布
+      const x = Math.sin(phi) * Math.cos(theta) * radius
+      const y = height + Math.cos(phi) * 20 // 基礎高度+變化
+      const z = Math.sin(phi) * Math.sin(theta) * radius
+      
+      positions[i3] = x
+      positions[i3 + 1] = y
+      positions[i3 + 2] = z
+      
+      scales[i] = scale
+      densities[i] = density
+      
+      // 雲層移動速度
+      const windStrength = timeOfDay === 'day' ? 0.015 : 0.008 // 夜晚移動更慢
+      velocities[i3] = (Math.random() - 0.5) * windStrength
+      velocities[i3 + 1] = (Math.random() - 0.5) * windStrength * 0.2
+      velocities[i3 + 2] = (Math.random() - 0.5) * windStrength
       
       heights[i] = positions[i3 + 1]
     }
@@ -116,7 +94,7 @@ export const CloudyEffect = () => {
     geometry.setAttribute('density', new THREE.BufferAttribute(densities, 1))
     
     return geometry
-  }, [weather])
+  }, [weather, timeOfDay])
   
   const cloudsMaterial = useMemo(() => {
     // 創建更厚實的雲層紋理
@@ -205,7 +183,8 @@ export const CloudyEffect = () => {
         windDirection: { value: new THREE.Vector2(1, 0) },
         weatherIntensity: { value: 1 },
         timeOfDayFactor: { value: 1 },
-        isRain: { value: isRain ? 1.0 : 0.0 }
+        isRain: { value: isRain ? 1.0 : 0.0 },
+        isNight: { value: timeOfDay === 'night' ? 1.0 : 0.0 }
       },
       vertexShader: `
         attribute float scale;
@@ -214,13 +193,16 @@ export const CloudyEffect = () => {
         attribute float density;
         varying float vOpacity;
         varying vec2 vUv;
+        varying float vDensity;
         uniform float time;
         uniform vec2 windDirection;
         uniform float weatherIntensity;
         uniform float timeOfDayFactor;
+        uniform float isNight;
         
         void main() {
           vUv = uv;
+          vDensity = density;
           
           vec3 pos = position;
           
@@ -233,8 +215,9 @@ export const CloudyEffect = () => {
           
           vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
           
-          // 雲層大小 - 更大更明顯
-          float size = scale * weatherIntensity * 120.0;
+          // 平地環境雲層大小調整
+          float baseSize = isNight > 0.5 ? 150.0 : 100.0; // 夜晚雲朵更大以遮蔽星星
+          float size = scale * weatherIntensity * baseSize;
           gl_PointSize = size * (800.0 / -mvPosition.z);
           gl_Position = projectionMatrix * mvPosition;
         }
@@ -243,7 +226,9 @@ export const CloudyEffect = () => {
         uniform sampler2D map;
         uniform float opacity;
         uniform float isRain;
+        uniform float isNight;
         varying float vOpacity;
+        varying float vDensity;
         
         void main() {
           vec2 center = gl_PointCoord - 0.5;
@@ -253,45 +238,52 @@ export const CloudyEffect = () => {
           
           vec4 texColor = texture2D(map, gl_PointCoord);
           
-          // 根據天氣和距離中心選擇雲層顏色
+          // 根據時間選擇雲層顏色和效果
           vec3 cloudColor;
-          if (isRain > 0.5) {
-            // 山雨積雨雲 - 根據距離中心創造美麗的漸變
+          float baseOpacity;
+          
+          if (isNight > 0.5) {
+            // 夜晚雲朵：深色，用於遮蔽星星
             float centerDistance = distance(gl_PointCoord, vec2(0.5));
-            vec3 coreColor = vec3(0.35, 0.4, 0.45);    // 深灰核心
-            vec3 midColor = vec3(0.55, 0.6, 0.65);     // 中層灰藍
-            vec3 edgeColor = vec3(0.75, 0.8, 0.85);    // 邊緣淺灰
+            vec3 darkCore = vec3(0.15, 0.18, 0.22);    // 深藍灰核心
+            vec3 midTone = vec3(0.25, 0.30, 0.35);     // 中層藍灰
+            vec3 lightEdge = vec3(0.40, 0.45, 0.50);   // 邊緣較亮
             
-            // 創造從中心到邊緣的美麗漸變
-            if (centerDistance < 0.2) {
-              cloudColor = coreColor;
-            } else if (centerDistance < 0.4) {
-              float t = (centerDistance - 0.2) / 0.2;
-              cloudColor = mix(coreColor, midColor, t);
+            if (centerDistance < 0.3) {
+              cloudColor = darkCore;
+              baseOpacity = 0.9; // 核心不透明，完全遮蔽星星
+            } else if (centerDistance < 0.45) {
+              float t = (centerDistance - 0.3) / 0.15;
+              cloudColor = mix(darkCore, midTone, t);
+              baseOpacity = 0.7; // 中層半透明
             } else {
-              float t = (centerDistance - 0.4) / 0.1;
-              cloudColor = mix(midColor, edgeColor, clamp(t, 0.0, 1.0));
+              float t = (centerDistance - 0.45) / 0.05;
+              cloudColor = mix(midTone, lightEdge, clamp(t, 0.0, 1.0));
+              baseOpacity = 0.4; // 邊緣較透明
             }
           } else {
-            // 普通多雲 - 灰白色
-            cloudColor = vec3(0.92, 0.94, 0.96);
+            // 白天雲朵：亮白色，更加明顯
+            if (isRain > 0.5) {
+              // 雨雲
+              float centerDistance = distance(gl_PointCoord, vec2(0.5));
+              vec3 coreColor = vec3(0.5, 0.55, 0.6);
+              vec3 edgeColor = vec3(0.8, 0.85, 0.9);
+              cloudColor = mix(coreColor, edgeColor, centerDistance * 2.0);
+              baseOpacity = 0.8;
+            } else {
+              // 普通白天雲朵
+              cloudColor = vec3(0.95, 0.97, 1.0); // 純白雲朵
+              baseOpacity = 0.8;
+            }
           }
           
-          // 更細緻的邊緣處理
-          float edgeFade = 1.0 - smoothstep(0.15, 0.5, dist);
+          // 邊緣處理
+          float edgeFade = 1.0 - smoothstep(0.2, 0.5, dist);
           
-          // 為山雨添加更精緻的透明度處理
-          float baseOpacity;
-          if (isRain > 0.5) {
-            // 根據雲層密度和高度創造美麗的透明度變化
-            float densityFactor = vOpacity;
-            float heightFactor = clamp((vOpacity - 0.3) / 0.7, 0.0, 1.0);
-            baseOpacity = 0.75 + densityFactor * 0.25; // 0.75-1.0 範圍
-          } else {
-            baseOpacity = 0.7;
-          }
+          // 夜晚雲朵需要更高密度來遮蔽星星
+          float densityMultiplier = isNight > 0.5 ? (vDensity * 1.5) : vDensity;
           
-          float finalOpacity = texColor.a * vOpacity * opacity * edgeFade * baseOpacity;
+          float finalOpacity = texColor.a * vOpacity * opacity * edgeFade * baseOpacity * densityMultiplier;
           
           gl_FragColor = vec4(cloudColor, finalOpacity);
         }
@@ -300,7 +292,7 @@ export const CloudyEffect = () => {
       depthWrite: false,
       blending: THREE.NormalBlending
     })
-  }, [weather])
+  }, [weather, timeOfDay])
   
   useFrame((state) => {
     if (cloudsRef.current) {
@@ -312,29 +304,20 @@ export const CloudyEffect = () => {
       
       // 更新shader參數
       material.uniforms.time.value = time
+      material.uniforms.isNight.value = timeOfDay === 'night' ? 1.0 : 0.0
       
-      // 根據天氣調整雲層強度
+      // 根據天氣和時間調整雲層強度
       let weatherIntensity = 0.2
-      if (weather === 'cloudy') weatherIntensity = 1.0    // 多雲時最明顯
-      else if (weather === 'clear') weatherIntensity = 0.3 // 晴天時有些雲
-      else if (weather === 'rain') weatherIntensity = 0.8  // 雨天雲層厚
-      else if (weather === 'drizzle') weatherIntensity = 0.7 // 細雨雲層
-      else if (weather === 'storm') weatherIntensity = 0.6 // 暴風雨前的雲
-      else if (weather === 'fog') weatherIntensity = 0.1  // 霧天雲層淡
-      
-      // 根據時間調整雲層可見度
-      const normalizedHour = hour % 24
-      let timeOfDayFactor = 0.6
-      if (normalizedHour >= 8 && normalizedHour < 17) {
-        // 白天雲層最明顯
-        timeOfDayFactor = 1.0
-      } else if (normalizedHour >= 17 && normalizedHour < 19) {
-        // 傍晚雲層
-        timeOfDayFactor = 0.8
-      } else {
-        // 夜晚雲層較淡
-        timeOfDayFactor = 0.4
+      if (weather === 'cloudy') {
+        weatherIntensity = timeOfDay === 'day' ? 1.0 : 0.8 // 白天多雲明顯，夜晚適中
+      } else if (weather === 'clear') {
+        weatherIntensity = timeOfDay === 'day' ? 0.3 : 0 // 晴天少雲，夜晚無雲
+      } else if (weather === 'drizzle') {
+        weatherIntensity = timeOfDay === 'day' ? 0.8 : 0.6 // 細雨天雲層適中
       }
+      
+      // 時間因子調整
+      let timeOfDayFactor = timeOfDay === 'day' ? 1.0 : 0.7 // 夜晚稍微減弱但仍可見
       
       material.uniforms.weatherIntensity.value = weatherIntensity
       material.uniforms.timeOfDayFactor.value = timeOfDayFactor
@@ -385,9 +368,10 @@ export const CloudyEffect = () => {
     }
   })
   
-  // 只在多雲相關天氣時顯示
-  const shouldShow = weather === 'cloudy' || weather === 'rain'
-                    // 細雨和晴天完全沒有雲層
+  // 根據天氣和時間決定是否顯示雲朵
+  const shouldShow = weather === 'cloudy' || 
+                     (weather === 'drizzle') ||
+                     (weather === 'clear' && timeOfDay === 'day') // 晴天白天有少量雲朵
   
   if (!shouldShow) return null
   

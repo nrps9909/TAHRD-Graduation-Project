@@ -97,7 +97,7 @@ export const useGameStore = create<GameState>()(
       // Initial state
       playerId: null,
       playerName: '',
-      playerPosition: [0, 10, 0], // 調整到3D模型中心安全位置，提高Y軸避免沉入地下
+      playerPosition: [0, 0, 0], // 暫時設置在地面位置
       playerRotation: 0,
       joystickInput: { x: 0, y: 0 },
       npcs: [],
@@ -149,11 +149,11 @@ export const useGameStore = create<GameState>()(
           const data = await response.json()
           
           if (data.data && data.data.npcs) {
-            // 預設的3D模型內安全位置（空中飄浮）
+            // 預設的3D模型內安全位置（稍微抬高）
             const defaultPositions: Record<string, [number, number, number]> = {
-              'npc-1': [5, 15, 8],     // 陸培修 - 中央附近安全位置，空中飄浮
-              'npc-2': [-8, 15, 5],    // 劉宇岑 - 中央附近安全位置，空中飄浮
-              'npc-3': [3, 15, -6]     // 陳庭安 - 中央附近安全位置，空中飄浮
+              'npc-1': [5, 18, 8],     // 陸培修 - 中央附近安全位置，稍微抬高
+              'npc-2': [-8, 18, 5],    // 劉宇岑 - 中央附近安全位置，稍微抬高
+              'npc-3': [3, 18, -6]     // 陳庭安 - 中央附近安全位置，稍微抬高
             }
             
             // 將後端資料轉換為前端格式，使用預設3D安全位置
@@ -182,7 +182,7 @@ export const useGameStore = create<GameState>()(
             set({
               playerId: 'player-1',
               playerName: '旅人',
-              playerPosition: [0, 10, 0], // 重置到安全的中心位置，提高Y軸避免沉入地下
+              playerPosition: [0, 0, 0], // 暫時設置在地面位置
               npcs,
               isLoading: false,
             })
@@ -198,7 +198,7 @@ export const useGameStore = create<GameState>()(
                   name: '陸培修',
                   personality: '夢幻的藝術家',
                   currentMood: 'cheerful',
-                  position: [5, 15, -20],  // 中央附近的安全位置，空中飄浮
+                  position: [5, 18, -20],  // 中央附近的安全位置，稍微抬高
                   relationshipLevel: 1,
                 },
                 {
@@ -206,7 +206,7 @@ export const useGameStore = create<GameState>()(
                   name: '劉宇岑',
                   personality: '充滿活力的朋友',
                   currentMood: 'excited',
-                  position: [-8, 15, 5], // 中央附近的安全位置，空中飄浮
+                  position: [-8, 18, 5], // 中央附近的安全位置，稍微抬高
                   relationshipLevel: 1,
                 },
                 {
@@ -214,7 +214,7 @@ export const useGameStore = create<GameState>()(
                   name: '陳庭安',
                   personality: '溫柔的靈魂',
                   currentMood: 'dreamy',
-                  position: [3, 15, -6], // 中央附近的安全位置，空中飄浮
+                  position: [3, 18, -6], // 中央附近的安全位置，稍微抬高
                   relationshipLevel: 1,
                 },
               ],
@@ -227,14 +227,14 @@ export const useGameStore = create<GameState>()(
           set({
             playerId: 'player-1',
             playerName: '旅人',
-            playerPosition: [0, 2, 0], // 重置到安全的中心位置
+            playerPosition: [0, 0, 0], // 暫時設置在地面位置
             npcs: [
               {
                 id: 'npc-1',
                 name: '陸培修',
                 personality: '夢幻的藝術家',
                 currentMood: 'cheerful',
-                position: [5, 0, -20],  // 中央附近的安全位置，地面高度
+                position: [5, 18, -20],  // 中央附近的安全位置，稍微抬高
                 relationshipLevel: 1,
               },
               {
@@ -242,7 +242,7 @@ export const useGameStore = create<GameState>()(
                 name: '劉宇岑',
                 personality: '充滿活力的朋友',
                 currentMood: 'excited',
-                position: [-8, 15, 5], // 中央附近的安全位置，空中飄浮
+                position: [-8, 18, 5], // 中央附近的安全位置，稍微抬高
                 relationshipLevel: 1,
               },
               {
@@ -250,7 +250,7 @@ export const useGameStore = create<GameState>()(
                 name: '陳庭安',
                 personality: '溫柔的靈魂',
                 currentMood: 'dreamy',
-                position: [3, 20, -6], // 中央附近的安全位置，半空中
+                position: [3, 18, -6], // 中央附近的安全位置，稍微抬高
                 relationshipLevel: 1,
               },
             ],

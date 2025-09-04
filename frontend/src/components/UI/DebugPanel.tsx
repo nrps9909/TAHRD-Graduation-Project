@@ -23,13 +23,7 @@ export const DebugPanel = () => {
 
   const weatherOptions = [
     { value: 'clear', label: '☀️ 晴朗', color: 'text-yellow-500' },
-    { value: 'cloudy', label: '☁️ 多雲', color: 'text-gray-500' },
-    { value: 'mist', label: '🌫️ 薄霧', color: 'text-gray-400' },
-    { value: 'fog', label: '🌁 山嵐', color: 'text-gray-600' },
-    { value: 'drizzle', label: '🌦️ 細雨', color: 'text-blue-400' },
-    { value: 'rain', label: '🌧️ 山雨', color: 'text-blue-500' },
-    { value: 'windy', label: '💨 大風', color: 'text-cyan-500' },
-    { value: 'storm', label: '⛈️ 山雷', color: 'text-purple-600' }
+    { value: 'drizzle', label: '🌦️ 細雨', color: 'text-blue-400' }
   ]
 
   const timePresets = [
@@ -155,12 +149,12 @@ export const DebugPanel = () => {
         <div className="flex gap-2">
           <button
             onClick={() => {
-              setWeather('storm')
+              setWeather('drizzle')
               handleTimeChange(21, 0)
             }}
-            className="flex-1 px-2 py-1 text-xs bg-purple-600 hover:bg-purple-500 rounded"
+            className="flex-1 px-2 py-1 text-xs bg-blue-600 hover:bg-blue-500 rounded"
           >
-            夜晚山雷
+            夜晚細雨
           </button>
           <button
             onClick={() => {

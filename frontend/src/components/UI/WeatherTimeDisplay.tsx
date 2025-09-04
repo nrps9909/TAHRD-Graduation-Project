@@ -18,42 +18,28 @@ export const WeatherTimeDisplay = () => {
   const getWeatherIcon = (weather: string) => {
     const icons = {
       clear: '☀️',
-      cloudy: '☁️',
-      mist: '🌫️',
-      fog: '🌫️',
-      drizzle: '🌦️',
-      rain: '🌧️',
-      windy: '💨',
-      snow: '❄️',
-      storm: '⛈️'
+      drizzle: '🌦️'
     }
     return icons[weather as keyof typeof icons] || '☀️'
   }
   
-  // 獲取背景顏色基於時間和天氣
+  // 可愛風格的背景顏色（無邊框）
   const getBackgroundStyle = () => {
-    let bgColor = 'bg-blue-500/80' // 默認白天
+    let bgColor = 'bg-sky-300/90' // 可愛天藍色
     let textColor = 'text-white'
     
     if (timeOfDay === 'night') {
-      bgColor = 'bg-purple-900/80'
+      bgColor = 'bg-slate-700/90' // 原始夜晚深色調
     }
     
-    // 根據天氣調整顏色
+    // 根據天氣調整可愛顏色
     switch (weather) {
-      case 'rain':
-      case 'storm':
-        bgColor = timeOfDay === 'day' ? 'bg-gray-600/80' : 'bg-gray-800/80'
+      case 'drizzle':
+        bgColor = timeOfDay === 'day' ? 'bg-blue-300/90' : 'bg-slate-600/90'
         break
-      case 'snow':
-        bgColor = timeOfDay === 'day' ? 'bg-blue-300/80' : 'bg-blue-800/80'
-        break
-      case 'fog':
-      case 'mist':
-        bgColor = timeOfDay === 'day' ? 'bg-gray-400/80' : 'bg-gray-700/80'
-        break
-      case 'cloudy':
-        bgColor = timeOfDay === 'day' ? 'bg-gray-500/80' : 'bg-gray-800/80'
+      case 'clear':
+      default:
+        // 使用預設的可愛顏色
         break
     }
     
@@ -62,23 +48,23 @@ export const WeatherTimeDisplay = () => {
 
   return (
     <div className="fixed top-4 right-4 z-50 pointer-events-none">
-      <div className={`rounded-lg px-4 py-3 backdrop-blur-sm border border-white/20 shadow-lg ${getBackgroundStyle()}`}>
-        {/* 時間顯示 */}
-        <div className="flex items-center gap-2 mb-2">
-          <div className="text-2xl font-bold">
+      <div className={`rounded-3xl px-6 py-4 backdrop-blur-sm shadow-2xl ${getBackgroundStyle()} transform transition-all duration-300 hover:scale-105`}>
+        {/* 時間顯示 - 可愛風格 */}
+        <div className="flex items-center justify-center gap-3 mb-3">
+          <div className="text-3xl font-black tracking-wide drop-shadow-sm">
             {formatTime(hour)}
           </div>
-          <div className="text-sm opacity-80">
+          <div className="text-base font-semibold opacity-90 bg-white/20 px-2 py-1 rounded-full">
             {getTimeOfDayText(timeOfDay)}
           </div>
         </div>
         
-        {/* 天氣顯示 */}
-        <div className="flex items-center gap-2">
-          <span className="text-xl">
+        {/* 天氣顯示 - 可愛風格 */}
+        <div className="flex items-center justify-center gap-3 bg-white/15 rounded-2xl px-3 py-2">
+          <span className="text-2xl drop-shadow-sm animate-bounce">
             {getWeatherIcon(weather)}
           </span>
-          <span className="text-sm font-medium">
+          <span className="text-base font-bold tracking-wide">
             {WEATHER_SETTINGS[weather]?.name || weather}
           </span>
         </div>

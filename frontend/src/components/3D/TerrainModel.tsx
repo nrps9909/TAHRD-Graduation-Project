@@ -219,9 +219,9 @@ export const TerrainModel = ({ position = [0, 0, 0] }: TerrainModelProps) => {
   // 載入GLTF模型
   const { scene } = useGLTF('/terrain_low_poly/scene.gltf')
   
-  // 精確移除白雲物件，完全保留樹木
+  // 精確移除白雲物件，完全保留樹木，並設置陰影接收
   useEffect(() => {
-    console.log('🔍 開始精確移除白雲物件...')
+    console.log('🔍 開始精確移除白雲物件並設置月光陰影接收...')
     const cloudsToRemove: THREE.Object3D[] = []
     
     scene.traverse((child) => {
@@ -572,6 +572,25 @@ export const TerrainModel = ({ position = [0, 0, 0] }: TerrainModelProps) => {
         }
       })
     }
+    
+    // 設置所有地形和物體接收月光陰影
+    console.log('🌙 設置地形接收月光陰影...')
+    scene.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        // 所有地形mesh都接收陰影
+        child.receiveShadow = true
+        
+        // 樹木也需要接收和投射陰影
+        const name = child.name.toLowerCase()
+        if (name.includes('tree') || name.includes('arbol') || 
+            name.includes('trunk') || name.includes('tronco') ||
+            name.includes('leaf') || name.includes('leaves')) {
+          child.castShadow = true // 樹木投射陰影
+          child.receiveShadow = true // 樹木也接收陰影
+        }
+      }
+    })
+    console.log('✅ 月光陰影設置完成')
     
     // 在所有樹木載入完成後更新全域樹木位置
     const timer = setTimeout(() => {

@@ -217,17 +217,16 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
           // R鍵重置人物位置到安全地點
           if (playerRef.current) {
             const safePosition = [0, 0, 0] // 安全的中心位置
-            // 先設置到較高位置避免沉入地下
-            playerRef.current.position.set(safePosition[0], 15, safePosition[2])
+            const terrainHeight = getTerrainHeight(safePosition[0], safePosition[2]) || 0
+            const terrainSlope = getTerrainSlope(safePosition[0], safePosition[2]) || { x: 0, z: 0 }
+            const adjustedY = terrainHeight + 3 // 站在3D模型上方
             
-            // 延遲檢測地形高度
-            setTimeout(() => {
-              const terrainHeight = getTerrainHeight(safePosition[0], safePosition[2])
-              const adjustedY = Math.max(terrainHeight + 2.0, 8.0) // 確保最少8單位高度
-              playerRef.current!.position.set(safePosition[0], adjustedY, safePosition[2])
-              setPlayerPosition([safePosition[0], adjustedY, safePosition[2]])
-              console.log(`按R鍵重置人物位置: [${safePosition[0]}, ${adjustedY.toFixed(2)}, ${safePosition[2]}], 地形高度: ${terrainHeight.toFixed(2)}`)
-            }, 100)
+            playerRef.current.position.set(safePosition[0], adjustedY, safePosition[2])
+            playerRef.current.rotation.x = terrainSlope.x
+            playerRef.current.rotation.z = terrainSlope.z
+            
+            setPlayerPosition([safePosition[0], adjustedY, safePosition[2]])
+            console.log(`按R鍵重置人物位置: [${safePosition[0]}, ${adjustedY.toFixed(2)}, ${safePosition[2]}], 地形高度: ${terrainHeight.toFixed(2)}, 傾斜: [${terrainSlope.x.toFixed(3)}, ${terrainSlope.z.toFixed(3)}]`)
           }
           break
       }
@@ -388,16 +387,29 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
         console.log(`玩家被山脈阻擋，最終位置: (${validPosition.x.toFixed(1)}, ${validPosition.z.toFixed(1)})`)
       }
       
-      // Player浮空模式：保持固定高度，不貼合地形
+      // 地形貼合模式：讓玩家完全貼合3D地形
       const adjustedPosition = validPosition.clone()
-      // 保持浮空高度，不進行地形調整
-      adjustedPosition.y = 15 // 固定浮在高度15
+      
+      // 使用精確的地形高度檢測
+      const terrainHeight = getTerrainHeight(adjustedPosition.x, adjustedPosition.z) || 0
+      adjustedPosition.y = terrainHeight + 3 // 站在3D模型上方
       
       playerRef.current.position.copy(adjustedPosition)
       
-      // Player浮空模式：保持垂直姿態，不適應地形傾斜
-      playerRef.current.rotation.x = THREE.MathUtils.lerp(playerRef.current.rotation.x, 0, 0.1)
-      playerRef.current.rotation.z = THREE.MathUtils.lerp(playerRef.current.rotation.z, 0, 0.1)
+      // 地形適應：讓玩家跟隨地形傾斜和旋轉
+      const terrainSlope = getTerrainSlope(adjustedPosition.x, adjustedPosition.z) || { x: 0, z: 0 }
+      
+      // 應用地形旋轉到玩家
+      playerRef.current.rotation.x = THREE.MathUtils.lerp(
+        playerRef.current.rotation.x, 
+        terrainSlope.x, 
+        0.2
+      )
+      playerRef.current.rotation.z = THREE.MathUtils.lerp(
+        playerRef.current.rotation.z, 
+        terrainSlope.z, 
+        0.2
+      )
       
       // 走路動畫
       isMoving.current = true
@@ -438,18 +450,32 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
       isMoving.current = false
     }
     
-    // Player浮空模式：走路時的上下擺動，但保持固定高度
-    if (isMoving.current && playerRef.current) {
-      const bobAmount = Math.sin(walkCycle.current) * 0.05
-      // 固定浮空高度加上輕微的走路擺動
-      playerRef.current.position.y = 15 + bobAmount
-    } else if (playerRef.current) {
-      // 靜止時保持固定浮空高度和垂直姿態
-      playerRef.current.position.y = 15
+    // 地形貼合模式：始終跟隨地形高度和傾斜
+    if (playerRef.current) {
+      // 獲取當前位置的地形資訊
+      const terrainHeight = getTerrainHeight(playerRef.current.position.x, playerRef.current.position.z) || 0
+      const terrainSlope = getTerrainSlope(playerRef.current.position.x, playerRef.current.position.z) || { x: 0, z: 0 }
       
-      // 保持垂直姿態
-      playerRef.current.rotation.x = THREE.MathUtils.lerp(playerRef.current.rotation.x, 0, 0.05)
-      playerRef.current.rotation.z = THREE.MathUtils.lerp(playerRef.current.rotation.z, 0, 0.05)
+      if (isMoving.current) {
+        // 走路時：地形高度加上輕微的上下擺動
+        const bobAmount = Math.sin(walkCycle.current) * 0.03 // 減少擺動幅度避免穿透地面
+        playerRef.current.position.y = terrainHeight + 3 + bobAmount
+      } else {
+        // 靜止時：站在3D模型上方
+        playerRef.current.position.y = terrainHeight + 3
+      }
+      
+      // 始終跟隨地形傾斜（無論移動或靜止）
+      playerRef.current.rotation.x = THREE.MathUtils.lerp(
+        playerRef.current.rotation.x, 
+        terrainSlope.x, 
+        0.15
+      )
+      playerRef.current.rotation.z = THREE.MathUtils.lerp(
+        playerRef.current.rotation.z, 
+        terrainSlope.z, 
+        0.15
+      )
     }
   })
 
@@ -469,11 +495,20 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
       hasInitialized.current = true
       console.log('開始初始化玩家位置...')
       
-      // 使用固定的浮空位置，像 NPC 一樣
-      const initialPosition = [-3, 15, -3] // 固定浮在高度15
-      playerRef.current.position.set(initialPosition[0], initialPosition[1], initialPosition[2])
+      // 使用地形貼合位置
+      const initialX = position[0]
+      const initialZ = position[2]
+      const terrainHeight = getTerrainHeight(initialX, initialZ) || 0
+      const terrainSlope = getTerrainSlope(initialX, initialZ) || { x: 0, z: 0 }
+      const initialY = terrainHeight + 3 // 站在3D模型上方
       
-      console.log(`玩家設定為浮空位置: [${initialPosition[0]}, ${initialPosition[1]}, ${initialPosition[2]}]`)
+      playerRef.current.position.set(initialX, initialY, initialZ)
+      
+      // 初始化時就應用地形傾斜
+      playerRef.current.rotation.x = terrainSlope.x
+      playerRef.current.rotation.z = terrainSlope.z
+      
+      console.log(`玩家設定為地形貼合位置: [${initialX}, ${initialY.toFixed(2)}, ${initialZ}], 地形高度: ${terrainHeight.toFixed(2)}, 傾斜: [${terrainSlope.x.toFixed(3)}, ${terrainSlope.z.toFixed(3)}]`)
     }
   }, []) // 不依賴任何props，只在組件掛載時執行一次
 
@@ -492,7 +527,7 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
       <group ref={playerRef} position={position}>
         {/* Kenney GLB 角色模型 - 與 NPC 完全相同的渲染方式 */}
         {kenneyModel?.scene && (
-          <group scale={[2.2, 2.2, 2.2]} position={[0, -1.1, 0]}>
+          <group scale={[2.2, 2.2, 2.2]} position={[0, -1.5, 0]}>
             <primitive 
               object={kenneyModel.scene} 
               frustumCulled={false}

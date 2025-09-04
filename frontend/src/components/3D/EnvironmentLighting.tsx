@@ -3,290 +3,137 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useTimeStore, TIME_SETTINGS, WEATHER_SETTINGS, WeatherType } from '@/stores/timeStore'
 
-// 漸進式時間插值函數 - 平滑的天空變化
-const interpolateTimeSettings = (hour: number) => {
-  // 創建顏色插值函數
-  const lerpColor = (color1: string, color2: string, factor: number) => {
-    const c1 = new THREE.Color(color1)
-    const c2 = new THREE.Color(color2)
-    return c1.lerp(c2, factor)
-  }
-  
-  // 山地環境的時間點設定 - 考慮山峰遮擋和高海拔特性
-  const timePoints = [
-    { hour: 5,  // 山地黎明前 - 寧靜藍調
-      skyColor: '#4682B4', // 鋼藍色
-      ambientIntensity: 0.3,  
-      sunIntensity: 0.0,      
-      sunPosition: [-80, -10, -30], 
-      sunColor: '#6495ED'
-    },
-    { hour: 6,  // 山地黎明 - 晨光乍現
-      skyColor: '#FF8C69', // 橙紅色
-      ambientIntensity: 0.5,  
-      sunIntensity: 0.8,      // 山峰遮擋，光線較弱
-      sunPosition: [-60, 5, -20], // 山後升起
-      sunColor: '#FFA500'
-    },
-    { hour: 8, // 上午 - 陽光越過山峰
-      skyColor: '#87CEEB', // 天空藍
-      ambientIntensity: 1.0,  
-      sunIntensity: 1.8,      // 陽光開始強烈
-      sunPosition: [-30, 40, -10], 
-      sunColor: '#FFFFE0'     // 淡黃陽光
-    },
-    { hour: 11, // 上午晚期 - 山地強光
-      skyColor: '#87CEEB', 
-      ambientIntensity: 1.3,  
-      sunIntensity: 2.2,      
-      sunPosition: [-10, 70, 5], 
-      sunColor: '#FFFFFF'
-    },
-    { hour: 13, // 正午過後 - 最強光照
-      skyColor: '#87CEEB', 
-      ambientIntensity: 1.4,  // 山地反射光
-      sunIntensity: 2.4,      
-      sunPosition: [10, 80, 10], 
-      sunColor: '#FFFFFF'
-    },
-    { hour: 16, // 下午 - 西傾陽光
-      skyColor: '#87CEEB', 
-      ambientIntensity: 1.1,  
-      sunIntensity: 1.9,      
-      sunPosition: [40, 50, 5], 
-      sunColor: '#FFF8DC'     // 米色陽光
-    },
-    { hour: 17, // 傍晚 - 山影漸長
-      skyColor: '#CD853F', // 秘魯色
-      ambientIntensity: 0.8,  
-      sunIntensity: 1.3,      
-      sunPosition: [60, 25, -10], 
-      sunColor: '#FF6347'
-    },
-    { hour: 19, // 黃昏 - 山後夕陽
-      skyColor: '#8B4513', // 馬鞍棕色
-      ambientIntensity: 0.5,  
-      sunIntensity: 0.8,      // 山峰遮擋
-      sunPosition: [80, 5, -20], 
-      sunColor: '#FF4500'
-    },
-    { hour: 21, // 入夜 - 山地藍調時刻
-      skyColor: '#483D8B', // 暗板岩藍
-      ambientIntensity: 0.35,
-      sunIntensity: 0.0,
-      sunPosition: [90, -5, -30],
-      sunColor: '#9370DB'
-    },
-    { hour: 24, // 深夜 - 高山寧靜
-      skyColor: '#2F4F4F', // 暗石板灰
-      ambientIntensity: 0.25, // 高山夜晚較暗
-      sunIntensity: 0.0,
-      sunPosition: [0, -15, 0],
-      sunColor: '#4169E1'
-    }
-  ]
-  
-  // 處理24小時循環（0點等同24點）
-  const normalizedHour = hour % 24
-  
-  // 找到當前時間所在的區間
-  let currentIndex = 0
-  let nextIndex = 1
-  let factor = 0
-  
-  for (let i = 0; i < timePoints.length; i++) {
-    const currentPoint = timePoints[i]
-    const nextPoint = timePoints[(i + 1) % timePoints.length]
-    
-    let currentHour = currentPoint.hour
-    let nextHour = nextPoint.hour
-    
-    // 處理跨天情況（夜晚到黎明）
-    if (nextHour < currentHour) {
-      nextHour += 24
-    }
-    
-    if ((normalizedHour >= currentHour && normalizedHour < nextHour) ||
-        (currentHour > nextPoint.hour && (normalizedHour >= currentHour || normalizedHour < nextPoint.hour))) {
-      currentIndex = i
-      nextIndex = (i + 1) % timePoints.length
-      
-      if (currentHour > nextPoint.hour) {
-        // 跨天情況
-        if (normalizedHour >= currentHour) {
-          factor = (normalizedHour - currentHour) / (24 - currentHour + nextPoint.hour)
-        } else {
-          factor = (24 - currentHour + normalizedHour) / (24 - currentHour + nextPoint.hour)
-        }
-      } else {
-        factor = (normalizedHour - currentHour) / (nextHour - currentHour)
-      }
-      break
-    }
-  }
-  
-  const current = timePoints[currentIndex]
-  const next = timePoints[nextIndex]
-  
-  // 平滑插值計算
-  return {
-    ambientIntensity: current.ambientIntensity + (next.ambientIntensity - current.ambientIntensity) * factor,
-    sunIntensity: current.sunIntensity + (next.sunIntensity - current.sunIntensity) * factor,
-    sunPosition: [
-      current.sunPosition[0] + (next.sunPosition[0] - current.sunPosition[0]) * factor,
-      current.sunPosition[1] + (next.sunPosition[1] - current.sunPosition[1]) * factor,
-      current.sunPosition[2] + (next.sunPosition[2] - current.sunPosition[2]) * factor
-    ],
-    backgroundColor: lerpColor(current.skyColor, next.skyColor, factor).getHexString(),
-    sunColor: lerpColor(current.sunColor, next.sunColor, factor).getHexString(),
-    fogColor: lerpColor(current.skyColor, next.skyColor, factor).getHexString()
-  }
-}
-
 export const EnvironmentLighting = () => {
-  const { hour, weather, timeOfDay } = useTimeStore()
+  const { weather, timeOfDay, hour, minute } = useTimeStore()
   const weatherSettings = WEATHER_SETTINGS[weather]
+  const timeSettings = TIME_SETTINGS[timeOfDay]
   
-  // 暴風雨閃電效果狀態
-  const [lightningActive, setLightningActive] = useState(false)
-  const [lightningIntensity, setLightningIntensity] = useState(0)
+  // 可愛的閃爍效果狀態
+  const [sparkleIntensity, setSparkleIntensity] = useState(1)
+  const sparkleTimer = useRef(0)
   
-  // 獲取動態時間設定
-  const currentSettings = interpolateTimeSettings(hour)
+  // 計算太陽位置（類似月亮系統）
+  const calculateSunPosition = React.useCallback((currentHour: number, currentMinute: number): [number, number, number] => {
+    // 將時間轉換為精確的小時數（包含分鐘）
+    const preciseHour = currentHour + currentMinute / 60
+    
+    // 白天時間範圍 6:00-18:00
+    let dayProgress = 0
+    
+    if (preciseHour >= 6 && preciseHour <= 18) {
+      // 6:00-18:00 的部分，12小時白天
+      dayProgress = (preciseHour - 6) / 12 // 從6點開始，12小時白天
+    } else {
+      // 夜晚時間，太陽在地平線下
+      dayProgress = preciseHour < 6 ? 0 : 1 // 早晨6點前或傍晚18點後
+    }
+    
+    // 太陽軌道參數 - 更高的天空半圓形軌道
+    const orbitRadius = 300 // 軌道半徑（與月亮相同）
+    const orbitHeight = 450 // 軌道高度基準（沿天空半圓形上方）
+    const orbitDepth = 100   // 軌道深度變化（與月亮相同）
+    
+    // 太陽沿弧形軌道移動 (從東到西)
+    const angle = dayProgress * Math.PI // 0 到 π 的弧度
+    
+    // 計算位置 - 正午時太陽位於天頂正中央
+    const x = 0 // 正午時固定在正中央，其他時間可以有輕微偏移
+    const y = orbitHeight + orbitRadius * Math.sin(angle) * 0.8 // 弧形高度，正午時達到最高點
+    const z = 0 // 正午時固定在正中央
+    
+    return [x, y, z]
+  }, [])
+  
+  // 獲取當前太陽位置
+  const sunPosition = calculateSunPosition(hour, minute)
+  
+  // 調試：輸出太陽軌道資訊 (可移除)
+  React.useEffect(() => {
+    if (timeOfDay === 'day') {
+      const preciseHour = hour + minute / 60
+      let dayProgress = 0
+      
+      if (preciseHour >= 6 && preciseHour <= 18) {
+        dayProgress = (preciseHour - 6) / 12
+      }
+      
+      console.log(`☀️ 太陽位置 - 時間: ${hour}:${minute.toString().padStart(2, '0')}, 軌道進度: ${(dayProgress * 100).toFixed(1)}%, 位置: [${sunPosition.map(p => p.toFixed(1)).join(', ')}]`)
+    }
+  }, [hour, minute, sunPosition, timeOfDay])
 
-  // 設置動態背景和霧效
-  useFrame((state) => {
-    // 暴風雨閃電邏輯
-    if (weather === 'storm') {
-      if (!lightningActive && Math.random() < 0.002) { // 0.2% 機率每幀
-        setLightningActive(true)
-        setLightningIntensity(2 + Math.random() * 3) // 2-5倍強度
-        
-        // 閃電持續時間
-        const duration = 100 + Math.random() * 200 // 100-300ms
-        setTimeout(() => {
-          setLightningActive(false)
-          setLightningIntensity(0)
-        }, duration)
-      }
+  // 可愛的動態效果和背景設置（無過渡效果）
+  useFrame((state, delta) => {
+    // 可愛的閃爍效果（僅晴天）
+    if (weatherSettings.sparkleEffect) {
+      sparkleTimer.current += delta
+      setSparkleIntensity(1 + Math.sin(sparkleTimer.current * 2) * 0.1)
     } else {
-      // 非暴風雨天氣時確保閃電效果關閉
-      if (lightningActive) {
-        setLightningActive(false)
-        setLightningIntensity(0)
-      }
+      setSparkleIntensity(1)
     }
     
-    // 動態背景色 - 根據天氣和閃電調整
-    let bgColor = new THREE.Color('#' + currentSettings.backgroundColor)
+    // 設置動森風格的背景色
+    if (timeSettings.backgroundColor) {
+      let bgColor = new THREE.Color(timeSettings.backgroundColor)
+      
+      // 根據天氣微調背景色
+      if (weather === 'drizzle') {
+        bgColor.multiplyScalar(0.95) // 細雨時稍微柔和
+      }
+      
+      // 設置背景色
+      state.scene.background = bgColor
+    }
     
-    if (weather === 'storm') {
-      if (lightningActive) {
-        bgColor = bgColor.lerp(new THREE.Color('#E6E6FA'), 0.6) // 閃電時變亮
+    // 動森風格的霧效設置 - 減少對天空的影響
+    if (timeSettings.fogColor) {
+      if (!state.scene.fog) {
+        state.scene.fog = new THREE.Fog(timeSettings.fogColor, 200, 1200) // 更遠的霧效，減少天空影響
       } else {
-        // 暴風雨時濃厚陰沉灰色
-        bgColor = bgColor.multiply(new THREE.Color(0.25, 0.27, 0.30)) // 保持灰色調
-        bgColor = bgColor.lerp(new THREE.Color('#4a4c52'), 0.4) // 混入中灰色
+        // 設置霧的顏色
+        state.scene.fog.color.setStyle(timeSettings.fogColor)
+        
+        // 根據時間和天氣設置霧的距離 - 都調遠一些
+        let fogNear = timeOfDay === 'day' ? 200 : 250 // 霧效更遠，不影響天空
+        let fogFar = weatherSettings.fogIntensity * (timeOfDay === 'day' ? 1200 : 1000)
+        
+        switch(weather) {
+          case 'drizzle':
+            fogNear = timeOfDay === 'day' ? 180 : 220
+            fogFar = timeOfDay === 'day' ? 1000 : 800
+            break
+          case 'clear':
+          default:
+            fogNear = timeOfDay === 'day' ? 220 : 250
+            fogFar = timeOfDay === 'day' ? 1400 : 1000
+        }
+        
+        state.scene.fog.near = fogNear
+        state.scene.fog.far = fogFar
       }
-    } else if (weather === 'rain' || weather === 'drizzle') {
-      bgColor.multiplyScalar(0.7) // 雨天時偏暗
-    } else if (weather === 'fog' || weather === 'mist') {
-      bgColor.multiplyScalar(0.6) // 霧天時偏暗
-    } else if (weather === 'snow') {
-      bgColor = bgColor.lerp(new THREE.Color('#F0F8FF'), 0.2) // 雪天偏冷白色
-    } else if (weather === 'windy') {
-      // 大風天氣 - 天空更明亮清澈，雲層被吹散
-      bgColor.multiplyScalar(1.1) // 比晴天更亮
-      bgColor = bgColor.lerp(new THREE.Color('#E0F6FF'), 0.1) // 略微偏向冷白色
-    }
-    
-    state.scene.background = bgColor
-    
-    // 更新霧效 - 根據天氣調整能見度
-    if (!state.scene.fog) {
-      state.scene.fog = new THREE.Fog('#' + currentSettings.fogColor, 50, 800)
-    } else {
-      state.scene.fog.color.setStyle('#' + currentSettings.fogColor)
-      
-      // 根據天氣調整霧的距離
-      let fogNear = 80
-      let fogFar = weatherSettings.fogIntensity * 1000
-      
-      switch(weather) {
-        case 'fog':
-          fogNear = 15  // 濃霧，能見度很低
-          fogFar = 200
-          break
-        case 'mist':
-          fogNear = 30  // 薄霧，能見度低
-          fogFar = 400
-          break
-        case 'rain':
-        case 'drizzle':
-          fogNear = 50  // 雨天降低能見度
-          fogFar = 500
-          break
-        case 'storm':
-          fogNear = 25  // 暴風雨能見度很差
-          fogFar = 300
-          break
-        case 'snow':
-          fogNear = 40  // 雪天輕微影響能見度
-          fogFar = 600
-          break
-        case 'windy':
-          fogNear = 120 // 大風吹散霧氣，能見度極佳
-          fogFar = 1200 // 比晴天看得更遠
-          break
-        default:
-          fogNear = 100 // 晴天能見度佳
-          fogFar = 1000
-      }
-      
-      state.scene.fog.near = fogNear
-      state.scene.fog.far = fogFar
     }
   })
 
-  // 根據天氣調整環境光顏色
+  // 可愛風格的環境光顏色 - 減少對天空的影響
   const getWeatherAmbientColor = () => {
-    const baseColor = timeOfDay === 'day' ? "#FFFFFF" : "#6495ED"
+    const baseColor = timeOfDay === 'day' ? "#F0F8FF" : "#B0E0E6" // 淡藍白/更亮夜晚粉水藍
     
     switch(weather) {
-      case 'rain':
       case 'drizzle':
-        return timeOfDay === 'day' ? "#B0C4DE" : "#4682B4" // 藍灰色調
-      case 'storm':
-        return timeOfDay === 'day' ? "#708090" : "#2F4F4F" // 暗灰色調
-      case 'fog':
-      case 'mist':
-        return timeOfDay === 'day' ? "#F5F5DC" : "#D3D3D3" // 米色/淺灰調
-      case 'snow':
-        return timeOfDay === 'day' ? "#F0F8FF" : "#E6E6FA" // 偏冷白色
-      case 'windy':
-        return timeOfDay === 'day' ? "#F0F8FF" : "#87CEEB" // 大風時天空清澈明亮
+        return timeOfDay === 'day' ? "#E6F3FF" : "#87CEEB" // 明亮淺藍/天藍色
+      case 'clear':
       default:
         return baseColor
     }
   }
 
-  // 根據天氣調整太陽光顏色
+  // 可愛風格的太陽/月光顏色
   const getWeatherSunColor = () => {
-    const baseColor = currentSettings.sunColor
+    const baseColor = timeSettings.sunColor || '#FFFFFF'
     
     switch(weather) {
-      case 'rain':
       case 'drizzle':
-        return 'B0C4DE' // 淡藍色
-      case 'storm':
-        return '778899' // 淡石板灰
-      case 'fog':
-      case 'mist':
-        return 'F5DEB3' // 小麥色
-      case 'snow':
-        return 'F0F8FF' // 愛麗絲藍
-      case 'windy':
-        return 'FFFFFF' // 大風天陽光更純淨
+        return timeOfDay === 'day' ? '#D6EBFF' : '#B0E0E6' // 更深淺藍/更亮粉水藍
+      case 'clear':
       default:
         return baseColor
     }
@@ -294,73 +141,151 @@ export const EnvironmentLighting = () => {
 
   return (
     <>
-      {/* 動態環境光 - 根據天氣調整顏色 */}
+      {/* 可愛風格的主要環境光 */}
       <ambientLight 
         color={getWeatherAmbientColor()} 
-        intensity={(currentSettings.ambientIntensity * weatherSettings.lightMultiplier) + (weather === 'storm' && lightningActive ? lightningIntensity : 0)} 
+        intensity={(timeSettings.ambientIntensity * weatherSettings.lightMultiplier * sparkleIntensity)}
       />
       
-      {/* 主要太陽光/月光 - 根據天氣調整顏色 */}
+      {/* 主要太陽光/月光 - 動態位置系統 */}
       <directionalLight
-        position={currentSettings.sunPosition}
-        color={'#' + getWeatherSunColor()}
-        intensity={(currentSettings.sunIntensity * weatherSettings.lightMultiplier) + (weather === 'storm' && lightningActive ? lightningIntensity * 0.5 : 0)}
+        position={timeOfDay === 'day' ? sunPosition : timeSettings.sunPosition}
+        color={getWeatherSunColor()}
+        intensity={(timeSettings.sunIntensity * weatherSettings.lightMultiplier * sparkleIntensity)}
         castShadow={timeOfDay === 'day'}
-        shadow-mapSize-width={2048}
-        shadow-mapSize-height={2048}
-        shadow-camera-far={500}
-        shadow-camera-near={0.1}
-        shadow-camera-left={-200}
-        shadow-camera-right={200}
-        shadow-camera-top={200}
-        shadow-camera-bottom={-200}
+        shadow-mapSize-width={1024}
+        shadow-mapSize-height={1024}
+        shadow-camera-far={300}
+        shadow-camera-near={1}
+        shadow-camera-left={-100}
+        shadow-camera-right={100}
+        shadow-camera-top={100}
+        shadow-camera-bottom={-100}
       />
       
-      {/* 天空半球光 - 提供整體照明 */}
+      {/* 可愛的天空半球光 */}
       <hemisphereLight
-        color={timeOfDay === 'day' ? "#87CEEB" : "#5A5A8B"} // 天空色
-        groundColor={timeOfDay === 'day' ? "#DEB887" : "#2E2E5C"} // 地面色
-        intensity={timeOfDay === 'day' ? 1.5 : 0.4} // 大幅增強白天半球光
+        color={timeOfDay === 'day' ? "#87CEEB" : "#B0E0E6"} // 天空藍色 / 更亮夜晚粉水藍
+        groundColor={timeOfDay === 'day' ? "#FFF8DC" : "#87CEEB"} // 古董白 / 更亮夜空天藍色  
+        intensity={timeOfDay === 'day' ? 2.0 : 0.9} // 調亮白天半球光到最亮（從1.2提升到2.0）
       />
       
-      {/* 白天額外的全域照明系統 */}
-      {timeOfDay === 'day' && (
+      {/* 柔和的填充光系統 */}
+      <directionalLight
+        position={timeOfDay === 'day' ? [-10, 60, 15] : [0, -10, 0]} // 白天更高的填充光位置，配合主光源
+        color={timeOfDay === 'day' ? "#FFFFF0" : "#6495ED"} // 象牙白 / 原始月光色
+        intensity={timeOfDay === 'day' ? 1.2 * weatherSettings.lightMultiplier : 0.7 * weatherSettings.lightMultiplier} // 調亮白天填充光到最亮（從0.6提升到1.2）
+        castShadow={false}
+      />
+      
+      {/* 可愛的補充光（讓一切都明亮可愛）*/}
+      <pointLight
+        position={[0, 90, 0]} // 正上方的補充光位置
+        color={timeOfDay === 'day' ? "#FFFAF0" : "#6495ED"} // 花白色 / 原始月光色
+        intensity={timeOfDay === 'day' ? 1.0 * weatherSettings.lightMultiplier * sparkleIntensity : 0.5 * weatherSettings.lightMultiplier * sparkleIntensity} // 調亮白天補充光到最亮（從0.5提升到1.0）
+        distance={250} // 更大的照射範圍
+        decay={1.8} // 減少衰減，讓光線傳播更遠
+      />
+      
+      {/* 太陽白光照射效果 - 讓3D模型有被陽光直射的感覺 */}
+      {timeOfDay === 'day' && weather === 'clear' && (
         <>
-          {/* 主要填充光 - 消除陰影區域 */}
+          {/* 強烈的太陽白光 - 主要照射光源 */}
           <directionalLight
-            position={[-currentSettings.sunPosition[0], currentSettings.sunPosition[1] * 0.5, -currentSettings.sunPosition[2]]}
-            color="#E6F3FF"
-            intensity={0.8 * weatherSettings.lightMultiplier}
+            position={sunPosition}
+            color="#FFFFFF" // 純白太陽光
+            intensity={3.5 * sparkleIntensity} // 非常強烈的光線
+            castShadow={true} // 產生清晰陰影增強立體感
+            shadow-mapSize-width={2048}
+            shadow-mapSize-height={2048}
+            shadow-camera-far={500}
+            shadow-camera-near={0.5}
+            shadow-camera-left={-150}
+            shadow-camera-right={150}
+            shadow-camera-top={150}
+            shadow-camera-bottom={-150}
+          />
+          
+          {/* 太陽高光效果 - 產生物體表面的白光反射 */}
+          <directionalLight
+            position={[sunPosition[0] * 0.9, sunPosition[1] * 1.1, sunPosition[2] * 0.9]} // 略微偏移
+            color="#FFFFF0" // 極亮的象牙白
+            intensity={2.8 * sparkleIntensity}
             castShadow={false}
           />
           
-          {/* 地面反射光 - 從下方提供照明 */}
+          {/* 邊緣光效果 - 模擬物體邊緣的太陽反光 */}
           <directionalLight
-            position={[0, -30, 0]}
-            color="#F5F5DC" // 米色反射光
-            intensity={0.4 * weatherSettings.lightMultiplier}
+            position={[sunPosition[0] * 1.2, sunPosition[1] * 0.8, sunPosition[2] * 1.1]}
+            color="#FEFEFE" // 接近純白
+            intensity={2.2 * sparkleIntensity}
+            castShadow={false}
+          />
+        </>
+      )}
+      
+      {/* 細雨天的柔和白光 */}
+      {timeOfDay === 'day' && weather === 'drizzle' && (
+        <directionalLight
+          position={sunPosition}
+          color="#F8F8FF" // 柔和的白色帶一點藍調
+          intensity={1.5 * sparkleIntensity} // 增強一些，讓模型也有白光感
+          castShadow={true}
+          shadow-mapSize-width={1024}
+          shadow-mapSize-height={1024}
+        />
+      )}
+
+      {/* 夜晚月光灑落大地效果 */}
+      {timeOfDay === 'night' && (
+        <>
+          {/* 主要月光 - 從月亮位置灑下的銀色光芒 */}
+          <directionalLight
+            position={timeSettings.sunPosition} // 使用夜晚的月亮位置
+            color="#E6F3FF" // 清冷的月光藍白色
+            intensity={1.8 * sparkleIntensity} // 強烈的月光
+            castShadow={true}
+            shadow-mapSize-width={1024}
+            shadow-mapSize-height={1024}
+            shadow-camera-far={300}
+            shadow-camera-near={1}
+            shadow-camera-left={-100}
+            shadow-camera-right={100}
+            shadow-camera-top={100}
+            shadow-camera-bottom={-100}
+          />
+          
+          {/* 月光高光效果 - 物體表面的月光反射 */}
+          <directionalLight
+            position={[timeSettings.sunPosition[0] * 0.8, timeSettings.sunPosition[1] * 1.2, timeSettings.sunPosition[2] * 1.1]}
+            color="#F0F8FF" // 淡藍月光白
+            intensity={1.2 * sparkleIntensity}
             castShadow={false}
           />
           
-          {/* 側面補充光 - 確保側面也有照明 */}
+          {/* 月光邊緣光 - 營造朦朧的夜晚輪廓 */}
           <directionalLight
-            position={[80, 30, 50]}
-            color="#F0F8FF" // 淡藍白光
-            intensity={0.5 * weatherSettings.lightMultiplier}
+            position={[timeSettings.sunPosition[0] * 1.3, timeSettings.sunPosition[1] * 0.9, timeSettings.sunPosition[2] * 0.7]}
+            color="#E0E6FF" // 更深的月光藍
+            intensity={0.8 * sparkleIntensity}
             castShadow={false}
           />
           
+          {/* 地面月光反射 - 模擬月光在地面的柔和反射 */}
           <directionalLight
-            position={[-80, 30, -50]}
-            color="#F0F8FF"
-            intensity={0.5 * weatherSettings.lightMultiplier}
+            position={[0, -20, 0]} // 從下方向上照射，模擬地面反光
+            color="#D6E3FF" // 柔和的反射月光
+            intensity={0.4 * sparkleIntensity}
             castShadow={false}
           />
           
-          {/* 額外的環境光增強 */}
-          <ambientLight 
-            color="#FFFFFF" 
-            intensity={0.3 * weatherSettings.lightMultiplier} 
+          {/* 大範圍月光氛圍 - 整體夜晚氛圍光 */}
+          <pointLight
+            position={[0, 100, 0]} // 高空位置
+            color="#E6F0FF" // 夜空月光色
+            intensity={1.0 * sparkleIntensity}
+            distance={300} // 大範圍照射
+            decay={1.5}
           />
         </>
       )}

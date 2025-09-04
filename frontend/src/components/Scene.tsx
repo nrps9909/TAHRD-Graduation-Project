@@ -8,10 +8,10 @@ import { WindEffect } from './3D/WindEffect'
 import { DrizzleEffect } from './3D/DrizzleEffect'
 import { StormDustEffect } from './3D/StormDustEffect'
 import { MountainStormEffect } from './3D/MountainStormEffect'
-import { CloudyEffect } from './3D/CloudyEffect'
-import { MountainCloudLayer } from './3D/MountainCloudLayer'
-import { SkyDome, ThinWhiteClouds } from './3D/SkyDome'
+import { SkyDome } from './3D/SkyDome'
 import { NightSky } from './3D/NightSky'
+import { Moon } from './3D/Moon'
+import { Sun } from './3D/Sun'
 import { MountainFog, HighAltitudeMist, DawnMist } from './3D/MountainFog'
 import { MountainAtmosphere, MountainReflection, MountainWind } from './3D/MountainAtmosphere'
 import { MountainClouds } from './3D/MountainClouds'
@@ -71,32 +71,16 @@ export const Scene = () => {
       {/* 動態天空穹頂系統 */}
       <SkyDome />
       
-      {/* 稀薄白雲 */}
-      <ThinWhiteClouds />
-      
-      {/* 山地霧效系統 */}
-      <MountainFog />
-      
-      {/* 破曉薄霧 - 真實山谷晨霧效果 */}
-      <DawnMist />
-      
-      {/* 高海拔雲霧 */}
-      <HighAltitudeMist />
-      
-      {/* 山脈雲層移動特效 */}
-      <MountainClouds />
-      
-      {/* 山地大氣層效果 */}
-      <MountainAtmosphere />
-      
-      {/* 山地反射效果 */}
-      <MountainReflection />
-      
-      {/* 山地風效 */}
-      <MountainWind />
+      {/* 移除多雲效果：山地霧效系統、破曉薄霧、高海拔雲霧、山脈雲層、山地大氣層、山地反射、山地風效 */}
       
       {/* 夜空系統 - 只在夜晚顯示星星 */}
       {timeOfDay === 'night' && <NightSky />}
+      
+      {/* 動森風格月亮 - 只在夜晚顯示 */}
+      <Moon />
+      
+      {/* 3D太陽 - 只在白天顯示 */}
+      <Sun />
       
       {/* 魔法懸浮光粒子 - 溫馨魔幻的發光微塵 */}
       <MagicalFloatingParticles />
@@ -122,11 +106,6 @@ export const Scene = () => {
       {/* 山雷雷電效果 */}
       <MountainStormEffect />
       
-      {/* 多雲效果 */}
-      <CloudyEffect />
-      
-      {/* 山脈厚重雲霧層 */}
-      <MountainCloudLayer />
       
       {/* 海洋環境 */}
       <Ocean />

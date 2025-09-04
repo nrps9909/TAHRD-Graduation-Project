@@ -54,69 +54,37 @@ export const SkyDome = () => {
           vec3 sunDir = normalize(sunPosition);
           float sunInfluence = max(0.0, dot(worldPos, sunDir));
           
-          // 基於小時的更精確時間計算
+          // 簡化為只有白天和夜晚兩種狀態
           float hourNormalized = mixFactor * 24.0; // 0-24小時
           vec3 color;
           
-          // 日出時段 (5-8點)
-          if (hourNormalized >= 5.0 && hourNormalized < 8.0) {
-            float factor = (hourNormalized - 5.0) / 3.0;
-            vec3 dawn = vec3(1.0, 0.6, 0.3); // 橙紅色黎明
-            vec3 morning = vec3(0.5, 0.8, 1.0); // 淡藍色早晨
-            color = mix(dawn, morning, factor);
+          // 白天 (6-18點)
+          if (hourNormalized >= 6.0 && hourNormalized < 18.0) {
+            color = vec3(0.53, 0.81, 0.92); // 天空藍色 #87CEEB
             
-            // 太陽光暈效果
-            float sunGlow = pow(sunInfluence, 8.0) * (1.0 - factor * 0.7);
-            color += vec3(1.0, 0.7, 0.4) * sunGlow;
+            // 晴天時添加太陽光暈效果
+            if (weatherDarkness < 0.1) { // 只在晴天時顯示
+              float sunGlow = pow(sunInfluence, 8.0) * 0.3;
+              color += vec3(1.0, 0.95, 0.8) * sunGlow; // 溫暖的太陽光色
+            }
           }
-          // 白天 (8-17點)
-          else if (hourNormalized >= 8.0 && hourNormalized < 17.0) {
-            color = vec3(0.53, 0.81, 0.92); // 天藍色 #87CEEB
-            
-            // 微妙的太陽光暈
-            float sunGlow = pow(sunInfluence, 12.0) * 0.3;
-            color += vec3(1.0, 1.0, 0.8) * sunGlow;
-          }
-          // 日落時段 (17-20點)
-          else if (hourNormalized >= 17.0 && hourNormalized < 20.0) {
-            float factor = (hourNormalized - 17.0) / 3.0;
-            vec3 day = vec3(0.53, 0.81, 0.92);
-            vec3 sunset = vec3(1.0, 0.4, 0.2); // 橙紅色日落
-            color = mix(day, sunset, factor);
-            
-            // 強烈的太陽光暈效果
-            float sunGlow = pow(sunInfluence, 6.0) * (1.0 - factor * 0.3);
-            color += vec3(1.0, 0.5, 0.2) * sunGlow;
-          }
-          // 黃昏 (20-22點)
-          else if (hourNormalized >= 20.0 && hourNormalized < 22.0) {
-            float factor = (hourNormalized - 20.0) / 2.0;
-            vec3 sunset = vec3(1.0, 0.4, 0.2);
-            vec3 dusk = vec3(0.2, 0.1, 0.4); // 紫色黃昏
-            color = mix(sunset, dusk, factor);
-          }
-          // 夜晚 (22-5點)
+          // 夜晚 (18-6點)
           else {
-            color = vec3(0.1, 0.1, 0.2); // 深藍夜空
+            color = vec3(0.53, 0.81, 0.92); // 夜晚保持天藍色 #87CEEB
+            color *= 0.3; // 降低亮度以區分夜晚
             
             // 月光效果（當太陽在地平線下時）
             if (sunPosition.y < 0.0) {
               vec3 moonDir = normalize(vec3(-sunPosition.x, abs(sunPosition.y), -sunPosition.z));
               float moonInfluence = max(0.0, dot(worldPos, moonDir));
-              float moonGlow = pow(moonInfluence, 15.0) * 0.2;
+              float moonGlow = pow(moonInfluence, 15.0) * 0.3;
               color += vec3(0.8, 0.8, 1.0) * moonGlow;
             }
           }
           
-          // 高度漸變效果 - 地平線更暗
-          float heightGradient = smoothstep(-0.1, 0.3, height);
-          color = mix(color * 0.3, color, heightGradient);
+          // 移除高度漸變效果，保持天空藍色統一
           
-          // 大氣散射效果
-          float atmosphere = 1.0 - abs(height);
-          atmosphere = pow(atmosphere, 2.0);
-          vec3 atmosphereColor = vec3(0.8, 0.9, 1.0);
-          color = mix(color, atmosphereColor, atmosphere * 0.1);
+          // 移除大氣散射效果，保持純淨的天空藍色
           
           // 天氣效果 - 山雷時天空變得濃厚陰沉的灰色
           if (weatherDarkness > 0.5) {
@@ -155,7 +123,11 @@ export const SkyDome = () => {
       skyRef.current.material.uniforms.sunPosition.value = sunPos
       
       // 根據天氣設定陰暗度
-      const weatherDarkness = weather === 'storm' ? 1.0 : 0.0
+      let weatherDarkness = 0.0
+      if (weather === 'storm') weatherDarkness = 1.0
+      else if (weather === 'drizzle') weatherDarkness = 0.2
+      else if (weather === 'clear') weatherDarkness = 0.0
+      
       skyRef.current.material.uniforms.weatherDarkness.value = weatherDarkness
     }
   })
