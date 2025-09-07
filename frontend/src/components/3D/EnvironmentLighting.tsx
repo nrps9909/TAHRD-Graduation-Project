@@ -120,6 +120,8 @@ export const EnvironmentLighting = () => {
     switch(weather) {
       case 'drizzle':
         return timeOfDay === 'day' ? "#E6F3FF" : "#87CEEB" // 明亮淺藍/天藍色
+      case 'snow':
+        return timeOfDay === 'day' ? "#F8FAFF" : "#E0F0FF" // 雪白柔光/淡藍雪光
       case 'clear':
       default:
         return baseColor
@@ -133,9 +135,26 @@ export const EnvironmentLighting = () => {
     switch(weather) {
       case 'drizzle':
         return timeOfDay === 'day' ? '#D6EBFF' : '#B0E0E6' // 更深淺藍/更亮粉水藍
+      case 'snow':
+        return timeOfDay === 'day' ? '#F0F8FF' : '#C8E6FF' // 柔和雪光/冷藍月光
       case 'clear':
       default:
         return baseColor
+    }
+  }
+
+  // 雪天專用的天空和地面顏色
+  const getHemisphereLightColors = () => {
+    if (weather === 'snow') {
+      return {
+        sky: timeOfDay === 'day' ? "#E8F4FF" : "#D0E8FF", // 雪白天空/冷藍夜空
+        ground: "#FFFFFF" // 雪白地面
+      }
+    }
+    
+    return {
+      sky: timeOfDay === 'day' ? "#87CEEB" : "#E8F4FF", // 天空藍色 / 夜晚月光色
+      ground: timeOfDay === 'day' ? "#FFF8DC" : "#F0F8FF" // 古董白 / 夜晚潔白地面色
     }
   }
 
@@ -165,8 +184,8 @@ export const EnvironmentLighting = () => {
       
       {/* 可愛的天空半球光 */}
       <hemisphereLight
-        color={timeOfDay === 'day' ? "#87CEEB" : "#E8F4FF"} // 天空藍色 / 夜晚月光色
-        groundColor={timeOfDay === 'day' ? "#FFF8DC" : "#F0F8FF"} // 古董白 / 夜晚潔白地面色
+        color={getHemisphereLightColors().sky}
+        groundColor={getHemisphereLightColors().ground}
         intensity={timeOfDay === 'day' ? 2.0 : 1.8} // 提高夜晚半球光強度
       />
       

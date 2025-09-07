@@ -9,6 +9,7 @@ import { DrizzleEffect } from './3D/DrizzleEffect'
 import { StormDustEffect } from './3D/StormDustEffect'
 import { MountainStormEffect } from './3D/MountainStormEffect'
 import { SkyDome, ClearSkyWhiteClouds } from './3D/SkyDome'
+import { SnowEffect, SnowAccumulation } from './3D/SnowEffect'
 import { CuteCloudySky } from './3D/CuteCloudySky'
 import { NightSky } from './3D/NightSky'
 import { Moon } from './3D/Moon'
@@ -110,6 +111,11 @@ export const Scene = () => {
       {/* 山雷雷電效果 */}
       <MountainStormEffect />
       
+      {/* 可愛的雪花效果 */}
+      <SnowEffect />
+      
+      {/* 地面積雪效果 */}
+      <SnowAccumulation />
       
       {/* 海洋環境 */}
       <Ocean />

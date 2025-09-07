@@ -42,10 +42,8 @@ export const TimeControl = () => {
 
   const weatherOptions: { key: WeatherType; label: string; emoji: string }[] = [
     { key: 'clear', label: '晴天', emoji: '☀️' },
-    { key: 'rain', label: '雨天', emoji: '🌧️' },
-    { key: 'snow', label: '雪天', emoji: '❄️' },
-    { key: 'fog', label: '霧天', emoji: '🌫️' },
-    { key: 'storm', label: '暴風雨', emoji: '⛈️' }
+    { key: 'drizzle', label: '細雨', emoji: '🌧️' },
+    { key: 'snow', label: '雪天', emoji: '❄️' }
   ]
 
   return (

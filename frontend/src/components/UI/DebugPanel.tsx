@@ -23,7 +23,8 @@ export const DebugPanel = () => {
 
   const weatherOptions = [
     { value: 'clear', label: '☀️ 晴朗', color: 'text-yellow-500' },
-    { value: 'drizzle', label: '🌦️ 細雨', color: 'text-blue-400' }
+    { value: 'drizzle', label: '🌦️ 細雨', color: 'text-blue-400' },
+    { value: 'snow', label: '❄️ 下雪', color: 'text-blue-200' }
   ]
 
   const timePresets = [
@@ -146,13 +147,13 @@ export const DebugPanel = () => {
       {/* Quick Actions */}
       <div className="pt-4 border-t border-gray-700">
         <div className="text-sm font-medium text-gray-300 mb-2">🚀 快速測試</div>
-        <div className="flex gap-2">
+        <div className="grid grid-cols-3 gap-2">
           <button
             onClick={() => {
               setWeather('drizzle')
               handleTimeChange(21, 0)
             }}
-            className="flex-1 px-2 py-1 text-xs bg-blue-600 hover:bg-blue-500 rounded"
+            className="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-500 rounded"
           >
             夜晚細雨
           </button>
@@ -161,9 +162,18 @@ export const DebugPanel = () => {
               setWeather('clear')
               handleTimeChange(12, 0)
             }}
-            className="flex-1 px-2 py-1 text-xs bg-yellow-600 hover:bg-yellow-500 rounded"
+            className="px-2 py-1 text-xs bg-yellow-600 hover:bg-yellow-500 rounded"
           >
             正午晴朗
+          </button>
+          <button
+            onClick={() => {
+              setWeather('snow')
+              handleTimeChange(19, 0)
+            }}
+            className="px-2 py-1 text-xs bg-blue-300 hover:bg-blue-200 text-gray-800 rounded"
+          >
+            傍晚飘雪
           </button>
         </div>
       </div>

@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 
 export type TimeOfDay = 'day' | 'night'
-export type WeatherType = 'clear' | 'drizzle'
+export type WeatherType = 'clear' | 'drizzle' | 'snow'
 
 interface TimeState {
   timeOfDay: TimeOfDay
@@ -44,8 +44,9 @@ const getTimeOfDayFromHour = (hour: number): TimeOfDay => {
 
 // 簡化的兩種天氣權重系統
 const WEATHER_WEIGHTS: Record<WeatherType, number> = {
-  clear: 60,    // 60% 晴天 - 美好天氣為主
-  drizzle: 40   // 40% 細雨 - 溫柔的細雨
+  clear: 50,    // 50% 晴天 - 美好天氣為主
+  drizzle: 30,  // 30% 細雨 - 溫柔的細雨
+  snow: 20      // 20% 下雪 - 浪漫雪花
 }
 
 // 根據時間調整的簡化天氣系統
@@ -100,8 +101,9 @@ const getMountainWeather = (hour: number): WeatherType => {
 // 獲取相鄰天氣的權重加成，讓天氣變化更平滑
 const getAdjacentWeatherBonus = (currentWeather: WeatherType): Partial<Record<WeatherType, number>> => {
   const adjacencyMap: Record<WeatherType, WeatherType[]> = {
-    clear: ['drizzle'],    // 晴天 -> 細雨
-    drizzle: ['clear']     // 細雨 -> 晴天
+    clear: ['drizzle', 'snow'],    // 晴天 -> 細雨或下雪
+    drizzle: ['clear', 'snow'],    // 細雨 -> 晴天或下雪
+    snow: ['clear', 'drizzle']     // 下雪 -> 晴天或細雨
   }
 
   const bonus: Partial<Record<WeatherType, number>> = {}
@@ -344,5 +346,13 @@ export const WEATHER_SETTINGS = {
     snowIntensity: 0,
     lightMultiplier: 0.9,   // 溫柔光線
     sparkleEffect: false
+  },
+  snow: {
+    name: '下雪',
+    fogIntensity: 0.7,      // 雪霧朦朧
+    rainIntensity: 0,
+    snowIntensity: 1.0,     // 浪漫雪花
+    lightMultiplier: 0.8,   // 柔和雪光
+    sparkleEffect: true     // 雪花閃爍
   },
 }
