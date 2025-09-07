@@ -62,11 +62,11 @@ export const DrizzleRain = ({ intensity = 1 }: { intensity?: number }) => {
             emissiveIntensity = 0.15 // 增強發光
           }
         } else {
-          // 夜晚（18-6點）：動森風格的柔和藍白光
-          rainColor = 0xE6F3FF  // 非常淡的藍白色
-          rainOpacity = 0.85
-          emissive = 0xB0E0E6   // 淺藍發光
-          emissiveIntensity = 0.18 // 夜晚發光更明顯
+          // 夜晚（18-6點）：增強藍光效果
+          rainColor = 0xCCE7FF  // 明亮的藍白色
+          rainOpacity = 0.95
+          emissive = 0x4FC3F7   // 強烈的藍色發光
+          emissiveIntensity = 0.35 // 大幅增強夜晚發光效果
         }
       }
       
@@ -85,16 +85,24 @@ export const DrizzleRain = ({ intensity = 1 }: { intensity?: number }) => {
           toneMapped: false
         })
       } else {
-        // 夜晚使用基礎材質
+        // 夜晚使用增強發光材質
         material = new THREE.MeshBasicMaterial({
           color: rainColor,
           transparent: true,
           opacity: rainOpacity,
-          emissive: emissive,
-          emissiveIntensity: emissiveIntensity,
           fog: false,
-          toneMapped: false
+          toneMapped: false,
+          // 增強夜晚藍光效果的附加屬性
+          blending: THREE.AdditiveBlending, // 使用加法混合增強發光效果
+          depthWrite: false // 防止深度衝突
         })
+        // 在創建後設置emissive屬性
+        if (material.emissive) {
+          material.emissive.setHex(emissive)
+        }
+        if ('emissiveIntensity' in material) {
+          (material as any).emissiveIntensity = emissiveIntensity
+        }
       }
       
       const mesh = new THREE.Mesh(geometry, material)
@@ -106,9 +114,10 @@ export const DrizzleRain = ({ intensity = 1 }: { intensity?: number }) => {
         (Math.random() - 0.5) * 2000  // Z軸也擴展到2000
       )
       
-      // 隨機旋轉讓雨滴角度更自然
-      mesh.rotation.x = Math.random() * 0.2 - 0.1
-      mesh.rotation.z = Math.random() * 0.2 - 0.1
+      // 隨機旋轉讓雨滴角度更自然 - 限制在 ±15 度內
+      const maxTilt = Math.PI / 12 // 15 度轉弧度
+      mesh.rotation.x = Math.random() * maxTilt * 2 - maxTilt // ±15 度範圍
+      mesh.rotation.z = Math.random() * maxTilt * 2 - maxTilt // ±15 度範圍
       
       // 儲存速度資料和美麗效果參數
       const fallSpeed = intensity >= 4 ? -Math.random() * 4.0 - 3.5 : intensity > 2 ? -Math.random() * 2.5 - 2.0 : -Math.random() * 0.8 - 0.6
@@ -154,18 +163,24 @@ export const DrizzleRain = ({ intensity = 1 }: { intensity?: number }) => {
       mesh.position.x += Math.sin(time * driftSpeed + index * 0.02) * driftIntensity
       mesh.position.z += Math.cos(time * driftSpeed * 0.8 + index * 0.02) * (driftIntensity * 0.75)
       
-      // 輕微旋轉讓雨滴更生動
+      // 輕微旋轉讓雨滴更生動，但限制在 ±15 度內
       mesh.rotation.x += 0.002 * intensity
       mesh.rotation.z += 0.001 * intensity
+      
+      // 確保旋轉角度不超過 ±15 度
+      const maxTiltLimit = Math.PI / 12 // 15 度轉弧度
+      mesh.rotation.x = Math.max(-maxTiltLimit, Math.min(maxTiltLimit, mesh.rotation.x))
+      mesh.rotation.z = Math.max(-maxTiltLimit, Math.min(maxTiltLimit, mesh.rotation.z))
       
       // 重置到頂部
       if (mesh.position.y < -5) {
         mesh.position.y = 200 + Math.random() * 100
         mesh.position.x = (Math.random() - 0.5) * 2000
         mesh.position.z = (Math.random() - 0.5) * 2000
-        // 重置旋轉
-        mesh.rotation.x = Math.random() * 0.2 - 0.1
-        mesh.rotation.z = Math.random() * 0.2 - 0.1
+        // 重置旋轉 - 限制在 ±15 度內
+        const maxTiltReset = Math.PI / 12 // 15 度轉弧度
+        mesh.rotation.x = Math.random() * maxTiltReset * 2 - maxTiltReset // ±15 度範圍
+        mesh.rotation.z = Math.random() * maxTiltReset * 2 - maxTiltReset // ±15 度範圍
       }
       
       // 邊界檢查
@@ -185,12 +200,30 @@ export const DrizzleRain = ({ intensity = 1 }: { intensity?: number }) => {
         // 動態調整透明度和發光強度
         mesh.material.opacity = mesh.userData.originalOpacity * (0.8 + shimmerValue * 0.2)
         
-        // 恢復原始簡單效果
+        // 增強夜晚藍光脈動效果
         if (timeOfDay === 'day' && hour >= 6 && hour < 12) {
           // 早上：無特殊效果，保持原始簡潔
-          mesh.material.emissiveIntensity = mesh.userData.originalEmissiveIntensity
+          if (mesh.material instanceof THREE.MeshLambertMaterial) {
+            mesh.material.emissiveIntensity = mesh.userData.originalEmissiveIntensity
+          }
+        } else if (timeOfDay === 'night') {
+          // 夜晚：強化藍光脈動效果
+          const nightGlowPulse = Math.sin(time * 1.5 + shimmerPhase) * 0.5 + 0.5
+          if (mesh.material instanceof THREE.MeshBasicMaterial) {
+            // 基礎材質使用發光顏色和透明度變化來模擬脈動
+            const glowIntensity = 0.4 + nightGlowPulse * 0.5
+            if (mesh.material.emissive) {
+              mesh.material.emissive.setHex(0x4FC3F7)
+              mesh.material.emissive.multiplyScalar(glowIntensity)
+            }
+            mesh.material.opacity = mesh.userData.originalOpacity * (0.8 + nightGlowPulse * 0.3)
+          } else if (mesh.material instanceof THREE.MeshLambertMaterial) {
+            mesh.material.emissiveIntensity = mesh.userData.originalEmissiveIntensity * (0.7 + nightGlowPulse * 0.6)
+          }
         } else {
-          mesh.material.emissiveIntensity = mesh.userData.originalEmissiveIntensity * (0.8 + shimmerValue * 0.2)
+          if (mesh.material instanceof THREE.MeshLambertMaterial) {
+            mesh.material.emissiveIntensity = mesh.userData.originalEmissiveIntensity * (0.8 + shimmerValue * 0.2)
+          }
         }
       }
     })
@@ -210,6 +243,7 @@ export const DrizzleRain = ({ intensity = 1 }: { intensity?: number }) => {
 // 地面水花效果 - 細雨打在地面產生的小水花（使用Sprite避免正方形）
 export const RainSplash = ({ intensity = 1 }: { intensity?: number }) => {
   const splashRef = useRef<THREE.Group>(null)
+  const { timeOfDay } = useTimeStore()
   
   const splashSprites = useMemo(() => {
     const sprites = []
@@ -224,14 +258,24 @@ export const RainSplash = ({ intensity = 1 }: { intensity?: number }) => {
     
     context.clearRect(0, 0, 32, 32)
     
-    // 創建更亮的圓形水滴漸變
+    // 創建水滴漸變 - 夜晚時使用藍光效果
     const centerX = 16
     const centerY = 16
     const gradient = context.createRadialGradient(centerX, centerY, 0, centerX, centerY, 16)
-    gradient.addColorStop(0, 'rgba(255, 255, 255, 1)')     // 中心純白，更亮
-    gradient.addColorStop(0.3, 'rgba(220, 240, 255, 0.9)') // 內圈亮藍白
-    gradient.addColorStop(0.7, 'rgba(180, 220, 240, 0.6)') // 中間藍色，更不透明
-    gradient.addColorStop(1, 'rgba(180, 220, 240, 0)')     // 邊緣透明
+    
+    if (timeOfDay === 'night') {
+      // 夜晚藍光水花效果
+      gradient.addColorStop(0, 'rgba(79, 195, 247, 1)')     // 中心強烈藍光
+      gradient.addColorStop(0.3, 'rgba(100, 210, 255, 0.9)') // 內圈亮藍
+      gradient.addColorStop(0.7, 'rgba(140, 230, 255, 0.6)') // 中間淡藍，更發光
+      gradient.addColorStop(1, 'rgba(140, 230, 255, 0)')     // 邊緣透明藍光
+    } else {
+      // 白天效果
+      gradient.addColorStop(0, 'rgba(255, 255, 255, 1)')     // 中心純白，更亮
+      gradient.addColorStop(0.3, 'rgba(220, 240, 255, 0.9)') // 內圈亮藍白
+      gradient.addColorStop(0.7, 'rgba(180, 220, 240, 0.6)') // 中間藍色，更不透明
+      gradient.addColorStop(1, 'rgba(180, 220, 240, 0)')     // 邊緣透明
+    }
     
     context.fillStyle = gradient
     context.beginPath()
@@ -244,8 +288,8 @@ export const RainSplash = ({ intensity = 1 }: { intensity?: number }) => {
       const material = new THREE.SpriteMaterial({
         map: texture,
         transparent: true,
-        opacity: 0.8, // 提高透明度讓水花更明顯
-        color: 0xFFFFFF, // 改為純白色，更亮
+        opacity: timeOfDay === 'night' ? 0.9 : 0.8, // 夜晚時增加透明度
+        color: timeOfDay === 'night' ? 0x4FC3F7 : 0xFFFFFF, // 夜晚時使用藍色調
         blending: THREE.AdditiveBlending
       })
       
@@ -278,7 +322,7 @@ export const RainSplash = ({ intensity = 1 }: { intensity?: number }) => {
     }
     
     return sprites
-  }, [])
+  }, [timeOfDay])
   
   useFrame((state) => {
     if (!splashRef.current) return
@@ -369,6 +413,7 @@ export const RainSplash = ({ intensity = 1 }: { intensity?: number }) => {
 // 地面水波漣漪效果 - 水花落地時產生的同心圓波紋
 export const WaterRipples = ({ intensity = 1 }: { intensity?: number }) => {
   const ripplesRef = useRef<THREE.Group>(null)
+  const { timeOfDay } = useTimeStore()
   
   const rippleSprites = useMemo(() => {
     const sprites = []
@@ -386,13 +431,17 @@ export const WaterRipples = ({ intensity = 1 }: { intensity?: number }) => {
     const centerX = 32
     const centerY = 32
     
-    // 繪製同心圓
-    context.strokeStyle = 'rgba(200, 230, 255, 0.8)'
+    // 繪製同心圓 - 夜晚時使用藍光效果
+    if (timeOfDay === 'night') {
+      context.strokeStyle = 'rgba(79, 195, 247, 0.9)' // 夜晚藍光漣漪
+    } else {
+      context.strokeStyle = 'rgba(200, 230, 255, 0.8)' // 白天效果
+    }
     context.lineWidth = 2
     
     for (let ring = 1; ring <= 4; ring++) {
       const radius = ring * 8
-      context.globalAlpha = 1.0 - (ring * 0.2)
+      context.globalAlpha = timeOfDay === 'night' ? 1.2 - (ring * 0.25) : 1.0 - (ring * 0.2)
       context.beginPath()
       context.arc(centerX, centerY, radius, 0, Math.PI * 2)
       context.stroke()
@@ -404,9 +453,9 @@ export const WaterRipples = ({ intensity = 1 }: { intensity?: number }) => {
       const material = new THREE.SpriteMaterial({
         map: texture,
         transparent: true,
-        opacity: 0.6,
-        color: 0xE0F0FF,
-        blending: THREE.NormalBlending, // 使用Normal blending讓漣漪更自然
+        opacity: timeOfDay === 'night' ? 0.8 : 0.6, // 夜晚時增加透明度
+        color: timeOfDay === 'night' ? 0x4FC3F7 : 0xE0F0FF, // 夜晚時使用藍色調
+        blending: timeOfDay === 'night' ? THREE.AdditiveBlending : THREE.NormalBlending, // 夜晚使用加法混合增強發光
         depthWrite: false
       })
       
@@ -433,7 +482,7 @@ export const WaterRipples = ({ intensity = 1 }: { intensity?: number }) => {
     }
     
     return sprites
-  }, [])
+  }, [timeOfDay])
   
   useFrame((state) => {
     if (!ripplesRef.current) return
@@ -553,10 +602,10 @@ export const DrizzleDroplets = ({ intensity = 1 }: { intensity?: number }) => {
         particleColor = 0x5F9EA0  // 軍艦灰藍
       }
     } else {
-      // 夜晚：使用亮色雨滴，在暗背景下明顯
-      centerColor = 'rgba(176, 224, 230, 1)'     // 淺藍色中心
-      middleColor = 'rgba(200, 230, 255, 0.8)'   // 亮藍白色
-      particleColor = 0xB0E0E6  // 淺藍色
+      // 夜晚：增強藍光效果
+      centerColor = 'rgba(79, 195, 247, 1)'      // 強烈藍光中心
+      middleColor = 'rgba(100, 210, 255, 0.9)'   // 亮藍發光
+      particleColor = 0x4FC3F7  // 強烈藍色發光
     }
     
     // 創建細小雨滴的漸變
@@ -576,8 +625,8 @@ export const DrizzleDroplets = ({ intensity = 1 }: { intensity?: number }) => {
       map: texture,
       color: particleColor, // 動態顏色
       transparent: true,
-      opacity: timeOfDay === 'day' ? 0.9 : 0.8,     // 白天更不透明
-      size: timeOfDay === 'day' ? 3.5 : 3,          // 白天稍大一些
+      opacity: timeOfDay === 'night' ? 0.95 : timeOfDay === 'day' ? 0.9 : 0.8, // 夜晚最不透明，增強發光效果
+      size: timeOfDay === 'night' ? 4 : timeOfDay === 'day' ? 3.5 : 3, // 夜晚稍大增強可見性
       sizeAttenuation: true,
       blending: THREE.AdditiveBlending,
       depthWrite: false
