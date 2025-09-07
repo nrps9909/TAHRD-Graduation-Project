@@ -52,6 +52,31 @@ export const Scene = () => {
     collisionSystem.clearByIdPattern('coastline_boundary')
     console.log('🧹 已清理所有邊界碰撞物體')
   }, [])
+
+  // 立即檢查並清除早晨的雪天氣
+  useEffect(() => {
+    const checkAndClearMorningSnow = () => {
+      const { hour, minute, weather, forceStopSnowInMorning, setWeather } = useTimeStore.getState()
+      const isMorning = hour >= 4 && hour < 9
+      const isSnowing = weather === 'snow'
+      
+      if (isMorning && isSnowing) {
+        console.log(`🚫 Scene監控：發現早晨時間 (${hour}:${minute.toString().padStart(2, '0')}) 有下雪，立即強制清除！`)
+        // 使用兩種方式確保清除
+        forceStopSnowInMorning()
+        // 再次確保設為晴天
+        setWeather('clear')
+      }
+    }
+    
+    // 立即檢查一次
+    checkAndClearMorningSnow()
+    
+    // 每200ms檢查一次，更積極地清除早晨下雪
+    const interval = setInterval(checkAndClearMorningSnow, 200)
+    
+    return () => clearInterval(interval)
+  }, [])
   
   // 驗證角色位置安全性（開發模式）
   useEffect(() => {

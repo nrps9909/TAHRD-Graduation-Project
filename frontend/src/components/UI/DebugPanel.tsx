@@ -131,14 +131,42 @@ export const DebugPanel = () => {
           {weatherOptions.map((option) => (
             <button
               key={option.value}
-              onClick={() => setWeather(option.value as any)}
+              onClick={() => {
+                const isSnowWeather = option.value === 'snow'
+                const isMorningTime = hour >= 4 && hour < 9
+                
+                if (isSnowWeather && isMorningTime) {
+                  console.log('🌙 早晨設定下雪，先切換到深夜 23:00 再設定天氣')
+                  // 先切換時間到深夜
+                  handleTimeChange(23, 0)
+                  // 延遲一點再設定天氣，確保時間已更新
+                  setTimeout(() => {
+                    setWeather(option.value as any)
+                  }, 50)
+                } else {
+                  // 直接設定天氣
+                  setWeather(option.value as any)
+                }
+              }}
               className={`px-3 py-2 rounded-lg text-sm font-medium transition-all text-left ${
                 weather === option.value
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+              } ${
+                option.value === 'snow' && hour >= 4 && hour < 9 
+                  ? 'ring-2 ring-orange-500' 
+                  : ''
               }`}
+              title={
+                option.value === 'snow' && hour >= 4 && hour < 9 
+                  ? '早晨時間會自動切換到深夜時間' 
+                  : ''
+              }
             >
               <span className={option.color}>{option.label}</span>
+              {option.value === 'snow' && hour >= 4 && hour < 9 && (
+                <span className="text-xs text-orange-300 ml-1">(將切換到深夜)</span>
+              )}
             </button>
           ))}
         </div>
@@ -169,11 +197,11 @@ export const DebugPanel = () => {
           <button
             onClick={() => {
               setWeather('snow')
-              handleTimeChange(19, 0)
+              handleTimeChange(23, 0)
             }}
             className="px-2 py-1 text-xs bg-blue-300 hover:bg-blue-200 text-gray-800 rounded"
           >
-            傍晚飘雪
+            深夜飘雪
           </button>
         </div>
       </div>

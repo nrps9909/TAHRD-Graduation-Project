@@ -78,6 +78,11 @@ export const EnvironmentLighting = () => {
       // 根據天氣微調背景色
       if (weather === 'drizzle') {
         bgColor.multiplyScalar(0.95) // 細雨時稍微柔和
+      } else if (weather === 'snow') {
+        // 太陽雪：厚厚雲層中透出金光的天空
+        bgColor = timeOfDay === 'day' 
+          ? new THREE.Color('#C0C8D0').lerp(new THREE.Color('#FFE4B5'), 0.15) // 白天太陽雪：雲層中透金光
+          : new THREE.Color('#708090') // 夜晚下雪：石板灰色
       }
       
       // 設置背景色
@@ -100,6 +105,11 @@ export const EnvironmentLighting = () => {
           case 'drizzle':
             fogNear = timeOfDay === 'day' ? 180 : 220
             fogFar = timeOfDay === 'day' ? 1000 : 800
+            break
+          case 'snow':
+            // 雪天使用正常霧效設置
+            fogNear = timeOfDay === 'day' ? 220 : 250
+            fogFar = timeOfDay === 'day' ? 1400 : 1000
             break
           case 'clear':
           default:
@@ -143,15 +153,8 @@ export const EnvironmentLighting = () => {
     }
   }
 
-  // 雪天專用的天空和地面顏色
+  // 統一的天空和地面顏色
   const getHemisphereLightColors = () => {
-    if (weather === 'snow') {
-      return {
-        sky: timeOfDay === 'day' ? "#E8F4FF" : "#D0E8FF", // 雪白天空/冷藍夜空
-        ground: "#FFFFFF" // 雪白地面
-      }
-    }
-    
     return {
       sky: timeOfDay === 'day' ? "#87CEEB" : "#E8F4FF", // 天空藍色 / 夜晚月光色
       ground: timeOfDay === 'day' ? "#FFF8DC" : "#F0F8FF" // 古董白 / 夜晚潔白地面色
@@ -192,22 +195,38 @@ export const EnvironmentLighting = () => {
       {/* 柔和的填充光系統 */}
       <directionalLight
         position={timeOfDay === 'day' ? [-10, 60, 15] : [0, -10, 0]} // 白天更高的填充光位置，配合主光源
-        color={timeOfDay === 'day' ? "#FFFFF0" : "#6495ED"} // 象牙白 / 原始月光色
-        intensity={timeOfDay === 'day' ? 1.2 * weatherSettings.lightMultiplier : 0.7 * weatherSettings.lightMultiplier} // 調亮白天填充光到最亮（從0.6提升到1.2）
-        castShadow={false}
+        color={
+          weather === 'snow' && timeOfDay === 'day' 
+            ? "#E6E6FA" // 下雪天用淡紫色
+            : timeOfDay === 'day' ? "#FFFFF0" : "#6495ED" // 象牙白 / 原始月光色
+        }
+        intensity={
+          weather === 'snow' && timeOfDay === 'day'
+            ? 0.8 * weatherSettings.lightMultiplier // 下雪天降低填充光強度
+            : timeOfDay === 'day' ? 1.2 * weatherSettings.lightMultiplier : 0.7 * weatherSettings.lightMultiplier
+        }
+        castShadow={weather === 'snow' ? false : false} // 下雪天不投射陰影
       />
       
       {/* 可愛的補充光（讓一切都明亮可愛）*/}
       <pointLight
         position={[0, 90, 0]} // 正上方的補充光位置
-        color={timeOfDay === 'day' ? "#FFFAF0" : "#6495ED"} // 花白色 / 原始月光色
-        intensity={timeOfDay === 'day' ? 1.0 * weatherSettings.lightMultiplier * sparkleIntensity : 0.5 * weatherSettings.lightMultiplier * sparkleIntensity} // 調亮白天補充光到最亮（從0.5提升到1.0）
+        color={
+          weather === 'snow' && timeOfDay === 'day'
+            ? "#F0F8FF" // 下雪天用愛麗絲藍
+            : timeOfDay === 'day' ? "#FFFAF0" : "#6495ED" // 花白色 / 原始月光色
+        }
+        intensity={
+          weather === 'snow' && timeOfDay === 'day'
+            ? 0.6 * weatherSettings.lightMultiplier * sparkleIntensity // 下雪天降低補充光強度
+            : timeOfDay === 'day' ? 1.0 * weatherSettings.lightMultiplier * sparkleIntensity : 0.5 * weatherSettings.lightMultiplier * sparkleIntensity
+        }
         distance={250} // 更大的照射範圍
         decay={1.8} // 減少衰減，讓光線傳播更遠
       />
       
-      {/* 白天全域白光籠罩效果 - 讓每一處都被白光包圍 */}
-      {timeOfDay === 'day' && (
+      {/* 白天全域白光籠罩效果 - 下雪時不顯示強烈陽光 */}
+      {timeOfDay === 'day' && weather !== 'snow' && (
         <>
           {/* 主要太陽白光 - 從太陽位置的強烈照射 */}
           <directionalLight
@@ -336,6 +355,75 @@ export const EnvironmentLighting = () => {
         </>
       )}
       
+      {/* 太陽雪天氣專用光照 - 雲縫中的金色陽光穿透雪花 */}
+      {weather === 'snow' && timeOfDay === 'day' && (
+        <>
+          {/* 主要雲層漫射光 - 厚厚雲層的柔和基礎光照 */}
+          <directionalLight
+            position={[0, 100, 0]} // 正上方雲層光
+            color="#E6E6FA" // 淡紫色雲層光
+            intensity={1.8 * weatherSettings.lightMultiplier}
+            castShadow={false}
+          />
+          
+          {/* 太陽雪特效 - 雲縫中的金色陽光束 */}
+          <directionalLight
+            position={sunPosition} // 使用太陽位置
+            color="#FFD700" // 金色陽光
+            intensity={2.5 * sparkleIntensity} // 隨閃爍強度變化
+            castShadow={true}
+            shadow-mapSize-width={1024}
+            shadow-mapSize-height={1024}
+            shadow-camera-far={200}
+            shadow-camera-near={0.5}
+            shadow-camera-left={-100}
+            shadow-camera-right={100}
+            shadow-camera-top={100}
+            shadow-camera-bottom={-100}
+          />
+          
+          {/* 暖光補充 - 陽光在雪花上的反射光 */}
+          <pointLight
+            position={[sunPosition[0] * 0.3, sunPosition[1] * 0.5, sunPosition[2] * 0.3]}
+            color="#FFF8DC" // 淡金色反射光
+            intensity={1.8 * sparkleIntensity}
+            distance={300}
+            decay={1.5}
+          />
+          
+          {/* 環境冷光 - 雪地反射的藍白色光 */}
+          <ambientLight
+            color="#F0F8FF" // 愛麗絲藍
+            intensity={1.2 * weatherSettings.lightMultiplier}
+          />
+          
+          {/* 邊緣暖光勾勒 - 四個角度的金色邊緣光 */}
+          <directionalLight
+            position={[80, 40, 80]}
+            color="#FFEBCD" // 白杏色
+            intensity={0.6 * sparkleIntensity}
+            castShadow={false}
+          />
+          <directionalLight
+            position={[-80, 40, 80]}
+            color="#FFEBCD"
+            intensity={0.6 * sparkleIntensity}
+            castShadow={false}
+          />
+          <directionalLight
+            position={[80, 40, -80]}
+            color="#FFEBCD"
+            intensity={0.6 * sparkleIntensity}
+            castShadow={false}
+          />
+          <directionalLight
+            position={[-80, 40, -80]}
+            color="#FFEBCD"
+            intensity={0.6 * sparkleIntensity}
+            castShadow={false}
+          />
+        </>
+      )}
 
       {/* 夜晚月光籠罩大地效果 */}
       {timeOfDay === 'night' && (

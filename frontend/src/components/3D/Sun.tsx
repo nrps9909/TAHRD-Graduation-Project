@@ -94,7 +94,7 @@ const SunModel = ({ position, onLoad }: { position: [number, number, number], on
 export const Sun = () => {
   const sunGroupRef = useRef<THREE.Group>(null)
   const directionalLightRef = useRef<THREE.DirectionalLight>(null)
-  const { timeOfDay, hour, minute } = useTimeStore()
+  const { timeOfDay, hour, minute, weather } = useTimeStore()
   
   // 計算太陽隨時間的位置（與EnvironmentLighting相同邏輯）
   const calculateSunPosition = React.useCallback((currentHour: number, currentMinute: number): [number, number, number] => {
@@ -199,11 +199,11 @@ export const Sun = () => {
   }, [])
   
   // 只在白天顯示太陽
-  const isDay = timeOfDay === 'day'
+  const shouldShowSun = timeOfDay === 'day'
   
   return (
     <Suspense fallback={null}>
-      {isDay && (
+      {shouldShowSun && (
         <group>
           {/* 3D太陽模型 */}
           <SunModel 
@@ -248,6 +248,59 @@ export const Sun = () => {
             decay={1.5}
             castShadow={false}
           />
+          
+          {/* 太陽雪邊緣暖光勾勒系統 - 只在下雪時啟用 */}
+          {weather === 'snow' && (
+            <>
+              {/* 主要邊緣光 - 來自太陽方向 */}
+              <directionalLight
+                position={[sunPosition[0] + 50, sunPosition[1] + 20, sunPosition[2] + 30]}
+                target-position={[0, 0, 0]}
+                color="#FFDB99" // 溫暖的金白色邊緣光
+                intensity={1.2}
+                castShadow={false}
+              />
+              
+              {/* 側向邊緣光 - 增強立體感 */}
+              <directionalLight
+                position={[-sunPosition[0] * 0.5, sunPosition[1] * 0.8, sunPosition[2] + 80]}
+                target-position={[0, 0, 0]}
+                color="#FFE4B3" // 淡黃色側光
+                intensity={0.8}
+                castShadow={false}
+              />
+              
+              {/* 背光邊緣效果 */}
+              <directionalLight
+                position={[-sunPosition[0], sunPosition[1] * 0.6, -sunPosition[2] * 0.7]}
+                target-position={[0, 0, 0]}
+                color="#FFF8DC" // 米白色背光
+                intensity={0.6}
+                castShadow={false}
+              />
+              
+              {/* 溫暖補光點陣 - 創造柔和邊緣光暈 */}
+              {Array.from({ length: 4 }).map((_, i) => {
+                const angle = (i / 4) * Math.PI * 2
+                const radius = 120
+                const height = sunPosition[1] * 0.7
+                const x = Math.cos(angle) * radius
+                const z = Math.sin(angle) * radius
+                
+                return (
+                  <pointLight
+                    key={`rim-${i}`}
+                    position={[x, height, z]}
+                    color="#FFEAA7" // 溫潤的暖光色
+                    intensity={0.4}
+                    distance={200}
+                    decay={2}
+                    castShadow={false}
+                  />
+                )
+              })}
+            </>
+          )}
           
           {/* 太陽光斑投影到地面 - 計算投影位置 */}
           <mesh

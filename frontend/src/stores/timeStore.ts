@@ -28,6 +28,7 @@ interface TimeState {
   setWeatherVariability: (variability: number) => void
   tick: () => void
   resetDay: () => void
+  forceStopSnowInMorning: () => void
 }
 
 // 時間段對應的小時
@@ -53,35 +54,49 @@ const WEATHER_WEIGHTS: Record<WeatherType, number> = {
 const getMountainWeather = (hour: number): WeatherType => {
   const normalizedHour = hour % 24
   
-  // 簡化的天氣模式：早晨多雲，中午晴朗，傍晚細雨
+  // 簡化的天氣模式：早晨晴朗，中午晴朗，傍晚細雨，深夜才下雪
   let weights = { ...WEATHER_WEIGHTS }
   
-  // 清晨(4-9點) - 破曉時分，細雨較多
+  // 清晨(4-9點) - 破曉時分，以晴朗為主，不下雪
   if (normalizedHour >= 4 && normalizedHour < 9) {
     weights = {
-      drizzle: 70,  // 晨間細雨
-      clear: 30     // 偶爾晴朗
+      clear: 60,    // 早晨多晴朗
+      drizzle: 40,  // 晨間細雨
+      snow: 0       // 早晨絕不下雪
     }
   }
   // 上午到中午(9-15點) - 天氣轉晴
   else if (normalizedHour >= 9 && normalizedHour < 15) {
     weights = {
       clear: 80,    // 白天以晴朗為主
-      drizzle: 20   // 少量細雨
+      drizzle: 20,  // 少量細雨
+      snow: 0       // 白天不下雪
     }
   }
   // 午後到傍晚(15-19點) - 變化天氣
   else if (normalizedHour >= 15 && normalizedHour < 19) {
     weights = {
       drizzle: 60,  // 午後容易有細雨
-      clear: 40     // 偶爾晴朗
+      clear: 40,    // 偶爾晴朗
+      snow: 0       // 白天不下雪
     }
   }
-  // 夜晚(19-4點) - 夜幕降臨，以晴朗為主
+  // 夜晚(19-4點) - 夜幕降臨，只有深夜才下雪
   else {
-    weights = {
-      clear: 70,    // 夜晚較清朗
-      drizzle: 30   // 夜間偶有細雨
+    // 深夜(22-3點)才允許下雪，其他夜晚時段不下雪
+    if ((normalizedHour >= 22 && normalizedHour <= 23) || (normalizedHour >= 0 && normalizedHour < 3)) {
+      weights = {
+        clear: 40,    // 深夜晴朗
+        drizzle: 30,  // 深夜細雨
+        snow: 30      // 深夜可能下雪
+      }
+    } else {
+      // 傍晚到夜晚早期(19-22點)和凌晨(3-4點)不下雪
+      weights = {
+        clear: 60,    // 夜晚晴朗
+        drizzle: 40,  // 夜晚細雨
+        snow: 0       // 不下雪
+      }
     }
   }
   
@@ -121,34 +136,48 @@ const getBiasedMountainWeather = (hour: number, bonus: Partial<Record<WeatherTyp
   const normalizedHour = hour % 24
   
   // 獲取基礎權重，使用 getMountainWeather 的邏輯
-  let weights: Record<WeatherType, number>
+  let weights: Partial<Record<WeatherType, number>>
   
-  // 清晨(4-9點) - 破曉時分，細雨較多
+  // 清晨(4-9點) - 破曉時分，以晴朗為主，不下雪
   if (normalizedHour >= 4 && normalizedHour < 9) {
     weights = {
-      drizzle: 70,  // 晨間細雨
-      clear: 30     // 偶爾晴朗
+      clear: 60,    // 早晨多晴朗
+      drizzle: 40,  // 晨間細雨
+      snow: 0       // 早晨絕不下雪
     }
   }
   // 上午到中午(9-15點) - 天氣轉晴
   else if (normalizedHour >= 9 && normalizedHour < 15) {
     weights = {
       clear: 80,    // 白天以晴朗為主
-      drizzle: 20   // 少量細雨
+      drizzle: 20,  // 少量細雨
+      snow: 0       // 白天不下雪
     }
   }
   // 午後到傍晚(15-19點) - 變化天氣
   else if (normalizedHour >= 15 && normalizedHour < 19) {
     weights = {
       drizzle: 60,  // 午後容易有細雨
-      clear: 40     // 偶爾晴朗
+      clear: 40,    // 偶爾晴朗
+      snow: 0       // 白天不下雪
     }
   }
-  // 夜晚(19-4點) - 夜幕降臨，以晴朗為主
+  // 夜晚(19-4點) - 夜幕降臨，只有深夜才下雪
   else {
-    weights = {
-      clear: 70,    // 夜晚較清朗
-      drizzle: 30   // 夜間偶有細雨
+    // 深夜(22-3點)才允許下雪，其他夜晚時段不下雪
+    if ((normalizedHour >= 22 && normalizedHour <= 23) || (normalizedHour >= 0 && normalizedHour < 3)) {
+      weights = {
+        clear: 40,    // 深夜晴朗
+        drizzle: 30,  // 深夜細雨
+        snow: 30      // 深夜可能下雪
+      }
+    } else {
+      // 傍晚到夜晚早期(19-22點)和凌晨(3-4點)不下雪
+      weights = {
+        clear: 60,    // 夜晚晴朗
+        drizzle: 40,  // 夜晚細雨
+        snow: 0       // 不下雪
+      }
     }
   }
   
@@ -172,11 +201,20 @@ const getBiasedMountainWeather = (hour: number, bonus: Partial<Record<WeatherTyp
   return 'clear'
 }
 
-export const useTimeStore = create<TimeState>((set, get) => ({
+export const useTimeStore = create<TimeState>((set, get) => {
+  // 初始化檢查：確保不會在早晨時間開始就下雪
+  const initHour = 6
+  const initWeather = (initHour >= 4 && initHour < 9) ? 'clear' : 'clear' // 早晨時間強制為晴天
+  
+  if (initWeather !== 'clear') {
+    console.log(`🌅 初始化警告：防止早晨 ${initHour}:00 開始時下雪，強制設為晴天`)
+  }
+
+  return {
   timeOfDay: 'day',
-  hour: 6, // 從早晨6點開始
+  hour: initHour, // 從早晨6點開始
   minute: 0, // 分鐘
-  weather: 'clear',
+  weather: initWeather, // 確保初始化時早晨不下雪
   previousWeather: null,
   weatherTransitionProgress: 1.0, // 開始時完全轉換完成
   isAutoMode: true, // 啟用自動模式
@@ -205,10 +243,24 @@ export const useTimeStore = create<TimeState>((set, get) => ({
   },
 
   setWeather: (weather: WeatherType) => {
-    const currentWeather = get().weather
+    const state = get()
+    const currentWeather = state.weather
+    
+    // 檢查是否在早晨時間(4-9點)試圖設定雪天氣
+    const isMorning = state.hour >= 4 && state.hour < 9
+    let finalWeather = weather
+    
+    if (weather === 'snow' && isMorning) {
+      console.log(`🚫 禁止在早晨時間 (${state.hour}:${state.minute.toString().padStart(2, '0')}) 設定下雪天氣，強制改為晴天`)
+      // 將雪天氣改為晴天
+      finalWeather = 'clear'
+    }
+    
+    console.log(`⚙️ setWeather: 原始=${weather}, 最終=${finalWeather}, 時間=${state.hour}:${state.minute.toString().padStart(2, '0')}`)
+    
     set({ 
       previousWeather: currentWeather,
-      weather, 
+      weather: finalWeather, 
       weatherTransitionProgress: 0.0,
       lastWeatherChange: Date.now() 
     })
@@ -240,15 +292,34 @@ export const useTimeStore = create<TimeState>((set, get) => ({
 
   resetDay: () => {
     const now = Date.now()
+    console.log('🌅 重置為早晨 6:00，天氣設為晴天 (確保不下雪)')
     set({ 
       hour: 6, 
       timeOfDay: 'day', 
-      weather: 'clear',
+      weather: 'clear', // 確保重置時不是雪天
       previousWeather: null,
       weatherTransitionProgress: 1.0,
       realStartTime: now,
       lastWeatherChange: now
     })
+  },
+
+  forceStopSnowInMorning: () => {
+    const state = get()
+    const isMorning = state.hour >= 4 && state.hour < 9
+    const isSnowing = state.weather === 'snow'
+    
+    if (isMorning && isSnowing) {
+      console.log(`🌅 強制停止早晨下雪！當前時間: ${state.hour}:${state.minute.toString().padStart(2, '0')}`)
+      set({ 
+        previousWeather: state.weather,
+        weather: 'clear',
+        weatherTransitionProgress: 0.0,
+        lastWeatherChange: Date.now()
+      })
+      return true // 返回 true 表示已清除雪天氣
+    }
+    return false // 返回 false 表示沒有雪天氣需要清除
   },
 
   tick: () => {
@@ -264,31 +335,43 @@ export const useTimeStore = create<TimeState>((set, get) => ({
     const normalizedHour = Math.floor(currentHour)
     const timeOfDay = getTimeOfDayFromHour(normalizedHour)
 
+    // 強制禁止早晨時間下雪 - 如果當前是早晨4-9點且正在下雪，立即切換為晴天
+    const isMorning = normalizedHour >= 4 && normalizedHour < 9
+    const forceWeatherChange = isMorning && state.weather === 'snow'
+
     // 計算天氣轉換進度 (每5秒完成一次轉換)
     const timeSinceWeatherChange = (now - state.lastWeatherChange) / 1000
     const transitionDuration = 5.0 // 5秒轉換時間
     const transitionProgress = Math.min(1.0, timeSinceWeatherChange / transitionDuration)
 
     // 天氣變化邏輯 - 增加隨機性和變異性
-    const shouldChangeWeather = timeSinceWeatherChange > state.weatherChangeInterval
+    const shouldChangeWeather = timeSinceWeatherChange > state.weatherChangeInterval || forceWeatherChange
     let newWeather = state.weather
     let newPreviousWeather = state.previousWeather
     let newTransitionProgress = transitionProgress
 
     if (shouldChangeWeather) {
-      // 根據天氣變異性決定是否真的要改變天氣
-      const shouldActuallyChange = Math.random() < state.weatherVariability
-      
-      if (shouldActuallyChange) {
-        // 增加相鄰天氣的權重，避免過於劇烈的變化
-        const adjacentWeatherBonus = getAdjacentWeatherBonus(state.weather)
-        const biasedWeather = getBiasedMountainWeather(normalizedHour, adjacentWeatherBonus)
+      if (forceWeatherChange) {
+        // 強制將雪天切換為晴天或細雨
+        console.log(`🌅 早晨時間強制停止下雪 (${normalizedHour}:00)`)
+        newPreviousWeather = state.weather
+        newWeather = Math.random() > 0.4 ? 'clear' : 'drizzle' // 60%晴天，40%細雨
+        newTransitionProgress = 0.0
+      } else {
+        // 根據天氣變異性決定是否真的要改變天氣
+        const shouldActuallyChange = Math.random() < state.weatherVariability
         
-        // 只有當新天氣與當前天氣不同時才變化
-        if (biasedWeather !== state.weather) {
-          newPreviousWeather = state.weather
-          newWeather = biasedWeather
-          newTransitionProgress = 0.0
+        if (shouldActuallyChange) {
+          // 增加相鄰天氣的權重，避免過於劇烈的變化
+          const adjacentWeatherBonus = getAdjacentWeatherBonus(state.weather)
+          const biasedWeather = getBiasedMountainWeather(normalizedHour, adjacentWeatherBonus)
+          
+          // 只有當新天氣與當前天氣不同時才變化
+          if (biasedWeather !== state.weather) {
+            newPreviousWeather = state.weather
+            newWeather = biasedWeather
+            newTransitionProgress = 0.0
+          }
         }
       }
     }
@@ -302,7 +385,8 @@ export const useTimeStore = create<TimeState>((set, get) => ({
       lastWeatherChange: (shouldChangeWeather && newWeather !== state.weather) ? now : state.lastWeatherChange
     })
   }
-}))
+}
+});
 
 // 可愛風格的簡化時間設定 - 只有白天夜晚
 export const TIME_SETTINGS = {

@@ -726,10 +726,56 @@ export const TerrainModel = ({ position = [0, 0, 0] }: TerrainModelProps) => {
           if (validHeights.length === 0) continue
           
           
-          // 移除所有地形和邊界碰撞檢測
+          // 檢查地形高度差異，如果過於陡峭則加入山脈碰撞器
+          const heightDifference = Math.max(...validHeights) - Math.min(...validHeights)
+          const avgHeight = validHeights.reduce((sum, h) => sum + h, 0) / validHeights.length
+          
+          // 如果高度差異大於某個閾值，認為是山脈或陡坡
+          if (heightDifference > 8 || avgHeight > 15) {
+            colliders.push({
+              position: new THREE.Vector3(x, 0, z),
+              radius: step * 0.4, // 碰撞半徑為網格大小的40%
+              id: `mountain_terrain_${x}_${z}`
+            })
+            console.log(`山脈碰撞器: 位置(${x.toFixed(1)}, ${z.toFixed(1)}), 高度差: ${heightDifference.toFixed(2)}, 平均高度: ${avgHeight.toFixed(2)}, 半徑: ${(step * 0.4).toFixed(1)}`)
+          }
+          
+          // 檢查棕色山體材質區域
+          if (isOnBrownMountain(x, z)) {
+            colliders.push({
+              position: new THREE.Vector3(x, 0, z),
+              radius: step * 0.3, // 棕色山體碰撞半徑稍小
+              id: `brown_mountain_${x}_${z}`
+            })
+            console.log(`棕色山體碰撞器: 位置(${x.toFixed(1)}, ${z.toFixed(1)}), 半徑: ${(step * 0.3).toFixed(1)}`)
+          }
         }
       }
     }, 1000) // 等待1秒讓地形完全載入
+    
+    // 為棕色山體mesh添加碰撞檢測
+    setTimeout(() => {
+      brownMountainMeshes.forEach((mountainMesh, index) => {
+        // 計算mesh的邊界框
+        const boundingBox = new THREE.Box3().setFromObject(mountainMesh)
+        const center = boundingBox.getCenter(new THREE.Vector3())
+        const size = boundingBox.getSize(new THREE.Vector3())
+        
+        // 轉換為世界座標
+        center.multiply(new THREE.Vector3(10, 5, 10))
+        
+        // 根據mesh大小設置碰撞半徑
+        const radius = Math.max(size.x, size.z) * 5 // 考慮10倍XZ縮放，取較大的XZ尺寸的一半
+        
+        colliders.push({
+          position: new THREE.Vector3(center.x, 0, center.z),
+          radius: radius,
+          id: `brown_mountain_mesh_${index}`
+        })
+        
+        console.log(`棕色山體網格碰撞器 ${index}: "${mountainMesh.name}" 位置(${center.x.toFixed(1)}, ${center.z.toFixed(1)}), 半徑: ${radius.toFixed(1)}, 大小: (${size.x.toFixed(1)}, ${size.z.toFixed(1)})`)
+      })
+    }, 1200) // 等待1.2秒確保山體mesh已識別
     
     // 使用真實的樹木網格位置來添加碰撞檢測
     treeMeshes.current.forEach((treeMesh, index) => {
@@ -737,28 +783,44 @@ export const TerrainModel = ({ position = [0, 0, 0] }: TerrainModelProps) => {
       // 轉換為世界座標
       position.multiply(new THREE.Vector3(10, 5, 10))
       
-      // 移除樹木碰撞半徑
-      const radius = 0
+      // 根據樹木類型設置合適的碰撞半徑
+      const name = treeMesh.name.toLowerCase()
+      const isTrunk = name.includes('trunk') || name.includes('tronco') || 
+                     name.includes('bark') || name.includes('木') ||
+                     (treeMesh.material && (() => {
+                       const materials = Array.isArray(treeMesh.material) ? treeMesh.material : [treeMesh.material]
+                       return materials.some(mat => {
+                         const matName = mat.name?.toLowerCase() || ''
+                         return matName.includes('trunk') || matName.includes('bark') || 
+                                matName.includes('wood') || matName.includes('madera')
+                       })
+                     })())
+      
+      // 設置碰撞半徑：樹幹較小，樹葉較大
+      let radius = 2.5 // 預設樹葉半徑
+      if (isTrunk) {
+        radius = 1.5 // 樹幹半徑較小，允許更接近
+      }
       
       colliders.push({
         position: new THREE.Vector3(position.x, 0, position.z), // Y設為0用於2D碰撞檢測
-        radius: 0, // 移除碰撞半徑
+        radius: radius,
         id: `real_tree_${index}`
       })
       
-      console.log(`真實樹木碰撞器 ${index}: 位置(${position.x.toFixed(1)}, ${position.z.toFixed(1)}), 半徑: ${Math.max(radius, 0.8).toFixed(1)}`)
+      console.log(`真實樹木碰撞器 ${index}: "${treeMesh.name}" 位置(${position.x.toFixed(1)}, ${position.z.toFixed(1)}), 類型: ${isTrunk ? '樹幹' : '樹葉'}, 半徑: ${radius}`)
     })
     
-    // 如果沒有找到真實樹木，使用備用預設位置，也減小半徑
+    // 如果沒有找到真實樹木，使用備用預設位置，設置合適的碰撞半徑
     if (treeMeshes.current.length === 0) {
       console.warn('未找到真實樹木網格，使用預設樹木位置')
       const fallbackTreePositions = [
-        { x: 15, z: 12, radius: 0 }, // 移除碰撞半徑
-        { x: -18, z: 25, radius: 0 },
-        { x: 28, z: -15, radius: 0 },
-        { x: -25, z: -18, radius: 0 },
-        { x: 35, z: 20, radius: 0 },
-        { x: -30, z: 35, radius: 0 },
+        { x: 15, z: 12, radius: 2.0 }, // 恢復碰撞半徑
+        { x: -18, z: 25, radius: 2.5 },
+        { x: 28, z: -15, radius: 2.0 },
+        { x: -25, z: -18, radius: 2.5 },
+        { x: 35, z: 20, radius: 2.0 },
+        { x: -30, z: 35, radius: 2.5 },
       ]
       
       fallbackTreePositions.forEach((tree, index) => {
@@ -767,6 +829,7 @@ export const TerrainModel = ({ position = [0, 0, 0] }: TerrainModelProps) => {
           radius: tree.radius,
           id: `fallback_tree_${index}`
         })
+        console.log(`備用樹木碰撞器 ${index}: 位置(${tree.x}, ${tree.z}), 半徑: ${tree.radius}`)
       })
     }
     
@@ -792,21 +855,46 @@ export const TerrainModel = ({ position = [0, 0, 0] }: TerrainModelProps) => {
         // 轉換為世界座標
         position.multiply(new THREE.Vector3(10, 5, 10))
         
-        // 移除碰撞半徑限制
-        const radius = 0
-        const finalRadius = 0
+        // 根據樹木類型設置合適的碰撞半徑
+        const name = treeMesh.name.toLowerCase()
+        const isTrunk = name.includes('trunk') || name.includes('tronco') || 
+                       name.includes('bark') || name.includes('木') ||
+                       (treeMesh.material && (() => {
+                         const materials = Array.isArray(treeMesh.material) ? treeMesh.material : [treeMesh.material]
+                         return materials.some(mat => {
+                           const matName = mat.name?.toLowerCase() || ''
+                           return matName.includes('trunk') || matName.includes('bark') || 
+                                  matName.includes('wood') || matName.includes('madera')
+                         })
+                       })())
         
-        console.log(`註冊真實樹木碰撞器 ${index}: 位置(${position.x.toFixed(1)}, ${position.z.toFixed(1)}), 計算半徑: ${radius.toFixed(1)}, 最終半徑: ${finalRadius}`)
+        // 設置碰撞半徑：樹幹較小，樹葉較大
+        let radius = 2.5 // 預設樹葉半徑
+        if (isTrunk) {
+          radius = 1.5 // 樹幹半徑較小，允許更接近
+        }
+        
+        console.log(`註冊真實樹木碰撞器 ${index}: "${treeMesh.name}" 位置(${position.x.toFixed(1)}, ${position.z.toFixed(1)}), 類型: ${isTrunk ? '樹幹' : '樹葉'}, 半徑: ${radius}`)
         
         collisionSystem.addCollisionObject({
           position: new THREE.Vector3(position.x, 0, position.z), // Y設為0用於2D碰撞檢測
-          radius: finalRadius,
+          radius: radius,
           type: 'tree',
-          id: `real_tree_${index}`
+          id: `real_tree_${index}`,
+          userData: { 
+            treeName: treeMesh.name,
+            isTrunk: isTrunk,
+            originalMesh: treeMesh
+          }
         })
       })
       
       console.log(`已註冊 ${treeMeshes.current.length} 個真實樹木碰撞器`)
+      
+      // 顯示完整的碰撞系統統計
+      setTimeout(() => {
+        collisionSystem.getCollisionStats()
+      }, 500) // 再等待0.5秒顯示統計
     }, 1500) // 等待1.5秒讓樹木網格完全載入
     
     return () => clearTimeout(timer)
@@ -845,12 +933,13 @@ export const TerrainModel = ({ position = [0, 0, 0] }: TerrainModelProps) => {
     })
   }, [timeOfDay]) // 監聽日夜變化
 
-  // 大風天氣時的樹木晃動效果
+  // 天氣效果：樹木晃動和雪天氛圍
   useFrame((state) => {
     if (treeMeshes.current.length === 0) return
     
-    const { weather } = useTimeStore.getState()
+    const { weather, timeOfDay } = useTimeStore.getState()
     const time = state.clock.elapsedTime
+    
     
     // 大風和山雷天氣時都有搖晃效果
     if (weather === 'windy' || weather === 'storm') {
@@ -925,13 +1014,21 @@ export const TerrainModel = ({ position = [0, 0, 0] }: TerrainModelProps) => {
     // 添加地形碰撞物體（不包括樹木）
     const nonTreeColliders = terrainColliders.filter(c => !c.id.includes('tree'))
     nonTreeColliders.forEach(collider => {
-      const objType = collider.id.startsWith('mountain_barrier_') ? 'mountain' : 'rock'
+      let objType: 'mountain' | 'rock' = 'rock'
+      
+      // 判斷碰撞物體類型
+      if (collider.id.includes('mountain') || collider.id.includes('brown_mountain')) {
+        objType = 'mountain'
+      }
+      
       collisionSystem.addCollisionObject({
         position: collider.position,
         radius: collider.radius,
         type: objType,
         id: collider.id
       })
+      
+      console.log(`註冊地形碰撞器: ${collider.id}, 類型: ${objType}, 位置: (${collider.position.x.toFixed(1)}, ${collider.position.z.toFixed(1)}), 半徑: ${collider.radius.toFixed(1)}`)
     })
     
     return () => {

@@ -332,7 +332,8 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
       if (Math.random() < 0.01) { // 1%機率輸出碰撞物體數量
         const treeCount = collisionSystem.getTreeCount()
         const waterCount = collisionSystem.getWaterCount()
-        console.log(`已註冊樹木數量: ${treeCount}, 水域邊界數量: ${waterCount}`)
+        const mountainCount = collisionSystem.getMountainCount()
+        console.log(`🎮 玩家碰撞檢測 - 已註冊樹木: ${treeCount}, 山脈: ${mountainCount}, 水域邊界: ${waterCount}`)
       }
       
       let validPosition = currentPos.clone()
