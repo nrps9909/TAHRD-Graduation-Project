@@ -183,6 +183,8 @@ export const Ocean = () => {
       `,
       transparent: true,
       side: THREE.DoubleSide,
+      depthWrite: false,
+      depthTest: true,
     })
   }, [])
 
@@ -230,7 +232,10 @@ export const Ocean = () => {
       material={oceanMaterial}
       position={[0, 0, -5]} // 稍微低於地面
       rotation={[-Math.PI / 2, 0, 0]} // 旋轉成水平面
-      receiveShadow // 接收太陽和月亮投射的陰影
+      receiveShadow={false} // 不接收外部光源陰影
+      castShadow={false} // 不產生陰影
+      renderOrder={-1} // 確保最先渲染
+      frustumCulled={false} // 防止視角變化時被裁剪
     />
   )
 }

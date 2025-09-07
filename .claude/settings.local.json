@@ -36,7 +36,8 @@
       "Read(/home/louis_lu/0830_test/TAHRD-Graduation-Project/frontend/**)",
       "Read(/tmp/**)",
       "Bash(cursor:*)",
-      "Bash(sed:*)"
+      "Bash(sed:*)",
+      "Bash(git checkout:*)"
     ],
     "deny": []
   }
