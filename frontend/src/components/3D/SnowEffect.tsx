@@ -55,22 +55,112 @@ export const SnowEffect = () => {
   // 創建雪花粒子系統
   const snowGeometry = useMemo(() => new THREE.SphereGeometry(1, 8, 6), [])
   
-  // 创建六边形几何体
-  const hexGeometry = useMemo(() => {
-    const shape = new THREE.Shape()
-    const radius = 1
-    // 绘制六边形
-    for (let i = 0; i <= 6; i++) {
+  // 创建六角雪花几何体
+  const snowflakeGeometry = useMemo(() => {
+    const group = new THREE.BufferGeometry()
+    const vertices = []
+    const indices = []
+    
+    // 雪花参数
+    const mainRadius = 1.0      // 主分支长度
+    const branchWidth = 0.04    // 分支宽度
+    const subBranchLength = 0.3 // 小分支长度
+    const centerRadius = 0.1    // 中心圆半径
+    
+    let vertexIndex = 0
+    
+    // 创建中心六角形
+    for (let i = 0; i < 6; i++) {
       const angle = (i / 6) * Math.PI * 2
-      const x = Math.cos(angle) * radius
-      const y = Math.sin(angle) * radius
-      if (i === 0) {
-        shape.moveTo(x, y)
-      } else {
-        shape.lineTo(x, y)
+      const x = Math.cos(angle) * centerRadius
+      const y = Math.sin(angle) * centerRadius
+      vertices.push(x, y, 0)
+    }
+    
+    // 中心三角形索引
+    for (let i = 0; i < 6; i++) {
+      indices.push(0, i, (i + 1) % 6)
+    }
+    vertexIndex = 6
+    
+    // 创建6个主分支
+    for (let branch = 0; branch < 6; branch++) {
+      const branchAngle = (branch / 6) * Math.PI * 2
+      const cos = Math.cos(branchAngle)
+      const sin = Math.sin(branchAngle)
+      
+      // 主分支矩形 (从中心到外围)
+      const branchVertices = [
+        // 起点 (中心附近)
+        cos * centerRadius - sin * branchWidth, sin * centerRadius + cos * branchWidth, 0,
+        cos * centerRadius + sin * branchWidth, sin * centerRadius - cos * branchWidth, 0,
+        // 终点 (外围)
+        cos * mainRadius - sin * branchWidth, sin * mainRadius + cos * branchWidth, 0,
+        cos * mainRadius + sin * branchWidth, sin * mainRadius - cos * branchWidth, 0,
+      ]
+      
+      branchVertices.forEach(v => vertices.push(v))
+      
+      // 主分支四边形索引
+      const baseIndex = vertexIndex
+      indices.push(
+        baseIndex, baseIndex + 1, baseIndex + 2,
+        baseIndex + 1, baseIndex + 3, baseIndex + 2
+      )
+      vertexIndex += 4
+      
+      // 添加装饰性小分支 (在主分支的中点和3/4处)
+      for (let subPos = 0.5; subPos <= 0.75; subPos += 0.25) {
+        const subX = cos * mainRadius * subPos
+        const subY = sin * mainRadius * subPos
+        
+        // 左小分支
+        const leftAngle = branchAngle + Math.PI * 0.25
+        const leftCos = Math.cos(leftAngle)
+        const leftSin = Math.sin(leftAngle)
+        
+        const leftBranchVertices = [
+          subX, subY, 0,
+          subX + leftCos * subBranchLength, subY + leftSin * subBranchLength, 0,
+          subX + leftCos * subBranchLength - leftSin * branchWidth * 0.5, 
+          subY + leftSin * subBranchLength + leftCos * branchWidth * 0.5, 0,
+          subX - leftSin * branchWidth * 0.5, subY + leftCos * branchWidth * 0.5, 0
+        ]
+        
+        // 右小分支
+        const rightAngle = branchAngle - Math.PI * 0.25
+        const rightCos = Math.cos(rightAngle)
+        const rightSin = Math.sin(rightAngle)
+        
+        const rightBranchVertices = [
+          subX, subY, 0,
+          subX + rightCos * subBranchLength, subY + rightSin * subBranchLength, 0,
+          subX + rightCos * subBranchLength - rightSin * branchWidth * 0.5,
+          subY + rightSin * subBranchLength + rightCos * branchWidth * 0.5, 0,
+          subX - rightSin * branchWidth * 0.5, subY + rightCos * branchWidth * 0.5, 0
+        ]
+        
+        leftBranchVertices.forEach(v => vertices.push(v))
+        rightBranchVertices.forEach(v => vertices.push(v))
+        
+        // 小分支三角形索引
+        const leftBase = vertexIndex
+        const rightBase = vertexIndex + 4
+        
+        indices.push(leftBase, leftBase + 1, leftBase + 2)
+        indices.push(leftBase, leftBase + 2, leftBase + 3)
+        indices.push(rightBase, rightBase + 1, rightBase + 2)
+        indices.push(rightBase, rightBase + 2, rightBase + 3)
+        
+        vertexIndex += 8
       }
     }
-    return new THREE.ShapeGeometry(shape)
+    
+    group.setIndex(indices)
+    group.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3))
+    group.computeVertexNormals()
+    
+    return group
   }, [])
   
   // 太陽雪特效材質 - 能夠反射金光的雪花
@@ -84,15 +174,15 @@ export const SnowEffect = () => {
     emissiveIntensity: 0,
   }), [])
   
-  // 六边形特效材质 - 金色光芒冰晶效果
-  const hexMaterial = useMemo(() => new THREE.MeshStandardMaterial({
+  // 六角雪花特效材质 - 金色光芒冰晶效果
+  const snowflakeMaterial = useMemo(() => new THREE.MeshStandardMaterial({
     color: '#F0F8FF', // 纯白基色
     transparent: true,
-    opacity: 0.9,
-    metalness: 0.6, // 增加金属感
-    roughness: 0.05, // 极光滑，强反射
+    opacity: 0.95,
+    metalness: 0.7, // 高金属感，更像冰晶
+    roughness: 0.03, // 极光滑，镜面效果
     emissive: '#FFD700', // 金色发光
-    emissiveIntensity: 0.5, // 基础发光强度
+    emissiveIntensity: 0.8, // 增强基础发光
     side: THREE.DoubleSide, // 双面材质
   }), [])
   
@@ -444,10 +534,10 @@ export const SnowEffect = () => {
         frustumCulled={false}
       />
       
-      {/* 六边形特效 */}
+      {/* 六角雪花特效 */}
       <instancedMesh
         ref={hexInstanceRef}
-        args={[hexGeometry, hexMaterial, HEX_EFFECT_COUNT]}
+        args={[snowflakeGeometry, snowflakeMaterial, HEX_EFFECT_COUNT]}
         frustumCulled={false}
         castShadow={false}
         receiveShadow={false}
