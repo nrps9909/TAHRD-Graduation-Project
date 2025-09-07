@@ -230,6 +230,7 @@ export const Ocean = () => {
       material={oceanMaterial}
       position={[0, 0, -5]} // 稍微低於地面
       rotation={[-Math.PI / 2, 0, 0]} // 旋轉成水平面
+      receiveShadow // 接收太陽和月亮投射的陰影
     />
   )
 }

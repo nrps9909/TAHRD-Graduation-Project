@@ -126,6 +126,7 @@ const MoonModel = ({ position, onLoad }: { position: [number, number, number], o
 
 export const Moon = () => {
   const moonGroupRef = useRef<THREE.Group>(null)
+  const directionalLightRef = useRef<THREE.DirectionalLight>(null)
   const { timeOfDay, hour, minute } = useTimeStore()
   
   // 計算月亮隨時間的位置
@@ -168,6 +169,31 @@ export const Moon = () => {
   const moonPosition = calculateMoonPosition(hour, minute)
   
 
+  // 設置方向光目標和陰影相機
+  React.useEffect(() => {
+    if (directionalLightRef.current) {
+      directionalLightRef.current.target.position.set(0, 0, 0)
+      directionalLightRef.current.target.updateMatrixWorld()
+      
+      // 確保陰影相機設置正確
+      const light = directionalLightRef.current
+      if (light.shadow) {
+        console.log('🌙 設置月亮陰影相機參數')
+        light.shadow.camera.left = -600
+        light.shadow.camera.right = 600
+        light.shadow.camera.top = 600
+        light.shadow.camera.bottom = -600
+        light.shadow.camera.near = 1
+        light.shadow.camera.far = 500
+        light.shadow.bias = 0.003
+        light.shadow.normalBias = 0.05
+        light.shadow.mapSize.setScalar(2048)
+        light.shadow.camera.updateProjectionMatrix()
+        console.log('✅ 月亮陰影相機設置完成')
+      }
+    }
+  }, [])
+
   // 月亮動畫：簡單的自轉和擺動
   useFrame((state) => {
     if (moonGroupRef.current && timeOfDay === 'night') {
@@ -206,24 +232,75 @@ export const Moon = () => {
           
           
 
-          {/* 主要月光 - 簡化且真實 */}
+          {/* 主要月光 - 方向光投射陰影 */}
           <directionalLight
+            ref={directionalLightRef}
             position={[moonPosition[0], moonPosition[1], moonPosition[2]]}
-            target-position={[0, 0, 0]}
             color="#E6F3FF"
-            intensity={0.8}
-            castShadow={false}
+            intensity={1.2}
+            castShadow
+            shadow-mapSize={2048}
+            shadow-camera-far={800}
+            shadow-camera-left={-600}
+            shadow-camera-right={600}
+            shadow-camera-top={600}
+            shadow-camera-bottom={-600}
+            shadow-camera-near={0.5}
+            shadow-bias={0.003}
+            shadow-normalBias={0.05}
           />
           
           {/* 月光環境光 */}
           <pointLight
             position={moonPosition}
             color="#D0E8FF"
-            intensity={1.2}
-            distance={500}
-            decay={1.5}
+            intensity={0.6}
+            distance={400}
+            decay={1.8}
             castShadow={false}
           />
+
+          {/* 月光光斑投影到地面 - 計算投影位置 */}
+          <mesh
+            position={[
+              -moonPosition[0] * 0.3, // 根據月亮位置計算光斑投影
+              1,
+              -moonPosition[2] * 0.3
+            ]}
+            rotation={[-Math.PI / 2, 0, 0]}
+            receiveShadow={false}
+            castShadow={false}
+          >
+            <planeGeometry args={[80, 80]} />
+            <meshBasicMaterial
+              color="#B8D4FF"
+              transparent
+              opacity={0.2}
+              blending={2}
+              depthWrite={false}
+            />
+          </mesh>
+
+          {/* 更集中的月光光斑 - 跟隨月亮投影 */}
+          <mesh
+            position={[
+              -moonPosition[0] * 0.2,
+              1.1,
+              -moonPosition[2] * 0.2
+            ]}
+            rotation={[-Math.PI / 2, 0, 0]}
+            receiveShadow={false}
+            castShadow={false}
+          >
+            <planeGeometry args={[40, 40]} />
+            <meshBasicMaterial
+              color="#E6F3FF"
+              transparent
+              opacity={0.15}
+              blending={2}
+              depthWrite={false}
+            />
+          </mesh>
           
         </group>
       )}

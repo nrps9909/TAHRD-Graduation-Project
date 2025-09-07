@@ -308,7 +308,7 @@ export const TIME_SETTINGS = {
     name: '白天',
     skyColor: '#87CEEB', // 天空藍色
     fogColor: '#B8E6FF', // 淺藍霧氣
-    ambientIntensity: 2.5, // 調到最亮的環境光（從1.6提升到2.5）
+    ambientIntensity: 1.5, // 調整為適中的環境光強度
     sunIntensity: 3.5, // 調到最亮的陽光（從2.2提升到3.5）
     sunPosition: [0, 200, 0], // 天空正上方的陽光位置（會被動態計算覆蓋）
     sunColor: '#FFF8DC', // 更亮的陽光顏色（古董白）
@@ -318,7 +318,7 @@ export const TIME_SETTINGS = {
     name: '夜晚',
     skyColor: '#87CEEB', // 更亮夜空 - 天藍色（與白天相同）
     fogColor: '#B0E0E6', // 更亮霧氣顏色 - 粉水藍
-    ambientIntensity: 1.2, // 調亮夜晚環境光（從0.7提升到1.2）
+    ambientIntensity: 0.8, // 調整為適中的夜晚環境光
     sunIntensity: 0.0,
     sunPosition: [0, -10, 0],
     sunColor: '#6495ED', // 調亮月光顏色

@@ -573,24 +573,106 @@ export const TerrainModel = ({ position = [0, 0, 0] }: TerrainModelProps) => {
       })
     }
     
-    // 設置所有地形和物體接收月光陰影
-    console.log('🌙 設置地形接收月光陰影...')
+    // 設置所有地形和物體接收太陽和月亮陰影
+    console.log('🌞🌙 設置地形接收陰影...')
     scene.traverse((child) => {
       if (child instanceof THREE.Mesh) {
         // 所有地形mesh都接收陰影
         child.receiveShadow = true
         
+        // 預設不投射陰影，只有特定物體才投射
+        child.castShadow = false
+        
+        // 確保材質支持陰影 - 轉換為StandardMaterial
+        if (child.material) {
+          const materials = Array.isArray(child.material) ? child.material : [child.material]
+          materials.forEach((material, index) => {
+            if (material instanceof THREE.MeshLambertMaterial) {
+              console.log(`🔄 轉換Lambert材質為Standard材質: ${material.name || 'unnamed'}`)
+              const standardMaterial = new THREE.MeshStandardMaterial({
+                map: material.map,
+                color: material.color,
+                emissive: material.emissive,
+                emissiveIntensity: material.emissiveIntensity,
+                transparent: material.transparent,
+                opacity: material.opacity,
+                side: material.side,
+                // 確保陰影顯示正確
+                shadowSide: THREE.DoubleSide,
+                depthWrite: true,
+                depthTest: true
+              })
+              
+              if (Array.isArray(child.material)) {
+                child.material[index] = standardMaterial
+              } else {
+                child.material = standardMaterial
+              }
+              
+              // 清理舊材質
+              material.dispose()
+            } else if (material instanceof THREE.MeshStandardMaterial) {
+              // 如果已經是Standard材質，確保陰影設置正確
+              material.shadowSide = THREE.DoubleSide
+              material.depthWrite = true
+              material.depthTest = true
+            }
+          })
+        }
+        
         // 樹木也需要接收和投射陰影
         const name = child.name.toLowerCase()
-        if (name.includes('tree') || name.includes('arbol') || 
-            name.includes('trunk') || name.includes('tronco') ||
-            name.includes('leaf') || name.includes('leaves')) {
-          child.castShadow = true // 樹木投射陰影
-          child.receiveShadow = true // 樹木也接收陰影
+        const isTreeRelated = name.includes('tree') || name.includes('arbol') || 
+                             name.includes('trunk') || name.includes('tronco') ||
+                             name.includes('leaf') || name.includes('leaves') ||
+                             name.includes('wood') || name.includes('bark') ||
+                             name.includes('madera') || name.includes('hoja') ||
+                             // 檢查材質名稱
+                             (child.material && (() => {
+                               const materials = Array.isArray(child.material) ? child.material : [child.material]
+                               return materials.some(mat => {
+                                 if ('name' in mat && mat.name) {
+                                   const matName = mat.name.toLowerCase()
+                                   return matName.includes('leaf') || matName.includes('leaves') ||
+                                          matName.includes('tree') || matName.includes('wood') ||
+                                          matName.includes('bark') || matName.includes('trunk') ||
+                                          matName.includes('arbol') || matName.includes('madera')
+                                 }
+                                 return false
+                               })
+                             })())
+        
+        if (isTreeRelated) {
+          // 樹木只投射陰影，不接收陰影（避免樹木身上有陰影）
+          child.castShadow = true
+          child.receiveShadow = false
+          
+          // 將樹木加入全域數組
+          if (!treeMeshes.current.includes(child)) {
+            treeMeshes.current.push(child)
+          }
+          
+          console.log(`🌳 樹木陰影設置: ${child.name} (castShadow: ${child.castShadow}, receiveShadow: ${child.receiveShadow}) - 位置: (${child.position.x.toFixed(1)}, ${child.position.z.toFixed(1)})`)
+        } else {
+          // 地形部分只接收陰影，不投射
+          child.castShadow = false
+          console.log(`🏔️ 地形陰影設置: ${child.name}`)
         }
       }
     })
-    console.log('✅ 月光陰影設置完成')
+    console.log('✅ 陰影設置完成')
+    console.log(`📊 樹木陰影統計: 總計 ${treeMeshes.current.length} 棵樹設置了陰影投射`)
+    
+    // 檢查邊界區域的樹木
+    const boundaryTrees = treeMeshes.current.filter(tree => {
+      const x = tree.position.x
+      const z = tree.position.z
+      return Math.abs(x) > 200 || Math.abs(z) > 200 // 距離中心200單位以上
+    })
+    console.log(`🏔️ 邊界區域樹木: ${boundaryTrees.length} 棵樹靠近牆壁邊界`)
+    boundaryTrees.forEach((tree, i) => {
+      console.log(`  ${i+1}. ${tree.name} - 位置: (${tree.position.x.toFixed(1)}, ${tree.position.z.toFixed(1)})`)
+    })
     
     // 在所有樹木載入完成後更新全域樹木位置
     const timer = setTimeout(() => {
@@ -882,6 +964,21 @@ export const TerrainModel = ({ position = [0, 0, 0] }: TerrainModelProps) => {
       
       {/* 地形夜晚发光效果 - A方案：材质发光 + C方案：边缘发光 */}
       <TerrainGlow terrainScene={terrainScene} />
+      
+      {/* 陰影接收平面 - 確保陰影顯示在地面上 */}
+      <mesh
+        position={[0, 0.5, 0]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        receiveShadow
+        castShadow={false}
+      >
+        <planeGeometry args={[800, 800]} />
+        <meshStandardMaterial
+          transparent
+          opacity={0}
+          shadowSide={2}
+        />
+      </mesh>
       
       {/* 調試用：顯示碰撞區域（可選） */}
       {/* {terrainColliders.map(collider => (

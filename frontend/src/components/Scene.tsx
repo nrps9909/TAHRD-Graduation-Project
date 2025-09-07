@@ -120,6 +120,32 @@ export const Scene = () => {
       {/* 邊界牆壁 */}
       <BoundaryWall />
       
+      {/* 移除測試立方體 - 樹木陰影系統現已完整 */}
+      
+      {/* 簡單的陰影接收平面 */}
+      <mesh position={[0, 0, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[100, 100]} />
+        <meshStandardMaterial color="#90EE90" />
+      </mesh>
+      
+      {/* 簡化的測試光源 - 固定位置 */}
+      <directionalLight
+        position={[20, 30, 10]}
+        target-position={[0, 0, 0]}
+        color="#ffffff"
+        intensity={2.5}
+        castShadow
+        shadow-mapSize={2048}
+        shadow-camera-far={100}
+        shadow-camera-left={-600}
+        shadow-camera-right={600}
+        shadow-camera-top={600}
+        shadow-camera-bottom={-600}
+        shadow-camera-near={1}
+        shadow-bias={0.003}
+        shadow-normalBias={0.05}
+      />
+      
       {/* 玩家角色 */}
       <Player position={playerPosition} />
       

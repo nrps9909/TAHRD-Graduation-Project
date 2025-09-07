@@ -93,6 +93,7 @@ const SunModel = ({ position, onLoad }: { position: [number, number, number], on
 
 export const Sun = () => {
   const sunGroupRef = useRef<THREE.Group>(null)
+  const directionalLightRef = useRef<THREE.DirectionalLight>(null)
   const { timeOfDay, hour, minute } = useTimeStore()
   
   // 計算太陽隨時間的位置（與EnvironmentLighting相同邏輯）
@@ -139,6 +140,31 @@ export const Sun = () => {
     }
   }, [hour, minute, sunPosition, timeOfDay])
   
+  // 設置方向光目標和陰影相機
+  React.useEffect(() => {
+    if (directionalLightRef.current) {
+      directionalLightRef.current.target.position.set(0, 0, 0)
+      directionalLightRef.current.target.updateMatrixWorld()
+      
+      // 確保陰影相機設置正確
+      const light = directionalLightRef.current
+      if (light.shadow) {
+        console.log('🌞 設置太陽陰影相機參數')
+        light.shadow.camera.left = -600
+        light.shadow.camera.right = 600
+        light.shadow.camera.top = 600
+        light.shadow.camera.bottom = -600
+        light.shadow.camera.near = 1
+        light.shadow.camera.far = 500
+        light.shadow.bias = 0.003
+        light.shadow.normalBias = 0.05
+        light.shadow.mapSize.setScalar(4096)
+        light.shadow.camera.updateProjectionMatrix()
+        console.log('✅ 太陽陰影相機設置完成')
+      }
+    }
+  }, [])
+
   // 太陽動畫：自轉和光線脈動
   useFrame((state) => {
     if (sunGroupRef.current && timeOfDay === 'day') {
@@ -185,13 +211,31 @@ export const Sun = () => {
             onLoad={handleSunModelLoad}
           />
           
-          {/* 跟隨太陽的光線系統 */}
+          {/* 主要太陽光線 - 方向光投射陰影 */}
+          <directionalLight
+            ref={directionalLightRef}
+            position={sunPosition}
+            color="#FFFFFF"
+            intensity={3.0}
+            castShadow
+            shadow-mapSize={4096}
+            shadow-camera-far={1000}
+            shadow-camera-left={-600}
+            shadow-camera-right={600}
+            shadow-camera-top={600}
+            shadow-camera-bottom={-600}
+            shadow-camera-near={1}
+            shadow-bias={0.003}
+            shadow-normalBias={0.05}
+          />
+          
+          {/* 跟隨太陽的補助光線 */}
           <pointLight
             position={sunPosition}
             color="#FFFF00"
-            intensity={1.5}
-            distance={800}
-            decay={1.0}
+            intensity={0.8}
+            distance={600}
+            decay={1.2}
             castShadow={false}
           />
           
@@ -199,15 +243,57 @@ export const Sun = () => {
           <pointLight
             position={[sunPosition[0] + 30, sunPosition[1] - 20, sunPosition[2] + 20]}
             color="#FFA500"
-            intensity={0.8}
-            distance={600}
-            decay={1.2}
+            intensity={0.6}
+            distance={400}
+            decay={1.5}
             castShadow={false}
           />
           
+          {/* 太陽光斑投影到地面 - 計算投影位置 */}
+          <mesh
+            position={[
+              -sunPosition[0] * 0.3, // 根據太陽位置計算光斑投影
+              1,
+              -sunPosition[2] * 0.3
+            ]}
+            rotation={[-Math.PI / 2, 0, 0]}
+            receiveShadow={false}
+            castShadow={false}
+          >
+            <planeGeometry args={[100, 100]} />
+            <meshBasicMaterial
+              color="#FFFF88"
+              transparent
+              opacity={0.4}
+              blending={2}
+              depthWrite={false}
+            />
+          </mesh>
+
+          {/* 更集中的太陽光斑 - 跟隨太陽投影 */}
+          <mesh
+            position={[
+              -sunPosition[0] * 0.2,
+              1.1,
+              -sunPosition[2] * 0.2
+            ]}
+            rotation={[-Math.PI / 2, 0, 0]}
+            receiveShadow={false}
+            castShadow={false}
+          >
+            <planeGeometry args={[50, 50]} />
+            <meshBasicMaterial
+              color="#FFDD44"
+              transparent
+              opacity={0.3}
+              blending={2}
+              depthWrite={false}
+            />
+          </mesh>
+
           {/* 跟隨太陽移動的光粒子 */}
-          {Array.from({ length: 8 }).map((_, i) => {
-            const angle = (i / 8) * Math.PI * 2
+          {Array.from({ length: 6 }).map((_, i) => {
+            const angle = (i / 6) * Math.PI * 2
             const radius = 35 + Math.sin(i * 3) * 8
             const x = sunPosition[0] + Math.cos(angle) * radius
             const y = sunPosition[1] + Math.sin(angle * 0.4) * 6
@@ -224,7 +310,7 @@ export const Sun = () => {
                 <meshBasicMaterial
                   color="#FFFF88"
                   transparent
-                  opacity={0.6 + Math.sin(i * 2) * 0.3}
+                  opacity={0.4 + Math.sin(i * 2) * 0.2}
                 />
               </mesh>
             )
