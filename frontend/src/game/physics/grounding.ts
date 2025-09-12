@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-export const FOOT_OFFSET = 0.06;
+export const FOOT_OFFSET = 0.03;
 export const GRAVITY = 18;
 export const MAX_SLOPE_DEG = 42;     // > 此角度禁止上爬
 export const STEP_HEIGHT = 0.35;     // 小台階容許高度

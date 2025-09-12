@@ -8,6 +8,7 @@ import { getTerrainHeight, getTerrainRotation, getTerrainSlope, isPathClear } fr
 import { CameraController } from './CameraController'
 import { bindScene, resolveMoveXZ, clampToGroundSmooth, snapToNearestGround, GROUND_LAYER_ID, setMountainColliders, debugThrottled } from '@/game/physics/grounding'
 import { safeNormalize2, clampDt, isFiniteVec3 } from '@/game/utils/mathSafe'
+import { wrapWithFeetPivot } from '@/game/utils/fixPivotAtFeet'
 
 // NPC 類型定義（與 gameStore 保持一致）
 interface NPC {
@@ -39,7 +40,8 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
   modelPath = '/characters/CHAR-F-A',
   modelFile = '/CHAR-F-A.glb'
 }: PlayerProps, ref) => {
-  const playerRef = useRef<THREE.Group>(null)
+  const feetPivotRef = useRef<THREE.Group>(null)
+  const playerRef = useRef<THREE.Group>(null) // 保留為相容性
   const { setPlayerPosition, setPlayerRotation, npcs, startConversation } = useGameStore()
   const isMounted = useRef(true)
   const interactionDistance = 5 // 互動距離（單位） - 增加到5單位
@@ -64,12 +66,12 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
   // 提供 ref 介面給父組件
   useImperativeHandle(ref, () => ({
     getPosition: () => {
-      if (playerRef.current) {
-        return playerRef.current.position.clone()
+      if (feetPivotRef.current) {
+        return feetPivotRef.current.position.clone()
       }
       return new THREE.Vector3(...position)
     },
-    getRef: () => playerRef.current
+    getRef: () => feetPivotRef.current
   }), [])
 
   // 移動相關狀態
@@ -98,8 +100,13 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
 
   // 處理模型載入完成 - 與 NPC 完全相同的邏輯
   useEffect(() => {
-    if (kenneyModel?.scene) {
+    if (kenneyModel?.scene && feetPivotRef.current) {
       console.log(`✅ Player ${fullModelPath} 模型載入成功:`, kenneyModel.scene)
+      
+      // 套用腳底對齊
+      const { group: feetPivot, offsetY } = wrapWithFeetPivot(kenneyModel.scene)
+      feetPivotRef.current.add(feetPivot)
+      console.info('👣 Player feet-pivot offsetY =', offsetY.toFixed(3))
       
       kenneyModel.scene.traverse((child: any) => {
         if (child.isMesh || child.isSkinnedMesh) {
@@ -217,10 +224,10 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
   
   // 檢查附近的 NPC
   const checkNearbyNPC = useCallback((): NPC | null => {
-    if (!playerRef.current) return null
+    if (!feetPivotRef.current) return null
     
     const playerPos = new THREE.Vector3()
-    playerRef.current.getWorldPosition(playerPos)
+    feetPivotRef.current.getWorldPosition(playerPos)
     
     // 尋找最近的 NPC
     let nearestNPC: NPC | null = null
@@ -291,18 +298,14 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
           break
         case 'KeyR':
           // R鍵重置人物位置到安全地點
-          if (playerRef.current) {
-            const safePosition = [0, 0, 0] // 安全的中心位置
-            const terrainHeight = getTerrainHeight(safePosition[0], safePosition[2]) || 0
-            const terrainSlope = getTerrainSlope(safePosition[0], safePosition[2]) || { x: 0, z: 0 }
-            const adjustedY = terrainHeight + 3 // 站在3D模型上方
+          if (feetPivotRef.current) {
+            const safePosition = new THREE.Vector3(0, 0, 0) // 安全的中心位置
+            snapToNearestGround(safePosition, 3, 0.25)
+            feetPivotRef.current.position.copy(safePosition)
+            playerPos.current.copy(safePosition)
             
-            playerRef.current.position.set(safePosition[0], adjustedY, safePosition[2])
-            playerRef.current.rotation.x = terrainSlope.x
-            playerRef.current.rotation.z = terrainSlope.z
-            
-            setPlayerPosition([safePosition[0], adjustedY, safePosition[2]])
-            console.log(`按R鍵重置人物位置: [${safePosition[0]}, ${adjustedY.toFixed(2)}, ${safePosition[2]}], 地形高度: ${terrainHeight.toFixed(2)}, 傾斜: [${terrainSlope.x.toFixed(3)}, ${terrainSlope.z.toFixed(3)}]`)
+            setPlayerPosition([safePosition.x, safePosition.y, safePosition.z])
+            console.log(`按R鍵重置人物位置: [${safePosition.x.toFixed(2)}, ${safePosition.y.toFixed(2)}, ${safePosition.z.toFixed(2)}]`)
           }
           break
       }
@@ -358,7 +361,7 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
 
   // 每幀更新
   useFrame((_, delta) => {
-    if (!playerRef.current) return
+    if (!feetPivotRef.current) return
     
     // Fixed timestep accumulator
     accumulator.current += Math.min(delta, 0.05)
@@ -439,14 +442,14 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
       const actualXZ = resolveMoveXZ(playerPos.current, desiredXZ)
       
       // Step 2: Apply horizontal movement
-      playerPos.current.x += actualXZ.x
-      playerPos.current.z += actualXZ.y // Note: THREE.Vector2.y maps to world Z
+      feetPivotRef.current.position.x += actualXZ.x
+      feetPivotRef.current.position.z += actualXZ.y // Note: THREE.Vector2.y maps to world Z
       
       // Step 3: Smooth ground clamping with gravity
-      clampToGroundSmooth(playerPos.current, velocityY.current, dt, groundNormal.current, onGround.current)
+      clampToGroundSmooth(feetPivotRef.current.position, velocityY.current, dt, groundNormal.current, onGround.current)
       
-      // Step 4: If not on ground for too long, snap to nearest  
-      }
+      // Sync playerPos with feetPivot position
+      playerPos.current.copy(feetPivotRef.current.position)
       
       // 走路動畫
       isMoving.current = true
@@ -460,8 +463,8 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
       if (moveDirection.length() > 0 && !isPointerLocked) {
         // 只在非 Pointer Lock 模式下，角色面向移動方向
         const targetRotation = Math.atan2(moveDirection.x, moveDirection.z)
-        playerRef.current.rotation.y = THREE.MathUtils.lerp(
-          playerRef.current.rotation.y,
+        feetPivotRef.current.rotation.y = THREE.MathUtils.lerp(
+          feetPivotRef.current.rotation.y,
           targetRotation,
           8 * dt
         )
@@ -473,8 +476,8 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
         // Pointer Lock 模式下，角色朝向跟隨移動方向
         if (moveDirection.length() > 0) {
           const targetRotation = Math.atan2(moveDirection.x, moveDirection.z)
-          playerRef.current.rotation.y = THREE.MathUtils.lerp(
-            playerRef.current.rotation.y,
+          feetPivotRef.current.rotation.y = THREE.MathUtils.lerp(
+            feetPivotRef.current.rotation.y,
             targetRotation,
             10 * dt
           )
@@ -483,12 +486,16 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
           }
         }
       }
+    } else {
+      isMoving.current = false
+    }
+    
       accumulator.current -= FIXED_DT
     }
     
     // Apply position to mesh
-    if (isFiniteVec3(playerPos.current)) {
-      playerRef.current.position.copy(playerPos.current)
+    if (isFiniteVec3(playerPos.current) && feetPivotRef.current) {
+      feetPivotRef.current.position.copy(playerPos.current)
       setPlayerPosition([playerPos.current.x, playerPos.current.y, playerPos.current.z])
     }
     
@@ -496,52 +503,11 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
     if (animationMixer) {
       animationMixer.update(delta)
     }
-    } else {
-      isMoving.current = false
-    }
     
-    // 安全的地形貼合模式：防止玩家掉落
-    if (playerRef.current && hasInitialized.current) {
-      const currentPos = playerRef.current.position
-      const terrainHeight = getTerrainHeight(currentPos.x, currentPos.z)
-      
-      // 只有在地形高度合理時才進行調整
-      if (terrainHeight !== undefined && terrainHeight > -10) {
-        const targetY = terrainHeight + 3
-        const currentY = currentPos.y
-        const heightDiff = Math.abs(targetY - currentY)
-        
-        // 防止突然掉落：只允許合理的高度調整
-        if (heightDiff < 8) { // 允許8單位以內的高度調整
-          if (isMoving.current) {
-            // 走路時：平滑過渡到地形高度+輕微擺動
-            const bobAmount = Math.sin(walkCycle.current) * 0.03
-            const newY = THREE.MathUtils.lerp(currentY, targetY + bobAmount, 0.08)
-            playerRef.current.position.y = newY
-          } else {
-            // 靜止時：慢慢過渡到地形高度
-            const newY = THREE.MathUtils.lerp(currentY, targetY, 0.04)
-            playerRef.current.position.y = newY
-          }
-          
-          // 地形傾斜調整（更溫和）
-          const terrainSlope = getTerrainSlope(currentPos.x, currentPos.z)
-          if (terrainSlope && Math.abs(terrainSlope.x) < 0.3 && Math.abs(terrainSlope.z) < 0.3) {
-            playerRef.current.rotation.x = THREE.MathUtils.lerp(playerRef.current.rotation.x, terrainSlope.x, 0.08)
-            playerRef.current.rotation.z = THREE.MathUtils.lerp(playerRef.current.rotation.z, terrainSlope.z, 0.08)
-          }
-        } else {
-          // 高度差異過大，保持當前位置
-          if (Math.random() < 0.01) { // 偶爾輸出調試信息
-            console.log(`🛡️ 防止掉落：地形高度=${terrainHeight.toFixed(1)}, 玩家高度=${currentY.toFixed(1)}, 高度差=${heightDiff.toFixed(1)}`)
-          }
-        }
-      } else {
-        // 地形高度不可靠，保持當前高度不變
-        if (Math.random() < 0.005) { // 偶爾輸出調試信息
-          console.log(`🏔️ 地形高度不可靠: ${terrainHeight}，保持玩家當前高度: ${currentPos.y.toFixed(1)}`)
-        }
-      }
+    // 走路動畫效果（簡單的上下擺動）
+    if (isMoving.current && feetPivotRef.current) {
+      const bobAmount = Math.sin(walkCycle.current) * 0.02
+      feetPivotRef.current.position.y = playerPos.current.y + bobAmount
     }
   })
 
@@ -555,52 +521,31 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
   // 使用ref跟踪是否已經初始化，避免重複初始化
   const hasInitialized = useRef(false)
   
-  // 初始化玩家位置 - 像 NPC 一樣浮在半空中，不進行地形檢測
+  // 初始化玩家位置 - 使用物理系統的接地邏輯
   useEffect(() => {
-    if (playerRef.current && !hasInitialized.current && isMounted.current) {
+    if (feetPivotRef.current && !hasInitialized.current && isMounted.current) {
       hasInitialized.current = true
       console.log('開始初始化玩家位置...')
       
       // 使用更安全的初始化方式 - 延遲等待地形載入
       setTimeout(() => {
-        if (!playerRef.current) return
+        if (!feetPivotRef.current) return
         
-        const initialX = position[0]
-        const initialZ = position[2]
-        const terrainHeight = getTerrainHeight(initialX, initialZ)
+        const initialPos = new THREE.Vector3(...position)
+        // 使用物理系統的接地功能
+        snapToNearestGround(initialPos, 3, 0.25)
+        playerPos.current.copy(initialPos)
+        feetPivotRef.current.position.copy(initialPos)
         
-        console.log(`🏔️ 玩家位置 [${initialX}, ${initialZ}] 的地形高度檢測結果: ${terrainHeight}`)
-        
-        let safeY = position[1] // 使用原始Y位置作為後備
-        
-        if (terrainHeight !== undefined && terrainHeight > -10) {
-          // 地形高度合理，使用地形貼合
-          safeY = terrainHeight + 3
-          console.log(`✅ 使用地形貼合高度: ${safeY.toFixed(2)}`)
-        } else {
-          // 地形高度不可靠，使用固定安全高度
-          safeY = Math.max(18, position[1]) // 至少18高度
-          console.log(`⚠️ 地形高度不可靠，使用安全固定高度: ${safeY}`)
-        }
-        
-        playerRef.current.position.set(initialX, safeY, initialZ)
-        
-        // 地形傾斜（如果可用）
-        const terrainSlope = getTerrainSlope(initialX, initialZ)
-        if (terrainSlope && Math.abs(terrainSlope.x) < 0.5 && Math.abs(terrainSlope.z) < 0.5) {
-          playerRef.current.rotation.x = terrainSlope.x
-          playerRef.current.rotation.z = terrainSlope.z
-        }
-        
-        console.log(`🎮 玩家初始化完成: [${initialX}, ${safeY.toFixed(2)}, ${initialZ}]`)
-      }, 1000) // 等待1秒讓地形完全載入
+        console.log(`🎮 玩家初始化完成: [${initialPos.x.toFixed(2)}, ${initialPos.y.toFixed(2)}, ${initialPos.z.toFixed(2)}]`)
+      }, 1500) // 等待1.5秒讓地形完全載入
     }
   }, []) // 不依賴任何props，只在組件掛載時執行一次
 
   return (
     <>
       <CameraController 
-        target={playerRef} 
+        target={feetPivotRef} 
         offset={new THREE.Vector3(0, 5, 8)}  // 更近的第三人稱視角
         lookAtOffset={new THREE.Vector3(0, 1.5, 0)}
         smoothness={8}  // 更平滑的相機移動
@@ -609,17 +554,8 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
         onRotationChange={(rotation) => { cameraRotation.current = rotation }}
       />
       
-      <group ref={playerRef} position={position}>
-        {/* Kenney GLB 角色模型 - 與 NPC 完全相同的渲染方式 */}
-        {kenneyModel?.scene && (
-          <group scale={[2.2, 2.2, 2.2]} position={[0, -1.5, 0]}>
-            <primitive 
-              object={kenneyModel.scene} 
-              frustumCulled={false}
-              visible={true}
-            />
-          </group>
-        )}
+      <group ref={feetPivotRef} position={position}>
+        {/* Kenney GLB 角色模型已在 useEffect 中通過 wrapWithFeetPivot 添加 */}
 
 
         {/* 玩家陰影圓圈 */}
