@@ -521,7 +521,10 @@ export const TerrainModel = ({ position = [0, 0, 0] }: TerrainModelProps) => {
                 materialName.includes('montana') ||
                 materialName.includes('mountain'))) {
               brownMountainMeshes.push(child)
-              console.log('找到棕色山體mesh:', child.name, '材質:', material.name)
+              // 標記為不可行走區域
+              child.userData.noWalk = true
+              child.name = child.name || `mountain_${brownMountainMeshes.length}`
+              console.log('找到棕色山體mesh:', child.name, '材質:', material.name, '已標記為不可行走')
             }
             
             // 記錄所有材質以供調試（減少輸出）

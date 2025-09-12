@@ -12,8 +12,9 @@ export default defineConfig({
     dedupe: ['three'],
   },
   server: {
-    host: true,
+    host: '0.0.0.0',
     port: 3000,
+    strictPort: true,
   },
   publicDir: 'public',
   assetsInclude: ['**/*.TTC', '**/*.ttc', '**/*.ttf', '**/*.otf'],

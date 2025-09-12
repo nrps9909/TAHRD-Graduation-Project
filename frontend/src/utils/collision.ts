@@ -23,21 +23,47 @@ export class CollisionSystem {
     this.collisionObjects = this.collisionObjects.filter(obj => obj.id !== id)
   }
 
-  // 檢查位置是否有效（僅檢查碰撞物體，不使用固定邊界）
-  isValidPosition(position: THREE.Vector3, playerRadius: number = 0.5): boolean {
-    // 檢查所有碰撞物體
+  // 節流DEBUG訊息
+  private lastDebugTime = 0
+  
+  private debugCollision(type: string, data: any): void {
+    const now = Date.now()
+    if (now - this.lastDebugTime > 500) { // 每0.5s最多一次
+      console.log(`[DEBUG] ${type}:`, data)
+      this.lastDebugTime = now
+    }
+  }
+
+  // 檢查位置是否有效（寬鬆的碰撞檢測）
+  isValidPosition(position: THREE.Vector3, playerRadius: number = 0.3): boolean {
+    // 檢查所有碰撞物體，使用更寬鬆的條件
     for (const obj of this.collisionObjects) {
       const distance = position.distanceTo(obj.position)
       
-      if (distance < (obj.radius + playerRadius)) {
+      // 使用更小的有效碰撞半徑
+      let effectiveRadius = obj.radius
+      
+      // 針對不同類型調整碰撞半徑
+      if (obj.type === 'tree') {
+        effectiveRadius = Math.min(obj.radius, 1.5) // 樹木最大1.5半徑
+      } else if (obj.type === 'mountain') {
+        effectiveRadius = Math.min(obj.radius, 3.0) // 山脈最大3.0半徑
+      } else if (obj.type === 'rock') {
+        effectiveRadius = Math.min(obj.radius, 1.0) // 岩石最大1.0半徑
+      }
+      
+      if (distance < (effectiveRadius + playerRadius)) {
         // 跳過水域類型，不阻擋
         if (obj.type === 'water') {
           continue
         }
-        // 需要阻擋的類型（移除 fence 和 boundary，無邊界限制）
+        
+        // 只有非常接近時才阻擋
         if (obj.type === 'building' || obj.type === 'tree' || obj.type === 'rock' || 
             obj.type === 'npc' || obj.type === 'mountain') {
-          console.log(`玩家被${obj.type}阻擋! 位置: (${position.x.toFixed(1)}, ${position.z.toFixed(1)}), 碰撞點: (${obj.position.x.toFixed(1)}, ${obj.position.z.toFixed(1)}), 距離: ${distance.toFixed(1)}, 阻擋半徑: ${(obj.radius + playerRadius).toFixed(1)}`)
+          
+          // 使用節流DEBUG
+          this.debugCollision('collision-block', { type: obj.type, distance: distance.toFixed(1), effectiveRadius: effectiveRadius.toFixed(1) })
           return false
         }
       }

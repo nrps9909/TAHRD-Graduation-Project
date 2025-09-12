@@ -1,11 +1,19 @@
 import { useRef, useEffect, useCallback, useState, forwardRef, useImperativeHandle } from 'react'
-import { useFrame, useLoader } from '@react-three/fiber'
+import { useFrame, useLoader, useThree } from '@react-three/fiber'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import * as THREE from 'three'
 import { useGameStore } from '@/stores/gameStore'
 import { collisionSystem } from '@/utils/collision'
 import { getTerrainHeight, getTerrainRotation, getTerrainSlope, isPathClear } from './TerrainModel'
 import { CameraController } from './CameraController'
+import { 
+  resolveMoveXZ, 
+  clampToGroundY, 
+  snapToNearestGround,
+  initializeGrounding,
+  GROUND_LAYER_ID
+} from '@/game/physics/useGroundingAndCollision'
+import { safeNormalize2, clampDt, isFiniteVec3 } from '@/game/utils/mathSafe'
 
 // NPC 類型定義（與 gameStore 保持一致）
 interface NPC {
@@ -33,7 +41,7 @@ interface PlayerRef {
 }
 
 export const Player = forwardRef<PlayerRef, PlayerProps>(({ 
-  position = [0, 0, 0], 
+  position = [-15, 18, -15], // 安全的spawn位置，遠離山脈 
   modelPath = '/characters/CHAR-F-A',
   modelFile = '/CHAR-F-A.glb'
 }: PlayerProps, ref) => {
@@ -85,6 +93,10 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
   // 玩家狀態
   const isMoving = useRef(false)
   const walkCycle = useRef(0)
+
+  // Physics state for new system
+  const velocityY = useRef({ value: 0 })
+  const groundlessTime = useRef(0)
 
   // 處理模型載入完成 - 與 NPC 完全相同的邏輯
   useEffect(() => {
@@ -148,6 +160,47 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
       }
     }
   }, [kenneyModel])
+
+  // Initialize terrain meshes for physics system
+  const { scene } = useThree()
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const terrainMeshes: THREE.Mesh[] = []
+      
+      scene.traverse((obj) => {
+        if (!(obj instanceof THREE.Mesh)) return
+        
+        const name = (obj.name || '').toLowerCase()
+        let materialName = ''
+        if (obj.material) {
+          if (Array.isArray(obj.material)) {
+            materialName = obj.material.map(m => m.name || '').join(' ').toLowerCase()
+          } else {
+            materialName = (obj.material.name || '').toLowerCase()
+          }
+        }
+        
+        // Identify terrain meshes for raycasting
+        const terrainHints = ['terrain', 'ground', 'island', 'sand', 'grass', 'dirt', 'plain', 'terrain_low_poly', 'landscape']
+        const isTerrain = terrainHints.some(hint => name.includes(hint) || materialName.includes(hint))
+        
+        if (isTerrain) {
+          terrainMeshes.push(obj)
+          console.log(`🎮 [Player] Found terrain mesh: ${name}`)
+        }
+      })
+      
+      // Initialize grounding system with terrain meshes
+      if (terrainMeshes.length > 0) {
+        initializeGrounding(terrainMeshes)
+        console.log(`✅ [Player] Physics system initialized with ${terrainMeshes.length} terrain meshes`)
+      } else {
+        console.warn(`⚠️ [Player] No terrain meshes found for physics system`)
+      }
+    }, 1000) // Delay to ensure terrain is loaded
+    
+    return () => clearTimeout(timer)
+  }, [scene])
   
   // 檢查附近的 NPC
   const checkNearbyNPC = useCallback((): NPC | null => {
@@ -188,22 +241,32 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
   // 鍵盤事件處理
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      // 防止方向鍵的默認滾動行為
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.code)) {
+        event.preventDefault()
+      }
+      
+      console.log(`🎮 按下按鍵: ${event.code}`) // 調試日志
       switch (event.code) {
         case 'KeyW':
         case 'ArrowUp':
           keys.current.forward = true
+          console.log('🎮 ↑ 方向鍵 - 設定前進 = true')
           break
         case 'KeyS':
         case 'ArrowDown':
           keys.current.backward = true
+          console.log('🎮 ↓ 方向鍵 - 設定後退 = true')
           break
         case 'KeyA':
         case 'ArrowLeft':
           keys.current.left = true
+          console.log('🎮 ← 方向鍵 - 設定左移 = true')
           break
         case 'KeyD':
         case 'ArrowRight':
           keys.current.right = true
+          console.log('🎮 → 方向鍵 - 設定右移 = true')
           break
         case 'ShiftLeft':
         case 'ShiftRight':
@@ -233,22 +296,27 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
     }
 
     const handleKeyUp = (event: KeyboardEvent) => {
+      console.log(`🎮 放開按鍵: ${event.code}`) // 調試日志
       switch (event.code) {
         case 'KeyW':
         case 'ArrowUp':
           keys.current.forward = false
+          console.log('🎮 ↑ 方向鍵 - 設定前進 = false')
           break
         case 'KeyS':
         case 'ArrowDown':
           keys.current.backward = false
+          console.log('🎮 ↓ 方向鍵 - 設定後退 = false')
           break
         case 'KeyA':
         case 'ArrowLeft':
           keys.current.left = false
+          console.log('🎮 ← 方向鍵 - 設定左移 = false')
           break
         case 'KeyD':
         case 'ArrowRight':
           keys.current.right = false
+          console.log('🎮 → 方向鍵 - 設定右移 = false')
           break
         case 'ShiftLeft':
         case 'ShiftRight':
@@ -257,22 +325,33 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
       }
     }
 
+    // 確保事件監聽器正確綁定
     window.addEventListener('keydown', handleKeyDown)
     window.addEventListener('keyup', handleKeyUp)
+    
+    // 點擊畫面來獲得焦點
+    const handleClick = () => {
+      console.log('🎯 畫面獲得焦點')
+      window.focus()
+    }
+    document.addEventListener('click', handleClick)
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('keyup', handleKeyUp)
+      document.removeEventListener('click', handleClick)
     }
   }, [handleInteraction])  // 加入 handleInteraction 依賴
 
   // 每幀更新
   useFrame((_, delta) => {
     if (!playerRef.current) return
+    
+    const dt = clampDt(delta)
 
     // 更新動畫混合器
     if (animationMixer) {
-      animationMixer.update(delta)
+      animationMixer.update(dt)
     }
 
     // 重置方向向量
@@ -284,9 +363,19 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
     if (keys.current.left) direction.current.x = -1      // A鍵：本地左方（修正方向）
     if (keys.current.right) direction.current.x = 1      // D鍵：本地右方（修正方向）
 
-    // 正規化方向向量
+    // 調試：檢查按鍵狀態和方向向量
+    const anyKeyPressed = keys.current.forward || keys.current.backward || keys.current.left || keys.current.right
+    if (anyKeyPressed) {
+      console.log(`🎮 按鍵狀態 - 前:${keys.current.forward} 後:${keys.current.backward} 左:${keys.current.left} 右:${keys.current.right}`)
+      console.log(`🎮 方向向量: (${direction.current.x}, ${direction.current.z})`)
+    }
+
+    // 安全正規化方向向量
     if (direction.current.length() > 0) {
-      direction.current.normalize()
+      const dir2D = new THREE.Vector2(direction.current.x, direction.current.z)
+      safeNormalize2(dir2D)
+      direction.current.x = dir2D.x
+      direction.current.z = dir2D.y
       
       // 計算移動方向
       const moveDirection = new THREE.Vector3()
@@ -314,103 +403,58 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
         moveDirection.z = -direction.current.z
       }
       
-      moveDirection.normalize()
+      const moveDir2D = new THREE.Vector2(moveDirection.x, moveDirection.z)
+      safeNormalize2(moveDir2D)
+      moveDirection.x = moveDir2D.x
+      moveDirection.z = moveDir2D.y
 
       // 移動速度設定 - 適應10倍擴展地形，提高移動速度
       let speed = 25  // 正常行走速度 (從8提高到25)
       if (keys.current.shift) speed = 45  // Shift - 奔跑 (從15提高到45)
-      velocity.current.copy(moveDirection.multiplyScalar(speed * delta))
+      velocity.current.copy(moveDirection.multiplyScalar(speed * dt))
+      
+      // 調試：檢查移動向量和速度
+      if (anyKeyPressed) {
+        console.log(`🎮 移動向量: (${moveDirection.x.toFixed(2)}, ${moveDirection.z.toFixed(2)})`)
+        console.log(`🎮 速度向量: (${velocity.current.x.toFixed(2)}, ${velocity.current.z.toFixed(2)})`)
+        console.log(`🎮 Pointer Lock: ${!!document.pointerLockElement}`)
+      }
 
-      // 分步移動防止跳過碰撞檢測
-      let currentPos = playerRef.current.position.clone()
-      const totalMovement = velocity.current.clone()
-      const maxStepSize = 0.1 // 最大步長，防止跳過碰撞
-      const steps = Math.ceil(totalMovement.length() / maxStepSize)
-      const stepMovement = totalMovement.divideScalar(steps)
+      // Physics-based movement using new system
+      const currentPos = playerRef.current.position.clone()
       
-      // 只在第一次檢查時顯示碰撞物體數量
-      if (Math.random() < 0.01) { // 1%機率輸出碰撞物體數量
-        const treeCount = collisionSystem.getTreeCount()
-        const waterCount = collisionSystem.getWaterCount()
-        const mountainCount = collisionSystem.getMountainCount()
-        console.log(`🎮 玩家碰撞檢測 - 已註冊樹木: ${treeCount}, 山脈: ${mountainCount}, 水域邊界: ${waterCount}`)
-      }
+      // Calculate desired movement
+      const desiredXZ = new THREE.Vector2(velocity.current.x, velocity.current.z)
       
-      let validPosition = currentPos.clone()
-      let blocked = false
+      // Step 1: Resolve horizontal movement with collision
+      const actualXZ = resolveMoveXZ(currentPos, desiredXZ)
       
-      // 逐步移動，每步都檢查碰撞
-      for (let i = 0; i < steps && !blocked; i++) {
-        const nextPosition = validPosition.clone().add(stepMovement)
-        
-        if (collisionSystem.isValidPosition(nextPosition, 0.5)) {
-          validPosition = nextPosition
-        } else {
-          // 被阻擋，嘗試找到部分有效的移動
-          const partialMovement = collisionSystem.getClosestValidPosition(
-            validPosition,
-            nextPosition,
-            0.5
-          )
-          
-          if (partialMovement.distanceTo(validPosition) > 0.001) {
-            validPosition = partialMovement
-            console.log(`玩家被物體阻擋，部分移動到: (${validPosition.x.toFixed(1)}, ${validPosition.z.toFixed(1)})`)
-          } else {
-            console.log(`玩家被物體完全阻擋`)
-          }
-          blocked = true
+      // Step 2: Apply horizontal movement
+      currentPos.x += actualXZ.x
+      currentPos.z += actualXZ.y // Note: THREE.Vector2.y maps to world Z
+      
+      // Step 3: Handle vertical positioning and gravity
+      clampToGroundY(currentPos, velocityY, dt)
+      
+      // Step 4: Emergency ground snapping if falling too long
+      groundlessTime.current += dt
+      if (groundlessTime.current > 1.0) { // If airborne for more than 1 second
+        if (snapToNearestGround(currentPos)) {
+          groundlessTime.current = 0
+          console.log(`🎮 [Player] Snapped to nearest ground at (${currentPos.x.toFixed(1)}, ${currentPos.z.toFixed(1)})`)
         }
+      } else if (Math.abs(velocityY.current.value) < 0.1) {
+        groundlessTime.current = 0 // Reset if on stable ground
       }
       
-      // 然後檢查山脈路徑是否暢通
-      if (!isPathClear(currentPos.x, currentPos.z, validPosition.x, validPosition.z)) {
-        // 如果路徑被山脈阻擋，嘗試找到可達的位置
-        const direction = new THREE.Vector3().subVectors(validPosition, currentPos).normalize()
-        let testDistance = 0.5
-        let safePosition = currentPos.clone()
-        
-        // 更細粒度地測試移動，防止擠過物體
-        while (testDistance < currentPos.distanceTo(validPosition)) {
-          const testPos = currentPos.clone().add(direction.clone().multiplyScalar(testDistance))
-          
-          // 檢查山脈和物體碰撞
-          if (isPathClear(currentPos.x, currentPos.z, testPos.x, testPos.z) &&
-              collisionSystem.isValidPosition(testPos, 0.5)) {
-            safePosition = testPos
-            testDistance += 0.1 // 使用更小的步長，防止擠過物體
-          } else {
-            break
-          }
-        }
-        
-        validPosition = safePosition
-        console.log(`玩家被山脈阻擋，最終位置: (${validPosition.x.toFixed(1)}, ${validPosition.z.toFixed(1)})`)
+      // Apply final position (with safety check)
+      if (isFiniteVec3(currentPos)) {
+        playerRef.current.position.copy(currentPos)
+      } else {
+        console.warn('[Player] Non-finite position detected, skipping update')
+        currentPos.set(...position)
+        playerRef.current.position.set(...position)
       }
-      
-      // 地形貼合模式：讓玩家完全貼合3D地形
-      const adjustedPosition = validPosition.clone()
-      
-      // 使用精確的地形高度檢測
-      const terrainHeight = getTerrainHeight(adjustedPosition.x, adjustedPosition.z) || 0
-      adjustedPosition.y = terrainHeight + 3 // 站在3D模型上方
-      
-      playerRef.current.position.copy(adjustedPosition)
-      
-      // 地形適應：讓玩家跟隨地形傾斜和旋轉
-      const terrainSlope = getTerrainSlope(adjustedPosition.x, adjustedPosition.z) || { x: 0, z: 0 }
-      
-      // 應用地形旋轉到玩家
-      playerRef.current.rotation.x = THREE.MathUtils.lerp(
-        playerRef.current.rotation.x, 
-        terrainSlope.x, 
-        0.2
-      )
-      playerRef.current.rotation.z = THREE.MathUtils.lerp(
-        playerRef.current.rotation.z, 
-        terrainSlope.z, 
-        0.2
-      )
       
       // 走路動畫
       isMoving.current = true
@@ -427,7 +471,7 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
         playerRef.current.rotation.y = THREE.MathUtils.lerp(
           playerRef.current.rotation.y,
           targetRotation,
-          8 * delta
+          8 * dt
         )
         // 移除不必要的旋轉更新，避免觸發重複重置
         // if (isMounted.current) {
@@ -440,7 +484,7 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
           playerRef.current.rotation.y = THREE.MathUtils.lerp(
             playerRef.current.rotation.y,
             targetRotation,
-            10 * delta
+            10 * dt
           )
           if (isMounted.current) {
             setPlayerRotation(targetRotation)
@@ -451,32 +495,48 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
       isMoving.current = false
     }
     
-    // 地形貼合模式：始終跟隨地形高度和傾斜
-    if (playerRef.current) {
-      // 獲取當前位置的地形資訊
-      const terrainHeight = getTerrainHeight(playerRef.current.position.x, playerRef.current.position.z) || 0
-      const terrainSlope = getTerrainSlope(playerRef.current.position.x, playerRef.current.position.z) || { x: 0, z: 0 }
+    // 安全的地形貼合模式：防止玩家掉落
+    if (playerRef.current && hasInitialized.current) {
+      const currentPos = playerRef.current.position
+      const terrainHeight = getTerrainHeight(currentPos.x, currentPos.z)
       
-      if (isMoving.current) {
-        // 走路時：地形高度加上輕微的上下擺動
-        const bobAmount = Math.sin(walkCycle.current) * 0.03 // 減少擺動幅度避免穿透地面
-        playerRef.current.position.y = terrainHeight + 3 + bobAmount
+      // 只有在地形高度合理時才進行調整
+      if (terrainHeight !== undefined && terrainHeight > -10) {
+        const targetY = terrainHeight + 3
+        const currentY = currentPos.y
+        const heightDiff = Math.abs(targetY - currentY)
+        
+        // 防止突然掉落：只允許合理的高度調整
+        if (heightDiff < 8) { // 允許8單位以內的高度調整
+          if (isMoving.current) {
+            // 走路時：平滑過渡到地形高度+輕微擺動
+            const bobAmount = Math.sin(walkCycle.current) * 0.03
+            const newY = THREE.MathUtils.lerp(currentY, targetY + bobAmount, 0.08)
+            playerRef.current.position.y = newY
+          } else {
+            // 靜止時：慢慢過渡到地形高度
+            const newY = THREE.MathUtils.lerp(currentY, targetY, 0.04)
+            playerRef.current.position.y = newY
+          }
+          
+          // 地形傾斜調整（更溫和）
+          const terrainSlope = getTerrainSlope(currentPos.x, currentPos.z)
+          if (terrainSlope && Math.abs(terrainSlope.x) < 0.3 && Math.abs(terrainSlope.z) < 0.3) {
+            playerRef.current.rotation.x = THREE.MathUtils.lerp(playerRef.current.rotation.x, terrainSlope.x, 0.08)
+            playerRef.current.rotation.z = THREE.MathUtils.lerp(playerRef.current.rotation.z, terrainSlope.z, 0.08)
+          }
+        } else {
+          // 高度差異過大，保持當前位置
+          if (Math.random() < 0.01) { // 偶爾輸出調試信息
+            console.log(`🛡️ 防止掉落：地形高度=${terrainHeight.toFixed(1)}, 玩家高度=${currentY.toFixed(1)}, 高度差=${heightDiff.toFixed(1)}`)
+          }
+        }
       } else {
-        // 靜止時：站在3D模型上方
-        playerRef.current.position.y = terrainHeight + 3
+        // 地形高度不可靠，保持當前高度不變
+        if (Math.random() < 0.005) { // 偶爾輸出調試信息
+          console.log(`🏔️ 地形高度不可靠: ${terrainHeight}，保持玩家當前高度: ${currentPos.y.toFixed(1)}`)
+        }
       }
-      
-      // 始終跟隨地形傾斜（無論移動或靜止）
-      playerRef.current.rotation.x = THREE.MathUtils.lerp(
-        playerRef.current.rotation.x, 
-        terrainSlope.x, 
-        0.15
-      )
-      playerRef.current.rotation.z = THREE.MathUtils.lerp(
-        playerRef.current.rotation.z, 
-        terrainSlope.z, 
-        0.15
-      )
     }
   })
 
@@ -496,20 +556,39 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
       hasInitialized.current = true
       console.log('開始初始化玩家位置...')
       
-      // 使用地形貼合位置
-      const initialX = position[0]
-      const initialZ = position[2]
-      const terrainHeight = getTerrainHeight(initialX, initialZ) || 0
-      const terrainSlope = getTerrainSlope(initialX, initialZ) || { x: 0, z: 0 }
-      const initialY = terrainHeight + 3 // 站在3D模型上方
-      
-      playerRef.current.position.set(initialX, initialY, initialZ)
-      
-      // 初始化時就應用地形傾斜
-      playerRef.current.rotation.x = terrainSlope.x
-      playerRef.current.rotation.z = terrainSlope.z
-      
-      console.log(`玩家設定為地形貼合位置: [${initialX}, ${initialY.toFixed(2)}, ${initialZ}], 地形高度: ${terrainHeight.toFixed(2)}, 傾斜: [${terrainSlope.x.toFixed(3)}, ${terrainSlope.z.toFixed(3)}]`)
+      // 使用更安全的初始化方式 - 延遲等待地形載入
+      setTimeout(() => {
+        if (!playerRef.current) return
+        
+        const initialX = position[0]
+        const initialZ = position[2]
+        const terrainHeight = getTerrainHeight(initialX, initialZ)
+        
+        console.log(`🏔️ 玩家位置 [${initialX}, ${initialZ}] 的地形高度檢測結果: ${terrainHeight}`)
+        
+        let safeY = position[1] // 使用原始Y位置作為後備
+        
+        if (terrainHeight !== undefined && terrainHeight > -10) {
+          // 地形高度合理，使用地形貼合
+          safeY = terrainHeight + 3
+          console.log(`✅ 使用地形貼合高度: ${safeY.toFixed(2)}`)
+        } else {
+          // 地形高度不可靠，使用固定安全高度
+          safeY = Math.max(18, position[1]) // 至少18高度
+          console.log(`⚠️ 地形高度不可靠，使用安全固定高度: ${safeY}`)
+        }
+        
+        playerRef.current.position.set(initialX, safeY, initialZ)
+        
+        // 地形傾斜（如果可用）
+        const terrainSlope = getTerrainSlope(initialX, initialZ)
+        if (terrainSlope && Math.abs(terrainSlope.x) < 0.5 && Math.abs(terrainSlope.z) < 0.5) {
+          playerRef.current.rotation.x = terrainSlope.x
+          playerRef.current.rotation.z = terrainSlope.z
+        }
+        
+        console.log(`🎮 玩家初始化完成: [${initialX}, ${safeY.toFixed(2)}, ${initialZ}]`)
+      }, 1000) // 等待1秒讓地形完全載入
     }
   }, []) // 不依賴任何props，只在組件掛載時執行一次
 

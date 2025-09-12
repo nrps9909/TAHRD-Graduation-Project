@@ -89,6 +89,7 @@ interface GameState {
   setPlayerRotation: (rotation: number) => void
   setJoystickInput: (x: number, y: number) => void
   updateNpcConversation: (npcId: string, partnerId: string | null, content: string | null) => void
+  getPlayerPosition: () => { x: number; y: number; z: number } | null
 }
 
 export const useGameStore = create<GameState>()(
@@ -97,7 +98,7 @@ export const useGameStore = create<GameState>()(
       // Initial state
       playerId: null,
       playerName: '',
-      playerPosition: [0, 0, 0], // 暫時設置在地面位置
+      playerPosition: [-15, 18, -15], // 安全的spawn位置，遠離山脈和NPC位置
       playerRotation: 0,
       joystickInput: { x: 0, y: 0 },
       npcs: [],
@@ -121,103 +122,131 @@ export const useGameStore = create<GameState>()(
         set({ isLoading: true })
         
         try {
-          // 從後端 API 動態載入 NPC 資料
-          const response = await fetch('http://localhost:4000/graphql', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
+          console.log('🎮 開始載入NPC數據...')
+          
+          // 直接使用預設NPC數據確保顯示
+          const defaultNPCs = [
+            {
+              id: 'npc-1',
+              name: '陸培修',
+              personality: '夢幻的藝術家',
+              currentMood: 'cheerful',
+              position: [5, 18, 8] as [number, number, number],
+              relationshipLevel: 1,
             },
-            body: JSON.stringify({
-              query: `
-                query GetNPCs {
-                  npcs {
-                    id
-                    name
-                    personality
-                    currentMood
-                    location {
-                      x
-                      y
-                      z
-                    }
-                  }
-                }
-              `
-            })
+            {
+              id: 'npc-2', 
+              name: '劉宇岑',
+              personality: '充滿活力的朋友',
+              currentMood: 'excited',
+              position: [-8, 18, 5] as [number, number, number],
+              relationshipLevel: 1,
+            },
+            {
+              id: 'npc-3',
+              name: '陳庭安', 
+              personality: '溫柔的靈魂',
+              currentMood: 'dreamy',
+              position: [3, 18, -6] as [number, number, number],
+              relationshipLevel: 1,
+            },
+          ]
+          
+          console.log('✅ 使用預設NPC數據:', defaultNPCs.map(npc => ({ name: npc.name, position: npc.position })))
+          
+          set({
+            playerId: 'player-1',
+            playerName: '旅人',
+            playerPosition: [-15, 18, -15],
+            npcs: defaultNPCs,
+            isLoading: false,
           })
           
-          const data = await response.json()
-          
-          if (data.data && data.data.npcs) {
-            // 預設的3D模型內安全位置（稍微抬高）
-            const defaultPositions: Record<string, [number, number, number]> = {
-              'npc-1': [5, 18, 8],     // 陸培修 - 中央附近安全位置，稍微抬高
-              'npc-2': [-8, 18, 5],    // 劉宇岑 - 中央附近安全位置，稍微抬高
-              'npc-3': [3, 18, -6]     // 陳庭安 - 中央附近安全位置，稍微抬高
-            }
+          // 嘗試從後端載入作為備用
+          try {
+            const response = await fetch('http://localhost:4000/graphql', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                query: `
+                  query GetNPCs {
+                    npcs {
+                      id
+                      name
+                      personality
+                      currentMood
+                      location {
+                        x
+                        y
+                        z
+                      }
+                    }
+                  }
+                `
+              })
+            })
             
-            // 將後端資料轉換為前端格式，使用預設3D安全位置
-            const npcs = data.data.npcs.map((npc: any) => {
-              const defaultPos = defaultPositions[npc.id]
-              const backendPos = [npc.location?.x || 0, npc.location?.y || 0, npc.location?.z || 0]
-              const finalPos = defaultPos || backendPos as [number, number, number]
-              
-              console.log(`NPC ${npc.name} (${npc.id}):`)
-              console.log('  預設位置:', defaultPos)
-              console.log('  後端位置:', backendPos) 
-              console.log('  最終位置:', finalPos)
-              
-              return {
-                id: npc.id,
-                name: npc.name,
-                personality: npc.personality || '載入中...',
-                currentMood: npc.currentMood || 'neutral',
-                position: finalPos,
-                relationshipLevel: 1,
+            const data = await response.json()
+            console.log('📡 後端NPC數據:', data)
+            
+            if (data?.data?.npcs && data.data.npcs.length > 0) {
+              // 預設的3D模型內安全位置（稍微抬高）
+              const defaultPositions: Record<string, [number, number, number]> = {
+                'npc-1': [5, 18, 8],     // 陸培修 - 中央附近安全位置，稍微抬高
+                'npc-2': [-8, 18, 5],    // 劉宇岑 - 中央附近安全位置，稍微抬高
+                'npc-3': [3, 18, -6]     // 陳庭安 - 中央附近安全位置，稍微抬高
               }
-            })
-            
-            console.log('從後端載入的NPC資料（使用3D模型中心安全位置）:', npcs.map((n: any) => ({ name: n.name, position: n.position })))
-            
+              
+              // 將後端資料轉換為前端格式，使用預設3D安全位置
+              const npcs = data.data.npcs.map((npc: any) => {
+                const defaultPos = defaultPositions[npc.id]
+                const backendPos = [npc.location?.x || 0, npc.location?.y || 0, npc.location?.z || 0]
+                const finalPos = defaultPos || backendPos as [number, number, number]
+                
+                console.log(`NPC ${npc.name} (${npc.id}):`)
+                console.log('  預設位置:', defaultPos)
+                console.log('  後端位置:', backendPos) 
+                console.log('  最終位置:', finalPos)
+                
+                return {
+                  id: npc.id,
+                  name: npc.name,
+                  personality: npc.personality || '載入中...',
+                  currentMood: npc.currentMood || 'neutral',
+                  position: finalPos,
+                  relationshipLevel: 1,
+                }
+              })
+              
+              console.log('✅ 成功從後端載入NPC資料:', npcs.map((n: any) => ({ name: n.name, position: n.position })))
+              
+              set({
+                playerId: 'player-1',
+                playerName: '旅人',
+                playerPosition: [-15, 18, -15],
+                npcs,
+                isLoading: false,
+              })
+            } else {
+              // 後端無資料，使用預設值
+              console.warn('後端無NPC資料，使用預設值')
+              set({
+                playerId: 'player-1',
+                playerName: '旅人',
+                playerPosition: [-15, 18, -15],
+                npcs: defaultNPCs,
+                isLoading: false,
+              })
+            }
+          } catch (backendError) {
+            console.log('📡 後端載入失敗（使用預設數據）:', backendError.message)
             set({
               playerId: 'player-1',
               playerName: '旅人',
-              playerPosition: [0, 0, 0], // 暫時設置在地面位置
-              npcs,
-              isLoading: false,
-            })
-          } else {
-            // 使用預設資料作為備援
-            console.warn('無法從後端載入 NPC 資料，使用預設值')
-            set({
-              playerId: 'player-1',
-              playerName: '旅人',
-              npcs: [
-                {
-                  id: 'npc-1',
-                  name: '陸培修',
-                  personality: '夢幻的藝術家',
-                  currentMood: 'cheerful',
-                  position: [5, 18, -20],  // 中央附近的安全位置，稍微抬高
-                  relationshipLevel: 1,
-                },
-                {
-                  id: 'npc-2',
-                  name: '劉宇岑',
-                  personality: '充滿活力的朋友',
-                  currentMood: 'excited',
-                  position: [-8, 18, 5], // 中央附近的安全位置，稍微抬高
-                  relationshipLevel: 1,
-                },
-                {
-                  id: 'npc-3',
-                  name: '陳庭安',
-                  personality: '溫柔的靈魂',
-                  currentMood: 'dreamy',
-                  position: [3, 18, -6], // 中央附近的安全位置，稍微抬高
-                  relationshipLevel: 1,
-                },
-              ],
+              playerPosition: [-15, 18, -15],
+              npcs: defaultNPCs,
               isLoading: false,
             })
           }
@@ -227,33 +256,8 @@ export const useGameStore = create<GameState>()(
           set({
             playerId: 'player-1',
             playerName: '旅人',
-            playerPosition: [0, 0, 0], // 暫時設置在地面位置
-            npcs: [
-              {
-                id: 'npc-1',
-                name: '陸培修',
-                personality: '夢幻的藝術家',
-                currentMood: 'cheerful',
-                position: [5, 18, -20],  // 中央附近的安全位置，稍微抬高
-                relationshipLevel: 1,
-              },
-              {
-                id: 'npc-2',
-                name: '劉宇岑',
-                personality: '充滿活力的朋友',
-                currentMood: 'excited',
-                position: [-8, 18, 5], // 中央附近的安全位置，稍微抬高
-                relationshipLevel: 1,
-              },
-              {
-                id: 'npc-3',
-                name: '陳庭安',
-                personality: '溫柔的靈魂',
-                currentMood: 'dreamy',
-                position: [3, 18, -6], // 中央附近的安全位置，稍微抬高
-                relationshipLevel: 1,
-              },
-            ],
+            playerPosition: [-15, 18, -15],
+            npcs: defaultNPCs,
             isLoading: false,
           })
         }
@@ -358,6 +362,15 @@ export const useGameStore = create<GameState>()(
             return npc
           })
         }))
+      },
+      
+      getPlayerPosition: () => {
+        const state = get()
+        return {
+          x: state.playerPosition[0],
+          y: state.playerPosition[1],
+          z: state.playerPosition[2]
+        }
       },
     }),
     {

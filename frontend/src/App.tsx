@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { Canvas } from '@react-three/fiber'
+import * as THREE from 'three'
 import { Scene } from './components/Scene'
 import { UI } from './components/UI'
 import { TimeControl } from './components/TimeControl'
@@ -87,13 +88,15 @@ function App() {
       <div className="game-scene">
         <Canvas
           camera={{ position: [0, 8, 12], fov: 75 }}
-          shadows={{ type: 'PCFSoftShadowMap', radius: 25, samples: 25, blendWindow: 0.5 }}
+          shadows
           onCreated={(state) => {
             // 調整陰影為最柔和的PCF類型
             if (state.gl.shadowMap) {
               state.gl.shadowMap.enabled = true
-              state.gl.shadowMap.type = state.gl.PCFSoftShadowMap
+              state.gl.shadowMap.type = THREE.PCFSoftShadowMap
             }
+            // 設置背景為天藍色而非純藍色
+            state.gl.setClearColor('#87CEEB', 1)
           }}
           style={{ 
             width: '100%',
@@ -111,8 +114,8 @@ function App() {
         <UI />
       </div>
       
-      {/* 時間控制面板 */}
-      <TimeControl />
+      {/* 時間控制面板 - 暫時隱藏以避免黑色螢幕問題 */}
+      {/* <TimeControl /> */}
       
       {/* Animal Crossing Style Phone UI - 已移除，使用 UI 組件中的 AnimalCrossingPhone */}
       {/* <NookPhone /> */}

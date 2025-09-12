@@ -1,6 +1,7 @@
 import { useRef, useEffect } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
+import { isFiniteVec3 } from '@/game/utils/mathSafe'
 
 interface CameraControllerProps {
   target: React.RefObject<THREE.Object3D>
@@ -283,6 +284,12 @@ export const CameraController = ({
 
     // 獲取目標位置
     const targetPosition = target.current.position
+    
+    // Safety check: Skip frame if target position is non-finite
+    if (!isFiniteVec3(targetPosition)) {
+      console.warn('[Camera] Non-finite target position detected, skipping frame')
+      return
+    }
 
     // PC遊戲：平滑更新相機旋轉（更高的平滑度）
     currentRotation.current = THREE.MathUtils.lerp(

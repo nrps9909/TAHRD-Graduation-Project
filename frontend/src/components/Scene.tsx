@@ -95,6 +95,9 @@ export const Scene = () => {
 
   return (
     <>
+      {/* 環境光照 */}
+      <ambientLight intensity={0.5} />
+      
       {/* 動態天空穹頂系統 */}
       <SkyDome />
       
@@ -153,11 +156,7 @@ export const Scene = () => {
       
       {/* 移除測試立方體 - 樹木陰影系統現已完整 */}
       
-      {/* 簡單的陰影接收平面 */}
-      <mesh position={[0, 0, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[100, 100]} />
-        <meshStandardMaterial color="#90EE90" />
-      </mesh>
+      {/* 簡單的陰影接收平面 - 移除以防止覆蓋地形 */}
       
       {/* 簡化的測試光源 - 固定位置 */}
       <directionalLight
@@ -185,9 +184,6 @@ export const Scene = () => {
         <NPCCharacter
           key={npc.id}
           npc={npc}
-          position={npc.position}
-          conversationContent={npc.conversationContent}
-          isInConversation={npc.isInConversation}
         />
       ))}
     </>
