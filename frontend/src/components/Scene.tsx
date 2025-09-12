@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { NPCCharacter } from './3D/NPCCharacter'
+import { NPCManager } from './NPCManager'
 import { Player } from './3D/Player'
 import { TerrainModel, validateCharacterPositions } from './3D/TerrainModel'
 import { EnvironmentLighting } from './3D/EnvironmentLighting'
@@ -179,13 +179,8 @@ export const Scene = () => {
       {/* 玩家角色 */}
       <Player position={playerPosition} />
       
-      {/* NPCs */}
-      {npcs.map((npc) => (
-        <NPCCharacter
-          key={npc.id}
-          npc={npc}
-        />
-      ))}
+      {/* NPCs managed by NPCManager */}
+      <NPCManager />
     </>
   )
 }

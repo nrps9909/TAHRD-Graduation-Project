@@ -6,13 +6,7 @@ import { useGameStore } from '@/stores/gameStore'
 import { collisionSystem } from '@/utils/collision'
 import { getTerrainHeight, getTerrainRotation, getTerrainSlope, isPathClear } from './TerrainModel'
 import { CameraController } from './CameraController'
-import { 
-  resolveMoveXZ, 
-  clampToGroundY, 
-  snapToNearestGround,
-  initializeGrounding,
-  GROUND_LAYER_ID
-} from '@/game/physics/useGroundingAndCollision'
+import { bindScene, resolveMoveXZ, clampToGroundSmooth, snapToNearestGround, GROUND_LAYER_ID, setMountainColliders, debugThrottled } from '@/game/physics/grounding'
 import { safeNormalize2, clampDt, isFiniteVec3 } from '@/game/utils/mathSafe'
 
 // NPC 類型定義（與 gameStore 保持一致）
@@ -96,7 +90,11 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
 
   // Physics state for new system
   const velocityY = useRef({ value: 0 })
-  const groundlessTime = useRef(0)
+  const onGround = useRef({ value: true })
+  const groundNormal = useRef(new THREE.Vector3())
+  const playerPos = useRef(new THREE.Vector3(...position))
+  const FIXED_DT = 1/60
+  const accumulator = useRef(0)
 
   // 處理模型載入完成 - 與 NPC 完全相同的邏輯
   useEffect(() => {
@@ -164,8 +162,11 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
   // Initialize terrain meshes for physics system
   const { scene } = useThree()
   useEffect(() => {
+    bindScene(scene)
+    
     const timer = setTimeout(() => {
       const terrainMeshes: THREE.Mesh[] = []
+      const mountains: any[] = []
       
       scene.traverse((obj) => {
         if (!(obj instanceof THREE.Mesh)) return
@@ -174,7 +175,7 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
         let materialName = ''
         if (obj.material) {
           if (Array.isArray(obj.material)) {
-            materialName = obj.material.map(m => m.name || '').join(' ').toLowerCase()
+            materialName = obj.material.map((m: any) => m.name || '').join(' ').toLowerCase()
           } else {
             materialName = (obj.material.name || '').toLowerCase()
           }
@@ -185,19 +186,31 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
         const isTerrain = terrainHints.some(hint => name.includes(hint) || materialName.includes(hint))
         
         if (isTerrain) {
+          obj.layers.enable(GROUND_LAYER_ID)
           terrainMeshes.push(obj)
-          console.log(`🎮 [Player] Found terrain mesh: ${name}`)
+        }
+        
+        // Collect mountain colliders
+        if (name.includes('mountain') || name.includes('Mountain')) {
+          obj.layers.enable(GROUND_LAYER_ID)
+          mountains.push({ cx: obj.position.x, cz: obj.position.z, r: 5 }) // Adjust radius as needed
         }
       })
       
-      // Initialize grounding system with terrain meshes
-      if (terrainMeshes.length > 0) {
-        initializeGrounding(terrainMeshes)
-        console.log(`✅ [Player] Physics system initialized with ${terrainMeshes.length} terrain meshes`)
-      } else {
-        console.warn(`⚠️ [Player] No terrain meshes found for physics system`)
+      // Get collision objects for mountains
+      const mountainColliders = collisionSystem.getCollisionObjects()
+        .filter(obj => obj.type === 'mountain')
+        .map(m => ({ cx: m.position.x, cz: m.position.z, r: m.radius }))
+      
+      if (mountainColliders.length > 0) {
+        setMountainColliders(mountainColliders)
       }
-    }, 1000) // Delay to ensure terrain is loaded
+      
+      console.log(`✅ [Player] Physics initialized: ${terrainMeshes.length} terrain, ${mountainColliders.length} mountains`)
+      
+      // Initial snap to ground
+      snapToNearestGround(playerPos.current, 3, 0.25)
+    }, 1000)
     
     return () => clearTimeout(timer)
   }, [scene])
@@ -347,21 +360,20 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
   useFrame((_, delta) => {
     if (!playerRef.current) return
     
-    const dt = clampDt(delta)
+    // Fixed timestep accumulator
+    accumulator.current += Math.min(delta, 0.05)
+    
+    while (accumulator.current >= FIXED_DT) {
+      const dt = FIXED_DT
+      
+      // 重置方向向量
+      direction.current.set(0, 0, 0)
 
-    // 更新動畫混合器
-    if (animationMixer) {
-      animationMixer.update(dt)
-    }
-
-    // 重置方向向量
-    direction.current.set(0, 0, 0)
-
-    // PC遊戲：鍵盤輸入 (設定本地方向向量)
-    if (keys.current.forward) direction.current.z = 1    // W鍵：本地前方
-    if (keys.current.backward) direction.current.z = -1  // S鍵：本地後方
-    if (keys.current.left) direction.current.x = -1      // A鍵：本地左方（修正方向）
-    if (keys.current.right) direction.current.x = 1      // D鍵：本地右方（修正方向）
+      // PC遊戲：鍵盤輸入 (設定本地方向向量)
+      if (keys.current.forward) direction.current.z = 1    // W鍵：本地前方
+      if (keys.current.backward) direction.current.z = -1  // S鍵：本地後方
+      if (keys.current.left) direction.current.x = -1      // A鍵：本地左方（修正方向）
+      if (keys.current.right) direction.current.x = 1      // D鍵：本地右方（修正方向）
 
     // 調試：檢查按鍵狀態和方向向量
     const anyKeyPressed = keys.current.forward || keys.current.backward || keys.current.left || keys.current.right
@@ -421,44 +433,24 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
       }
 
       // Physics-based movement using new system
-      const currentPos = playerRef.current.position.clone()
-      
-      // Calculate desired movement
       const desiredXZ = new THREE.Vector2(velocity.current.x, velocity.current.z)
       
-      // Step 1: Resolve horizontal movement with collision
-      const actualXZ = resolveMoveXZ(currentPos, desiredXZ)
+      // Step 1: Resolve horizontal movement with mountain collision
+      const actualXZ = resolveMoveXZ(playerPos.current, desiredXZ)
       
       // Step 2: Apply horizontal movement
-      currentPos.x += actualXZ.x
-      currentPos.z += actualXZ.y // Note: THREE.Vector2.y maps to world Z
+      playerPos.current.x += actualXZ.x
+      playerPos.current.z += actualXZ.y // Note: THREE.Vector2.y maps to world Z
       
-      // Step 3: Handle vertical positioning and gravity
-      clampToGroundY(currentPos, velocityY, dt)
+      // Step 3: Smooth ground clamping with gravity
+      clampToGroundSmooth(playerPos.current, velocityY.current, dt, groundNormal.current, onGround.current)
       
-      // Step 4: Emergency ground snapping if falling too long
-      groundlessTime.current += dt
-      if (groundlessTime.current > 1.0) { // If airborne for more than 1 second
-        if (snapToNearestGround(currentPos)) {
-          groundlessTime.current = 0
-          console.log(`🎮 [Player] Snapped to nearest ground at (${currentPos.x.toFixed(1)}, ${currentPos.z.toFixed(1)})`)
-        }
-      } else if (Math.abs(velocityY.current.value) < 0.1) {
-        groundlessTime.current = 0 // Reset if on stable ground
-      }
-      
-      // Apply final position (with safety check)
-      if (isFiniteVec3(currentPos)) {
-        playerRef.current.position.copy(currentPos)
-      } else {
-        console.warn('[Player] Non-finite position detected, skipping update')
-        currentPos.set(...position)
-        playerRef.current.position.set(...position)
+      // Step 4: If not on ground for too long, snap to nearest  
       }
       
       // 走路動畫
       isMoving.current = true
-      walkCycle.current += delta * 10
+      walkCycle.current += dt * 10
       // 移除持續的位置更新，避免觸發重複重置
       // if (isMounted.current) {
       //   setPlayerPosition([adjustedPosition.x, adjustedPosition.y, adjustedPosition.z])
@@ -491,6 +483,19 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
           }
         }
       }
+      accumulator.current -= FIXED_DT
+    }
+    
+    // Apply position to mesh
+    if (isFiniteVec3(playerPos.current)) {
+      playerRef.current.position.copy(playerPos.current)
+      setPlayerPosition([playerPos.current.x, playerPos.current.y, playerPos.current.z])
+    }
+    
+    // Update animation mixer
+    if (animationMixer) {
+      animationMixer.update(delta)
+    }
     } else {
       isMoving.current = false
     }

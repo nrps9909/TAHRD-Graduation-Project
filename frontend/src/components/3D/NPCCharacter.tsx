@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState, useCallback } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useGameStore } from '@/stores/gameStore'
-import { clampToGroundY, resolveMoveXZ, snapToNearestGround, initializeGrounding, sampleGroundAt, FOOT_OFFSET, GROUND_LAYER_ID } from '@/game/physics/useGroundingAndCollision'
+import { bindScene, resolveMoveXZ, clampToGroundSmooth, snapToNearestGround, GROUND_LAYER_ID, debugThrottled } from '@/game/physics/grounding'
 import { safeNormalize2, clampDt, isFiniteVec3 } from '@/game/utils/mathSafe'
 
 interface NPCCharacterProps {
@@ -30,15 +30,19 @@ export const NPCCharacter: React.FC<NPCCharacterProps> = ({
   const { updateNpcPosition, getPlayerPosition } = useGameStore()
   
   // Physics state
+  const npcPos = useRef(new THREE.Vector3(...npc.position))
   const velocityY = useRef({ value: 0 })
-  const lastSafeRef = useRef(new THREE.Vector3(...npc.position))
-  const footOffsetRef = useRef(FOOT_OFFSET)
-  const stuckCounterRef = useRef(0)
+  const onGround = useRef({ value: true })
+  const groundNormal = useRef(new THREE.Vector3())
+  const FIXED_DT = 1/60
+  const accumulator = useRef(0)
   const lastMoveTime = useRef(Date.now())
   const builtRef = useRef(false)
 
   // Initialize physics system
   useEffect(() => {
+    bindScene(scene)
+    
     const timer = setTimeout(() => {
       if (!builtRef.current && scene) {
         const terrainMeshes: THREE.Mesh[] = []
@@ -49,59 +53,42 @@ export const NPCCharacter: React.FC<NPCCharacterProps> = ({
             object.name.includes('ground') ||
             object.userData?.isGround
           )) {
+            object.layers.enable(GROUND_LAYER_ID)
             terrainMeshes.push(object)
           }
         })
 
         if (terrainMeshes.length > 0) {
-          initializeGrounding(terrainMeshes)
-          // Set terrain layer for raycasting
-          terrainMeshes.forEach(mesh => {
-            mesh.layers.enable(GROUND_LAYER_ID)
-          })
           console.log(`🏔️ [NPC ${npc.name}] 初始化物理系統，地形網格: ${terrainMeshes.length}`)
           builtRef.current = true
         }
+        
+        // Initial snap to ground
+        snapToNearestGround(npcPos.current, 3, 0.25)
       }
-    }, 1000)
+    }, 500)
 
     return () => clearTimeout(timer)
   }, [scene, npc.name])
 
-  // Ground check helper
-  const getGroundHeight = (x: number, z: number): { valid: boolean; height: number; normal: THREE.Vector3 } => {
-    const sample = sampleGroundAt(x, z)
-    if (sample) {
-      return {
-        valid: true,
-        height: sample.y,
-        normal: sample.normal
-      }
-    }
-    return { valid: false, height: 0, normal: new THREE.Vector3(0, 1, 0) }
-  }
 
   // Set new random target
   const setNewTarget = useCallback(() => {
     const playerPos = getPlayerPosition()
     const angle = Math.random() * Math.PI * 2
     const distance = 3 + Math.random() * 5
-    const baseX = playerPos ? playerPos.x : currentPosition.x
-    const baseZ = playerPos ? playerPos.z : currentPosition.z
+    const baseX = playerPos ? playerPos.x : npcPos.current.x
+    const baseZ = playerPos ? playerPos.z : npcPos.current.z
     
     const newTarget = new THREE.Vector3(
       baseX + Math.cos(angle) * distance,
-      0,
+      npcPos.current.y,
       baseZ + Math.sin(angle) * distance
     )
 
-    const ground = getGroundHeight(newTarget.x, newTarget.z)
-    if (ground.valid) {
-      newTarget.y = ground.height + footOffsetRef.current
-      setTargetPosition(newTarget)
-      console.log(`🎯 [NPC ${npc.name}] 新目標: (${newTarget.x.toFixed(1)}, ${newTarget.z.toFixed(1)})`)
-    }
-  }, [getPlayerPosition, npc.name, currentPosition])
+    setTargetPosition(newTarget)
+    debugThrottled(`[NPC ${npc.name}] New target: (${newTarget.x.toFixed(1)}, ${newTarget.z.toFixed(1)})`)
+  }, [getPlayerPosition, npc.name])
 
   // Set new target periodically
   useEffect(() => {
@@ -121,98 +108,80 @@ export const NPCCharacter: React.FC<NPCCharacterProps> = ({
   useFrame((state, delta) => {
     if (!meshRef.current || !builtRef.current) return
     
-    const dt = clampDt(delta)
-
-    const distance = currentPosition.distanceTo(targetPosition)
-    const moveSpeed = 2.0
-
-    if (distance > 0.3) {
-      // Moving towards target
-      const direction = new THREE.Vector3()
-        .subVectors(targetPosition, currentPosition)
-        .normalize()
-
-      const desiredMove = new THREE.Vector2(
-        direction.x * moveSpeed * dt,
-        direction.z * moveSpeed * dt
-      )
-      safeNormalize2(desiredMove)
-
-      // Apply physics-based movement resolution
-      const actualMove = resolveMoveXZ(currentPosition, desiredMove)
-      const finalPosition = currentPosition.clone()
-      finalPosition.x += actualMove.x
-      finalPosition.z += actualMove.y
-
-      // Apply ground clamping
-      clampToGroundY(finalPosition, velocityY, dt)
-
-      // Update position (with safety check)
-      if (isFiniteVec3(finalPosition)) {
-        setCurrentPosition(finalPosition)
-        lastSafeRef.current.copy(finalPosition)
-        meshRef.current.position.copy(finalPosition)
-      } else {
-        console.warn(`[NPC ${npc.name}] Non-finite position detected, resetting`)
-        finalPosition.copy(lastSafeRef.current)
-        meshRef.current.position.copy(lastSafeRef.current)
-      }
-
-      // Update store position occasionally
-      if (Math.random() < 0.2) {
-        updateNpcPosition(npc.id, [finalPosition.x, finalPosition.y, finalPosition.z])
-      }
-
-      // Smooth rotation towards movement direction
-      if (distance > 0.1 && !hovered) {
-        const targetRotation = Math.atan2(direction.x, direction.z)
-        const currentRotation = meshRef.current.rotation.y
-        let rotationDiff = targetRotation - currentRotation
-
-        if (rotationDiff > Math.PI) rotationDiff -= 2 * Math.PI
-        if (rotationDiff < -Math.PI) rotationDiff += 2 * Math.PI
-
-        meshRef.current.rotation.y += rotationDiff * 0.3
-      }
-
-      lastMoveTime.current = Date.now()
-    } else {
-      // Near target - apply ground adherence and safety checks
-      clampToGroundY(currentPosition, velocityY, dt)
+    // Fixed timestep accumulator
+    accumulator.current += Math.min(delta, 0.05)
+    
+    while (accumulator.current >= FIXED_DT) {
+      const dt = FIXED_DT
       
-      const ground = getGroundHeight(currentPosition.x, currentPosition.z)
-      if (ground.valid) {
-        const targetY = ground.height + footOffsetRef.current
-        if (Math.abs(targetY - currentPosition.y) > 0.05) {
-          const newY = THREE.MathUtils.lerp(currentPosition.y, targetY, 0.15)
-          const newPosition = new THREE.Vector3(currentPosition.x, newY, currentPosition.z)
-          setCurrentPosition(newPosition)
-          meshRef.current.position.y = newY
-          
-          if (Math.abs(newY - targetY) < 0.1) {
-            lastSafeRef.current.copy(newPosition)
-          }
+      const distance = npcPos.current.distanceTo(targetPosition)
+      const moveSpeed = 2.0
+
+      if (distance > 0.3) {
+        // Moving towards target
+        const direction = new THREE.Vector3()
+          .subVectors(targetPosition, npcPos.current)
+        direction.y = 0 // Keep horizontal
+        direction.normalize()
+
+        const desiredMove = new THREE.Vector2(
+          direction.x * moveSpeed * dt,
+          direction.z * moveSpeed * dt
+        )
+
+        // Apply physics-based movement resolution
+        const actualMove = resolveMoveXZ(npcPos.current, desiredMove)
+        npcPos.current.x += actualMove.x
+        npcPos.current.z += actualMove.y
+
+        // Apply smooth ground clamping
+        clampToGroundSmooth(npcPos.current, velocityY.current, dt, groundNormal.current, onGround.current)
+
+        // Smooth rotation towards movement direction
+        if (distance > 0.1 && !hovered) {
+          const targetRotation = Math.atan2(direction.x, direction.z)
+          const currentRotation = meshRef.current.rotation.y
+          let rotationDiff = targetRotation - currentRotation
+
+          if (rotationDiff > Math.PI) rotationDiff -= 2 * Math.PI
+          if (rotationDiff < -Math.PI) rotationDiff += 2 * Math.PI
+
+          meshRef.current.rotation.y += rotationDiff * 0.3
+        }
+
+        lastMoveTime.current = Date.now()
+      } else {
+        // Near target - just maintain ground position
+        clampToGroundSmooth(npcPos.current, velocityY.current, dt, groundNormal.current, onGround.current)
+        
+        // Occasionally set new target when idle
+        if (Date.now() - lastMoveTime.current > 3000 && Math.random() < 0.01) {
+          setNewTarget()
         }
       }
-
-      // Occasionally set new target when idle
-      if (Date.now() - lastMoveTime.current > 3000 && Math.random() < 0.01) {
-        setNewTarget()
+      
+      // If not on ground, try to snap
+      if (!onGround.current.value) {
+        snapToNearestGround(npcPos.current, 2.5, 0.25)
       }
+      
+      accumulator.current -= FIXED_DT
     }
-
-    // Emergency ground recovery
-    if (currentPosition.y < -10) {
-      console.warn(`🚨 [NPC ${npc.name}] 緊急地面恢復`)
-      if (snapToNearestGround(currentPosition)) {
-        setCurrentPosition(currentPosition.clone())
-        meshRef.current.position.copy(currentPosition)
+    
+    // Apply position to mesh
+    if (isFiniteVec3(npcPos.current)) {
+      meshRef.current.position.copy(npcPos.current)
+      setCurrentPosition(npcPos.current.clone())
+      
+      // Update store position occasionally
+      if (Math.random() < 0.02) {
+        updateNpcPosition(npc.id, [npcPos.current.x, npcPos.current.y, npcPos.current.z])
       }
     }
 
     // Apply hover effects
     if (hovered) {
-      meshRef.current.position.y = currentPosition.y + Math.sin(state.clock.elapsedTime * 3) * 0.1
+      meshRef.current.position.y = npcPos.current.y + Math.sin(state.clock.elapsedTime * 3) * 0.1
     }
   })
 
