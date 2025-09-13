@@ -64,11 +64,11 @@ export function projectMoveOnSlope(moveXZ:THREE.Vector2, groundNormal:THREE.Vect
 
 /** 給目前位置與欲移動向量，回傳「沿坡或沿邊滑移」後的實際位移（含 Y） */
 export function solveSlopeMove(position:THREE.Vector3, desiredXZ:THREE.Vector2, dt:number):THREE.Vector3{
-  const speed = desiredXZ.length();
+  const speed = desiredXZ.length() / dt; // Get actual speed, not speed*dt
   if(speed < EPS) return new THREE.Vector3();
 
   // 預判前方地面樣貌
-  const dir = desiredXZ.clone().divideScalar(speed);
+  const dir = desiredXZ.clone().normalize();
   const probeX = position.x + dir.x * PROBE_FORWARD;
   const probeZ = position.z + dir.y * PROBE_FORWARD;
   const ahead = sampleGround(probeX, probeZ);
