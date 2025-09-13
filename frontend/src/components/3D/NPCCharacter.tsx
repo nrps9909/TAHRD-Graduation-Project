@@ -7,6 +7,7 @@ import { bindScene, resolveMoveXZ, clampToGroundSmooth, snapToNearestGround, GRO
 import { safeNormalize2, clampDt, isFiniteVec3 } from '@/game/utils/mathSafe'
 import { collisionSystem } from '@/utils/collision'
 import { wrapWithFeetPivot } from '@/game/utils/fixPivotAtFeet'
+import Nameplate3D from '@/game/ui/Nameplate3D'
 
 interface NPCCharacterProps {
   npc: {
@@ -359,34 +360,13 @@ export const NPCCharacter: React.FC<NPCCharacterProps> = ({
       onPointerOut={handlePointerOut}
     >
       {/* Kenney GLB 模型已在 useEffect 中通過 wrapWithFeetPivot 添加 */}
+      <Nameplate3D targetRef={feetPivotRef} label={npc.name} />
       
       {/* NPC 陰影圓圈 */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]} receiveShadow>
         <circleGeometry args={[0.8, 16]} />
         <meshBasicMaterial color="#000000" transparent opacity={0.3} />
       </mesh>
-      
-      {/* Name label - 調整位置以適應 3D 模型 */}
-      <group position={[0, 2.5, 0]}>
-        <mesh>
-          <planeGeometry args={[2, 0.4]} />
-          <meshBasicMaterial
-            color="#ffffff"
-            transparent
-            opacity={0.8}
-            side={THREE.DoubleSide}
-          />
-        </mesh>
-        <mesh position={[0, 0, 0.01]}>
-          <planeGeometry args={[1.8, 0.3]} />
-          <meshBasicMaterial
-            color="#333333"
-            transparent
-            opacity={0.9}
-            side={THREE.DoubleSide}
-          />
-        </mesh>
-      </group>
     </group>
   )
 }
