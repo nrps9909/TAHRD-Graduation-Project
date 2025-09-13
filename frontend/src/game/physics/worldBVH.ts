@@ -1,15 +1,12 @@
 import * as THREE from 'three';
-import { MeshBVH, acceleratedRaycast } from 'three-mesh-bvh';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
-THREE.Mesh.prototype.raycast = acceleratedRaycast; // 全域啟用
-
+// Simplified BVH implementation without three-mesh-bvh to avoid compatibility issues
 let worldMesh: THREE.Mesh | null = null;
 
 export function buildWorldBVH(meshes: THREE.Mesh[]) {
-  // 將所有可碰撞地形（地面 + 山脈）合併成一個 Mesh，建立 BVH
+  // 將所有可碰撞地形（地面 + 山脈）合併成一個 Mesh
   const geoms: THREE.BufferGeometry[] = [];
-  const mats: THREE.Matrix4[] = [];
   const temp = new THREE.Matrix4();
 
   for (const m of meshes) {
@@ -19,8 +16,11 @@ export function buildWorldBVH(meshes: THREE.Mesh[]) {
     g.applyMatrix4(temp);
     geoms.push(g);
   }
-  const merged = mergeGeometries(geoms, false)!;
-  (merged as any).boundsTree = new MeshBVH(merged, { lazyGeneration: false });
+  
+  if (geoms.length === 0) return null;
+  
+  const merged = mergeGeometries(geoms, false);
+  if (!merged) return null;
 
   worldMesh = new THREE.Mesh(merged, new THREE.MeshBasicMaterial({ visible: false }));
   worldMesh.name = 'WorldCollisionMesh';

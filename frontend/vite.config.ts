@@ -13,12 +13,12 @@ export default defineConfig({
   },
   server: {
     host: '0.0.0.0',
-    port: 5173,         // 改用預設 5173 較穩
+    port: 3000,
     strictPort: true,
     hmr: {
       protocol: 'ws',
       host: 'localhost',
-      port: 5173
+      port: 3000
     }
   },
   publicDir: 'public',
