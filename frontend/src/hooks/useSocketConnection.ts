@@ -7,15 +7,19 @@ export const useSocketConnection = () => {
   const { addMessage, setTyping, updateNpcMood, updateNpcConversation } = useGameStore()
 
   useEffect(() => {
-    // Use the API URL for socket connection (socket.io handles the ws:// protocol)
-    const socketUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+    // Use separate WebSocket URL from environment variable
+    const socketUrl = import.meta.env.VITE_WS_URL?.replace('ws://', 'http://') || 
+                      import.meta.env.VITE_API_URL || 
+                      'http://localhost:4000'
     
     socketRef.current = io(socketUrl, {
-      transports: ['polling', 'websocket'], // Start with polling, then upgrade to websocket
+      transports: ['websocket', 'polling'], // Prefer websocket first
       reconnection: true,
-      reconnectionAttempts: 5,
+      reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
+      reconnectionDelayMax: 30000,
       timeout: 20000, // 20 second timeout for initial connection
+      autoConnect: true,
     })
 
     const socket = socketRef.current
