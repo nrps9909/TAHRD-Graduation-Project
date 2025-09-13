@@ -1,6 +1,7 @@
 import * as React from 'react';
 import * as THREE from 'three';
-import { Html, useThree } from '@react-three/drei';
+import { Html } from '@react-three/drei';
+import { useThree } from '@react-three/fiber';
 
 type Props = {
   targetRef: React.RefObject<THREE.Object3D>; // feetPivot 根節點
