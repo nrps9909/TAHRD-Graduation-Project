@@ -437,9 +437,9 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
       moveDirection.x = moveDir2D.x
       moveDirection.z = moveDir2D.y
 
-      // 移動速度設定 - 適應10倍擴展地形，提高移動速度
-      let speed = 25  // 正常行走速度 (從8提高到25)
-      if (keys.current.shift) speed = 45  // Shift - 奔跑 (從15提高到45)
+      // 移動速度設定 - 適應10倍擴展地形，角色放大2倍
+      let speed = 35  // 正常行走速度 (配合放大的角色)
+      if (keys.current.shift) speed = 60  // Shift - 奔跑
       velocity.current.copy(moveDirection.multiplyScalar(speed * dt))
       
       // 調試：檢查移動向量和速度
@@ -450,7 +450,7 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
       }
 
       // Physics-based movement using capsule collision
-      const spec = { radius: 0.35, height: 1.2 }; // 依角色大小微調
+      const spec = { radius: 0.7, height: 2.4 }; // 依角色大小微調 - 放大2倍
       
       // 1) 產生期望移動（世界座標）
       const desiredMove = new THREE.Vector3(velocity.current.x, 0, velocity.current.z);

@@ -4,10 +4,10 @@ export const FOOT_OFFSET = 0.03;
 export const GRAVITY = 18;
 export const MAX_SLOPE_DEG = 42;     // > 此角度禁止上爬
 export const STEP_HEIGHT = 0.35;     // 小台階容許高度
-export const CAPSULE_RADIUS = 0.35;  // 依現有模型調
+export const CAPSULE_RADIUS = 0.7;   // 依現有模型調 - 角色放大2倍
 export const EPS = 1e-6;
-export const MOUNTAIN_MARGIN = 0.20;   // 邊緣緩衝（進到這個距離就開始貼邊）
-export const HUG_DISTANCE = 0.18;      // 貼邊時與山體外緣維持的距離
+export const MOUNTAIN_MARGIN = 1.0;    // 邊緣緩衝（進到這個距離就開始貼邊）- 角色放大後增加
+export const HUG_DISTANCE = 0.8;       // 貼邊時與山體外緣維持的距離 - 角色放大後增加
 
 export const GROUND_LAYER_ID = 2;    // 若專案已有層，沿用既有常數
 
@@ -159,8 +159,12 @@ export function resolveMoveXZ(current:THREE.Vector3, moveXZ:THREE.Vector2):THREE
 
     // 讓角色「貼邊」：把預計位置拉到外緣 + HUG_DISTANCE
     const targetDist = hit.r + HUG_DISTANCE;
-    nx = hit.cx + n2.x * targetDist + t.x * speed; // 先對齊外緣，再沿切線位移
-    nz = hit.cz + n2.y * targetDist + t.y * speed;
+    
+    // 計算切線滑移的實際速度（根據接近角度調整）
+    const slideSpeed = speed * Math.max(0.3, Math.abs(dir.dot(t))); // 至少保留30%速度
+    
+    nx = hit.cx + n2.x * targetDist + t.x * slideSpeed; // 先對齊外緣，再沿切線位移
+    nz = hit.cz + n2.y * targetDist + t.y * slideSpeed;
 
     // 回寫為修正後位移
     moveXZ.set(nx - current.x, nz - current.z);
@@ -169,9 +173,9 @@ export function resolveMoveXZ(current:THREE.Vector3, moveXZ:THREE.Vector2):THREE
   // 安全防護：若仍意外在山體內則再推出去
   const dx = nx - hit.cx, dz = nz - hit.cz;
   const d2 = Math.hypot(dx, dz);
-  if (d2 < hit.r) {
+  if (d2 < hit.r + CAPSULE_RADIUS) { // 考慮角色半徑
     const nxOut = dx / (d2 || 1), nzOut = dz / (d2 || 1);
-    const push  = (hit.r - d2) + 0.01;
+    const push  = (hit.r + CAPSULE_RADIUS - d2) + 0.1;
     nx += nxOut * push;
     nz += nzOut * push;
     moveXZ.set(nx - current.x, nz - current.z);

@@ -10,6 +10,10 @@ export function wrapWithFeetPivot<T extends THREE.Object3D>(node: T): {
 } {
   const group = new THREE.Group();
   group.name = 'FeetPivotGroup';
+  
+  // 放大角色模型 (2倍大小)
+  node.scale.set(2, 2, 2);
+  
   group.add(node);
 
   // 量測並把最低點提到 y=0

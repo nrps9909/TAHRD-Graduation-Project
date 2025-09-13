@@ -247,7 +247,7 @@ export const NPCCharacter: React.FC<NPCCharacterProps> = ({
       const dt = FIXED_DT
       
       const distance = npcPos.current.distanceTo(targetPosition)
-      const moveSpeed = 2.0
+      const moveSpeed = 4.0 // 增加NPC移動速度以配合放大的角色
 
       if (distance > 0.3) {
         // Moving towards target
@@ -257,7 +257,7 @@ export const NPCCharacter: React.FC<NPCCharacterProps> = ({
         direction.normalize()
 
         // Physics-based movement using capsule collision
-        const spec = { radius: 0.35, height: 1.2 }; // 依角色大小微調
+        const spec = { radius: 0.7, height: 2.4 }; // 依角色大小微調 - 放大2倍
         
         // 1) 產生期望移動（世界座標）
         const desiredMove = new THREE.Vector3(
