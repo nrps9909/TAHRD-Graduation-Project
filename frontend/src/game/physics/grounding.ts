@@ -6,6 +6,8 @@ export const MAX_SLOPE_DEG = 42;     // > 此角度禁止上爬
 export const STEP_HEIGHT = 0.35;     // 小台階容許高度
 export const CAPSULE_RADIUS = 0.35;  // 依現有模型調
 export const EPS = 1e-6;
+export const MOUNTAIN_MARGIN = 0.20;   // 邊緣緩衝（進到這個距離就開始貼邊）
+export const HUG_DISTANCE = 0.18;      // 貼邊時與山體外緣維持的距離
 
 export const GROUND_LAYER_ID = 2;    // 若專案已有層，沿用既有常數
 
@@ -114,37 +116,69 @@ function pushOutFromMountains(x:number, z:number, margin=0.01): THREE.Vector2 {
   return new THREE.Vector2(0,0);
 }
 
-/** XZ 位移解算：山體阻擋 + 切線滑移 + 小台階 */
-export function resolveMoveXZ(current:THREE.Vector3, moveXZ:THREE.Vector2):THREE.Vector2{
-  if(!Number.isFinite(moveXZ.x) || !Number.isFinite(moveXZ.y)) return new THREE.Vector2(0,0);
-  if(moveXZ.lengthSq() < EPS) return moveXZ;
+/** 取得最近命中的山體資訊 */
+type HitInfo = { idx:number; cx:number; cz:number; r:number; dist:number; nx:number; nz:number };
+function getNearestMountainHit(x:number, z:number): HitInfo | null {
+  let best: HitInfo | null = null;
+  for (let i=0;i<mountainColliders.length;i++){
+    const c = mountainColliders[i];
+    const dx = x - c.cx, dz = z - c.cz;
+    const d  = Math.hypot(dx, dz);
+    if (d < c.r + MOUNTAIN_MARGIN) {
+      const nx = dx / (d || 1), nz = dz / (d || 1);
+      const h: HitInfo = { idx:i, cx:c.cx, cz:c.cz, r:c.r, dist:d, nx, nz };
+      if (!best || d < best.dist) best = h;
+    }
+  }
+  return best;
+}
 
-  // 先嘗試直接移動
+/** XZ 位移解算：山體阻擋 + 強化切線滑移 + 貼邊行走 */
+export function resolveMoveXZ(current:THREE.Vector3, moveXZ:THREE.Vector2):THREE.Vector2 {
+  if (!Number.isFinite(moveXZ.x) || !Number.isFinite(moveXZ.y)) return new THREE.Vector2(0,0);
+  const speed = moveXZ.length();
+  if (speed < EPS) return moveXZ;
+
+  // 預計位置
   let nx = current.x + moveXZ.x;
   let nz = current.z + moveXZ.y;
 
-  // 山脈推離
-  const push = pushOutFromMountains(nx, nz);
-  if(push.lengthSq() > EPS){
-    // 投影到切線方向（沿邊滑移）
-    const normal = push.clone().normalize();       // 指向外
-    const v = moveXZ.clone();
-    const dot = v.x*normal.x + v.y*normal.y;
-    const tangential = v.sub(normal.multiplyScalar(dot)); // v - n*(v·n)
-    // 再試一次切線位移
-    nx = current.x + tangential.x;
-    nz = current.z + tangential.y;
+  const hit = getNearestMountainHit(nx, nz);
+  if (!hit) return moveXZ; // 沒碰到 → 正常移動
 
-    // 如果仍然在內部 → 直接沿外法線推出邊界
-    const push2 = pushOutFromMountains(nx, nz);
-    if(push2.lengthSq()>EPS){
-      nx += push2.x;
-      nz += push2.y;
-    }
-    moveXZ.copy(tangential);
+  // 原始方向
+  const dir = moveXZ.clone().divideScalar(speed); // 單位向量
+  const n2  = new THREE.Vector2(hit.nx, hit.nz);  // 由中心指向角色的外法線（2D）
+  const dotInto = dir.dot(n2) < 0;                // 是否朝向山體內部
+
+  // 在邊界內或想往內推時 → 投影到切線方向，並選擇與原方向最接近的切線
+  if (hit.dist < hit.r + MOUNTAIN_MARGIN || dotInto) {
+    const tA = new THREE.Vector2(-n2.y,  n2.x).normalize(); // 兩個切線方向
+    const tB = new THREE.Vector2( n2.y, -n2.x).normalize();
+    const t  = (dir.dot(tA) >= dir.dot(tB)) ? tA : tB;
+
+    // 讓角色「貼邊」：把預計位置拉到外緣 + HUG_DISTANCE
+    const targetDist = hit.r + HUG_DISTANCE;
+    nx = hit.cx + n2.x * targetDist + t.x * speed; // 先對齊外緣，再沿切線位移
+    nz = hit.cz + n2.y * targetDist + t.y * speed;
+
+    // 回寫為修正後位移
+    moveXZ.set(nx - current.x, nz - current.z);
   }
 
-  return moveXZ.set(nx - current.x, nz - current.z);
+  // 安全防護：若仍意外在山體內則再推出去
+  const dx = nx - hit.cx, dz = nz - hit.cz;
+  const d2 = Math.hypot(dx, dz);
+  if (d2 < hit.r) {
+    const nxOut = dx / (d2 || 1), nzOut = dz / (d2 || 1);
+    const push  = (hit.r - d2) + 0.01;
+    nx += nxOut * push;
+    nz += nzOut * push;
+    moveXZ.set(nx - current.x, nz - current.z);
+  }
+
+  if (!Number.isFinite(moveXZ.x) || !Number.isFinite(moveXZ.y)) moveXZ.set(0,0);
+  return moveXZ;
 }
 
 /** 失足時就地尋找最近可站的點 */

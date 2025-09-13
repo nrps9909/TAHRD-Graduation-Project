@@ -7,7 +7,7 @@ import { bindScene, resolveMoveXZ, clampToGroundSmooth, snapToNearestGround, GRO
 import { safeNormalize2, clampDt, isFiniteVec3 } from '@/game/utils/mathSafe'
 import { collisionSystem } from '@/utils/collision'
 import { wrapWithFeetPivot } from '@/game/utils/fixPivotAtFeet'
-import Nameplate3D from '@/game/ui/Nameplate3D'
+import NameplateOverlay from '@/game/ui/NameplateOverlay'
 
 interface NPCCharacterProps {
   npc: {
@@ -360,7 +360,7 @@ export const NPCCharacter: React.FC<NPCCharacterProps> = ({
       onPointerOut={handlePointerOut}
     >
       {/* Kenney GLB 模型已在 useEffect 中通過 wrapWithFeetPivot 添加 */}
-      <Nameplate3D targetRef={feetPivotRef} label={npc.name} />
+      <NameplateOverlay targetRef={feetPivotRef} label={npc.name} />
       
       {/* NPC 陰影圓圈 */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]} receiveShadow>

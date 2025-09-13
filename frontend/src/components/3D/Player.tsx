@@ -9,7 +9,7 @@ import { CameraController } from './CameraController'
 import { bindScene, resolveMoveXZ, clampToGroundSmooth, snapToNearestGround, GROUND_LAYER_ID, setMountainColliders, debugThrottled } from '@/game/physics/grounding'
 import { safeNormalize2, clampDt, isFiniteVec3 } from '@/game/utils/mathSafe'
 import { wrapWithFeetPivot } from '@/game/utils/fixPivotAtFeet'
-import Nameplate3D from '@/game/ui/Nameplate3D'
+import NameplateOverlay from '@/game/ui/NameplateOverlay'
 
 // NPC 類型定義（與 gameStore 保持一致）
 interface NPC {
@@ -557,7 +557,7 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
       
       <group ref={feetPivotRef} position={position}>
         {/* Kenney GLB 角色模型已在 useEffect 中通過 wrapWithFeetPivot 添加 */}
-        <Nameplate3D targetRef={feetPivotRef} label="玩家" />
+        <NameplateOverlay targetRef={feetPivotRef} label="玩家" />
 
         {/* 玩家陰影圓圈 */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]} receiveShadow>
