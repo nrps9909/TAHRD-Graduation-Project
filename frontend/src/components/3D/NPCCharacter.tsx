@@ -8,6 +8,8 @@ import { safeNormalize2, clampDt, isFiniteVec3 } from '@/game/utils/mathSafe'
 import { collisionSystem } from '@/utils/collision'
 import { wrapWithFeetPivot } from '@/game/utils/fixPivotAtFeet'
 import NameplateOverlay from '@/game/ui/NameplateOverlay'
+import { sweepCapsuleAndSlide } from '@/game/physics/capsuleCollider'
+import { buildWorldBVH } from '@/game/physics/worldBVH'
 
 interface NPCCharacterProps {
   npc: {
@@ -177,6 +179,17 @@ export const NPCCharacter: React.FC<NPCCharacterProps> = ({
         setMountainColliders(mountainColliders)
       }
       
+      // Build world BVH for collision
+      const collidableMeshes = [...terrainMeshes, ...mountains.map(m => {
+        const mesh = scene.getObjectByName(m.name || '');
+        return mesh instanceof THREE.Mesh ? mesh : null;
+      }).filter(Boolean)] as THREE.Mesh[];
+      
+      if (collidableMeshes.length > 0) {
+        const worldCollisionMesh = buildWorldBVH(collidableMeshes);
+        scene.add(worldCollisionMesh);
+      }
+      
       console.log(`✅ [NPC ${npc.name}] Physics initialized: ${terrainMeshes.length} terrain, ${mountainColliders.length} mountains`)
       
       // Initial snap to ground with offset for model height
@@ -243,17 +256,23 @@ export const NPCCharacter: React.FC<NPCCharacterProps> = ({
         direction.y = 0 // Keep horizontal
         direction.normalize()
 
-        const desiredMove = new THREE.Vector2(
+        // Physics-based movement using capsule collision
+        const spec = { radius: 0.35, height: 1.2 }; // 依角色大小微調
+        
+        // 1) 產生期望移動（世界座標）
+        const desiredMove = new THREE.Vector3(
           direction.x * moveSpeed * dt,
+          0,
           direction.z * moveSpeed * dt
-        )
-
-        // Apply physics-based movement resolution
-        const actualMove = resolveMoveXZ(feetPivotRef.current.position, desiredMove)
-        feetPivotRef.current.position.x += actualMove.x
-        feetPivotRef.current.position.z += actualMove.y
-
-        // Apply smooth ground clamping
+        );
+        
+        // 2) 用膠囊掃掠對世界 BVH 修正 + 滑移
+        const corrected = sweepCapsuleAndSlide(feetPivotRef.current.position, desiredMove, spec);
+        
+        // 3) 寫入位置
+        feetPivotRef.current.position.add(corrected);
+        
+        // 4) 垂直方向仍用貼地函式
         clampToGroundSmooth(feetPivotRef.current.position, velocityY.current, dt, groundNormal.current, onGround.current)
         
         // Sync npcPos with feetPivot position

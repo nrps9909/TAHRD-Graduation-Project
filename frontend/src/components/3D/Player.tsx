@@ -10,6 +10,8 @@ import { bindScene, resolveMoveXZ, clampToGroundSmooth, snapToNearestGround, GRO
 import { safeNormalize2, clampDt, isFiniteVec3 } from '@/game/utils/mathSafe'
 import { wrapWithFeetPivot } from '@/game/utils/fixPivotAtFeet'
 import NameplateOverlay from '@/game/ui/NameplateOverlay'
+import { sweepCapsuleAndSlide } from '@/game/physics/capsuleCollider'
+import { buildWorldBVH } from '@/game/physics/worldBVH'
 
 // NPC 類型定義（與 gameStore 保持一致）
 interface NPC {
@@ -212,6 +214,17 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
       
       if (mountainColliders.length > 0) {
         setMountainColliders(mountainColliders)
+      }
+      
+      // Build world BVH for collision
+      const collidableMeshes = [...terrainMeshes, ...mountains.map(m => {
+        const mesh = scene.getObjectByName(m.name || '');
+        return mesh instanceof THREE.Mesh ? mesh : null;
+      }).filter(Boolean)] as THREE.Mesh[];
+      
+      if (collidableMeshes.length > 0) {
+        const worldCollisionMesh = buildWorldBVH(collidableMeshes);
+        scene.add(worldCollisionMesh);
       }
       
       console.log(`✅ [Player] Physics initialized: ${terrainMeshes.length} terrain, ${mountainColliders.length} mountains`)
@@ -436,17 +449,19 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
         console.log(`🎮 Pointer Lock: ${!!document.pointerLockElement}`)
       }
 
-      // Physics-based movement using new system
-      const desiredXZ = new THREE.Vector2(velocity.current.x, velocity.current.z)
+      // Physics-based movement using capsule collision
+      const spec = { radius: 0.35, height: 1.2 }; // 依角色大小微調
       
-      // Step 1: Resolve horizontal movement with mountain collision
-      const actualXZ = resolveMoveXZ(playerPos.current, desiredXZ)
+      // 1) 產生期望移動（世界座標）
+      const desiredMove = new THREE.Vector3(velocity.current.x, 0, velocity.current.z);
       
-      // Step 2: Apply horizontal movement
-      feetPivotRef.current.position.x += actualXZ.x
-      feetPivotRef.current.position.z += actualXZ.y // Note: THREE.Vector2.y maps to world Z
+      // 2) 用膠囊掃掠對世界 BVH 修正 + 滑移
+      const corrected = sweepCapsuleAndSlide(feetPivotRef.current.position, desiredMove, spec);
       
-      // Step 3: Smooth ground clamping with gravity
+      // 3) 寫入位置
+      feetPivotRef.current.position.add(corrected);
+      
+      // 4) 垂直方向仍用貼地函式
       clampToGroundSmooth(feetPivotRef.current.position, velocityY.current, dt, groundNormal.current, onGround.current)
       
       // Sync playerPos with feetPivot position
