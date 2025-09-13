@@ -3,13 +3,15 @@ import { useFrame, useThree, useLoader } from '@react-three/fiber'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import * as THREE from 'three'
 import { useGameStore } from '@/stores/gameStore'
-import { bindScene, resolveMoveXZ, clampToGroundSmooth, snapToNearestGround, GROUND_LAYER_ID, debugThrottled, setMountainColliders } from '@/game/physics/grounding'
+import { bindScene as oldBindScene, resolveMoveXZ, clampToGroundSmooth, snapToNearestGround, debugThrottled, setMountainColliders } from '@/game/physics/grounding'
+import { GROUND_LAYER_ID } from '@/game/physics/grounding'
 import { safeNormalize2, clampDt, isFiniteVec3 } from '@/game/utils/mathSafe'
 import { collisionSystem } from '@/utils/collision'
 import { wrapWithFeetPivot } from '@/game/utils/fixPivotAtFeet'
 import NameplateOverlay from '@/game/ui/NameplateOverlay'
 import { sweepCapsuleAndSlide } from '@/game/physics/capsuleCollider'
 import { buildWorldBVH } from '@/game/physics/worldBVH'
+import { bindScene, solveSlopeMove } from '@/game/physics/slopeController'
 
 interface NPCCharacterProps {
   npc: {
@@ -135,6 +137,7 @@ export const NPCCharacter: React.FC<NPCCharacterProps> = ({
   
   // Initialize physics system
   useEffect(() => {
+    oldBindScene(scene)
     bindScene(scene)
     
     const timer = setTimeout(() => {
@@ -256,24 +259,18 @@ export const NPCCharacter: React.FC<NPCCharacterProps> = ({
         direction.y = 0 // Keep horizontal
         direction.normalize()
 
-        // Physics-based movement using capsule collision
-        const spec = { radius: 0.7, height: 2.4 }; // 依角色大小微調 - 放大2倍
-        
-        // 1) 產生期望移動（世界座標）
-        const desiredMove = new THREE.Vector3(
+        // Use slope-based movement system
+        // 1) 產生期望移動 (XZ 向量)
+        const desiredXZ = new THREE.Vector2(
           direction.x * moveSpeed * dt,
-          0,
           direction.z * moveSpeed * dt
         );
         
-        // 2) 用膠囊掃掠對世界 BVH 修正 + 滑移
-        const corrected = sweepCapsuleAndSlide(feetPivotRef.current.position, desiredMove, spec);
+        // 2) 解算沿坡/沿邊滑移（含 y 修正）
+        const delta3 = solveSlopeMove(feetPivotRef.current.position, desiredXZ, dt);
         
-        // 3) 寫入位置
-        feetPivotRef.current.position.add(corrected);
-        
-        // 4) 垂直方向仍用貼地函式
-        clampToGroundSmooth(feetPivotRef.current.position, velocityY.current, dt, groundNormal.current, onGround.current)
+        // 3) 寫入位置（x,z 來自沿坡，y 直接用回傳的貼地高度）
+        feetPivotRef.current.position.add(delta3)
         
         // Sync npcPos with feetPivot position
         npcPos.current.copy(feetPivotRef.current.position)
@@ -293,7 +290,10 @@ export const NPCCharacter: React.FC<NPCCharacterProps> = ({
         lastMoveTime.current = Date.now()
       } else {
         // Near target - just maintain ground position
-        clampToGroundSmooth(feetPivotRef.current.position, velocityY.current, dt, groundNormal.current, onGround.current)
+        const snap = solveSlopeMove(feetPivotRef.current.position, new THREE.Vector2(0, 0), dt);
+        if (snap.lengthSq() > 0) {
+          feetPivotRef.current.position.add(snap);
+        }
         npcPos.current.copy(feetPivotRef.current.position)
         
         // Occasionally set new target when idle

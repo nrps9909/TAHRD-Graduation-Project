@@ -6,12 +6,14 @@ import { useGameStore } from '@/stores/gameStore'
 import { collisionSystem } from '@/utils/collision'
 import { getTerrainHeight, getTerrainRotation, getTerrainSlope, isPathClear } from './TerrainModel'
 import { CameraController } from './CameraController'
-import { bindScene, resolveMoveXZ, clampToGroundSmooth, snapToNearestGround, GROUND_LAYER_ID, setMountainColliders, debugThrottled } from '@/game/physics/grounding'
+import { bindScene as oldBindScene, resolveMoveXZ, clampToGroundSmooth, snapToNearestGround, setMountainColliders, debugThrottled } from '@/game/physics/grounding'
+import { GROUND_LAYER_ID } from '@/game/physics/grounding'
 import { safeNormalize2, clampDt, isFiniteVec3 } from '@/game/utils/mathSafe'
 import { wrapWithFeetPivot } from '@/game/utils/fixPivotAtFeet'
 import NameplateOverlay from '@/game/ui/NameplateOverlay'
 import { sweepCapsuleAndSlide } from '@/game/physics/capsuleCollider'
 import { buildWorldBVH } from '@/game/physics/worldBVH'
+import { bindScene, solveSlopeMove } from '@/game/physics/slopeController'
 
 // NPC 類型定義（與 gameStore 保持一致）
 interface NPC {
@@ -172,6 +174,7 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
   // Initialize terrain meshes for physics system
   const { scene } = useThree()
   useEffect(() => {
+    oldBindScene(scene)
     bindScene(scene)
     
     const timer = setTimeout(() => {
@@ -449,20 +452,15 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
         console.log(`🎮 Pointer Lock: ${!!document.pointerLockElement}`)
       }
 
-      // Physics-based movement using capsule collision
-      const spec = { radius: 0.7, height: 2.4 }; // 依角色大小微調 - 放大2倍
+      // Use slope-based movement system
+      // 1) 產生期望移動 (XZ 向量)
+      const desiredXZ = new THREE.Vector2(velocity.current.x, velocity.current.z);
       
-      // 1) 產生期望移動（世界座標）
-      const desiredMove = new THREE.Vector3(velocity.current.x, 0, velocity.current.z);
+      // 2) 解算沿坡/沿邊滑移（含 y 修正）
+      const delta3 = solveSlopeMove(feetPivotRef.current.position, desiredXZ, dt);
       
-      // 2) 用膠囊掃掠對世界 BVH 修正 + 滑移
-      const corrected = sweepCapsuleAndSlide(feetPivotRef.current.position, desiredMove, spec);
-      
-      // 3) 寫入位置
-      feetPivotRef.current.position.add(corrected);
-      
-      // 4) 垂直方向仍用貼地函式
-      clampToGroundSmooth(feetPivotRef.current.position, velocityY.current, dt, groundNormal.current, onGround.current)
+      // 3) 寫入位置（x,z 來自沿坡，y 直接用回傳的貼地高度）
+      feetPivotRef.current.position.add(delta3)
       
       // Sync playerPos with feetPivot position
       playerPos.current.copy(feetPivotRef.current.position)
