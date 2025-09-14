@@ -6,13 +6,9 @@ import { useGameStore } from '@/stores/gameStore'
 import { collisionSystem } from '@/utils/collision'
 import { getTerrainHeight, getTerrainRotation, getTerrainSlope, isPathClear } from './TerrainModel'
 import { CameraController } from './CameraController'
-import { clampToGroundSafe, snapOnSpawn } from '@/game/physics/sampleGround'
-import { safeNormalize2, clampDt, isFiniteVec3 } from '@/game/utils/mathSafe'
+import { safeNormalize2, isFiniteVec3 } from '@/game/utils/mathSafe'
 import { wrapWithFeetPivot } from '@/game/utils/fixPivotAtFeet'
-import { updateWithBVH, computeSubsteps, ControllerSpec } from '@/game/physics/bvhCapsuleController'
-import { buildWorldBVH } from '@/game/physics/worldBVH'
-import { bindScene, solveSlopeMove } from '@/game/physics/slopeController'
-import { expSmoothing, lerpVec2, lerpVec3 } from '@/game/physics/smooth'
+import { KCC } from '@/game/physics/kcc'
 
 // NPC 類型定義（與 gameStore 保持一致）
 interface NPC {
@@ -55,14 +51,14 @@ const PlayerComponent = (props: PlayerProps, ref: React.Ref<PlayerRef>) => {
   const fullModelPath = `${modelPath}${modelFile}`
   console.log('📁 Loading Player model from:', fullModelPath)
   console.log('🎮 Player組件已渲染，位置:', position)
-  
+
   // 使用useLoader載入GLB模型 - 與NPC相同的方式
   const kenneyModel = useLoader(GLTFLoader, fullModelPath, (loader) => {
     const basePath = fullModelPath.substring(0, fullModelPath.lastIndexOf('/') + 1)
     loader.setResourcePath(basePath)
     console.log(`📁 設定Player資源路徑: ${basePath}`)
   })
-  
+
   // 克隆場景避免多個實例間的衝突
   const [playerScene, setPlayerScene] = useState<THREE.Group | null>(null)
 
@@ -95,48 +91,38 @@ const PlayerComponent = (props: PlayerProps, ref: React.Ref<PlayerRef>) => {
   const isMoving = useRef(false)
   const walkCycle = useRef(0)
 
-  // Physics state for new system
-  const velocityY = useRef({ value: 0 })
-  const onGround = useRef({ value: true })
-  const groundNormal = useRef(new THREE.Vector3())
-  const playerPos = useRef(new THREE.Vector3(...position))
+  // KCC physics controller
+  const kcc = useRef<KCC | null>(null)
   const FIXED_DT = 1/60
   const accumulator = useRef(0)
-
-  // Smoothing state
-  const prevDir = useRef(new THREE.Vector2(0, 0))    // 方向平滑（去抖）
-  const lastSlide = useRef(new THREE.Vector2(0, 0))   // 貼邊時的切線平滑
-
-  // Controller spec
-  const SPEC: ControllerSpec = { radius: 0.35, height: 1.20, skin: 0.035, maxSlopeDeg: 42 };
 
   // 處理模型載入完成 - 與 NPC 完全相同的邏輯
   useEffect(() => {
     if (kenneyModel?.scene && feetPivotRef.current) {
       console.log(`✅ Player ${fullModelPath} 模型載入成功:`, kenneyModel.scene)
-      
+
       // 套用腳底對齊
       const { group: feetPivot, offsetY } = wrapWithFeetPivot(kenneyModel.scene)
       feetPivotRef.current.add(feetPivot)
       console.info('👣 Player feet-pivot offsetY =', offsetY.toFixed(3))
-      
+
       kenneyModel.scene.traverse((child: any) => {
         if (child.isMesh || child.isSkinnedMesh) {
           child.visible = true
           child.frustumCulled = false
           child.castShadow = true
           child.receiveShadow = false
-          
+
           if (child.material) {
             if (child.isSkinnedMesh) {
               child.material.skinning = true
             }
-            
+
             if (child.material.map) {
               child.material.map.colorSpace = THREE.SRGBColorSpace
               child.material.map.needsUpdate = true
             }
-            
+
             child.material.metalness = 0
             child.material.roughness = 0.8
             child.material.side = THREE.DoubleSide
@@ -148,7 +134,7 @@ const PlayerComponent = (props: PlayerProps, ref: React.Ref<PlayerRef>) => {
           }
         }
       })
-      
+
       kenneyModel.scene.visible = true
       kenneyModel.scene.frustumCulled = false
     }
@@ -159,18 +145,18 @@ const PlayerComponent = (props: PlayerProps, ref: React.Ref<PlayerRef>) => {
     if (kenneyModel?.scene && kenneyModel.animations && kenneyModel.animations.length > 0) {
       const mixer = new THREE.AnimationMixer(kenneyModel.scene)
       setAnimationMixer(mixer)
-      
-      const idleAnimation = kenneyModel.animations.find((clip: THREE.AnimationClip) => 
-        clip.name.toLowerCase().includes('idle') || 
+
+      const idleAnimation = kenneyModel.animations.find((clip: THREE.AnimationClip) =>
+        clip.name.toLowerCase().includes('idle') ||
         clip.name.toLowerCase().includes('stand')
       ) || kenneyModel.animations[0]
-      
+
       if (idleAnimation) {
         const action = mixer.clipAction(idleAnimation)
         action.setLoop(THREE.LoopRepeat, Infinity)
         action.play()
       }
-      
+
       return () => {
         mixer.stopAllAction()
         mixer.uncacheRoot(kenneyModel.scene)
@@ -178,51 +164,55 @@ const PlayerComponent = (props: PlayerProps, ref: React.Ref<PlayerRef>) => {
     }
   }, [kenneyModel])
 
-  // Initialize terrain meshes for physics system
-  const { scene } = useThree()
+  // Initialize KCC
   useEffect(() => {
-    bindScene(scene)
+    if (!kcc.current) {
+      kcc.current = new KCC({
+        radius: 0.35,
+        height: 1.20,
+        stepHeight: 0.35,
+        maxSlopeDeg: 42,
+        skin: 0.035,
+        maxSnap: 0.6,
+        gravity: 18,
+      })
+    }
 
-    const timer = setTimeout(() => {
-      // Initial snap to ground using new system
-      if (feetPivotRef.current) {
-        snapOnSpawn(feetPivotRef.current.position)
-        playerPos.current.copy(feetPivotRef.current.position)
-        console.log(`✅ [Player] Snapped to ground at ${feetPivotRef.current.position.toArray().map(v => v.toFixed(2)).join(', ')}`)
-      }
-    }, 1000)
+    // Initial position
+    if (feetPivotRef.current) {
+      kcc.current.reset(feetPivotRef.current.position)
+      console.log(`✅ [Player] KCC initialized at ${feetPivotRef.current.position.toArray().map(v => v.toFixed(2)).join(', ')}`)
+    }
+  }, [])
 
-    return () => clearTimeout(timer)
-  }, [scene])
-  
   // 檢查附近的 NPC
   const checkNearbyNPC = useCallback((): NPC | null => {
     if (!feetPivotRef.current) return null
-    
+
     const playerPos = new THREE.Vector3()
     feetPivotRef.current.getWorldPosition(playerPos)
-    
+
     // 尋找最近的 NPC
     let nearestNPC: NPC | null = null
     let nearestDistance = Infinity
-    
+
     npcs.forEach((npc) => {
       const npcPos = new THREE.Vector3(npc.position[0], npc.position[1], npc.position[2])
       const distance = playerPos.distanceTo(npcPos)
-      
+
       if (distance < interactionDistance && distance < nearestDistance) {
         nearestDistance = distance
         nearestNPC = npc
       }
     })
-    
+
     return nearestNPC
   }, [npcs, interactionDistance])
-  
+
   // F鍵互動處理
   const handleInteraction = useCallback(() => {
     const nearbyNPC: NPC | null = checkNearbyNPC()
-    
+
     if (nearbyNPC) {
       console.log(`與 ${nearbyNPC.name} 開始對話 (距離: ${nearbyNPC.position})`)
       startConversation(nearbyNPC.id)
@@ -238,7 +228,7 @@ const PlayerComponent = (props: PlayerProps, ref: React.Ref<PlayerRef>) => {
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.code)) {
         event.preventDefault()
       }
-      
+
       // Remove debug log
       switch (event.code) {
         case 'KeyW':
@@ -267,11 +257,10 @@ const PlayerComponent = (props: PlayerProps, ref: React.Ref<PlayerRef>) => {
           break
         case 'KeyR':
           // R鍵重置人物位置到安全地點
-          if (feetPivotRef.current) {
-            const safePosition = new THREE.Vector3(0, 0, 0) // 安全的中心位置
-            snapOnSpawn(safePosition)
+          if (feetPivotRef.current && kcc.current) {
+            const safePosition = new THREE.Vector3(0, 5, 0) // 安全的中心位置
+            kcc.current.reset(safePosition)
             feetPivotRef.current.position.copy(safePosition)
-            playerPos.current.copy(safePosition)
 
             setPlayerPosition([safePosition.x, safePosition.y, safePosition.z])
             console.log(`按R鍵重置人物位置: [${safePosition.x.toFixed(2)}, ${safePosition.y.toFixed(2)}, ${safePosition.z.toFixed(2)}]`)
@@ -309,7 +298,7 @@ const PlayerComponent = (props: PlayerProps, ref: React.Ref<PlayerRef>) => {
     // 確保事件監聽器正確綁定
     window.addEventListener('keydown', handleKeyDown)
     window.addEventListener('keyup', handleKeyUp)
-    
+
     // 點擊畫面來獲得焦點
     const handleClick = () => {
       console.log('🎯 畫面獲得焦點')
@@ -326,7 +315,7 @@ const PlayerComponent = (props: PlayerProps, ref: React.Ref<PlayerRef>) => {
 
   // 每幀更新
   useFrame((_, delta) => {
-    if (!feetPivotRef.current) return
+    if (!feetPivotRef.current || !kcc.current) return
 
     // Fixed timestep accumulator
     accumulator.current += Math.min(delta, 0.05)
@@ -352,23 +341,23 @@ const PlayerComponent = (props: PlayerProps, ref: React.Ref<PlayerRef>) => {
       safeNormalize2(dir2D)
       direction.current.x = dir2D.x
       direction.current.z = dir2D.y
-      
+
       // 計算移動方向
       const moveDirection = new THREE.Vector3()
-      
+
       // 檢查是否在 Pointer Lock 模式
       const isPointerLocked = !!document.pointerLockElement
-      
+
       if (isPointerLocked) {
         // PC遊戲 Pointer Lock 模式 - 基於相機朝向移動
         // Three.js坐標系：Z軸負方向為forward，X軸正方向為right
-        const forward = new THREE.Vector3(0, 0, -1)  
+        const forward = new THREE.Vector3(0, 0, -1)
         const right = new THREE.Vector3(1, 0, 0)    // 標準右向量
-        
+
         // 根據相機旋轉調整方向向量
         forward.applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraRotation.current)
         right.applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraRotation.current)
-        
+
         // 正確的方向映射
         moveDirection.addScaledVector(forward, direction.current.z)   // Z軸：前後移動
         moveDirection.addScaledVector(right, direction.current.x)     // X軸：左右移動
@@ -378,43 +367,32 @@ const PlayerComponent = (props: PlayerProps, ref: React.Ref<PlayerRef>) => {
         moveDirection.x = direction.current.x
         moveDirection.z = -direction.current.z
       }
-      
+
       const moveDir2D = new THREE.Vector2(moveDirection.x, moveDirection.z)
       safeNormalize2(moveDir2D)
       moveDirection.x = moveDir2D.x
       moveDirection.z = moveDir2D.y
 
-      // Use BVH capsule collision with smoothing
-      // 1) 讀取輸入並正規化
-      const rawDir = new THREE.Vector2(moveDirection.x, moveDirection.z);
-      if (rawDir.lengthSq() > 0) rawDir.normalize();
+      // Use KCC for physics
+      // 1) Get normalized input direction
+      const inputDir = new THREE.Vector2(moveDirection.x, moveDirection.z);
+      if (inputDir.lengthSq() > 0) inputDir.normalize();
 
-      // 2) 方向平滑：避免急轉角
-      const t = expSmoothing(dt, 0.10); // 100ms 半衰
-      lerpVec2(prevDir.current, rawDir, t);
+      // 2) Calculate speed
+      let speed = 5;  // Normal walking speed (m/s)
+      if (keys.current.shift) speed = 10;  // Shift - running
 
-      // 3) 速度計算
-      let speed = 35;  // 正常行走速度
-      if (keys.current.shift) speed = 60;  // Shift - 奔跑
-      const desired = new THREE.Vector3(prevDir.current.x * speed * dt, 0, prevDir.current.y * speed * dt);
+      // 3) Calculate desired movement for this frame
+      const desiredXZ = inputDir.multiplyScalar(speed * dt);
 
-      // 4) 依速度決定子步數，做 BVH 膠囊掃掠（→ 完全不穿牆）
-      const sub = computeSubsteps(desired.length(), SPEC);
-      updateWithBVH(feetPivotRef.current.position, desired, SPEC, sub);
+      // 4) Update KCC (handles collision, step-up, grounding)
+      kcc.current.pos.copy(feetPivotRef.current.position);
+      kcc.current.update(desiredXZ, dt);
+      feetPivotRef.current.position.copy(kcc.current.pos);
 
-      // 5) 垂直方向（貼地/重力）
-      clampToGroundSafe(feetPivotRef.current.position, velocityY.current, dt)
-      
-      // Sync playerPos with feetPivot position
-      playerPos.current.copy(feetPivotRef.current.position)
-      
       // 走路動畫
       isMoving.current = true
       walkCycle.current += dt * 10
-      // 移除持續的位置更新，避免觸發重複重置
-      // if (isMounted.current) {
-      //   setPlayerPosition([adjustedPosition.x, adjustedPosition.y, adjustedPosition.z])
-      // }
 
       // PC遊戲：角色朝向邏輯
       if (moveDirection.length() > 0 && !isPointerLocked) {
@@ -425,10 +403,6 @@ const PlayerComponent = (props: PlayerProps, ref: React.Ref<PlayerRef>) => {
           targetRotation,
           8 * dt
         )
-        // 移除不必要的旋轉更新，避免觸發重複重置
-        // if (isMounted.current) {
-        //   setPlayerRotation(targetRotation)
-        // }
       } else if (isPointerLocked) {
         // Pointer Lock 模式下，角色朝向跟隨移動方向
         if (moveDirection.length() > 0) {
@@ -446,25 +420,19 @@ const PlayerComponent = (props: PlayerProps, ref: React.Ref<PlayerRef>) => {
     } else {
       isMoving.current = false
     }
-    
+
       accumulator.current -= FIXED_DT
     }
-    
-    // Apply position to mesh
-    if (isFiniteVec3(playerPos.current) && feetPivotRef.current) {
-      feetPivotRef.current.position.copy(playerPos.current)
-      setPlayerPosition([playerPos.current.x, playerPos.current.y, playerPos.current.z])
-    }
-    
+
     // Update animation mixer
     if (animationMixer) {
       animationMixer.update(delta)
     }
-    
+
     // 走路動畫效果（簡單的上下擺動）
-    if (isMoving.current && feetPivotRef.current) {
+    if (isMoving.current && feetPivotRef.current && kcc.current) {
       const bobAmount = Math.sin(walkCycle.current) * 0.02
-      feetPivotRef.current.position.y = playerPos.current.y + bobAmount
+      // Don't modify position directly when using KCC
     }
   })
 
@@ -477,23 +445,21 @@ const PlayerComponent = (props: PlayerProps, ref: React.Ref<PlayerRef>) => {
 
   // 使用ref跟踪是否已經初始化，避免重複初始化
   const hasInitialized = useRef(false)
-  
-  // 初始化玩家位置 - 使用物理系統的接地邏輯
+
+  // 初始化玩家位置 - 使用KCC
   useEffect(() => {
-    if (feetPivotRef.current && !hasInitialized.current && isMounted.current) {
+    if (feetPivotRef.current && !hasInitialized.current && isMounted.current && kcc.current) {
       hasInitialized.current = true
       console.log('開始初始化玩家位置...')
-      
+
       // 使用更安全的初始化方式 - 延遲等待地形載入
       setTimeout(() => {
-        if (!feetPivotRef.current) return
-        
+        if (!feetPivotRef.current || !kcc.current) return
+
         const initialPos = new THREE.Vector3(...position)
-        // 使用物理系統的接地功能
-        snapToNearestGround(initialPos, 3, 0.25)
-        playerPos.current.copy(initialPos)
+        kcc.current.reset(initialPos)
         feetPivotRef.current.position.copy(initialPos)
-        
+
         console.log(`🎮 玩家初始化完成: [${initialPos.x.toFixed(2)}, ${initialPos.y.toFixed(2)}, ${initialPos.z.toFixed(2)}]`)
       }, 1500) // 等待1.5秒讓地形完全載入
     }
@@ -501,8 +467,8 @@ const PlayerComponent = (props: PlayerProps, ref: React.Ref<PlayerRef>) => {
 
   return (
     <>
-      <CameraController 
-        target={feetPivotRef} 
+      <CameraController
+        target={feetPivotRef}
         offset={new THREE.Vector3(0, 5, 8)}  // 更近的第三人稱視角
         lookAtOffset={new THREE.Vector3(0, 1.5, 0)}
         smoothness={8}  // 更平滑的相機移動
@@ -510,27 +476,27 @@ const PlayerComponent = (props: PlayerProps, ref: React.Ref<PlayerRef>) => {
         enablePointerLock={true}  // 啟用永久 pointer lock
         onRotationChange={(rotation) => { cameraRotation.current = rotation }}
       />
-      
+
       <group ref={feetPivotRef} position={position}>
         {/* Kenney GLB 角色模型已在 useEffect 中通過 wrapWithFeetPivot 添加 */}
 
         {/* 玩家自然陰影 - 更大更柔和 */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]} receiveShadow>
           <circleGeometry args={[1.2, 32]} />
-          <meshBasicMaterial 
-            color="#000000" 
-            transparent 
+          <meshBasicMaterial
+            color="#000000"
+            transparent
             opacity={0.25}
             depthWrite={false}
           />
         </mesh>
-        
+
         {/* 內層深色陰影 */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]} receiveShadow>
           <circleGeometry args={[0.6, 24]} />
-          <meshBasicMaterial 
-            color="#000000" 
-            transparent 
+          <meshBasicMaterial
+            color="#000000"
+            transparent
             opacity={0.35}
             depthWrite={false}
           />
