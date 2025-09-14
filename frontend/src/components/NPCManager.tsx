@@ -5,9 +5,9 @@ import { useGameStore } from '@/stores/gameStore'
 import { snapToNearestGround } from '@/game/physics/grounding'
 
 const DEFAULT_NPCS = [
-  { id: 'npc-1', name: '陸培修', pos: new THREE.Vector3(5, 1, 8), color: '#ff6b6b' },
-  { id: 'npc-2', name: '劉宇岑', pos: new THREE.Vector3(-8, 1, 5), color: '#4ecdc4' },
-  { id: 'npc-3', name: '陳庭安', pos: new THREE.Vector3(3, 1, -6), color: '#45b7d1' },
+  { id: 'npc-1', name: '陸培修', pos: new THREE.Vector3(5, 10, 8), color: '#ff6b6b' },
+  { id: 'npc-2', name: '劉宇岑', pos: new THREE.Vector3(-8, 10, 5), color: '#4ecdc4' },
+  { id: 'npc-3', name: '陳庭安', pos: new THREE.Vector3(3, 10, -6), color: '#45b7d1' },
 ]
 
 export function NPCManager() {
@@ -34,10 +34,12 @@ export function NPCManager() {
   // Initial snap to ground for all NPCs
   useEffect(() => {
     const timer = setTimeout(() => {
+      console.log('🎮 NPCManager: Snapping NPCs to ground...')
       DEFAULT_NPCS.forEach(npc => {
         snapToNearestGround(npc.pos, 3, 0.25)
+        console.log(`  NPC ${npc.name}: ${npc.pos.toArray()}`)
       })
-    }, 1500)
+    }, 2000)
     
     return () => clearTimeout(timer)
   }, [])

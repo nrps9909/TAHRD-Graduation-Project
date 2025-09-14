@@ -3,15 +3,15 @@ import { useFrame, useThree, useLoader } from '@react-three/fiber'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import * as THREE from 'three'
 import { useGameStore } from '@/stores/gameStore'
-import { bindScene as oldBindScene, resolveMoveXZ, clampToGroundSmooth, snapToNearestGround, debugThrottled, setMountainColliders } from '@/game/physics/grounding'
-import { GROUND_LAYER_ID } from '@/game/physics/grounding'
+import { clampToGroundSafe, snapOnSpawn } from '@/game/physics/sampleGround'
 import { safeNormalize2, clampDt, isFiniteVec3 } from '@/game/utils/mathSafe'
 import { collisionSystem } from '@/utils/collision'
 import { wrapWithFeetPivot } from '@/game/utils/fixPivotAtFeet'
 import NameplateOverlay from '@/game/ui/NameplateOverlay'
-import { sweepCapsuleAndSlide } from '@/game/physics/capsuleCollider'
+import { updateWithBVH, computeSubsteps, ControllerSpec } from '@/game/physics/bvhCapsuleController'
 import { buildWorldBVH } from '@/game/physics/worldBVH'
 import { bindScene, solveSlopeMove } from '@/game/physics/slopeController'
+import { expSmoothing, lerpVec2, lerpVec3 } from '@/game/physics/smooth'
 
 interface NPCCharacterProps {
   npc: {
@@ -47,6 +47,8 @@ export const NPCCharacter: React.FC<NPCCharacterProps> = ({
     'npc-3': { path: '/characters/CHAR-M-D', file: '/CHAR-M-D.glb' }
   }
   
+  console.log(`🎮 NPCCharacter: Rendering ${npc.name} (${npc.id}) at position:`, npc.position)
+  
   const config = modelConfigs[npc.id as keyof typeof modelConfigs] || 
                   { path: npc.modelPath || '/characters/CHAR-M-A', file: npc.modelFile || '/CHAR-M-A.glb' }
   
@@ -61,13 +63,20 @@ export const NPCCharacter: React.FC<NPCCharacterProps> = ({
   // Physics state
   const npcPos = useRef(new THREE.Vector3(...npc.position))
   const velocityY = useRef({ value: 0 })
-  const onGround = useRef({ value: true })
+  const onGround = useRef({ value: false })  // Start as false until grounded
   const groundNormal = useRef(new THREE.Vector3())
   const FIXED_DT = 1/60
   const accumulator = useRef(0)
   const lastMoveTime = useRef(Date.now())
   const builtRef = useRef(false)
   const hasInitialized = useRef(false)
+
+  // Smoothing state
+  const prevDir = useRef(new THREE.Vector2(0, 0))    // 方向平滑
+  const lastSlide = useRef(new THREE.Vector2(0, 0))   // 切線平滑
+
+  // Controller spec
+  const SPEC: ControllerSpec = { radius: 0.35, height: 1.20, skin: 0.035, maxSlopeDeg: 42 };
 
   // 處理模型載入完成
   useEffect(() => {
@@ -76,6 +85,7 @@ export const NPCCharacter: React.FC<NPCCharacterProps> = ({
       const { group: feetPivot, offsetY } = wrapWithFeetPivot(kenneyModel.scene)
       feetPivotRef.current.add(feetPivot)
       console.info(`👣 NPC(${npc.name}) feet-pivot offsetY =`, offsetY.toFixed(3))
+      console.log(`✅ NPCCharacter: ${npc.name} model loaded and scaled 2x`)
       
       kenneyModel.scene.traverse((child: any) => {
         if (child.isMesh || child.isSkinnedMesh) {
@@ -137,72 +147,21 @@ export const NPCCharacter: React.FC<NPCCharacterProps> = ({
   
   // Initialize physics system
   useEffect(() => {
-    oldBindScene(scene)
     bindScene(scene)
-    
+
     const timer = setTimeout(() => {
-      const terrainMeshes: THREE.Mesh[] = []
-      const mountains: any[] = []
-      
-      scene.traverse((obj) => {
-        if (!(obj instanceof THREE.Mesh)) return
-        
-        const name = (obj.name || '').toLowerCase()
-        let materialName = ''
-        if (obj.material) {
-          if (Array.isArray(obj.material)) {
-            materialName = obj.material.map((m: any) => m.name || '').join(' ').toLowerCase()
-          } else {
-            materialName = (obj.material.name || '').toLowerCase()
-          }
-        }
-        
-        // Identify terrain meshes for raycasting
-        const terrainHints = ['terrain', 'ground', 'island', 'sand', 'grass', 'dirt', 'plain', 'terrain_low_poly', 'landscape']
-        const isTerrain = terrainHints.some(hint => name.includes(hint) || materialName.includes(hint))
-        
-        if (isTerrain) {
-          obj.layers.enable(GROUND_LAYER_ID)
-          terrainMeshes.push(obj)
-        }
-        
-        // Collect mountain colliders
-        if (name.includes('mountain') || name.includes('Mountain')) {
-          obj.layers.enable(GROUND_LAYER_ID)
-          mountains.push({ cx: obj.position.x, cz: obj.position.z, r: 5 })
-        }
-      })
-      
-      // Get collision objects for mountains
-      const mountainColliders = collisionSystem.getCollisionObjects()
-        .filter(obj => obj.type === 'mountain')
-        .map(m => ({ cx: m.position.x, cz: m.position.z, r: m.radius }))
-      
-      if (mountainColliders.length > 0) {
-        setMountainColliders(mountainColliders)
-      }
-      
-      // Build world BVH for collision
-      const collidableMeshes = [...terrainMeshes, ...mountains.map(m => {
-        const mesh = scene.getObjectByName(m.name || '');
-        return mesh instanceof THREE.Mesh ? mesh : null;
-      }).filter(Boolean)] as THREE.Mesh[];
-      
-      if (collidableMeshes.length > 0) {
-        const worldCollisionMesh = buildWorldBVH(collidableMeshes);
-        scene.add(worldCollisionMesh);
-      }
-      
-      console.log(`✅ [NPC ${npc.name}] Physics initialized: ${terrainMeshes.length} terrain, ${mountainColliders.length} mountains`)
-      
-      // Initial snap to ground with offset for model height
+      // Initial snap to ground using new system
       const initialPos = new THREE.Vector3(...npc.position)
-      snapToNearestGround(initialPos, 3, 0.5) // Higher offset for NPCs
+      snapOnSpawn(initialPos)
       npcPos.current.copy(initialPos)
-      
+      if (feetPivotRef.current) {
+        feetPivotRef.current.position.copy(initialPos)
+      }
+      onGround.current.value = true
       builtRef.current = true
+      console.log(`✅ [NPC ${npc.name}] Snapped to ground at ${initialPos.toArray().map(v => v.toFixed(2)).join(', ')}`)
     }, 1000)
-    
+
     return () => clearTimeout(timer)
   }, [scene, npc.name, npc.position])
 
@@ -222,7 +181,7 @@ export const NPCCharacter: React.FC<NPCCharacterProps> = ({
     )
 
     setTargetPosition(newTarget)
-    debugThrottled(`[NPC ${npc.name}] New target: (${newTarget.x.toFixed(1)}, ${newTarget.z.toFixed(1)})`)
+    console.log(`[NPC ${npc.name}] New target: (${newTarget.x.toFixed(1)}, ${newTarget.z.toFixed(1)})`)
   }, [getPlayerPosition, npc.name])
 
   // Set new target periodically
@@ -242,15 +201,15 @@ export const NPCCharacter: React.FC<NPCCharacterProps> = ({
   // Main frame update loop
   useFrame((state, delta) => {
     if (!feetPivotRef.current || !builtRef.current) return
-    
+
     // Fixed timestep accumulator
     accumulator.current += Math.min(delta, 0.05)
-    
+
     while (accumulator.current >= FIXED_DT) {
       const dt = FIXED_DT
       
       const distance = npcPos.current.distanceTo(targetPosition)
-      const moveSpeed = 4.0 // 增加NPC移動速度以配合放大的角色
+      const moveSpeed = 3.0 // Slower speed for smoother movement
 
       if (distance > 0.3) {
         // Moving towards target
@@ -259,18 +218,24 @@ export const NPCCharacter: React.FC<NPCCharacterProps> = ({
         direction.y = 0 // Keep horizontal
         direction.normalize()
 
-        // Use slope-based movement system
-        // 1) 產生期望移動 (XZ 向量)
-        const desiredXZ = new THREE.Vector2(
-          direction.x * moveSpeed * dt,
-          direction.z * moveSpeed * dt
-        );
-        
-        // 2) 解算沿坡/沿邊滑移（含 y 修正）
-        const delta3 = solveSlopeMove(feetPivotRef.current.position, desiredXZ, dt);
-        
-        // 3) 寫入位置（x,z 來自沿坡，y 直接用回傳的貼地高度）
-        feetPivotRef.current.position.add(delta3)
+        // Use BVH capsule collision with smoothing
+        // 1) 讀取方向並正規化
+        const rawDir = new THREE.Vector2(direction.x, direction.z);
+        if (rawDir.lengthSq() > 0) rawDir.normalize();
+
+        // 2) 方向平滑：避免 AI 路徑點切換搖動
+        const t = expSmoothing(dt, 0.10); // 100ms 半衰
+        lerpVec2(prevDir.current, rawDir, t);
+
+        // 3) 速度計算
+        const desired = new THREE.Vector3(prevDir.current.x * moveSpeed * dt, 0, prevDir.current.y * moveSpeed * dt);
+
+        // 4) 依速度決定子步數，做 BVH 膠囊掃掠
+        const sub = computeSubsteps(desired.length(), SPEC);
+        updateWithBVH(feetPivotRef.current.position, desired, SPEC, sub);
+
+        // 5) 垂直貼地
+        clampToGroundSafe(feetPivotRef.current.position, velocityY.current, dt)
         
         // Sync npcPos with feetPivot position
         npcPos.current.copy(feetPivotRef.current.position)
@@ -284,33 +249,28 @@ export const NPCCharacter: React.FC<NPCCharacterProps> = ({
           if (rotationDiff > Math.PI) rotationDiff -= 2 * Math.PI
           if (rotationDiff < -Math.PI) rotationDiff += 2 * Math.PI
 
-          feetPivotRef.current.rotation.y += rotationDiff * 0.3
+          feetPivotRef.current.rotation.y += rotationDiff * 0.1 // Smoother rotation
         }
 
         lastMoveTime.current = Date.now()
       } else {
         // Near target - just maintain ground position
-        const snap = solveSlopeMove(feetPivotRef.current.position, new THREE.Vector2(0, 0), dt);
-        if (snap.lengthSq() > 0) {
-          feetPivotRef.current.position.add(snap);
-        }
+        clampToGroundSafe(feetPivotRef.current.position, velocityY.current, dt)
         npcPos.current.copy(feetPivotRef.current.position)
         
         // Occasionally set new target when idle
         if (Date.now() - lastMoveTime.current > 3000 && Math.random() < 0.01) {
           setNewTarget()
+        } else if (Math.random() < 0.005) {
+          // When at target, occasionally pick new target
+          setNewTarget()
         }
       }
-      
-      // If not on ground, try to snap
-      if (!onGround.current.value) {
-        snapToNearestGround(feetPivotRef.current.position, 2.5, 0.25)
-        npcPos.current.copy(feetPivotRef.current.position)
-      }
-      
+
       accumulator.current -= FIXED_DT
     }
-    
+
+    // Ground is already maintained by clampToGroundSafe
     // Apply position to mesh
     if (isFiniteVec3(npcPos.current) && feetPivotRef.current) {
       feetPivotRef.current.position.copy(npcPos.current)
@@ -360,12 +320,14 @@ export const NPCCharacter: React.FC<NPCCharacterProps> = ({
         
         const initialPos = new THREE.Vector3(...npc.position)
         
-        // Snap to ground with proper offset
-        snapToNearestGround(initialPos, 3, 0.25)
+        // Snap to ground using new system
+        snapOnSpawn(initialPos)
         npcPos.current.copy(initialPos)
         feetPivotRef.current.position.copy(initialPos)
+        onGround.current.value = true
         
         console.log(`🎮 NPC ${npc.name} 初始化完成: [${initialPos.x.toFixed(2)}, ${initialPos.y.toFixed(2)}, ${initialPos.z.toFixed(2)}]`)
+        console.log(`✅ NPCCharacter: ${npc.name} is ready and visible`)
       }, 1500)
     }
   }, [])
@@ -379,12 +341,29 @@ export const NPCCharacter: React.FC<NPCCharacterProps> = ({
       onPointerOut={handlePointerOut}
     >
       {/* Kenney GLB 模型已在 useEffect 中通過 wrapWithFeetPivot 添加 */}
-      <NameplateOverlay targetRef={feetPivotRef} label={npc.name} />
+      {/* 名稱標籤 - 直接顯示在角色上方 */}
+      <NameplateOverlay targetRef={feetPivotRef} label={npc.name} extraOffset={0.5} minHeight={2.0} />
       
-      {/* NPC 陰影圓圈 */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]} receiveShadow>
-        <circleGeometry args={[0.8, 16]} />
-        <meshBasicMaterial color="#000000" transparent opacity={0.3} />
+      {/* NPC 自然陰影 - 更大更柔和 */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]} receiveShadow>
+        <circleGeometry args={[1.2, 32]} />
+        <meshBasicMaterial 
+          color="#000000" 
+          transparent 
+          opacity={0.25}
+          depthWrite={false}
+        />
+      </mesh>
+      
+      {/* 內層深色陰影 */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]} receiveShadow>
+        <circleGeometry args={[0.6, 24]} />
+        <meshBasicMaterial 
+          color="#000000" 
+          transparent 
+          opacity={0.35}
+          depthWrite={false}
+        />
       </mesh>
     </group>
   )

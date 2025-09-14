@@ -98,7 +98,7 @@ export const useGameStore = create<GameState>()(
       // Initial state
       playerId: null,
       playerName: '',
-      playerPosition: [-15, 18, -15], // 安全的spawn位置，遠離山脈和NPC位置
+      playerPosition: [-15, 0, -15], // 安全的spawn位置，遠離山脈和NPC位置
       playerRotation: 0,
       joystickInput: { x: 0, y: 0 },
       npcs: [],
@@ -131,7 +131,7 @@ export const useGameStore = create<GameState>()(
               name: '陸培修',
               personality: '夢幻的藝術家',
               currentMood: 'cheerful',
-              position: [5, 18, 8] as [number, number, number],
+              position: [5, 0, 8] as [number, number, number],
               relationshipLevel: 1,
             },
             {
@@ -139,7 +139,7 @@ export const useGameStore = create<GameState>()(
               name: '劉宇岑',
               personality: '充滿活力的朋友',
               currentMood: 'excited',
-              position: [-8, 18, 5] as [number, number, number],
+              position: [-8, 0, 5] as [number, number, number],
               relationshipLevel: 1,
             },
             {
@@ -147,7 +147,7 @@ export const useGameStore = create<GameState>()(
               name: '陳庭安', 
               personality: '溫柔的靈魂',
               currentMood: 'dreamy',
-              position: [3, 18, -6] as [number, number, number],
+              position: [3, 0, -6] as [number, number, number],
               relationshipLevel: 1,
             },
           ]
@@ -194,9 +194,9 @@ export const useGameStore = create<GameState>()(
             if (data?.data?.npcs && data.data.npcs.length > 0) {
               // 預設的3D模型內安全位置（稍微抬高）
               const defaultPositions: Record<string, [number, number, number]> = {
-                'npc-1': [5, 18, 8],     // 陸培修 - 中央附近安全位置，稍微抬高
-                'npc-2': [-8, 18, 5],    // 劉宇岑 - 中央附近安全位置，稍微抬高
-                'npc-3': [3, 18, -6]     // 陳庭安 - 中央附近安全位置，稍微抬高
+                'npc-1': [5, 10, 8],     // 陸培修 - 中央附近安全位置
+                'npc-2': [-8, 10, 5],    // 劉宇岑 - 中央附近安全位置
+                'npc-3': [3, 10, -6]     // 陳庭安 - 中央附近安全位置
               }
               
               // 將後端資料轉換為前端格式，使用預設3D安全位置

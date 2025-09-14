@@ -24,11 +24,21 @@ import { preloadAllCharacterModels } from './CharacterSkinSystem'
 import { useGameStore } from '@/stores/gameStore'
 import { useTimeStore } from '@/stores/timeStore'
 import { collisionSystem } from '@/utils/collision'
+import { ContactShadows } from '@react-three/drei'
+import { useThree } from '@react-three/fiber'
+import { bindScene } from '@/game/physics/slopeController'
 
 export const Scene = () => {
   const { npcs, playerPosition } = useGameStore()
   const { timeOfDay, tick } = useTimeStore()
-  
+  const { scene } = useThree()
+
+  // 綁定場景到坡度控制器
+  useEffect(() => {
+    bindScene(scene)
+    console.log('🏞️ 已綁定場景到坡度控制器')
+  }, [scene])
+
   // 預載入所有角色模型
   useEffect(() => {
     preloadAllCharacterModels()
@@ -150,7 +160,17 @@ export const Scene = () => {
       
       {/* GLTF地形模型 */}
       <TerrainModel position={[0, 0, 0]} scale={1} />
-      
+
+      {/* Contact Shadows for better foot-ground contact */}
+      <ContactShadows
+        position={[0, 0.01, 0]}
+        opacity={0.5}
+        scale={260}
+        blur={2.6}
+        far={45}
+        frames={1}
+      />
+
       {/* 邊界牆壁 */}
       <BoundaryWall />
       

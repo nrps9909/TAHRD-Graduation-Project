@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { getWalkables, setupRaycaster } from './walkableRegistry';
 
 export const FOOT_OFFSET = 0.03;
 export const GRAVITY = 18;
@@ -13,7 +14,7 @@ export const GROUND_LAYER_ID = 2;    // 若專案已有層，沿用既有常數
 
 const up = new THREE.Vector3(0,1,0);
 const raycaster = new THREE.Raycaster();
-raycaster.layers.set(GROUND_LAYER_ID);
+setupRaycaster(raycaster);
 raycaster.far = 5000;
 
 let sceneRef: THREE.Scene | null = null;
@@ -22,7 +23,9 @@ export function bindScene(scene: THREE.Scene){ sceneRef = scene; }
 /** 以三點(等邊三角形) + 中心 4 光線取樣，回傳平均 y 與平均法線 */
 export function multiSampleGround(x:number, z:number, sampleRadius=CAPSULE_RADIUS*0.6):
   | { y:number; normal:THREE.Vector3 } | null {
-  if(!sceneRef) return null;
+  const objs = getWalkables();
+  if (!objs.length) return null;
+
   const dir = new THREE.Vector3(0,-1,0);
   const origins: THREE.Vector3[] = [
     new THREE.Vector3(x, 1000, z),
@@ -36,8 +39,14 @@ export function multiSampleGround(x:number, z:number, sampleRadius=CAPSULE_RADIU
 
   for(const o of origins){
     raycaster.set(o, dir);
-    const hits = raycaster.intersectObjects(sceneRef.children, true);
-    const hit = hits.find(h => (h.object.layers.mask & (1<<GROUND_LAYER_ID)) !== 0);
+    const hits = raycaster.intersectObjects(objs, true); // 只對 Walkable
+    const hit = hits.find(h => {
+      // 只收：法線朝上(>0.2) 且 y 在合理區間（避免被天空/雲誤中）
+      if (!h.face) return false;
+      const normal = h.face.normal.clone().transformDirection(h.object.matrixWorld);
+      const upDot = normal.dot(up);
+      return upDot > 0.2 && h.point.y > -50 && h.point.y < 200;
+    });
     if(hit){
       hitCount++;
       ySum += hit.point.y;
@@ -75,14 +84,32 @@ export function smoothDamp(current:number, target:number, velocityRef:{value:num
   return output;
 }
 
+let prevYRef = 0;
+
 /** 垂直方向：平滑貼地 + 重力，永不寫入 NaN */
 export function clampToGroundSmooth(pos:THREE.Vector3, vy:{value:number}, dt:number,
   outNormal?:THREE.Vector3, outOnGround?:{value:boolean}){
+  // 開頭：若 pos 跑到離譜高度（>200或<-100），先嘗試就地重新取樣 & 吸附
+  if (pos.y > 200 || pos.y < -100) {
+    const s = multiSampleGround(pos.x, pos.z);
+    if (s) pos.y = s.y + FOOT_OFFSET;
+  }
+
   const sample = multiSampleGround(pos.x, pos.z);
   if(sample){
-    const targetY = sample.y + FOOT_OFFSET;
+    let targetY = sample.y + FOOT_OFFSET;
+
+    // 結尾：若這幀取樣得到的 y 與上一幀差距過大（>3m），忽略這次取樣（視為噪點）
+    const dy = Math.abs(targetY - prevYRef);
+    if (dy > 3 && prevYRef !== 0) {
+      // 只做重力或維持原 y，不立即貼過去
+      targetY = Math.sign(targetY - prevYRef) > 0 ? prevYRef + 0.5 : prevYRef - 0.5;
+    }
+
     const newY = smoothDamp(pos.y, targetY, vy, 0.07, 100, dt);
     pos.y = Number.isFinite(newY) ? newY : targetY;
+    prevYRef = pos.y;
+
     if(outNormal) outNormal.copy(sample.normal);
     if(outOnGround) outOnGround.value = true;
     if(isSlopeTooSteep(sample.normal)){

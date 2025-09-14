@@ -1,45 +1,58 @@
 import * as THREE from 'three';
+import { getWalkables, setupRaycaster } from './walkableRegistry';
 
-export const GROUND_LAYER_ID = 2;     // 地面+山脈都打在這層
-export const FOOT_OFFSET     = 0.03;
+export const GROUND_LAYER_ID = 2;     // 舊的層ID（保留相容性）
+export const FOOT_OFFSET     = -0.1;  // 負偏移量確保NPC真正站在地面上
 export const MAX_SLOPE_DEG   = 42;    // 允許爬坡最大角度
 export const PROBE_FORWARD   = 0.8;   // 前向取樣距離
 export const EPS             = 1e-6;
 
 const up = new THREE.Vector3(0,1,0);
 const ray = new THREE.Raycaster();
-ray.layers.set(GROUND_LAYER_ID);
+setupRaycaster(ray);
 ray.far = 5000;
 
 let _scene: THREE.Scene | null = null;
 export function bindScene(scene: THREE.Scene){ _scene = scene; }
 
-/** 取樣 (x,z) 的地面高度與法線（包含山脈） */
+/** 取樣 (x,z) 的地面高度與法線（只打可行走層） */
 export function sampleGround(x:number, z:number):
   { y:number; normal:THREE.Vector3 } | null {
-  if(!_scene) return null;
-  // 用 4 點（中心+三角形）多點向下 Raycast，比單點穩定
+  const objs = getWalkables();
+  if (!objs.length) return null;
+
   const origins = [
     new THREE.Vector3(x, 1000, z),
     new THREE.Vector3(x+0.3, 1000, z),
     new THREE.Vector3(x-0.15, 1000, z+0.26),
     new THREE.Vector3(x-0.15, 1000, z-0.26),
   ];
+
   let hitCount=0, ySum=0;
   const nSum = new THREE.Vector3();
   const tmpN = new THREE.Vector3();
+
   for(const o of origins){
     ray.set(o, new THREE.Vector3(0,-1,0));
-    const hits = ray.intersectObjects(_scene.children, true);
-    const hit = hits.find(h => (h.object.layers.mask & (1<<GROUND_LAYER_ID)) !== 0);
+    const hits = ray.intersectObjects(objs, true); // 只對 Walkable
+    const hit = hits.find(h => {
+      // 只收：法線朝上(>0.2) 且 y 在合理區間（避免被天空/雲誤中）
+      if (!h.face) return false;
+      const n = h.face.normal.clone().transformDirection(h.object.matrixWorld);
+      const upDot = n.dot(up);
+      return upDot > 0.2 && h.point.y > -50 && h.point.y < 200;
+    });
+
     if(hit){
-      hitCount++; ySum += hit.point.y;
+      hitCount++;
+      ySum += hit.point.y;
       if(hit.face){
         tmpN.copy(hit.face.normal).transformDirection(hit.object.matrixWorld).normalize();
         nSum.add(tmpN);
       }
     }
   }
+
   if(hitCount===0) return null;
   const normal = nSum.lengthSq()>EPS ? nSum.normalize() : up.clone();
   return { y: ySum/hitCount, normal };
@@ -65,7 +78,19 @@ export function projectMoveOnSlope(moveXZ:THREE.Vector2, groundNormal:THREE.Vect
 /** 給目前位置與欲移動向量，回傳「沿坡或沿邊滑移」後的實際位移（含 Y） */
 export function solveSlopeMove(position:THREE.Vector3, desiredXZ:THREE.Vector2, dt:number):THREE.Vector3{
   const speed = desiredXZ.length() / dt; // Get actual speed, not speed*dt
-  if(speed < EPS) return new THREE.Vector3();
+  if(speed < EPS) {
+    // 即使沒有移動，也要保持貼地
+    const here = sampleGround(position.x, position.z);
+    if(here) {
+      const targetY = here.y + FOOT_OFFSET;
+      const deltaY = targetY - position.y;
+      // 平滑調整高度
+      if(Math.abs(deltaY) > 0.01) {
+        return new THREE.Vector3(0, deltaY * 0.1, 0);
+      }
+    }
+    return new THREE.Vector3();
+  }
 
   // 預判前方地面樣貌
   const dir = desiredXZ.clone().normalize();

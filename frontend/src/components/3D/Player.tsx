@@ -6,14 +6,13 @@ import { useGameStore } from '@/stores/gameStore'
 import { collisionSystem } from '@/utils/collision'
 import { getTerrainHeight, getTerrainRotation, getTerrainSlope, isPathClear } from './TerrainModel'
 import { CameraController } from './CameraController'
-import { bindScene as oldBindScene, resolveMoveXZ, clampToGroundSmooth, snapToNearestGround, setMountainColliders, debugThrottled } from '@/game/physics/grounding'
-import { GROUND_LAYER_ID } from '@/game/physics/grounding'
+import { clampToGroundSafe, snapOnSpawn } from '@/game/physics/sampleGround'
 import { safeNormalize2, clampDt, isFiniteVec3 } from '@/game/utils/mathSafe'
 import { wrapWithFeetPivot } from '@/game/utils/fixPivotAtFeet'
-import NameplateOverlay from '@/game/ui/NameplateOverlay'
-import { sweepCapsuleAndSlide } from '@/game/physics/capsuleCollider'
+import { updateWithBVH, computeSubsteps, ControllerSpec } from '@/game/physics/bvhCapsuleController'
 import { buildWorldBVH } from '@/game/physics/worldBVH'
 import { bindScene, solveSlopeMove } from '@/game/physics/slopeController'
+import { expSmoothing, lerpVec2, lerpVec3 } from '@/game/physics/smooth'
 
 // NPC 類型定義（與 gameStore 保持一致）
 interface NPC {
@@ -40,11 +39,12 @@ interface PlayerRef {
   getRef: () => THREE.Group | null
 }
 
-export const Player = forwardRef<PlayerRef, PlayerProps>(({ 
-  position = [-15, 18, -15], // 安全的spawn位置，遠離山脈 
-  modelPath = '/characters/CHAR-F-A',
-  modelFile = '/CHAR-F-A.glb'
-}: PlayerProps, ref) => {
+const PlayerComponent = (props: PlayerProps, ref: React.Ref<PlayerRef>) => {
+  const {
+    position = [-15, 18, -15], // 安全的spawn位置，遠離山脈
+    modelPath = '/characters/CHAR-F-A',
+    modelFile = '/CHAR-F-A.glb'
+  } = props;
   const feetPivotRef = useRef<THREE.Group>(null)
   const playerRef = useRef<THREE.Group>(null) // 保留為相容性
   const { setPlayerPosition, setPlayerRotation, npcs, startConversation } = useGameStore()
@@ -102,6 +102,13 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
   const playerPos = useRef(new THREE.Vector3(...position))
   const FIXED_DT = 1/60
   const accumulator = useRef(0)
+
+  // Smoothing state
+  const prevDir = useRef(new THREE.Vector2(0, 0))    // 方向平滑（去抖）
+  const lastSlide = useRef(new THREE.Vector2(0, 0))   // 貼邊時的切線平滑
+
+  // Controller spec
+  const SPEC: ControllerSpec = { radius: 0.35, height: 1.20, skin: 0.035, maxSlopeDeg: 42 };
 
   // 處理模型載入完成 - 與 NPC 完全相同的邏輯
   useEffect(() => {
@@ -174,68 +181,17 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
   // Initialize terrain meshes for physics system
   const { scene } = useThree()
   useEffect(() => {
-    oldBindScene(scene)
     bindScene(scene)
-    
+
     const timer = setTimeout(() => {
-      const terrainMeshes: THREE.Mesh[] = []
-      const mountains: any[] = []
-      
-      scene.traverse((obj) => {
-        if (!(obj instanceof THREE.Mesh)) return
-        
-        const name = (obj.name || '').toLowerCase()
-        let materialName = ''
-        if (obj.material) {
-          if (Array.isArray(obj.material)) {
-            materialName = obj.material.map((m: any) => m.name || '').join(' ').toLowerCase()
-          } else {
-            materialName = (obj.material.name || '').toLowerCase()
-          }
-        }
-        
-        // Identify terrain meshes for raycasting
-        const terrainHints = ['terrain', 'ground', 'island', 'sand', 'grass', 'dirt', 'plain', 'terrain_low_poly', 'landscape']
-        const isTerrain = terrainHints.some(hint => name.includes(hint) || materialName.includes(hint))
-        
-        if (isTerrain) {
-          obj.layers.enable(GROUND_LAYER_ID)
-          terrainMeshes.push(obj)
-        }
-        
-        // Collect mountain colliders
-        if (name.includes('mountain') || name.includes('Mountain')) {
-          obj.layers.enable(GROUND_LAYER_ID)
-          mountains.push({ cx: obj.position.x, cz: obj.position.z, r: 5 }) // Adjust radius as needed
-        }
-      })
-      
-      // Get collision objects for mountains
-      const mountainColliders = collisionSystem.getCollisionObjects()
-        .filter(obj => obj.type === 'mountain')
-        .map(m => ({ cx: m.position.x, cz: m.position.z, r: m.radius }))
-      
-      if (mountainColliders.length > 0) {
-        setMountainColliders(mountainColliders)
+      // Initial snap to ground using new system
+      if (feetPivotRef.current) {
+        snapOnSpawn(feetPivotRef.current.position)
+        playerPos.current.copy(feetPivotRef.current.position)
+        console.log(`✅ [Player] Snapped to ground at ${feetPivotRef.current.position.toArray().map(v => v.toFixed(2)).join(', ')}`)
       }
-      
-      // Build world BVH for collision
-      const collidableMeshes = [...terrainMeshes, ...mountains.map(m => {
-        const mesh = scene.getObjectByName(m.name || '');
-        return mesh instanceof THREE.Mesh ? mesh : null;
-      }).filter(Boolean)] as THREE.Mesh[];
-      
-      if (collidableMeshes.length > 0) {
-        const worldCollisionMesh = buildWorldBVH(collidableMeshes);
-        scene.add(worldCollisionMesh);
-      }
-      
-      console.log(`✅ [Player] Physics initialized: ${terrainMeshes.length} terrain, ${mountainColliders.length} mountains`)
-      
-      // Initial snap to ground
-      snapToNearestGround(playerPos.current, 3, 0.25)
     }, 1000)
-    
+
     return () => clearTimeout(timer)
   }, [scene])
   
@@ -283,27 +239,23 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
         event.preventDefault()
       }
       
-      console.log(`🎮 按下按鍵: ${event.code}`) // 調試日志
+      // Remove debug log
       switch (event.code) {
         case 'KeyW':
         case 'ArrowUp':
           keys.current.forward = true
-          console.log('🎮 ↑ 方向鍵 - 設定前進 = true')
           break
         case 'KeyS':
         case 'ArrowDown':
           keys.current.backward = true
-          console.log('🎮 ↓ 方向鍵 - 設定後退 = true')
           break
         case 'KeyA':
         case 'ArrowLeft':
           keys.current.left = true
-          console.log('🎮 ← 方向鍵 - 設定左移 = true')
           break
         case 'KeyD':
         case 'ArrowRight':
           keys.current.right = true
-          console.log('🎮 → 方向鍵 - 設定右移 = true')
           break
         case 'ShiftLeft':
         case 'ShiftRight':
@@ -317,10 +269,10 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
           // R鍵重置人物位置到安全地點
           if (feetPivotRef.current) {
             const safePosition = new THREE.Vector3(0, 0, 0) // 安全的中心位置
-            snapToNearestGround(safePosition, 3, 0.25)
+            snapOnSpawn(safePosition)
             feetPivotRef.current.position.copy(safePosition)
             playerPos.current.copy(safePosition)
-            
+
             setPlayerPosition([safePosition.x, safePosition.y, safePosition.z])
             console.log(`按R鍵重置人物位置: [${safePosition.x.toFixed(2)}, ${safePosition.y.toFixed(2)}, ${safePosition.z.toFixed(2)}]`)
           }
@@ -329,27 +281,23 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
     }
 
     const handleKeyUp = (event: KeyboardEvent) => {
-      console.log(`🎮 放開按鍵: ${event.code}`) // 調試日志
+      // Remove debug log
       switch (event.code) {
         case 'KeyW':
         case 'ArrowUp':
           keys.current.forward = false
-          console.log('🎮 ↑ 方向鍵 - 設定前進 = false')
           break
         case 'KeyS':
         case 'ArrowDown':
           keys.current.backward = false
-          console.log('🎮 ↓ 方向鍵 - 設定後退 = false')
           break
         case 'KeyA':
         case 'ArrowLeft':
           keys.current.left = false
-          console.log('🎮 ← 方向鍵 - 設定左移 = false')
           break
         case 'KeyD':
         case 'ArrowRight':
           keys.current.right = false
-          console.log('🎮 → 方向鍵 - 設定右移 = false')
           break
         case 'ShiftLeft':
         case 'ShiftRight':
@@ -379,13 +327,13 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
   // 每幀更新
   useFrame((_, delta) => {
     if (!feetPivotRef.current) return
-    
+
     // Fixed timestep accumulator
     accumulator.current += Math.min(delta, 0.05)
-    
+
     while (accumulator.current >= FIXED_DT) {
       const dt = FIXED_DT
-      
+
       // 重置方向向量
       direction.current.set(0, 0, 0)
 
@@ -395,12 +343,8 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
       if (keys.current.left) direction.current.x = -1      // A鍵：本地左方（修正方向）
       if (keys.current.right) direction.current.x = 1      // D鍵：本地右方（修正方向）
 
-    // 調試：檢查按鍵狀態和方向向量
+    // 調試：檢查按鍵狀態和方向向量 (throttled)
     const anyKeyPressed = keys.current.forward || keys.current.backward || keys.current.left || keys.current.right
-    if (anyKeyPressed) {
-      console.log(`🎮 按鍵狀態 - 前:${keys.current.forward} 後:${keys.current.backward} 左:${keys.current.left} 右:${keys.current.right}`)
-      console.log(`🎮 方向向量: (${direction.current.x}, ${direction.current.z})`)
-    }
 
     // 安全正規化方向向量
     if (direction.current.length() > 0) {
@@ -440,27 +384,26 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
       moveDirection.x = moveDir2D.x
       moveDirection.z = moveDir2D.y
 
-      // 移動速度設定 - 適應10倍擴展地形，角色放大2倍
-      let speed = 35  // 正常行走速度 (配合放大的角色)
-      if (keys.current.shift) speed = 60  // Shift - 奔跑
-      velocity.current.copy(moveDirection.multiplyScalar(speed * dt))
-      
-      // 調試：檢查移動向量和速度
-      if (anyKeyPressed) {
-        console.log(`🎮 移動向量: (${moveDirection.x.toFixed(2)}, ${moveDirection.z.toFixed(2)})`)
-        console.log(`🎮 速度向量: (${velocity.current.x.toFixed(2)}, ${velocity.current.z.toFixed(2)})`)
-        console.log(`🎮 Pointer Lock: ${!!document.pointerLockElement}`)
-      }
+      // Use BVH capsule collision with smoothing
+      // 1) 讀取輸入並正規化
+      const rawDir = new THREE.Vector2(moveDirection.x, moveDirection.z);
+      if (rawDir.lengthSq() > 0) rawDir.normalize();
 
-      // Use slope-based movement system
-      // 1) 產生期望移動 (XZ 向量)
-      const desiredXZ = new THREE.Vector2(velocity.current.x, velocity.current.z);
-      
-      // 2) 解算沿坡/沿邊滑移（含 y 修正）
-      const delta3 = solveSlopeMove(feetPivotRef.current.position, desiredXZ, dt);
-      
-      // 3) 寫入位置（x,z 來自沿坡，y 直接用回傳的貼地高度）
-      feetPivotRef.current.position.add(delta3)
+      // 2) 方向平滑：避免急轉角
+      const t = expSmoothing(dt, 0.10); // 100ms 半衰
+      lerpVec2(prevDir.current, rawDir, t);
+
+      // 3) 速度計算
+      let speed = 35;  // 正常行走速度
+      if (keys.current.shift) speed = 60;  // Shift - 奔跑
+      const desired = new THREE.Vector3(prevDir.current.x * speed * dt, 0, prevDir.current.y * speed * dt);
+
+      // 4) 依速度決定子步數，做 BVH 膠囊掃掠（→ 完全不穿牆）
+      const sub = computeSubsteps(desired.length(), SPEC);
+      updateWithBVH(feetPivotRef.current.position, desired, SPEC, sub);
+
+      // 5) 垂直方向（貼地/重力）
+      clampToGroundSafe(feetPivotRef.current.position, velocityY.current, dt)
       
       // Sync playerPos with feetPivot position
       playerPos.current.copy(feetPivotRef.current.position)
@@ -570,14 +513,31 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(({
       
       <group ref={feetPivotRef} position={position}>
         {/* Kenney GLB 角色模型已在 useEffect 中通過 wrapWithFeetPivot 添加 */}
-        <NameplateOverlay targetRef={feetPivotRef} label="玩家" />
 
-        {/* 玩家陰影圓圈 */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]} receiveShadow>
-          <circleGeometry args={[0.8, 16]} />
-          <meshBasicMaterial color="#000000" transparent opacity={0.3} />
+        {/* 玩家自然陰影 - 更大更柔和 */}
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]} receiveShadow>
+          <circleGeometry args={[1.2, 32]} />
+          <meshBasicMaterial 
+            color="#000000" 
+            transparent 
+            opacity={0.25}
+            depthWrite={false}
+          />
+        </mesh>
+        
+        {/* 內層深色陰影 */}
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]} receiveShadow>
+          <circleGeometry args={[0.6, 24]} />
+          <meshBasicMaterial 
+            color="#000000" 
+            transparent 
+            opacity={0.35}
+            depthWrite={false}
+          />
         </mesh>
       </group>
     </>
   )
-})
+}
+
+export const Player = forwardRef(PlayerComponent)

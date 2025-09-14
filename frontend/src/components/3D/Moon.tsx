@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import { useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 import { useTimeStore } from '@/stores/timeStore'
+import { markWalkable } from '@/game/physics/layers'
 
 // 真實月球3D模型組件
 const MoonModel = ({ position, onLoad }: { position: [number, number, number], onLoad: (ref: THREE.Group) => void }) => {
@@ -74,14 +75,16 @@ const MoonModel = ({ position, onLoad }: { position: [number, number, number], o
   React.useEffect(() => {
     if (scene && !modelLoaded) {
       console.log('🌙 新月球3D模型載入成功！')
-      
+
       // 縮放新月球模型 - 調整為適合的大小
       scene.scale.setScalar(15) // 增大模型以匹配原來的月球大小
-      
+
       scene.traverse((child) => {
         if (child instanceof THREE.Mesh) {
           child.castShadow = false
           child.receiveShadow = false
+          // 確保月球不是可行走層
+          markWalkable(child, false)
           
           // 優化新月球材質
           if (child.material) {

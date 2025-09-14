@@ -6,6 +6,8 @@ import { collisionSystem } from '@/utils/collision'
 import { TreeGlow } from './TreeGlow'
 import { TerrainGlow } from './TerrainGlow'
 import { useTimeStore } from '@/stores/timeStore'
+import { buildWorldBVH } from '@/game/physics/worldBVH'
+import { markWalkable, registerWalkable } from '@/game/physics/walkable'
 
 // 全域地形參考，用於高度檢測
 let terrainMesh: THREE.Mesh | null = null
@@ -335,11 +337,12 @@ export const TerrainModel = ({ position = [0, 0, 0] }: TerrainModelProps) => {
     if (!raycaster) {
       raycaster = new THREE.Raycaster()
     }
-    
+
     // 尋找地形mesh、棕色山體mesh和樹木mesh
     brownMountainMeshes = [] // 重置棕色山體陣列
     treeMeshes.current = [] // 重置樹木陣列
-    
+    const collisionMeshes: THREE.Mesh[] = [] // 收集所有需要碰撞檢測的mesh
+
     console.log('🏞️ 初始化地形和物件檢測...')
     console.log('🔍 掃描場景中的所有樹木位置...')
     
@@ -533,14 +536,26 @@ export const TerrainModel = ({ position = [0, 0, 0] }: TerrainModelProps) => {
             }
           }
         }
-        
+
         // 優先尋找明確的地形名稱作為主要地形
-        if (name.includes('ground') || 
+        if (name.includes('ground') ||
             name.includes('terreno') ||
             name.includes('terrain')) {
           terrainMesh = child
+          collisionMeshes.push(child) // 加入碰撞mesh列表
           console.log('找到地形mesh:', child.name)
           return
+        }
+
+        // 收集所有可能的地形和山體mesh用於碰撞檢測
+        if (!name.includes('cloud') && !name.includes('sky') &&
+            !name.includes('tree') && !name.includes('arbol') &&
+            !name.includes('leaf') && !name.includes('trunk')) {
+          // 檢查位置，過濾掉高空物體
+          const worldY = child.position.y * 5
+          if (worldY <= 10) {
+            collisionMeshes.push(child)
+          }
         }
       }
     })
@@ -550,10 +565,10 @@ export const TerrainModel = ({ position = [0, 0, 0] }: TerrainModelProps) => {
       scene.traverse((child) => {
         if (child instanceof THREE.Mesh && !terrainMesh) {
           const name = child.name.toLowerCase()
-          
+
           // 排除雲朵和其他空中物件 - 更全面的檢查
-          if (name.includes('clouds') || 
-              name.includes('cloud') || 
+          if (name.includes('clouds') ||
+              name.includes('cloud') ||
               name.includes('sky') ||
               name.includes('arbol') || // 樹木
               name.includes('tree') ||
@@ -561,7 +576,7 @@ export const TerrainModel = ({ position = [0, 0, 0] }: TerrainModelProps) => {
               name.includes('sphere')) { // 球體通常是雲朵
             return
           }
-          
+
           // 檢查物件的Y位置，雲朵通常在較高位置
           const position = child.position.clone()
           // 考慮地形5倍Y縮放
@@ -569,11 +584,34 @@ export const TerrainModel = ({ position = [0, 0, 0] }: TerrainModelProps) => {
           if (worldY > 10) { // 高於10單位的可能是雲朵
             return
           }
-          
+
           terrainMesh = child
+          collisionMeshes.push(child) // 加入碰撞mesh列表
           console.log('使用mesh作為地形:', child.name, '位置Y:', position.y)
         }
       })
+    }
+
+    // 將棕色山體mesh也加入碰撞檢測
+    brownMountainMeshes.forEach(mesh => {
+      if (!collisionMeshes.includes(mesh)) {
+        collisionMeshes.push(mesh)
+      }
+    })
+
+    // 建立BVH世界碰撞網格
+    if (collisionMeshes.length > 0) {
+      console.log(`🔨 建立BVH世界碰撞網格，包含 ${collisionMeshes.length} 個mesh`)
+      const worldMesh = buildWorldBVH(collisionMeshes)
+      if (worldMesh) {
+        console.log('✅ BVH世界碰撞網格建立成功')
+        // 加入場景用於調試（不可見）
+        scene.add(worldMesh)
+      } else {
+        console.error('❌ BVH世界碰撞網格建立失敗')
+      }
+    } else {
+      console.warn('⚠️ 沒有找到可用於碰撞檢測的mesh')
     }
     
     // 設置所有地形和物體接收太陽和月亮陰影
@@ -649,12 +687,14 @@ export const TerrainModel = ({ position = [0, 0, 0] }: TerrainModelProps) => {
           // 樹木只投射陰影，不接收陰影（避免樹木身上有陰影）
           child.castShadow = true
           child.receiveShadow = false
-          
+          // 樹木不是可行走層
+          markWalkable(child, false);
+
           // 將樹木加入全域數組
           if (!treeMeshes.current.includes(child)) {
             treeMeshes.current.push(child)
           }
-          
+
           console.log(`🌳 樹木陰影設置: ${child.name} (castShadow: ${child.castShadow}, receiveShadow: ${child.receiveShadow}) - 位置: (${child.position.x.toFixed(1)}, ${child.position.z.toFixed(1)})`)
         } else {
           // 地形部分只接收陰影，不投射
