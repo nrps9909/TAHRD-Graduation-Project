@@ -41,7 +41,7 @@ interface PlayerRef {
 
 const PlayerComponent = (props: PlayerProps, ref: React.Ref<PlayerRef>) => {
   const {
-    position = [-15, 18, -15], // 安全的spawn位置，遠離山脈
+    position = [-15, 5, -15], // 安全的spawn位置，地面高度
     modelPath = '/characters/CHAR-F-A',
     modelFile = '/CHAR-F-A.glb'
   } = props;

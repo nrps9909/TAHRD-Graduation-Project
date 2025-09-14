@@ -131,7 +131,7 @@ export const useGameStore = create<GameState>()(
               name: '陸培修',
               personality: '夢幻的藝術家',
               currentMood: 'cheerful',
-              position: [5, 0, 8] as [number, number, number],
+              position: [5, 5, 8] as [number, number, number],
               relationshipLevel: 1,
             },
             {
@@ -139,7 +139,7 @@ export const useGameStore = create<GameState>()(
               name: '劉宇岑',
               personality: '充滿活力的朋友',
               currentMood: 'excited',
-              position: [-8, 0, 5] as [number, number, number],
+              position: [-8, 5, 5] as [number, number, number],
               relationshipLevel: 1,
             },
             {
@@ -147,7 +147,7 @@ export const useGameStore = create<GameState>()(
               name: '陳庭安', 
               personality: '溫柔的靈魂',
               currentMood: 'dreamy',
-              position: [3, 0, -6] as [number, number, number],
+              position: [3, 5, -6] as [number, number, number],
               relationshipLevel: 1,
             },
           ]

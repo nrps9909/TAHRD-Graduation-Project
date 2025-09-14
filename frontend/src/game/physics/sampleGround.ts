@@ -6,19 +6,19 @@ ray.layers.set(WALKABLE_LAYER_ID);
 ray.far = 2000;
 
 const UP = new THREE.Vector3(0, 1, 0);
-export const FOOT_OFFSET = 0.03;
-export const MIN_Y = -50;   // Minimum allowed ground in scene
-export const MAX_Y = 80;    // Maximum allowed ground in scene
+export const FOOT_OFFSET = 0.1;  // Slightly higher offset for better ground clearance
+export const MIN_Y = -10;   // Actual ground range based on terrain scale
+export const MAX_Y = 30;    // Maximum terrain height with 5x Y scale
 
 export function sampleGround(x: number, z: number): { y: number; normal: THREE.Vector3 } | null {
   const objs = getWalkables();
   if (!objs.length) return null;
 
   const origins = [
-    new THREE.Vector3(x, 500, z),
-    new THREE.Vector3(x + 0.25, 500, z),
-    new THREE.Vector3(x - 0.12, 500, z + 0.22),
-    new THREE.Vector3(x - 0.12, 500, z - 0.22),
+    new THREE.Vector3(x, 100, z),  // Start from reasonable height
+    new THREE.Vector3(x + 0.25, 100, z),
+    new THREE.Vector3(x - 0.12, 100, z + 0.22),
+    new THREE.Vector3(x - 0.12, 100, z - 0.22),
   ];
 
   let hitCount = 0, ySum = 0;
@@ -45,7 +45,7 @@ export function sampleGround(x: number, z: number): { y: number; normal: THREE.V
   return { y: ySum / hitCount, normal };
 }
 
-let lastGoodY = 0;
+let lastGoodY = 5;  // Default ground level
 
 export function clampToGroundSafe(pos: THREE.Vector3, vy: { value: number }, dt: number) {
   // If height is ridiculous, force sample immediately
@@ -81,9 +81,20 @@ export function clampToGroundSafe(pos: THREE.Vector3, vy: { value: number }, dt:
 
 // Initial spawn: snap all characters to ground
 export function snapOnSpawn(pos: THREE.Vector3) {
+  // Force initial position to reasonable ground height first
+  if (pos.y > MAX_Y || pos.y < MIN_Y) {
+    pos.y = 5;  // Default ground level
+  }
+
   const s = sampleGround(pos.x, pos.z);
   if (s) {
     pos.y = s.y + FOOT_OFFSET;
     lastGoodY = pos.y;
+  } else {
+    // If no ground found, set to default safe height
+    pos.y = 5;
+    lastGoodY = 5;
   }
+
+  console.log(`[SnapOnSpawn] Final position: ${pos.toArray().map(v => v.toFixed(2)).join(', ')}`);
 }

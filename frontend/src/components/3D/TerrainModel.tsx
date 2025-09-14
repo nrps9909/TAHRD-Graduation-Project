@@ -220,6 +220,11 @@ export const TerrainModel = ({ position = [0, 0, 0] }: TerrainModelProps) => {
   
   // 載入GLTF模型
   const { scene } = useGLTF('/terrain_low_poly/scene.gltf')
+
+  // 確保場景 matrix 更新
+  useEffect(() => {
+    scene.updateMatrixWorld(true);
+  }, [scene])
   
   // 精確移除白雲物件，完全保留樹木，並設置陰影接收
   useEffect(() => {
@@ -599,20 +604,27 @@ export const TerrainModel = ({ position = [0, 0, 0] }: TerrainModelProps) => {
       }
     })
 
-    // 建立BVH世界碰撞網格
-    if (collisionMeshes.length > 0) {
-      console.log(`🔨 建立BVH世界碰撞網格，包含 ${collisionMeshes.length} 個mesh`)
-      const worldMesh = buildWorldBVH(collisionMeshes)
-      if (worldMesh) {
-        console.log('✅ BVH世界碰撞網格建立成功')
-        // 加入場景用於調試（不可見）
-        scene.add(worldMesh)
+    // 延遲建立BVH世界碰撞網格，確保場景變換已更新
+    setTimeout(() => {
+      if (collisionMeshes.length > 0) {
+        // 強制更新所有 mesh 的 world matrix
+        collisionMeshes.forEach(mesh => {
+          mesh.updateMatrixWorld(true);
+        });
+
+        console.log(`🔨 建立BVH世界碰撞網格，包含 ${collisionMeshes.length} 個mesh`)
+        const worldMesh = buildWorldBVH(collisionMeshes)
+        if (worldMesh) {
+          console.log('✅ BVH世界碰撞網格建立成功')
+          // 加入場景用於調試（不可見）
+          scene.add(worldMesh)
+        } else {
+          console.error('❌ BVH世界碰撞網格建立失敗')
+        }
       } else {
-        console.error('❌ BVH世界碰撞網格建立失敗')
+        console.warn('⚠️ 沒有找到可用於碰撞檢測的mesh')
       }
-    } else {
-      console.warn('⚠️ 沒有找到可用於碰撞檢測的mesh')
-    }
+    }, 100)  // 短暫延遲確保場景變換完成
     
     // 設置所有地形和物體接收太陽和月亮陰影
     console.log('🌞🌙 設置地形接收陰影...')
