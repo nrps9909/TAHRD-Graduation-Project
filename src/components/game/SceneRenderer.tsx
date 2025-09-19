@@ -1,10 +1,10 @@
 import { motion } from 'framer-motion'
-import { scenes } from '../data/scenes'
-import { useGameStore } from '../store/gameStore'
-import CodeChallenge from './CodeChallenge'
-import InteractiveDemo from './InteractiveDemo'
-import WSLSetupGuide from './WSLSetupGuide'
-import InteractiveLesson from './InteractiveLesson'
+import { scenes } from '@/data/scenes'
+import { useGameStore } from '@/store/gameStore'
+import CodeChallenge from '@/components/features/CodeChallenge'
+import InteractiveDemo from '@/components/features/InteractiveDemo'
+import WSLSetupGuide from '@/components/features/WSLSetupGuide'
+import InteractiveLesson from '@/components/features/InteractiveLesson'
 
 interface SceneRendererProps {
   sceneId: string

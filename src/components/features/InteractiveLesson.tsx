@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import VirtualTeacher from './VirtualTeacher'
-import { useGameStore } from '../store/gameStore'
-import { usePageStatePersistence } from '../hooks/usePageStatePersistence'
+import { useGameStore } from '@/store/gameStore'
+import { usePageStatePersistence } from '@/hooks/usePageStatePersistence'
 
 interface Dialogue {
   id: number

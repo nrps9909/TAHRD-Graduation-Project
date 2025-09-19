@@ -1,15 +1,15 @@
 import React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { CheckCircle, Lock, Clock, Play, Target, Zap } from 'lucide-react'
-import { useGameStore } from '../store/gameStore'
+import { useGameStore } from '@/store/gameStore'
 import {
   unifiedLearningPath,
   LearningPathManager,
   getLearningPathVisualization,
   LearningStage,
-} from '../data/unifiedLearningPath'
+} from '@/data/unifiedLearningPath'
 import { Achievement } from './AchievementNotification'
-import { usePageStatePersistence } from '../hooks/usePageStatePersistence'
+import { usePageStatePersistence } from '@/hooks/usePageStatePersistence'
 
 interface TriggerFeedback {
   showPoints: (points: number, position?: { x: number; y: number }) => void

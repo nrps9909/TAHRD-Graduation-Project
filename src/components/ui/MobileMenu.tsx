@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Menu, X, Home, BookOpen, Trophy, Settings } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { useGameStore } from '../store/gameStore'
+import { useGameStore } from '@/store/gameStore'
 
 const MobileMenu = () => {
   const [isOpen, setIsOpen] = useState(false)

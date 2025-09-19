@@ -3,20 +3,24 @@ import { motion } from 'framer-motion'
 import { Map, BookOpen, MessageCircle, FolderOpen } from 'lucide-react'
 import Sidebar from './Sidebar'
 import ProgressBar from './ProgressBar'
-import LoadingScreen from './LoadingScreen'
-import { useGameStore } from '../store/gameStore'
-import { LearningPathManager } from '../data/unifiedLearningPath'
-import { Achievement } from './AchievementNotification'
+import LoadingScreen from '@/components/core/LoadingScreen'
+import { useGameStore } from '@/store/gameStore'
+import { LearningPathManager } from '@/data/unifiedLearningPath'
+import { Achievement } from '@/components/ui/AchievementNotification'
 import {
   useViewStatePersistence,
   useScrollPersistence,
-} from '../hooks/usePageStatePersistence'
+} from '@/hooks/usePageStatePersistence'
 
 // Lazy load heavy components
-const GeminiCLI = lazy(() => import('./GeminiCLI'))
+const GeminiCLI = lazy(() => import('@/components/features/GeminiCLI'))
 const SceneRenderer = lazy(() => import('./SceneRenderer'))
-const LearningPathMap = lazy(() => import('./LearningPathMap'))
-const WorkspaceViewer = lazy(() => import('./WorkspaceViewer'))
+const LearningPathMap = lazy(
+  () => import('@/components/features/LearningPathMap')
+)
+const WorkspaceViewer = lazy(
+  () => import('@/components/features/WorkspaceViewer')
+)
 
 interface TriggerFeedback {
   showPoints: (points: number, position?: { x: number; y: number }) => void

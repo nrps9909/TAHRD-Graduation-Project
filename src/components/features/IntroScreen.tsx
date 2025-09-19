@@ -2,9 +2,9 @@ import { useState, useEffect, Suspense, lazy } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Mail, Lock, User } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { useGameStore } from '../store/gameStore'
-import { apiService } from '../services/api.service'
-import { APP_CONFIG } from '../config/app.config'
+import { useGameStore } from '@/store/gameStore'
+import { apiService } from '@/services/api.service'
+import { APP_CONFIG } from '@/config/app.config'
 
 // Lazy load Live2D component
 const Live2DPixi6 = lazy(() => import('./Live2DPixi6'))

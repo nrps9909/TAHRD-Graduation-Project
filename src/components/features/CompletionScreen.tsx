@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Trophy, Award, Home } from 'lucide-react'
-import { useGameStore } from '../store/gameStore'
+import { useGameStore } from '@/store/gameStore'
 import { useNavigate } from 'react-router-dom'
 import confetti from 'canvas-confetti'
 

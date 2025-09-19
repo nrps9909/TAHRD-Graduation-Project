@@ -1,7 +1,7 @@
 import { useState, useEffect, lazy, Suspense, memo, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useGameStore } from '../store/gameStore'
-import { useLive2DSize } from '../hooks/useLive2DSize'
+import { useGameStore } from '@/store/gameStore'
+import { useLive2DSize } from '@/hooks/useLive2DSize'
 
 // Lazy load Live2D component
 const Live2DPixi6 = lazy(() => import('./Live2DPixi6'))

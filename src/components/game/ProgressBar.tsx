@@ -1,4 +1,4 @@
-import { useGameStore } from '../store/gameStore'
+import { useGameStore } from '@/store/gameStore'
 
 const ProgressBar = () => {
   const { completedScenes } = useGameStore()

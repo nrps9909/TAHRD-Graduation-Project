@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, memo, useCallback, useMemo } from 'react'
 import { Highlight, themes } from 'prism-react-renderer'
-import { useDebounce } from '../hooks/usePerformance'
+import { useDebounce } from '@/hooks/usePerformance'
 
 interface CodeEditorProps {
   value: string

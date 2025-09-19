@@ -12,8 +12,8 @@ import {
   Monitor,
 } from 'lucide-react'
 import CodeEditor from './CodeEditor'
-import { usePageStatePersistence } from '../hooks/usePageStatePersistence'
-import './WorkspaceViewer.css'
+import { usePageStatePersistence } from '@/hooks/usePageStatePersistence'
+import '@/components/WorkspaceViewer.css'
 
 interface WorkspaceFile {
   name: string

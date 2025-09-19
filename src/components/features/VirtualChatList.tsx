@@ -1,6 +1,6 @@
 import { memo, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { useVirtualScroll } from '../hooks/usePerformance'
+import { useVirtualScroll } from '@/hooks/usePerformance'
 
 interface ChatMessage {
   type: 'user' | 'assistant' | 'system'

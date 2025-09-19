@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { Trophy, BookOpen, Star, X } from 'lucide-react'
-import { useGameStore } from '../store/gameStore'
+import { useGameStore } from '@/store/gameStore'
 
 interface SidebarProps {
   isOpen: boolean

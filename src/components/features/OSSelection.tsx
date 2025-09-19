@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 import { Monitor, Apple, ChevronRight } from 'lucide-react'
-import { useGameStore } from '../store/gameStore'
+import { useGameStore } from '@/store/gameStore'
 import { useNavigate } from 'react-router-dom'
 
 interface OSSelectionProps {
