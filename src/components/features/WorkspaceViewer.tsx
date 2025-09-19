@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import {
   Folder,
   Download,
@@ -9,114 +9,121 @@ import {
   Globe,
   ChevronRight,
   ChevronDown,
-  Monitor
-} from 'lucide-react';
-import CodeEditor from './CodeEditor';
-import { usePageStatePersistence } from '../hooks/usePageStatePersistence';
-import './WorkspaceViewer.css';
+  Monitor,
+} from 'lucide-react'
+import CodeEditor from './CodeEditor'
+import { usePageStatePersistence } from '../hooks/usePageStatePersistence'
+import './WorkspaceViewer.css'
 
 interface WorkspaceFile {
-  name: string;
-  type: 'file' | 'folder';
-  path: string;
-  children?: WorkspaceFile[];
+  name: string
+  type: 'file' | 'folder'
+  path: string
+  children?: WorkspaceFile[]
 }
 
 interface OpenTab {
-  filename: string;
-  content: string;
-  isDirty: boolean;
+  filename: string
+  content: string
+  isDirty: boolean
 }
 
-type ViewMode = 'code' | 'preview' | 'split';
+type ViewMode = 'code' | 'preview' | 'split'
 
 interface WorkspaceViewerProps {
-  embedded?: boolean;
+  embedded?: boolean
 }
 
-const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({ embedded = false }) => {
-  const [files, setFiles] = useState<WorkspaceFile[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [isOpen, setIsOpen] = useState(embedded);
-  const [isMobile, setIsMobile] = useState(false);
-  const [isCreatingFile, setIsCreatingFile] = useState(false);
-  const [newFileName, setNewFileName] = useState('');
+const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({
+  embedded = false,
+}) => {
+  const [files, setFiles] = useState<WorkspaceFile[]>([])
+  const [loading, setLoading] = useState(false)
+  const [isOpen, setIsOpen] = useState(embedded)
+  const [isMobile, setIsMobile] = useState(false)
+  const [isCreatingFile, setIsCreatingFile] = useState(false)
+  const [newFileName, setNewFileName] = useState('')
 
   // Persistent state
-  const [workspaceState, setWorkspaceState] = usePageStatePersistence('workspaceViewer', {
-    openTabs: [] as OpenTab[],
-    activeTab: null as string | null,
-    viewMode: 'code' as ViewMode,
-    sidebarWidth: 300,
-    showSidebar: true,
-    expandedFolders: [] as string[]
-  });
+  const [workspaceState, setWorkspaceState] = usePageStatePersistence(
+    'workspaceViewer',
+    {
+      openTabs: [] as OpenTab[],
+      activeTab: null as string | null,
+      viewMode: 'code' as ViewMode,
+      sidebarWidth: 300,
+      showSidebar: true,
+      expandedFolders: [] as string[],
+    }
+  )
 
   // Auto-save and auto-refresh are always enabled
-  const autoSave = true;
-  const autoRefresh = true;
+  const autoSave = true
+  const autoRefresh = true
 
   // Auto-save timer ref
-  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const previewRefreshTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const previewRefreshTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const iframeRef = useRef<HTMLIFrameElement>(null)
 
   // Convert array to Set for expandedFolders (for easier manipulation)
-  const expandedFolders = new Set(workspaceState.expandedFolders);
+  const expandedFolders = new Set(workspaceState.expandedFolders)
   const setExpandedFolders = (folders: Set<string>) => {
     setWorkspaceState(prev => ({
       ...prev,
-      expandedFolders: Array.from(folders)
-    }));
-  };
-  const resizeRef = useRef<HTMLDivElement>(null);
+      expandedFolders: Array.from(folders),
+    }))
+  }
+  const resizeRef = useRef<HTMLDivElement>(null)
 
-  const API_BASE = (import.meta as unknown as { env?: { VITE_API_BASE?: string } }).env?.VITE_API_BASE || 'http://localhost:3002';
+  const API_BASE =
+    (import.meta as unknown as { env?: { VITE_API_BASE?: string } }).env
+      ?.VITE_API_BASE || 'http://localhost:3002'
 
   const loadFiles = async () => {
-    setLoading(true);
+    setLoading(true)
     try {
-      const response = await fetch(`${API_BASE}/api/files`);
-      const data = await response.json();
+      const response = await fetch(`${API_BASE}/api/files`)
+      const data = await response.json()
       if (data.success) {
         // Convert flat file list to tree structure
-        const fileTree = buildFileTree(data.files);
-        setFiles(fileTree);
+        const fileTree = buildFileTree(data.files)
+        setFiles(fileTree)
       }
     } catch (error) {
-      console.error('Failed to load files:', error);
+      console.error('Failed to load files:', error)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const buildFileTree = (fileList: string[]): WorkspaceFile[] => {
-    const tree: WorkspaceFile[] = [];
-    const folders: { [key: string]: WorkspaceFile } = {};
+    const tree: WorkspaceFile[] = []
+    const folders: { [key: string]: WorkspaceFile } = {}
 
     fileList.forEach(filePath => {
-      const parts = filePath.split('/');
-      let currentPath = '';
+      const parts = filePath.split('/')
+      let currentPath = ''
 
       parts.forEach((part, index) => {
-        const isLast = index === parts.length - 1;
-        currentPath = currentPath ? `${currentPath}/${part}` : part;
+        const isLast = index === parts.length - 1
+        currentPath = currentPath ? `${currentPath}/${part}` : part
 
         if (isLast) {
           // It's a file
-          const parentPath = parts.slice(0, -1).join('/');
-          const parent = parentPath ? folders[parentPath] : null;
+          const parentPath = parts.slice(0, -1).join('/')
+          const parent = parentPath ? folders[parentPath] : null
           const file: WorkspaceFile = {
             name: part,
             type: 'file',
-            path: currentPath
-          };
+            path: currentPath,
+          }
 
           if (parent) {
-            if (!parent.children) parent.children = [];
-            parent.children.push(file);
+            if (!parent.children) parent.children = []
+            parent.children.push(file)
           } else {
-            tree.push(file);
+            tree.push(file)
           }
         } else {
           // It's a folder
@@ -125,204 +132,228 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({ embedded = false }) =
               name: part,
               type: 'folder',
               path: currentPath,
-              children: []
-            };
-            folders[currentPath] = folder;
+              children: [],
+            }
+            folders[currentPath] = folder
 
-            const parentPath = parts.slice(0, index).join('/');
-            const parent = parentPath ? folders[parentPath] : null;
+            const parentPath = parts.slice(0, index).join('/')
+            const parent = parentPath ? folders[parentPath] : null
 
             if (parent) {
-              if (!parent.children) parent.children = [];
-              parent.children.push(folder);
+              if (!parent.children) parent.children = []
+              parent.children.push(folder)
             } else {
-              tree.push(folder);
+              tree.push(folder)
             }
           }
         }
-      });
-    });
+      })
+    })
 
-    return tree;
-  };
+    return tree
+  }
 
   const openFile = async (filepath: string) => {
     // Check if file is already open
-    const existingTab = workspaceState.openTabs.find(tab => tab.filename === filepath);
+    const existingTab = workspaceState.openTabs.find(
+      tab => tab.filename === filepath
+    )
     if (existingTab) {
-      setWorkspaceState(prev => ({ ...prev, activeTab: filepath }));
-      return;
+      setWorkspaceState(prev => ({ ...prev, activeTab: filepath }))
+      return
     }
 
     try {
-      const response = await fetch(`${API_BASE}/api/file/read/${encodeURIComponent(filepath)}`);
-      const data = await response.json();
+      const response = await fetch(
+        `${API_BASE}/api/file/read/${encodeURIComponent(filepath)}`
+      )
+      const data = await response.json()
       if (data.success) {
         const newTab: OpenTab = {
           filename: filepath,
           content: data.content,
-          isDirty: false
-        };
+          isDirty: false,
+        }
         setWorkspaceState(prev => ({
           ...prev,
           openTabs: [...prev.openTabs, newTab],
-          activeTab: filepath
-        }));
+          activeTab: filepath,
+        }))
       }
     } catch (error) {
-      console.error('Failed to read file:', error);
+      console.error('Failed to read file:', error)
     }
-  };
+  }
 
   const saveFile = async (filepath: string, content: string) => {
     try {
       const response = await fetch(`${API_BASE}/api/file/update`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filename: filepath, content })
-      });
+        body: JSON.stringify({ filename: filepath, content }),
+      })
 
       if (response.ok) {
         setWorkspaceState(prev => ({
           ...prev,
           openTabs: prev.openTabs.map(tab =>
             tab.filename === filepath ? { ...tab, isDirty: false } : tab
-          )
-        }));
-        console.log('File saved successfully');
+          ),
+        }))
+        console.log('File saved successfully')
       }
     } catch (error) {
-      console.error('Failed to save file:', error);
+      console.error('Failed to save file:', error)
     }
-  };
+  }
 
   const createFile = async (filename: string) => {
     try {
       const response = await fetch(`${API_BASE}/api/file/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filename, content: '' })
-      });
+        body: JSON.stringify({ filename, content: '' }),
+      })
 
       if (response.ok) {
-        await loadFiles();
-        await openFile(filename);
-        setIsCreatingFile(false);
-        setNewFileName('');
+        await loadFiles()
+        await openFile(filename)
+        setIsCreatingFile(false)
+        setNewFileName('')
       }
     } catch (error) {
-      console.error('Failed to create file:', error);
+      console.error('Failed to create file:', error)
     }
-  };
+  }
 
   const deleteFile = async (filepath: string) => {
-    if (!confirm(`確定要刪除 ${filepath} 嗎？`)) return;
+    if (!confirm(`確定要刪除 ${filepath} 嗎？`)) return
 
     try {
       const response = await fetch(`${API_BASE}/api/file/delete`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filename: filepath })
-      });
+        body: JSON.stringify({ filename: filepath }),
+      })
 
       if (response.ok) {
         // Close tab if open
-        const newOpenTabs = workspaceState.openTabs.filter(tab => tab.filename !== filepath);
-        const newActiveTab = workspaceState.activeTab === filepath
-          ? (newOpenTabs.length > 0 ? newOpenTabs[0].filename : null)
-          : workspaceState.activeTab;
-
-        setWorkspaceState(prev => ({
-          ...prev,
-          openTabs: newOpenTabs,
-          activeTab: newActiveTab
-        }));
-        await loadFiles();
-      }
-    } catch (error) {
-      console.error('Failed to delete file:', error);
-    }
-  };
-
-  const deleteFolder = async (folderPath: string) => {
-    if (!confirm(`確定要刪除資料夾 ${folderPath} 及其所有內容嗎？⚠️ 此操作無法復原！`)) return;
-
-    try {
-      const response = await fetch(`${API_BASE}/api/folder/delete`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ folderPath })
-      });
-
-      if (response.ok) {
-        // Close tabs for any files in this folder
         const newOpenTabs = workspaceState.openTabs.filter(
-          tab => !tab.filename.startsWith(folderPath + '/')
-        );
-        const newActiveTab = workspaceState.activeTab &&
-          workspaceState.activeTab.startsWith(folderPath + '/')
-          ? (newOpenTabs.length > 0 ? newOpenTabs[0].filename : null)
-          : workspaceState.activeTab;
+          tab => tab.filename !== filepath
+        )
+        const newActiveTab =
+          workspaceState.activeTab === filepath
+            ? newOpenTabs.length > 0
+              ? newOpenTabs[0].filename
+              : null
+            : workspaceState.activeTab
 
         setWorkspaceState(prev => ({
           ...prev,
           openTabs: newOpenTabs,
           activeTab: newActiveTab,
-          expandedFolders: prev.expandedFolders.filter(f => !f.startsWith(folderPath))
-        }));
-        await loadFiles();
+        }))
+        await loadFiles()
       }
     } catch (error) {
-      console.error('Failed to delete folder:', error);
+      console.error('Failed to delete file:', error)
     }
-  };
+  }
+
+  const deleteFolder = async (folderPath: string) => {
+    if (
+      !confirm(
+        `確定要刪除資料夾 ${folderPath} 及其所有內容嗎？⚠️ 此操作無法復原！`
+      )
+    )
+      return
+
+    try {
+      const response = await fetch(`${API_BASE}/api/folder/delete`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ folderPath }),
+      })
+
+      if (response.ok) {
+        // Close tabs for any files in this folder
+        const newOpenTabs = workspaceState.openTabs.filter(
+          tab => !tab.filename.startsWith(folderPath + '/')
+        )
+        const newActiveTab =
+          workspaceState.activeTab &&
+          workspaceState.activeTab.startsWith(folderPath + '/')
+            ? newOpenTabs.length > 0
+              ? newOpenTabs[0].filename
+              : null
+            : workspaceState.activeTab
+
+        setWorkspaceState(prev => ({
+          ...prev,
+          openTabs: newOpenTabs,
+          activeTab: newActiveTab,
+          expandedFolders: prev.expandedFolders.filter(
+            f => !f.startsWith(folderPath)
+          ),
+        }))
+        await loadFiles()
+      }
+    } catch (error) {
+      console.error('Failed to delete folder:', error)
+    }
+  }
 
   const closeTab = (filepath: string) => {
-    const tab = workspaceState.openTabs.find(t => t.filename === filepath);
+    const tab = workspaceState.openTabs.find(t => t.filename === filepath)
     if (tab?.isDirty) {
-      if (!confirm(`${filepath} 有未保存的更改，確定要關閉嗎？`)) return;
+      if (!confirm(`${filepath} 有未保存的更改，確定要關閉嗎？`)) return
     }
 
-    const newOpenTabs = workspaceState.openTabs.filter(tab => tab.filename !== filepath);
-    const newActiveTab = workspaceState.activeTab === filepath
-      ? (newOpenTabs.length > 0 ? newOpenTabs[0].filename : null)
-      : workspaceState.activeTab;
+    const newOpenTabs = workspaceState.openTabs.filter(
+      tab => tab.filename !== filepath
+    )
+    const newActiveTab =
+      workspaceState.activeTab === filepath
+        ? newOpenTabs.length > 0
+          ? newOpenTabs[0].filename
+          : null
+        : workspaceState.activeTab
 
     setWorkspaceState(prev => ({
       ...prev,
       openTabs: newOpenTabs,
-      activeTab: newActiveTab
-    }));
-  };
+      activeTab: newActiveTab,
+    }))
+  }
 
   // Debounced auto-save function
   const debouncedAutoSave = useCallback((filepath: string, content: string) => {
     if (autoSaveTimerRef.current) {
-      clearTimeout(autoSaveTimerRef.current);
+      clearTimeout(autoSaveTimerRef.current)
     }
 
     autoSaveTimerRef.current = setTimeout(() => {
-      saveFile(filepath, content);
-    }, 800); // Auto-save after 800ms of inactivity
-  }, []);
+      saveFile(filepath, content)
+    }, 800) // Auto-save after 800ms of inactivity
+  }, [])
 
   // Debounced preview refresh function
   const debouncedPreviewRefresh = useCallback(() => {
     if (previewRefreshTimerRef.current) {
-      clearTimeout(previewRefreshTimerRef.current);
+      clearTimeout(previewRefreshTimerRef.current)
     }
 
     previewRefreshTimerRef.current = setTimeout(() => {
       if (iframeRef.current) {
-        const iframe = iframeRef.current;
-        const currentSrc = iframe.src;
+        const iframe = iframeRef.current
+        const currentSrc = iframe.src
         // Force refresh by adding timestamp
         iframe.src = currentSrc.includes('?')
           ? currentSrc.replace(/(\?.*|$)/, `?t=${Date.now()}`)
-          : `${currentSrc}?t=${Date.now()}`;
+          : `${currentSrc}?t=${Date.now()}`
       }
-    }, 400); // Refresh preview after 400ms of inactivity
-  }, []);
+    }, 400) // Refresh preview after 400ms of inactivity
+  }, [])
 
   const updateFileContent = (filepath: string, content: string) => {
     // Update state immediately for responsive UI
@@ -332,88 +363,101 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({ embedded = false }) =
         tab.filename === filepath
           ? { ...tab, content, isDirty: false } // Always false since auto-save is enabled
           : tab
-      )
-    }));
+      ),
+    }))
 
     // Trigger auto-save
-    debouncedAutoSave(filepath, content);
+    debouncedAutoSave(filepath, content)
 
     // Trigger preview refresh for HTML files or CSS/JS files (which affect HTML)
-    if (filepath.endsWith('.html') || filepath.endsWith('.css') || filepath.endsWith('.js')) {
-      debouncedPreviewRefresh();
+    if (
+      filepath.endsWith('.html') ||
+      filepath.endsWith('.css') ||
+      filepath.endsWith('.js')
+    ) {
+      debouncedPreviewRefresh()
     }
-  };
+  }
 
   const toggleFolder = (folderPath: string) => {
-    const newSet = new Set(expandedFolders);
+    const newSet = new Set(expandedFolders)
     if (newSet.has(folderPath)) {
-      newSet.delete(folderPath);
+      newSet.delete(folderPath)
     } else {
-      newSet.add(folderPath);
+      newSet.add(folderPath)
     }
-    setExpandedFolders(newSet);
-  };
+    setExpandedFolders(newSet)
+  }
 
   useEffect(() => {
     if (isOpen) {
-      loadFiles();
+      loadFiles()
       // Auto-refresh every 10 seconds
-      const interval = setInterval(loadFiles, 10000);
-      return () => clearInterval(interval);
+      const interval = setInterval(loadFiles, 10000)
+      return () => clearInterval(interval)
     }
-  }, [isOpen]); // loadFiles is stable and doesn't need to be in deps
+  }, [isOpen]) // loadFiles is stable and doesn't need to be in deps
 
   // Cleanup timers on unmount
   useEffect(() => {
     return () => {
       if (autoSaveTimerRef.current) {
-        clearTimeout(autoSaveTimerRef.current);
+        clearTimeout(autoSaveTimerRef.current)
       }
       if (previewRefreshTimerRef.current) {
-        clearTimeout(previewRefreshTimerRef.current);
+        clearTimeout(previewRefreshTimerRef.current)
       }
-    };
-  }, []);
+    }
+  }, [])
 
   useEffect(() => {
     const checkMobile = () => {
-      const mobile = window.innerWidth < 768;
-      setIsMobile(mobile);
+      const mobile = window.innerWidth < 768
+      setIsMobile(mobile)
       if (mobile) {
         setWorkspaceState(prev => ({
           ...prev,
           viewMode: 'code', // Default to code view on mobile
-          showSidebar: false // Hide sidebar on mobile by default
-        }));
+          showSidebar: false, // Hide sidebar on mobile by default
+        }))
       } else {
         setWorkspaceState(prev => ({
           ...prev,
-          showSidebar: true
-        }));
+          showSidebar: true,
+        }))
       }
-    };
+    }
 
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 's' && workspaceState.activeTab) {
-        e.preventDefault();
-        const tab = workspaceState.openTabs.find(t => t.filename === workspaceState.activeTab);
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        e.key === 's' &&
+        workspaceState.activeTab
+      ) {
+        e.preventDefault()
+        const tab = workspaceState.openTabs.find(
+          t => t.filename === workspaceState.activeTab
+        )
         if (tab?.isDirty) {
-          saveFile(workspaceState.activeTab, tab.content);
+          saveFile(workspaceState.activeTab, tab.content)
         }
       }
-    };
+    }
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [workspaceState.activeTab, workspaceState.openTabs]); // saveFile is stable and doesn't need to be in deps
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [workspaceState.activeTab, workspaceState.openTabs]) // saveFile is stable and doesn't need to be in deps
 
-  const renderFileTree = (items: WorkspaceFile[], depth = 0): React.ReactNode => {
+  const renderFileTree = (
+    items: WorkspaceFile[],
+    depth = 0
+  ): React.ReactNode => {
     return items.map(item => (
       <div key={item.path}>
         <div
@@ -425,9 +469,9 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({ embedded = false }) =
           style={{ paddingLeft: `${depth * 16 + 12}px` }}
           onClick={() => {
             if (item.type === 'folder') {
-              toggleFolder(item.path);
+              toggleFolder(item.path)
             } else {
-              openFile(item.path);
+              openFile(item.path)
             }
           }}
         >
@@ -438,11 +482,13 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({ embedded = false }) =
               ) : (
                 <ChevronRight size={14} className="mr-2 text-purple-500" />
               )}
-              <div className={`w-6 h-6 rounded-lg flex items-center justify-center mr-2 ${
-                expandedFolders.has(item.path)
-                  ? 'bg-gradient-to-br from-yellow-400 to-orange-400'
-                  : 'bg-gradient-to-br from-blue-400 to-purple-400'
-              }`}>
+              <div
+                className={`w-6 h-6 rounded-lg flex items-center justify-center mr-2 ${
+                  expandedFolders.has(item.path)
+                    ? 'bg-gradient-to-br from-yellow-400 to-orange-400'
+                    : 'bg-gradient-to-br from-blue-400 to-purple-400'
+                }`}
+              >
                 <span className="text-xs text-white">
                   {expandedFolders.has(item.path) ? '📂' : '📁'}
                 </span>
@@ -453,22 +499,27 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({ embedded = false }) =
               <div className="w-4 mr-2" />
               <div className="w-6 h-6 bg-gradient-to-br from-green-400 to-emerald-400 rounded-lg flex items-center justify-center mr-2">
                 <span className="text-xs text-white">
-                  {item.name.endsWith('.html') ? '🌐' :
-                   item.name.endsWith('.css') ? '🎨' :
-                   item.name.endsWith('.js') || item.name.endsWith('.ts') ? '⚙️' :
-                   item.name.endsWith('.json') ? '📊' : '📄'}
+                  {item.name.endsWith('.html')
+                    ? '🌐'
+                    : item.name.endsWith('.css')
+                      ? '🎨'
+                      : item.name.endsWith('.js') || item.name.endsWith('.ts')
+                        ? '⚙️'
+                        : item.name.endsWith('.json')
+                          ? '📊'
+                          : '📄'}
                 </span>
               </div>
             </>
           )}
           <span className="truncate flex-1 font-medium">{item.name}</span>
           <button
-            onClick={(e) => {
-              e.stopPropagation();
+            onClick={e => {
+              e.stopPropagation()
               if (item.type === 'folder') {
-                deleteFolder(item.path);
+                deleteFolder(item.path)
               } else {
-                deleteFile(item.path);
+                deleteFile(item.path)
               }
             }}
             className="opacity-0 group-hover:opacity-100 p-1 bg-gradient-to-r from-red-400 to-pink-400 hover:from-red-500 hover:to-pink-500 text-white rounded-full transition-all duration-200 ml-2 shadow-md"
@@ -477,12 +528,14 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({ embedded = false }) =
             <Trash2 size={10} />
           </button>
         </div>
-        {item.type === 'folder' && expandedFolders.has(item.path) && item.children && (
-          <div>{renderFileTree(item.children, depth + 1)}</div>
-        )}
+        {item.type === 'folder' &&
+          expandedFolders.has(item.path) &&
+          item.children && (
+            <div>{renderFileTree(item.children, depth + 1)}</div>
+          )}
       </div>
-    ));
-  };
+    ))
+  }
 
   if (!isOpen && !embedded) {
     return (
@@ -491,7 +544,7 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({ embedded = false }) =
         className="floating-button fixed bottom-4 left-4 bg-gradient-to-br from-pink-500 via-purple-500 to-indigo-500 hover:from-pink-600 hover:via-purple-600 hover:to-indigo-600 text-white p-5 rounded-full shadow-2xl transition-all duration-300 z-50 transform hover:scale-110 border-4 border-white/30"
         title="✨ 超可愛程式編輯器 💖"
         style={{
-          backgroundSize: '200% 200%'
+          backgroundSize: '200% 200%',
         }}
       >
         <div className="flex items-center justify-center">
@@ -501,35 +554,48 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({ embedded = false }) =
           </span>
         </div>
       </button>
-    );
+    )
   }
 
-  const currentTab = workspaceState.openTabs.find(tab => tab.filename === workspaceState.activeTab);
+  const currentTab = workspaceState.openTabs.find(
+    tab => tab.filename === workspaceState.activeTab
+  )
 
   return (
-    <div className={`workspace-viewer bg-gradient-to-br from-pink-50 to-purple-100 flex flex-col overflow-hidden h-full ${
-      embedded
-        ? 'border-0 rounded-none'
-        : `fixed border-4 border-pink-300 rounded-3xl shadow-2xl z-50 ${isMobile ? 'inset-2' : 'inset-4'}`
-    }`} style={{
-      backgroundImage: 'url("data:image/svg+xml,%3Csvg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="%23fce7f3" fill-opacity="0.1" fill-rule="evenodd"%3E%3Ccircle cx="3" cy="3" r="3"/%3E%3Ccircle cx="13" cy="13" r="3"/%3E%3C/g%3E%3C/svg%3E")',
-      backdropFilter: embedded ? 'none' : 'blur(10px)'
-    }}>
+    <div
+      className={`workspace-viewer bg-gradient-to-br from-pink-50 to-purple-100 flex flex-col overflow-hidden h-full ${
+        embedded
+          ? 'border-0 rounded-none'
+          : `fixed border-4 border-pink-300 rounded-3xl shadow-2xl z-50 ${isMobile ? 'inset-2' : 'inset-4'}`
+      }`}
+      style={{
+        backgroundImage:
+          'url("data:image/svg+xml,%3Csvg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="%23fce7f3" fill-opacity="0.1" fill-rule="evenodd"%3E%3Ccircle cx="3" cy="3" r="3"/%3E%3Ccircle cx="13" cy="13" r="3"/%3E%3C/g%3E%3C/svg%3E")',
+        backdropFilter: embedded ? 'none' : 'blur(10px)',
+      }}
+    >
       {/* Header */}
       <div className="p-4 border-b-4 border-pink-300 flex justify-between items-center bg-gradient-to-r from-pink-200 to-purple-200 rounded-t-3xl">
         <div className="flex items-center gap-2">
           {isMobile && (
             <button
-              onClick={() => setWorkspaceState(prev => ({ ...prev, showSidebar: !prev.showSidebar }))}
+              onClick={() =>
+                setWorkspaceState(prev => ({
+                  ...prev,
+                  showSidebar: !prev.showSidebar,
+                }))
+              }
               className="bg-pink-400 hover:bg-pink-500 text-white rounded-full p-2 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-110"
               title="📁 切換檔案面板"
             >
               <Folder size={16} />
             </button>
           )}
-          <h3 className={`font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent flex items-center gap-2 ${
-            isMobile ? 'text-base' : 'text-xl'
-          }`}>
+          <h3
+            className={`font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent flex items-center gap-2 ${
+              isMobile ? 'text-base' : 'text-xl'
+            }`}
+          >
             <div className="p-2 bg-gradient-to-br from-pink-400 to-purple-500 rounded-full text-white shadow-lg">
               <Monitor size={isMobile ? 14 : 18} />
             </div>
@@ -541,7 +607,9 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({ embedded = false }) =
           {!isMobile && (
             <div className="flex bg-white/50 backdrop-blur-sm rounded-full p-1 shadow-inner border border-pink-200">
               <button
-                onClick={() => setWorkspaceState(prev => ({ ...prev, viewMode: 'code' }))}
+                onClick={() =>
+                  setWorkspaceState(prev => ({ ...prev, viewMode: 'code' }))
+                }
                 className={`px-4 py-2 rounded-full text-sm flex items-center gap-2 transition-all duration-200 font-medium ${
                   workspaceState.viewMode === 'code'
                     ? 'bg-gradient-to-r from-pink-500 to-purple-500 text-white shadow-lg transform scale-105'
@@ -552,7 +620,9 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({ embedded = false }) =
                 📝 程式碼
               </button>
               <button
-                onClick={() => setWorkspaceState(prev => ({ ...prev, viewMode: 'preview' }))}
+                onClick={() =>
+                  setWorkspaceState(prev => ({ ...prev, viewMode: 'preview' }))
+                }
                 className={`px-4 py-2 rounded-full text-sm flex items-center gap-2 transition-all duration-200 font-medium ${
                   workspaceState.viewMode === 'preview'
                     ? 'bg-gradient-to-r from-pink-500 to-purple-500 text-white shadow-lg transform scale-105'
@@ -563,7 +633,9 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({ embedded = false }) =
                 🌍 預覽
               </button>
               <button
-                onClick={() => setWorkspaceState(prev => ({ ...prev, viewMode: 'split' }))}
+                onClick={() =>
+                  setWorkspaceState(prev => ({ ...prev, viewMode: 'split' }))
+                }
                 className={`px-4 py-2 rounded-full text-sm flex items-center gap-2 transition-all duration-200 font-medium ${
                   workspaceState.viewMode === 'split'
                     ? 'bg-gradient-to-r from-pink-500 to-purple-500 text-white shadow-lg transform scale-105'
@@ -579,7 +651,12 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({ embedded = false }) =
           {/* Mobile View Mode Toggle */}
           {isMobile && currentTab && currentTab.filename.endsWith('.html') && (
             <button
-              onClick={() => setWorkspaceState(prev => ({ ...prev, viewMode: prev.viewMode === 'code' ? 'preview' : 'code' }))}
+              onClick={() =>
+                setWorkspaceState(prev => ({
+                  ...prev,
+                  viewMode: prev.viewMode === 'code' ? 'preview' : 'code',
+                }))
+              }
               className="px-3 py-2 bg-gradient-to-r from-pink-500 to-purple-500 rounded-full text-sm flex items-center gap-2 text-white hover:from-pink-600 hover:to-purple-600 transition-all duration-200 shadow-lg font-medium"
             >
               {workspaceState.viewMode === 'code' ? (
@@ -595,7 +672,6 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({ embedded = false }) =
               )}
             </button>
           )}
-
         </div>
       </div>
 
@@ -606,7 +682,9 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({ embedded = false }) =
             className={`bg-gradient-to-b from-pink-100 to-purple-100 border-r-4 border-pink-300 flex flex-col backdrop-blur-sm ${
               isMobile ? 'absolute inset-y-0 left-0 z-10 w-64 shadow-2xl' : ''
             }`}
-            style={!isMobile ? { width: `${workspaceState.sidebarWidth}px` } : {}}
+            style={
+              !isMobile ? { width: `${workspaceState.sidebarWidth}px` } : {}
+            }
           >
             {/* Sidebar Header */}
             <div className="p-4 border-b-2 border-pink-200 flex justify-between items-center bg-gradient-to-r from-pink-200/50 to-purple-200/50">
@@ -631,13 +709,13 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({ embedded = false }) =
                 <input
                   type="text"
                   value={newFileName}
-                  onChange={(e) => setNewFileName(e.target.value)}
-                  onKeyDown={(e) => {
+                  onChange={e => setNewFileName(e.target.value)}
+                  onKeyDown={e => {
                     if (e.key === 'Enter' && newFileName.trim()) {
-                      createFile(newFileName.trim());
+                      createFile(newFileName.trim())
                     } else if (e.key === 'Escape') {
-                      setIsCreatingFile(false);
-                      setNewFileName('');
+                      setIsCreatingFile(false)
+                      setNewFileName('')
                     }
                   }}
                   placeholder="✨ 輸入檔案名稱..."
@@ -646,15 +724,17 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({ embedded = false }) =
                 />
                 <div className="flex gap-2 mt-3 justify-center">
                   <button
-                    onClick={() => newFileName.trim() && createFile(newFileName.trim())}
+                    onClick={() =>
+                      newFileName.trim() && createFile(newFileName.trim())
+                    }
                     className="px-4 py-2 bg-gradient-to-r from-green-400 to-emerald-400 hover:from-green-500 hover:to-emerald-500 text-white text-sm rounded-full font-medium shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
                   >
                     ✨ 建立
                   </button>
                   <button
                     onClick={() => {
-                      setIsCreatingFile(false);
-                      setNewFileName('');
+                      setIsCreatingFile(false)
+                      setNewFileName('')
                     }}
                     className="px-4 py-2 bg-gradient-to-r from-gray-400 to-gray-500 hover:from-gray-500 hover:to-gray-600 text-white text-sm rounded-full font-medium shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
                   >
@@ -664,22 +744,24 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({ embedded = false }) =
               </div>
             )}
 
-          {/* File Tree */}
-          <div className="flex-1 overflow-y-auto">
-            {files.length === 0 ? (
-              <div className="p-6 text-center">
-                <div className="w-16 h-16 bg-gradient-to-br from-pink-400 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
-                  <span className="text-2xl">🎨</span>
+            {/* File Tree */}
+            <div className="flex-1 overflow-y-auto">
+              {files.length === 0 ? (
+                <div className="p-6 text-center">
+                  <div className="w-16 h-16 bg-gradient-to-br from-pink-400 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                    <span className="text-2xl">🎨</span>
+                  </div>
+                  <p className="text-pink-600 font-semibold text-base mb-2">
+                    還沒有作品喔！
+                  </p>
+                  <p className="text-purple-500 text-sm bg-gradient-to-r from-pink-100 to-purple-100 px-4 py-2 rounded-full">
+                    快去和 Gemini 聊天創作吧 ✨
+                  </p>
                 </div>
-                <p className="text-pink-600 font-semibold text-base mb-2">還沒有作品喔！</p>
-                <p className="text-purple-500 text-sm bg-gradient-to-r from-pink-100 to-purple-100 px-4 py-2 rounded-full">快去和 Gemini 聊天創作吧 ✨</p>
-              </div>
-            ) : (
-              <div className="py-2">
-                {renderFileTree(files)}
-              </div>
-            )}
-          </div>
+              ) : (
+                <div className="py-2">{renderFileTree(files)}</div>
+              )}
+            </div>
           </div>
         )}
 
@@ -688,22 +770,25 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({ embedded = false }) =
           <div
             ref={resizeRef}
             className="w-1 bg-gray-700 hover:bg-purple-500 cursor-col-resize"
-            onMouseDown={(e) => {
-              const startX = e.clientX;
-              const startWidth = workspaceState.sidebarWidth;
+            onMouseDown={e => {
+              const startX = e.clientX
+              const startWidth = workspaceState.sidebarWidth
 
               const handleMouseMove = (e: MouseEvent) => {
-                const newWidth = Math.max(200, Math.min(600, startWidth + e.clientX - startX));
-                setWorkspaceState(prev => ({ ...prev, sidebarWidth: newWidth }));
-              };
+                const newWidth = Math.max(
+                  200,
+                  Math.min(600, startWidth + e.clientX - startX)
+                )
+                setWorkspaceState(prev => ({ ...prev, sidebarWidth: newWidth }))
+              }
 
               const handleMouseUp = () => {
-                document.removeEventListener('mousemove', handleMouseMove);
-                document.removeEventListener('mouseup', handleMouseUp);
-              };
+                document.removeEventListener('mousemove', handleMouseMove)
+                document.removeEventListener('mouseup', handleMouseUp)
+              }
 
-              document.addEventListener('mousemove', handleMouseMove);
-              document.addEventListener('mouseup', handleMouseUp);
+              document.addEventListener('mousemove', handleMouseMove)
+              document.addEventListener('mouseup', handleMouseUp)
             }}
           />
         )}
@@ -724,33 +809,55 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({ embedded = false }) =
                       : 'text-pink-600 hover:bg-white/50'
                   }`}
                   onClick={() => {
-                    setWorkspaceState(prev => ({ ...prev, activeTab: tab.filename }));
-                    if (isMobile) setWorkspaceState(prev => ({ ...prev, showSidebar: false }));
+                    setWorkspaceState(prev => ({
+                      ...prev,
+                      activeTab: tab.filename,
+                    }))
+                    if (isMobile)
+                      setWorkspaceState(prev => ({
+                        ...prev,
+                        showSidebar: false,
+                      }))
                   }}
                 >
-                  <div className={`w-5 h-5 rounded flex items-center justify-center mr-2 flex-shrink-0 ${
-                    tab.filename.endsWith('.html') ? 'bg-gradient-to-br from-orange-400 to-red-400' :
-                    tab.filename.endsWith('.css') ? 'bg-gradient-to-br from-blue-400 to-purple-400' :
-                    tab.filename.endsWith('.js') || tab.filename.endsWith('.ts') ? 'bg-gradient-to-br from-yellow-400 to-orange-400' :
-                    'bg-gradient-to-br from-gray-400 to-gray-500'
-                  }`}>
+                  <div
+                    className={`w-5 h-5 rounded flex items-center justify-center mr-2 flex-shrink-0 ${
+                      tab.filename.endsWith('.html')
+                        ? 'bg-gradient-to-br from-orange-400 to-red-400'
+                        : tab.filename.endsWith('.css')
+                          ? 'bg-gradient-to-br from-blue-400 to-purple-400'
+                          : tab.filename.endsWith('.js') ||
+                              tab.filename.endsWith('.ts')
+                            ? 'bg-gradient-to-br from-yellow-400 to-orange-400'
+                            : 'bg-gradient-to-br from-gray-400 to-gray-500'
+                    }`}
+                  >
                     <span className="text-xs text-white">
-                      {tab.filename.endsWith('.html') ? '🌐' :
-                       tab.filename.endsWith('.css') ? '🎨' :
-                       tab.filename.endsWith('.js') || tab.filename.endsWith('.ts') ? '⚙️' : '📄'}
+                      {tab.filename.endsWith('.html')
+                        ? '🌐'
+                        : tab.filename.endsWith('.css')
+                          ? '🎨'
+                          : tab.filename.endsWith('.js') ||
+                              tab.filename.endsWith('.ts')
+                            ? '⚙️'
+                            : '📄'}
                     </span>
                   </div>
-                  <span className={`truncate font-medium ${isMobile ? 'text-xs' : 'text-sm'}`}>
+                  <span
+                    className={`truncate font-medium ${isMobile ? 'text-xs' : 'text-sm'}`}
+                  >
                     {tab.filename.split('/').pop()}
                     {tab.isDirty && ' ✨'}
                   </span>
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      closeTab(tab.filename);
+                    onClick={e => {
+                      e.stopPropagation()
+                      closeTab(tab.filename)
                     }}
                     className={`ml-2 bg-red-400 hover:bg-red-500 text-white rounded-full p-1 flex-shrink-0 transition-all duration-200 ${
-                      isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                      isMobile
+                        ? 'opacity-100'
+                        : 'opacity-0 group-hover:opacity-100'
                     }`}
                   >
                     <X size={isMobile ? 8 : 10} />
@@ -761,18 +868,25 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({ embedded = false }) =
           )}
 
           {/* Editor/Preview Area */}
-          <div className={`flex-1 flex overflow-hidden ${isMobile && workspaceState.showSidebar ? 'opacity-50 pointer-events-none' : ''}`}>
+          <div
+            className={`flex-1 flex overflow-hidden ${isMobile && workspaceState.showSidebar ? 'opacity-50 pointer-events-none' : ''}`}
+          >
             {/* Mobile Overlay */}
             {isMobile && workspaceState.showSidebar && (
               <div
                 className="absolute inset-0 bg-black bg-opacity-50 z-5"
-                onClick={() => setWorkspaceState(prev => ({ ...prev, showSidebar: false }))}
+                onClick={() =>
+                  setWorkspaceState(prev => ({ ...prev, showSidebar: false }))
+                }
               />
             )}
 
             {/* Code Editor */}
-            {(workspaceState.viewMode === 'code' || (!isMobile && workspaceState.viewMode === 'split')) && (
-              <div className={`${!isMobile && workspaceState.viewMode === 'split' ? 'w-1/2 border-r-2 border-purple-300' : 'w-full'} flex flex-col bg-gradient-to-b from-purple-50 to-pink-50`}>
+            {(workspaceState.viewMode === 'code' ||
+              (!isMobile && workspaceState.viewMode === 'split')) && (
+              <div
+                className={`${!isMobile && workspaceState.viewMode === 'split' ? 'w-1/2 border-r-2 border-purple-300' : 'w-full'} flex flex-col bg-gradient-to-b from-purple-50 to-pink-50`}
+              >
                 {currentTab ? (
                   <div className="h-full flex flex-col">
                     {/* Cute save/download bar */}
@@ -800,7 +914,9 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({ embedded = false }) =
                     <div className="flex-1">
                       <CodeEditor
                         value={currentTab.content}
-                        onChange={(content) => updateFileContent(currentTab.filename, content)}
+                        onChange={content =>
+                          updateFileContent(currentTab.filename, content)
+                        }
                         filename={currentTab.filename}
                         className="h-full"
                       />
@@ -812,8 +928,12 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({ embedded = false }) =
                       <div className="w-20 h-20 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg animate-bounce">
                         <Code size={40} className="text-white" />
                       </div>
-                      <p className="text-lg font-bold text-purple-600 mb-2">還沒有開啟檔案喔！</p>
-                      <p className="text-sm text-pink-600">👈 點選左邊的檔案開始編輯</p>
+                      <p className="text-lg font-bold text-purple-600 mb-2">
+                        還沒有開啟檔案喔！
+                      </p>
+                      <p className="text-sm text-pink-600">
+                        👈 點選左邊的檔案開始編輯
+                      </p>
                     </div>
                   </div>
                 )}
@@ -821,8 +941,11 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({ embedded = false }) =
             )}
 
             {/* Preview Panel */}
-            {(workspaceState.viewMode === 'preview' || (!isMobile && workspaceState.viewMode === 'split')) && (
-              <div className={`${!isMobile && workspaceState.viewMode === 'split' ? 'w-1/2' : 'w-full'} flex flex-col bg-white`}>
+            {(workspaceState.viewMode === 'preview' ||
+              (!isMobile && workspaceState.viewMode === 'split')) && (
+              <div
+                className={`${!isMobile && workspaceState.viewMode === 'split' ? 'w-1/2' : 'w-full'} flex flex-col bg-white`}
+              >
                 {currentTab && currentTab.filename.endsWith('.html') ? (
                   <div className="flex-1 flex flex-col">
                     {/* Preview header with auto-refresh indicator */}
@@ -855,7 +978,7 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({ embedded = false }) =
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default WorkspaceViewer;
+export default WorkspaceViewer

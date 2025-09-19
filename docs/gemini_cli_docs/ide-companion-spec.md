@@ -27,14 +27,17 @@ For Gemini CLI to connect, it needs to discover which IDE instance it's running 
   - `${PID}`: The process ID of the parent IDE process. Your extension must determine this PID and include it in the filename.
   - `${PORT}`: The port your MCP server is listening on.
 - **File Content & Workspace Validation:** The file **MUST** contain a JSON object with the following structure:
+
   ```json
   {
     "port": 12345,
     "workspacePath": "/path/to/project1:/path/to/project2"
   }
   ```
+
   - `port` (number): The port of the MCP server.
   - `workspacePath` (string): A list of all open workspace root paths, delimited by the OS-specific path separator (`:` for Linux/macOS, `;` for Windows). The CLI uses this path to ensure it's running in the same project folder that's open in the IDE. If the CLI's current working directory is not a sub-directory of `workspacePath`, the connection will be rejected. Your extension **MUST** provide the correct, absolute path(s) to the root of the open workspace(s).
+
 - **Tie-Breaking with Environment Variables (Recommended):** For the most reliable experience, your extension **SHOULD** both create the discovery file and set the `GEMINI_CLI_IDE_SERVER_PORT` and `GEMINI_CLI_IDE_WORKSPACE_PATH` environment variables in the integrated terminal. The file serves as the primary discovery mechanism, but the environment variables are crucial for tie-breaking. If a user has multiple IDE windows open for the same workspace, the CLI uses the `GEMINI_CLI_IDE_SERVER_PORT` variable to identify and connect to the correct window's server.
   - For prototyping, you may opt to _only_ set the environment variables. However, this is not a robust solution for a production extension, as environment variables may not be reliably set in all terminal sessions (e.g., restored terminals), which can lead to connection failures.
 - **Authentication:** To secure the connection, the extension **SHOULD** generate a unique, secret token and include it in the discovery file. The CLI will then include this token in all requests to the MCP server.
@@ -65,26 +68,26 @@ The extension **MAY** send an `ide/contextUpdate` [notification](https://modelco
   ```typescript
   interface IdeContext {
     workspaceState?: {
-      openFiles?: File[];
-      isTrusted?: boolean;
-    };
+      openFiles?: File[]
+      isTrusted?: boolean
+    }
   }
 
   interface File {
     // Absolute path to the file
-    path: string;
+    path: string
     // Last focused Unix timestamp (for ordering)
-    timestamp: number;
+    timestamp: number
     // True if this is the currently focused file
-    isActive?: boolean;
+    isActive?: boolean
     cursor?: {
       // 1-based line number
-      line: number;
+      line: number
       // 1-based character number
-      character: number;
-    };
+      character: number
+    }
     // The text currently selected by the user
-    selectedText?: string;
+    selectedText?: string
   }
   ```
 
@@ -114,9 +117,9 @@ The extension **MUST** register an `openDiff` tool on its MCP server.
   ```typescript
   interface OpenDiffRequest {
     // The absolute path to the file to be diffed.
-    filePath: string;
+    filePath: string
     // The proposed new content for the file.
-    newContent: string;
+    newContent: string
   }
   ```
 
@@ -136,7 +139,7 @@ The extension **MUST** register a `closeDiff` tool on its MCP server.
   ```typescript
   interface CloseDiffRequest {
     // The absolute path to the file whose diff view should be closed.
-    filePath: string;
+    filePath: string
   }
   ```
 
@@ -153,9 +156,9 @@ When the user accepts the changes in a diff view (e.g., by clicking an "Apply" o
   ```typescript
   {
     // The absolute path to the file that was diffed.
-    filePath: string;
+    filePath: string
     // The full content of the file after acceptance.
-    content: string;
+    content: string
   }
   ```
 
@@ -168,7 +171,7 @@ When the user rejects the changes (e.g., by closing the diff view without accept
   ```typescript
   {
     // The absolute path to the file that was diffed.
-    filePath: string;
+    filePath: string
   }
   ```
 

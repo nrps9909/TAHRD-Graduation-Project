@@ -54,6 +54,7 @@ cd ccadventure-game
 ### 1. 安裝 Node.js
 
 **使用 nvm (推薦):**
+
 ```bash
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
 source ~/.bashrc  # 或 ~/.zshrc for macOS
@@ -107,6 +108,7 @@ yarn dev
 ### WSL 無法訪問 localhost
 
 在 Windows 瀏覽器中訪問 WSL 應用：
+
 1. 使用 `localhost:5173` (WSL2 自動轉發)
 2. 或查看 WSL IP: `wsl hostname -I`
 
@@ -153,6 +155,7 @@ ccadventure-game/
 ## 🆘 取得協助
 
 如遇到問題，請檢查：
+
 1. Node.js 版本是否正確 (`node --version`)
 2. 是否在專案根目錄
 3. 相依套件是否已安裝 (`npm list`)

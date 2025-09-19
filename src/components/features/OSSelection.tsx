@@ -1,20 +1,20 @@
-import { motion } from 'framer-motion';
-import { Monitor, Apple, ChevronRight } from 'lucide-react';
-import { useGameStore } from '../store/gameStore';
-import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion'
+import { Monitor, Apple, ChevronRight } from 'lucide-react'
+import { useGameStore } from '../store/gameStore'
+import { useNavigate } from 'react-router-dom'
 
 interface OSSelectionProps {
-  triggerFeedback?: any;
+  triggerFeedback?: any
 }
 
-const OSSelection = ({ }: OSSelectionProps) => {
-  const { setOS, playerName } = useGameStore();
-  const navigate = useNavigate();
+const OSSelection = ({}: OSSelectionProps) => {
+  const { setOS, playerName } = useGameStore()
+  const navigate = useNavigate()
 
   const handleOSSelection = (os: 'windows' | 'mac') => {
-    setOS(os);
-    navigate('/game');
-  };
+    setOS(os)
+    navigate('/game')
+  }
 
   return (
     <motion.div
@@ -97,9 +97,7 @@ const OSSelection = ({ }: OSSelectionProps) => {
           <div className="terminal-window hover:border-retro-cyan transition-all duration-300">
             <div className="flex flex-col items-center py-8 px-6">
               <Apple className="w-24 h-24 text-retro-cyan mb-4 group-hover:animate-pulse" />
-              <h2 className="text-2xl font-cute text-retro-cyan mb-3">
-                macOS
-              </h2>
+              <h2 className="text-2xl font-cute text-retro-cyan mb-3">macOS</h2>
               <div className="space-y-2 text-left w-full">
                 <p className="text-sm font-chinese text-terminal-text">
                   ✓ Homebrew 套件管理
@@ -160,7 +158,7 @@ const OSSelection = ({ }: OSSelectionProps) => {
         ← 返回首頁
       </motion.button>
     </motion.div>
-  );
-};
+  )
+}
 
-export default OSSelection;
+export default OSSelection

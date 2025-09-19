@@ -1,16 +1,16 @@
 export interface CursorScene {
-  id: string;
-  title: string;
-  description: string;
-  type: 'tutorial' | 'challenge' | 'interactive' | 'setup';
-  content: any;
-  nextScene?: string;
-  previousScene?: string;
-  points: number;
+  id: string
+  title: string
+  description: string
+  type: 'tutorial' | 'challenge' | 'interactive' | 'setup'
+  content: Record<string, unknown>
+  nextScene?: string
+  previousScene?: string
+  points: number
 }
 
 export const cursorScenes: Record<string, CursorScene> = {
-  'intro': {
+  intro: {
     id: 'intro',
     title: '🚀 Cursor + WSL + Claude Code 完整開發環境',
     description: '從零開始打造專業 AI 開發環境',
@@ -330,17 +330,14 @@ echo "$response" | jq -r '.candidates[0].content.parts[0].text'`,
     description: '整合所有工具的最佳實踐',
     type: 'interactive',
     content: {
-      instructions: [
-        '學習如何有效使用這些工具',
-        '建立高效的開發流程',
-      ],
+      instructions: ['學習如何有效使用這些工具', '建立高效的開發流程'],
       workflow: [
         {
           step: '1. 專案初始化',
           commands: [
             'mkdir my-project && cd my-project',
             'git init',
-            'cursor .',  // 使用 Cursor 開啟專案
+            'cursor .', // 使用 Cursor 開啟專案
             'gemini-help "best project structure for React app"',
           ],
         },
@@ -367,7 +364,7 @@ echo "$response" | jq -r '.candidates[0].content.parts[0].text'`,
           commands: [
             'git add .',
             '# Cursor 會自動建議 commit message',
-            'git commit',  // Cursor 會開啟編輯器
+            'git commit', // Cursor 會開啟編輯器
             'git push origin main',
           ],
         },
@@ -390,10 +387,7 @@ echo "$response" | jq -r '.candidates[0].content.parts[0].text'`,
     description: '掌握專業開發技巧',
     type: 'interactive',
     content: {
-      instructions: [
-        '深入了解各工具的進階功能',
-        '提升開發效率的秘訣',
-      ],
+      instructions: ['深入了解各工具的進階功能', '提升開發效率的秘訣'],
       advancedTips: [
         {
           tool: 'Cursor',
@@ -444,16 +438,13 @@ echo "$response" | jq -r '.candidates[0].content.parts[0].text'`,
     points: 300,
   },
 
-  'troubleshooting': {
+  troubleshooting: {
     id: 'troubleshooting',
     title: '🔍 常見問題與解決方案',
     description: '快速解決環境設置問題',
     type: 'interactive',
     content: {
-      instructions: [
-        '遇到問題時的排查步驟',
-        '常見錯誤的解決方案',
-      ],
+      instructions: ['遇到問題時的排查步驟', '常見錯誤的解決方案'],
       commonIssues: [
         {
           issue: 'WSL2 無法啟動',
@@ -504,7 +495,7 @@ echo "$response" | jq -r '.candidates[0].content.parts[0].text'`,
     points: 200,
   },
 
-  'completion': {
+  completion: {
     id: 'completion',
     title: '🎉 恭喜完成環境設置！',
     description: '你已經準備好開始 AI 輔助開發了',
@@ -550,4 +541,4 @@ echo "$response" | jq -r '.candidates[0].content.parts[0].text'`,
     previousScene: 'troubleshooting',
     points: 500,
   },
-};
+}

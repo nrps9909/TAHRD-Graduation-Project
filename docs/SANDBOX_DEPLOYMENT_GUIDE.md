@@ -155,8 +155,8 @@ scrape_configs:
   - job_name: 'sandbox-metrics'
     static_configs:
       - targets:
-        - 'backend:3001/metrics'
-        - 'frontend:3000/metrics'
+          - 'backend:3001/metrics'
+          - 'frontend:3000/metrics'
 ```
 
 ### 健康檢查端點
@@ -273,11 +273,11 @@ FOR VALUES FROM ('2024-01-01') TO ('2025-01-01');
 ```javascript
 // 快取配置
 const cacheConfig = {
-  'user:*': 3600,        // 1小時
-  'project:*': 1800,     // 30分鐘
-  'sandbox:*': 300,      // 5分鐘
-  'static:*': 86400,     // 1天
-};
+  'user:*': 3600, // 1小時
+  'project:*': 1800, // 30分鐘
+  'sandbox:*': 300, // 5分鐘
+  'static:*': 86400, // 1天
+}
 ```
 
 ---

@@ -1,16 +1,19 @@
-import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useGameStore } from '../store/gameStore';
+import { useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useGameStore } from '../store/gameStore'
 
 export const useKeyboardShortcuts = () => {
-  const navigate = useNavigate();
-  const { resetGame } = useGameStore();
+  const navigate = useNavigate()
+  const { resetGame } = useGameStore()
 
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       // 忽略在輸入框中的按鍵
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
-        return;
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      ) {
+        return
       }
 
       // Ctrl/Cmd + 組合鍵
@@ -18,27 +21,27 @@ export const useKeyboardShortcuts = () => {
         switch (e.key.toLowerCase()) {
           case 'h':
             // 回到首頁
-            e.preventDefault();
-            navigate('/');
-            break;
+            e.preventDefault()
+            navigate('/')
+            break
           case 'r':
             // 重置遊戲（需要確認）
-            e.preventDefault();
+            e.preventDefault()
             if (window.confirm('確定要重置所有進度嗎？')) {
-              resetGame();
-              navigate('/');
+              resetGame()
+              navigate('/')
             }
-            break;
+            break
           case 's':
             // 保存進度（自動保存，顯示提示）
-            e.preventDefault();
-            showSaveNotification();
-            break;
+            e.preventDefault()
+            showSaveNotification()
+            break
           case '/':
             // 顯示快捷鍵幫助
-            e.preventDefault();
-            showShortcutHelp();
-            break;
+            e.preventDefault()
+            showShortcutHelp()
+            break
         }
       }
 
@@ -47,57 +50,59 @@ export const useKeyboardShortcuts = () => {
         case '?':
           // 顯示幫助
           if (!e.ctrlKey && !e.metaKey) {
-            showShortcutHelp();
+            showShortcutHelp()
           }
-          break;
+          break
         case 'escape':
           // 關閉彈窗或返回
-          handleEscape();
-          break;
+          handleEscape()
+          break
       }
-    };
+    }
 
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [navigate, resetGame]);
-};
+    window.addEventListener('keydown', handleKeyPress)
+    return () => window.removeEventListener('keydown', handleKeyPress)
+  }, [navigate, resetGame])
+}
 
 // 顯示保存通知
 const showSaveNotification = () => {
-  const notification = document.createElement('div');
-  notification.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-full shadow-lg z-50 animate-slide-in';
-  notification.innerHTML = '✅ 進度已自動保存！';
-  document.body.appendChild(notification);
+  const notification = document.createElement('div')
+  notification.className =
+    'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-full shadow-lg z-50 animate-slide-in'
+  notification.innerHTML = '✅ 進度已自動保存！'
+  document.body.appendChild(notification)
 
   setTimeout(() => {
-    notification.classList.add('animate-fade-out');
-    setTimeout(() => notification.remove(), 300);
-  }, 2000);
-};
+    notification.classList.add('animate-fade-out')
+    setTimeout(() => notification.remove(), 300)
+  }, 2000)
+}
 
 // 顯示快捷鍵幫助
 const showShortcutHelp = () => {
-  const helpModal = document.getElementById('shortcut-help');
+  const helpModal = document.getElementById('shortcut-help')
   if (helpModal) {
-    helpModal.classList.toggle('hidden');
+    helpModal.classList.toggle('hidden')
   } else {
-    createHelpModal();
+    createHelpModal()
   }
-};
+}
 
 // 處理 Escape 鍵
 const handleEscape = () => {
-  const helpModal = document.getElementById('shortcut-help');
+  const helpModal = document.getElementById('shortcut-help')
   if (helpModal && !helpModal.classList.contains('hidden')) {
-    helpModal.classList.add('hidden');
+    helpModal.classList.add('hidden')
   }
-};
+}
 
 // 創建幫助模態框
 const createHelpModal = () => {
-  const modal = document.createElement('div');
-  modal.id = 'shortcut-help';
-  modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50';
+  const modal = document.createElement('div')
+  modal.id = 'shortcut-help'
+  modal.className =
+    'fixed inset-0 bg-black/50 flex items-center justify-center z-50'
   modal.innerHTML = `
     <div class="bg-white rounded-3xl p-8 max-w-md shadow-2xl">
       <h3 class="text-2xl font-bold text-cat-purple mb-4 chinese-text">
@@ -132,13 +137,13 @@ const createHelpModal = () => {
         關閉
       </button>
     </div>
-  `;
-  document.body.appendChild(modal);
+  `
+  document.body.appendChild(modal)
 
   // 點擊背景關閉
-  modal.addEventListener('click', (e) => {
+  modal.addEventListener('click', e => {
     if (e.target === modal) {
-      modal.classList.add('hidden');
+      modal.classList.add('hidden')
     }
-  });
-};
+  })
+}

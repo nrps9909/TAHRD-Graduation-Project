@@ -1,16 +1,16 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react'
 
 interface PageState {
-  [key: string]: any;
+  [key: string]: any
 }
 
 interface ScrollState {
-  x: number;
-  y: number;
+  x: number
+  y: number
 }
 
-const STORAGE_KEY = 'claude-code-adventure-page-state';
-const SCROLL_STORAGE_KEY = 'claude-code-adventure-scroll-state';
+const STORAGE_KEY = 'claude-code-adventure-page-state'
+const SCROLL_STORAGE_KEY = 'claude-code-adventure-scroll-state'
 
 export const usePageStatePersistence = <T extends PageState>(
   pageKey: string,
@@ -19,138 +19,143 @@ export const usePageStatePersistence = <T extends PageState>(
   const [state, setState] = useState<T>(() => {
     // Initialize state immediately from localStorage to avoid hydration issues
     try {
-      const savedState = localStorage.getItem(STORAGE_KEY);
+      const savedState = localStorage.getItem(STORAGE_KEY)
       if (savedState) {
-        const allPageStates = JSON.parse(savedState);
-        const pageState = allPageStates[pageKey];
+        const allPageStates = JSON.parse(savedState)
+        const pageState = allPageStates[pageKey]
         if (pageState) {
-          return { ...defaultState, ...pageState };
+          return { ...defaultState, ...pageState }
         }
       }
     } catch (error) {
-      console.warn('無法載入頁面狀態:', error);
+      console.warn('無法載入頁面狀態:', error)
     }
-    return defaultState;
-  });
+    return defaultState
+  })
 
-  const isInitialized = useRef(false);
+  const isInitialized = useRef(false)
 
   // Mark as initialized after first render
   useEffect(() => {
-    isInitialized.current = true;
-  }, []);
+    isInitialized.current = true
+  }, [])
 
   // Save state to localStorage whenever state changes (but not on initial render)
   useEffect(() => {
-    if (!isInitialized.current) return;
+    if (!isInitialized.current) return
 
     try {
-      const savedState = localStorage.getItem(STORAGE_KEY);
-      const allPageStates = savedState ? JSON.parse(savedState) : {};
-      allPageStates[pageKey] = state;
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(allPageStates));
+      const savedState = localStorage.getItem(STORAGE_KEY)
+      const allPageStates = savedState ? JSON.parse(savedState) : {}
+      allPageStates[pageKey] = state
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(allPageStates))
     } catch (error) {
-      console.warn('無法保存頁面狀態:', error);
+      console.warn('無法保存頁面狀態:', error)
     }
-  }, [state, pageKey]);
+  }, [state, pageKey])
 
-  return [state, setState] as const;
-};
+  return [state, setState] as const
+}
 
 export const useScrollPersistence = (viewKey: string) => {
-  const scrollElementRef = useRef<HTMLDivElement>(null);
+  const scrollElementRef = useRef<HTMLDivElement>(null)
 
   // Save scroll position
   const saveScrollPosition = useCallback(() => {
-    if (!scrollElementRef.current) return;
+    if (!scrollElementRef.current) return
 
     const scrollState: ScrollState = {
       x: scrollElementRef.current.scrollLeft,
-      y: scrollElementRef.current.scrollTop
-    };
+      y: scrollElementRef.current.scrollTop,
+    }
 
     try {
-      const savedScrollState = localStorage.getItem(SCROLL_STORAGE_KEY);
-      const allScrollStates = savedScrollState ? JSON.parse(savedScrollState) : {};
-      allScrollStates[viewKey] = scrollState;
-      localStorage.setItem(SCROLL_STORAGE_KEY, JSON.stringify(allScrollStates));
+      const savedScrollState = localStorage.getItem(SCROLL_STORAGE_KEY)
+      const allScrollStates = savedScrollState
+        ? JSON.parse(savedScrollState)
+        : {}
+      allScrollStates[viewKey] = scrollState
+      localStorage.setItem(SCROLL_STORAGE_KEY, JSON.stringify(allScrollStates))
     } catch (error) {
-      console.warn('無法保存滾動位置:', error);
+      console.warn('無法保存滾動位置:', error)
     }
-  }, [viewKey]);
+  }, [viewKey])
 
   // Restore scroll position
   const restoreScrollPosition = useCallback(() => {
-    if (!scrollElementRef.current) return;
+    if (!scrollElementRef.current) return
 
     try {
-      const savedScrollState = localStorage.getItem(SCROLL_STORAGE_KEY);
+      const savedScrollState = localStorage.getItem(SCROLL_STORAGE_KEY)
       if (savedScrollState) {
-        const allScrollStates = JSON.parse(savedScrollState);
-        const scrollState = allScrollStates[viewKey];
+        const allScrollStates = JSON.parse(savedScrollState)
+        const scrollState = allScrollStates[viewKey]
         if (scrollState) {
-          scrollElementRef.current.scrollTo(scrollState.x, scrollState.y);
+          scrollElementRef.current.scrollTo(scrollState.x, scrollState.y)
         }
       }
     } catch (error) {
-      console.warn('無法恢復滾動位置:', error);
+      console.warn('無法恢復滾動位置:', error)
     }
-  }, [viewKey]);
+  }, [viewKey])
 
   // Set up scroll event listener
   useEffect(() => {
-    const element = scrollElementRef.current;
-    if (!element) return;
+    const element = scrollElementRef.current
+    if (!element) return
 
     // Restore scroll position when element is mounted
-    const timer = setTimeout(restoreScrollPosition, 100);
+    const timer = setTimeout(restoreScrollPosition, 100)
 
     // Save scroll position on scroll
     const handleScroll = () => {
-      saveScrollPosition();
-    };
+      saveScrollPosition()
+    }
 
-    element.addEventListener('scroll', handleScroll, { passive: true });
+    element.addEventListener('scroll', handleScroll, { passive: true })
 
     return () => {
-      clearTimeout(timer);
-      element.removeEventListener('scroll', handleScroll);
-      saveScrollPosition(); // Save final position
-    };
-  }, [saveScrollPosition, restoreScrollPosition]);
+      clearTimeout(timer)
+      element.removeEventListener('scroll', handleScroll)
+      saveScrollPosition() // Save final position
+    }
+  }, [saveScrollPosition, restoreScrollPosition])
 
   // Save scroll position when component unmounts or view changes
   useEffect(() => {
     return () => {
-      saveScrollPosition();
-    };
-  }, [saveScrollPosition]);
+      saveScrollPosition()
+    }
+  }, [saveScrollPosition])
 
   return {
     scrollElementRef,
     saveScrollPosition,
-    restoreScrollPosition
-  };
-};
+    restoreScrollPosition,
+  }
+}
 
 // Hook for managing component visibility state
 export const useViewStatePersistence = (defaultView: string) => {
   const [viewState, setViewState] = usePageStatePersistence('gameLayout', {
     currentView: defaultView,
-    lastActiveTime: Date.now()
-  });
+    lastActiveTime: Date.now(),
+  })
 
-  const setCurrentView = useCallback((view: string) => {
-    setViewState(prev => ({
-      ...prev,
-      currentView: view,
-      lastActiveTime: Date.now()
-    }));
-  }, [setViewState]);
+  const setCurrentView = useCallback(
+    (view: string) => {
+      setViewState(prev => ({
+        ...prev,
+        currentView: view,
+        lastActiveTime: Date.now(),
+      }))
+    },
+    [setViewState]
+  )
 
   return {
     currentView: viewState.currentView,
     setCurrentView,
-    lastActiveTime: viewState.lastActiveTime
-  };
-};
+    lastActiveTime: viewState.lastActiveTime,
+  }
+}

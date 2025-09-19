@@ -1,68 +1,93 @@
-import { useState, lazy, Suspense, useMemo } from 'react';
-import { motion } from 'framer-motion';
-import { Map, BookOpen, MessageCircle, FolderOpen } from 'lucide-react';
-import Sidebar from './Sidebar';
-import ProgressBar from './ProgressBar';
-import LoadingScreen from './LoadingScreen';
-import { useGameStore } from '../store/gameStore';
-import { LearningPathManager } from '../data/unifiedLearningPath';
-import { Achievement } from './AchievementNotification';
-import { useViewStatePersistence, useScrollPersistence } from '../hooks/usePageStatePersistence';
+import { useState, lazy, Suspense, useMemo } from 'react'
+import { motion } from 'framer-motion'
+import { Map, BookOpen, MessageCircle, FolderOpen } from 'lucide-react'
+import Sidebar from './Sidebar'
+import ProgressBar from './ProgressBar'
+import LoadingScreen from './LoadingScreen'
+import { useGameStore } from '../store/gameStore'
+import { LearningPathManager } from '../data/unifiedLearningPath'
+import { Achievement } from './AchievementNotification'
+import {
+  useViewStatePersistence,
+  useScrollPersistence,
+} from '../hooks/usePageStatePersistence'
 
 // Lazy load heavy components
-const GeminiCLI = lazy(() => import('./GeminiCLI'));
-const SceneRenderer = lazy(() => import('./SceneRenderer'));
-const LearningPathMap = lazy(() => import('./LearningPathMap'));
-const WorkspaceViewer = lazy(() => import('./WorkspaceViewer'));
+const GeminiCLI = lazy(() => import('./GeminiCLI'))
+const SceneRenderer = lazy(() => import('./SceneRenderer'))
+const LearningPathMap = lazy(() => import('./LearningPathMap'))
+const WorkspaceViewer = lazy(() => import('./WorkspaceViewer'))
 
 interface TriggerFeedback {
-  showPoints: (points: number, position?: { x: number; y: number }) => void;
-  showProgress: (message: string, position?: { x: number; y: number }) => void;
-  showSkill: (skillName: string, position?: { x: number; y: number }) => void;
-  showEncouragement: (message: string, position?: { x: number; y: number }) => void;
-  showCombo: (count: number, position?: { x: number; y: number }) => void;
-  showPerfect: (message?: string, position?: { x: number; y: number }) => void;
-  showAchievement: (achievement: Achievement) => void;
+  showPoints: (points: number, position?: { x: number; y: number }) => void
+  showProgress: (message: string, position?: { x: number; y: number }) => void
+  showSkill: (skillName: string, position?: { x: number; y: number }) => void
+  showEncouragement: (
+    message: string,
+    position?: { x: number; y: number }
+  ) => void
+  showCombo: (count: number, position?: { x: number; y: number }) => void
+  showPerfect: (message?: string, position?: { x: number; y: number }) => void
+  showAchievement: (achievement: Achievement) => void
 }
 
 interface GameLayoutProps {
-  triggerFeedback: TriggerFeedback;
+  triggerFeedback: TriggerFeedback
 }
 
 const GameLayout: React.FC<GameLayoutProps> = ({ triggerFeedback }) => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const { currentView, setCurrentView } = useViewStatePersistence('map');
-  const { currentScene, playerName, selectedOS, completedScenes, navigateToScene } = useGameStore();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const { currentView, setCurrentView } = useViewStatePersistence('map')
+  const {
+    currentScene,
+    playerName,
+    selectedOS,
+    completedScenes,
+    navigateToScene,
+  } = useGameStore()
 
   // Scroll persistence for each view
-  const mapScrollProps = useScrollPersistence('learning-map');
-  const lessonScrollProps = useScrollPersistence('lesson-view');
-  const chatScrollProps = useScrollPersistence('chat-view');
-  const workspaceScrollProps = useScrollPersistence('workspace-view');
+  const mapScrollProps = useScrollPersistence('learning-map')
+  const lessonScrollProps = useScrollPersistence('lesson-view')
+  const chatScrollProps = useScrollPersistence('chat-view')
+  const workspaceScrollProps = useScrollPersistence('workspace-view')
 
   // Create a single shared GeminiCLI instance that persists across view changes
-  const sharedGeminiCLI = useMemo(() => (
-    <Suspense fallback={<LoadingScreen />}>
-      <GeminiCLI triggerFeedback={triggerFeedback} />
-    </Suspense>
-  ), [triggerFeedback]);
+  const sharedGeminiCLI = useMemo(
+    () => (
+      <Suspense fallback={<LoadingScreen />}>
+        <GeminiCLI triggerFeedback={triggerFeedback} />
+      </Suspense>
+    ),
+    [triggerFeedback]
+  )
 
   const handleStartStage = () => {
     // 獲取推薦的下一個場景
-    const nextScene = LearningPathManager.getNextRecommendedScene(completedScenes);
+    const nextScene =
+      LearningPathManager.getNextRecommendedScene(completedScenes)
     if (nextScene) {
-      navigateToScene(nextScene);
-      setCurrentView('lesson');
+      navigateToScene(nextScene)
+      setCurrentView('lesson')
 
       // 即時回饋 - 開始新階段
-      triggerFeedback.showProgress('🎯 開始新的學習階段！', { x: window.innerWidth / 2, y: 100 });
-      triggerFeedback.showEncouragement('準備好迎接新挑戰了嗎？', { x: window.innerWidth / 2, y: 150 });
+      triggerFeedback.showProgress('🎯 開始新的學習階段！', {
+        x: window.innerWidth / 2,
+        y: 100,
+      })
+      triggerFeedback.showEncouragement('準備好迎接新挑戰了嗎？', {
+        x: window.innerWidth / 2,
+        y: 150,
+      })
     }
-  };
+  }
 
   return (
     <div className="h-screen flex bg-retro-bg overflow-hidden max-h-screen">
-      <Sidebar isOpen={isSidebarOpen} onToggle={() => setIsSidebarOpen(!isSidebarOpen)} />
+      <Sidebar
+        isOpen={isSidebarOpen}
+        onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
+      />
 
       <div className="flex-1 flex flex-col h-screen">
         <header className="border-b border-rose-300/50 p-4 flex-shrink-0">
@@ -72,8 +97,18 @@ const GameLayout: React.FC<GameLayoutProps> = ({ triggerFeedback }) => {
                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
                 className="text-text-primary hover:text-rose-400 transition-colors"
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 6h16M4 12h16M4 18h16"
+                  />
                 </svg>
               </button>
               <div className="flex items-center gap-2">
@@ -151,7 +186,10 @@ const GameLayout: React.FC<GameLayoutProps> = ({ triggerFeedback }) => {
               ref={mapScrollProps.scrollElementRef}
             >
               <Suspense fallback={<LoadingScreen />}>
-                <LearningPathMap onStartStage={handleStartStage} triggerFeedback={triggerFeedback} />
+                <LearningPathMap
+                  onStartStage={handleStartStage}
+                  triggerFeedback={triggerFeedback}
+                />
               </Suspense>
             </motion.div>
           )}
@@ -203,7 +241,7 @@ const GameLayout: React.FC<GameLayoutProps> = ({ triggerFeedback }) => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default GameLayout;
+export default GameLayout

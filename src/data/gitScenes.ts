@@ -1,16 +1,16 @@
 export interface GitScene {
-  id: string;
-  title: string;
-  description: string;
-  type: 'tutorial' | 'challenge' | 'interactive' | 'setup';
-  content: any;
-  nextScene?: string;
-  previousScene?: string;
-  points: number;
+  id: string
+  title: string
+  description: string
+  type: 'tutorial' | 'challenge' | 'interactive' | 'setup'
+  content: Record<string, unknown>
+  nextScene?: string
+  previousScene?: string
+  points: number
 }
 
 export const gitScenes: Record<string, GitScene> = {
-  'intro': {
+  intro: {
     id: 'intro',
     title: '歡迎來到 Git & Claude Code 互動教室',
     description: '學習現代開發者必備技能',
@@ -209,17 +209,20 @@ export const gitScenes: Record<string, GitScene> = {
         {
           scenario: '自動生成提交訊息',
           prompt: '請幫我為這些變更生成 Git commit message',
-          claudeResponse: 'feat: implement user authentication with JWT\n\n- Add login endpoint\n- Implement token validation\n- Add user session management',
+          claudeResponse:
+            'feat: implement user authentication with JWT\n\n- Add login endpoint\n- Implement token validation\n- Add user session management',
         },
         {
           scenario: '程式碼審查',
           prompt: '請審查這個 pull request 的變更',
-          claudeResponse: '發現以下問題：\n1. 缺少錯誤處理\n2. SQL 注入風險\n3. 建議加入單元測試',
+          claudeResponse:
+            '發現以下問題：\n1. 缺少錯誤處理\n2. SQL 注入風險\n3. 建議加入單元測試',
         },
         {
           scenario: '解決衝突',
           prompt: '幫我解決這個 merge conflict',
-          claudeResponse: '分析衝突：\n- 保留新功能的實作\n- 整合主分支的 bug 修復\n- 更新相依套件版本',
+          claudeResponse:
+            '分析衝突：\n- 保留新功能的實作\n- 整合主分支的 bug 修復\n- 更新相依套件版本',
         },
       ],
       practicalExamples: [
@@ -273,10 +276,7 @@ export const gitScenes: Record<string, GitScene> = {
           '進行 code review',
           '合併到 main 分支',
         ],
-        validation: [
-          'git log --oneline --graph',
-          'git branch -a',
-        ],
+        validation: ['git log --oneline --graph', 'git branch -a'],
       },
     },
     nextScene: 'debugging-rollback',
@@ -306,7 +306,8 @@ export const gitScenes: Record<string, GitScene> = {
         {
           title: '使用 git bisect 找 bug',
           problem: '不確定哪個提交引入了問題',
-          solution: 'git bisect start\ngit bisect bad\ngit bisect good <commit>',
+          solution:
+            'git bisect start\ngit bisect bad\ngit bisect good <commit>',
           claudeHelp: 'Claude 可以幫你寫測試腳本自動化 bisect',
         },
         {
@@ -433,7 +434,7 @@ jobs:
     points: 500,
   },
 
-  'completion': {
+  completion: {
     id: 'completion',
     title: '🎉 恭喜完成課程！',
     description: '你已經掌握了 Git 和 Claude Code',
@@ -462,4 +463,4 @@ jobs:
     previousScene: 'advanced-git',
     points: 0,
   },
-};
+}

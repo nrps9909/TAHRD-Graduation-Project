@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion';
+import { motion } from 'framer-motion'
 
 const LoadingScreen = () => {
   return (
@@ -16,7 +16,7 @@ const LoadingScreen = () => {
         transition={{
           duration: 2,
           repeat: Infinity,
-          ease: "easeInOut"
+          ease: 'easeInOut',
         }}
         className="text-8xl mb-8 gpu-accelerated"
       >
@@ -34,7 +34,7 @@ const LoadingScreen = () => {
         </h2>
 
         <div className="flex gap-2">
-          {[0, 1, 2].map((i) => (
+          {[0, 1, 2].map(i => (
             <motion.div
               key={i}
               animate={{
@@ -60,7 +60,7 @@ const LoadingScreen = () => {
         </motion.p>
       </motion.div>
     </motion.div>
-  );
-};
+  )
+}
 
-export default LoadingScreen;
+export default LoadingScreen

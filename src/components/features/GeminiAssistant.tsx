@@ -1,41 +1,42 @@
-import { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Send, X, Loader } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Sparkles, Send, X, Loader } from 'lucide-react'
 
 interface Message {
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: Date;
+  role: 'user' | 'assistant'
+  content: string
+  timestamp: Date
 }
 
 const GeminiAssistant = () => {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false)
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      content: '👋 嗨！我是 Gemini 助手，可以幫你解決環境設置的任何問題。有什麼可以幫助你的嗎？',
+      content:
+        '👋 嗨！我是 Gemini 助手，可以幫你解決環境設置的任何問題。有什麼可以幫助你的嗎？',
       timestamp: new Date(),
     },
-  ]);
-  const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  ])
+  const [input, setInput] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    scrollToBottom()
+  }, [messages])
 
   // 模擬 Gemini API 回應（實際使用時需要真實 API）
   const simulateGeminiResponse = async (query: string): Promise<string> => {
     // 模擬延遲
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    await new Promise(resolve => setTimeout(resolve, 1500))
 
     // 根據問題類型返回不同回應
-    const lowerQuery = query.toLowerCase();
+    const lowerQuery = query.toLowerCase()
 
     if (lowerQuery.includes('wsl') || lowerQuery.includes('ubuntu')) {
       return `關於 WSL 的問題，這是我的建議：
@@ -55,7 +56,7 @@ const GeminiAssistant = () => {
    - 將專案放在 WSL 檔案系統中：\`/home/username/projects\`
    - 避免跨檔案系統操作（Windows ↔ Linux）
 
-需要更詳細的說明嗎？`;
+需要更詳細的說明嗎？`
     }
 
     if (lowerQuery.includes('cursor')) {
@@ -79,7 +80,7 @@ const GeminiAssistant = () => {
    - 使用 Composer 進行多檔案編輯
    - 自訂 AI 提示模板
 
-還有其他 Cursor 問題嗎？`;
+還有其他 Cursor 問題嗎？`
     }
 
     if (lowerQuery.includes('claude') || lowerQuery.includes('api')) {
@@ -105,7 +106,7 @@ const GeminiAssistant = () => {
    - 免費方案：有請求限制
    - 監控使用量：檢查控制台
 
-需要協助設定嗎？`;
+需要協助設定嗎？`
     }
 
     if (lowerQuery.includes('error') || lowerQuery.includes('問題')) {
@@ -133,7 +134,7 @@ const GeminiAssistant = () => {
    - 說明重現步驟
    - 檢查版本相容性
 
-請提供具體的錯誤訊息，我可以給出更精確的解決方案！`;
+請提供具體的錯誤訊息，我可以給出更精確的解決方案！`
     }
 
     if (lowerQuery.includes('install') || lowerQuery.includes('安裝')) {
@@ -161,7 +162,7 @@ const GeminiAssistant = () => {
    pip install --upgrade pip
    \`\`\`
 
-需要安裝特定的工具嗎？`;
+需要安裝特定的工具嗎？`
     }
 
     // 預設回應
@@ -176,48 +177,48 @@ const GeminiAssistant = () => {
 - 你正在嘗試做什麼？
 - 你的系統環境是什麼？
 
-請告訴我更多細節！`;
-  };
+請告訴我更多細節！`
+  }
 
   const handleSendMessage = async () => {
-    if (!input.trim() || isLoading) return;
+    if (!input.trim() || isLoading) return
 
     const userMessage: Message = {
       role: 'user',
       content: input,
       timestamp: new Date(),
-    };
+    }
 
-    setMessages(prev => [...prev, userMessage]);
-    setInput('');
-    setIsLoading(true);
+    setMessages(prev => [...prev, userMessage])
+    setInput('')
+    setIsLoading(true)
 
     try {
-      const response = await simulateGeminiResponse(input);
+      const response = await simulateGeminiResponse(input)
       const assistantMessage: Message = {
         role: 'assistant',
         content: response,
         timestamp: new Date(),
-      };
-      setMessages(prev => [...prev, assistantMessage]);
+      }
+      setMessages(prev => [...prev, assistantMessage])
     } catch (error) {
       const errorMessage: Message = {
         role: 'assistant',
         content: '抱歉，我遇到了一些問題。請稍後再試。',
         timestamp: new Date(),
-      };
-      setMessages(prev => [...prev, errorMessage]);
+      }
+      setMessages(prev => [...prev, errorMessage])
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   const quickQuestions = [
     'WSL 無法啟動怎麼辦？',
     '如何在 WSL 中使用 Cursor？',
     '設定 Claude API 金鑰',
     '安裝 Node.js 最佳方式',
-  ];
+  ]
 
   return (
     <>
@@ -316,9 +317,9 @@ const GeminiAssistant = () => {
 
             {/* 輸入區域 */}
             <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleSendMessage();
+              onSubmit={e => {
+                e.preventDefault()
+                handleSendMessage()
               }}
               className="p-4 border-t border-gray-700"
             >
@@ -326,7 +327,7 @@ const GeminiAssistant = () => {
                 <input
                   type="text"
                   value={input}
-                  onChange={(e) => setInput(e.target.value)}
+                  onChange={e => setInput(e.target.value)}
                   placeholder="問我任何問題..."
                   className="flex-1 px-3 py-2 bg-gray-800 text-white rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
                   disabled={isLoading}
@@ -344,7 +345,7 @@ const GeminiAssistant = () => {
         )}
       </AnimatePresence>
     </>
-  );
-};
+  )
+}
 
-export default GeminiAssistant;
+export default GeminiAssistant

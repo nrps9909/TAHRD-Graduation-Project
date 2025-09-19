@@ -1,145 +1,170 @@
-import { useState, useRef, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { useGameStore } from '../store/gameStore';
+import { useState, useRef, useEffect } from 'react'
+import { motion } from 'framer-motion'
+import { useGameStore } from '../store/gameStore'
 
 interface GitFile {
-  name: string;
-  content: string;
-  status: 'untracked' | 'modified' | 'staged' | 'committed';
+  name: string
+  content: string
+  status: 'untracked' | 'modified' | 'staged' | 'committed'
 }
 
 const GitTerminal = () => {
-  const [command, setCommand] = useState('');
+  const [command, setCommand] = useState('')
   const [output, setOutput] = useState<string[]>([
     '歡迎來到 Git 互動終端！',
     '輸入 "help" 查看可用指令',
     '',
-  ]);
-  const [history, setHistory] = useState<string[]>([]);
-  const [historyIndex, setHistoryIndex] = useState(-1);
-  const [currentBranch, setCurrentBranch] = useState('main');
+  ])
+  const [history, setHistory] = useState<string[]>([])
+  const [historyIndex, setHistoryIndex] = useState(-1)
+  const [currentBranch, setCurrentBranch] = useState('main')
   const [files, setFiles] = useState<GitFile[]>([
     { name: 'README.md', content: '# My Project', status: 'committed' },
-  ]);
-  const [branches, setBranches] = useState(['main']);
+  ])
+  const [branches, setBranches] = useState(['main'])
 
-  const terminalRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const { addTerminalCommand, unlockAchievement } = useGameStore();
+  const terminalRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const { addTerminalCommand, unlockAchievement } = useGameStore()
 
   useEffect(() => {
     if (terminalRef.current) {
-      terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
+      terminalRef.current.scrollTop = terminalRef.current.scrollHeight
     }
-  }, [output]);
+  }, [output])
 
   const simulateGitCommand = (cmd: string): string[] => {
-    const parts = cmd.trim().split(' ');
-    const command = parts[0];
-    const subcommand = parts[1];
-    const args = parts.slice(2);
+    const parts = cmd.trim().split(' ')
+    const command = parts[0]
+    const subcommand = parts[1]
+    const args = parts.slice(2)
 
     if (command === 'git') {
       switch (subcommand) {
         case 'init':
-          unlockAchievement('first-command');
-          return ['Initialized empty Git repository in /home/user/project/.git/'];
+          unlockAchievement('first-command')
+          return [
+            'Initialized empty Git repository in /home/user/project/.git/',
+          ]
 
-        case 'status':
-          const untrackedFiles = files.filter(f => f.status === 'untracked');
-          const modifiedFiles = files.filter(f => f.status === 'modified');
-          const stagedFiles = files.filter(f => f.status === 'staged');
+        case 'status': {
+          const untrackedFiles = files.filter(f => f.status === 'untracked')
+          const modifiedFiles = files.filter(f => f.status === 'modified')
+          const stagedFiles = files.filter(f => f.status === 'staged')
 
-          let statusOutput = [`On branch ${currentBranch}`];
+          const statusOutput = [`On branch ${currentBranch}`]
 
           if (stagedFiles.length > 0) {
-            statusOutput.push('Changes to be committed:');
-            statusOutput.push('  (use "git restore --staged <file>..." to unstage)');
+            statusOutput.push('Changes to be committed:')
+            statusOutput.push(
+              '  (use "git restore --staged <file>..." to unstage)'
+            )
             stagedFiles.forEach(f => {
-              statusOutput.push(`\t${'\x1b[33m'}modified:   ${f.name}${'\x1b[0m'}`);
-            });
+              statusOutput.push(
+                `\t${'\x1b[33m'}modified:   ${f.name}${'\x1b[0m'}`
+              )
+            })
           }
 
           if (modifiedFiles.length > 0) {
-            statusOutput.push('Changes not staged for commit:');
-            statusOutput.push('  (use "git add <file>..." to update what will be committed)');
+            statusOutput.push('Changes not staged for commit:')
+            statusOutput.push(
+              '  (use "git add <file>..." to update what will be committed)'
+            )
             modifiedFiles.forEach(f => {
-              statusOutput.push(`\t${'\x1b[31m'}modified:   ${f.name}${'\x1b[0m'}`);
-            });
+              statusOutput.push(
+                `\t${'\x1b[31m'}modified:   ${f.name}${'\x1b[0m'}`
+              )
+            })
           }
 
           if (untrackedFiles.length > 0) {
-            statusOutput.push('Untracked files:');
-            statusOutput.push('  (use "git add <file>..." to include in what will be committed)');
+            statusOutput.push('Untracked files:')
+            statusOutput.push(
+              '  (use "git add <file>..." to include in what will be committed)'
+            )
             untrackedFiles.forEach(f => {
-              statusOutput.push(`\t${'\x1b[31m'}${f.name}${'\x1b[0m'}`);
-            });
+              statusOutput.push(`\t${'\x1b[31m'}${f.name}${'\x1b[0m'}`)
+            })
           }
 
-          if (stagedFiles.length === 0 && modifiedFiles.length === 0 && untrackedFiles.length === 0) {
-            statusOutput.push('nothing to commit, working tree clean');
+          if (
+            stagedFiles.length === 0 &&
+            modifiedFiles.length === 0 &&
+            untrackedFiles.length === 0
+          ) {
+            statusOutput.push('nothing to commit, working tree clean')
           }
 
-          return statusOutput;
+          return statusOutput
+        }
 
         case 'add':
           if (args[0] === '.') {
-            setFiles(files.map(f =>
-              f.status === 'untracked' || f.status === 'modified'
-                ? { ...f, status: 'staged' }
-                : f
-            ));
-            return ['All changes added to staging area'];
+            setFiles(
+              files.map(f =>
+                f.status === 'untracked' || f.status === 'modified'
+                  ? { ...f, status: 'staged' }
+                  : f
+              )
+            )
+            return ['All changes added to staging area']
           } else if (args[0]) {
-            const file = files.find(f => f.name === args[0]);
+            const file = files.find(f => f.name === args[0])
             if (file) {
-              setFiles(files.map(f =>
-                f.name === args[0] ? { ...f, status: 'staged' } : f
-              ));
-              return [`Added ${args[0]} to staging area`];
+              setFiles(
+                files.map(f =>
+                  f.name === args[0] ? { ...f, status: 'staged' } : f
+                )
+              )
+              return [`Added ${args[0]} to staging area`]
             }
-            return [`fatal: pathspec '${args[0]}' did not match any files`];
+            return [`fatal: pathspec '${args[0]}' did not match any files`]
           }
-          return ['usage: git add <file>'];
+          return ['usage: git add <file>']
 
         case 'commit':
           if (args[0] === '-m' && args[1]) {
-            const message = args.slice(1).join(' ');
-            const stagedFiles = files.filter(f => f.status === 'staged');
+            const message = args.slice(1).join(' ')
+            const stagedFiles = files.filter(f => f.status === 'staged')
             if (stagedFiles.length === 0) {
-              return ['nothing to commit, working tree clean'];
+              return ['nothing to commit, working tree clean']
             }
-            setFiles(files.map(f =>
-              f.status === 'staged' ? { ...f, status: 'committed' } : f
-            ));
-            const hash = Math.random().toString(36).substring(2, 9);
+            setFiles(
+              files.map(f =>
+                f.status === 'staged' ? { ...f, status: 'committed' } : f
+              )
+            )
+            const hash = Math.random().toString(36).substring(2, 9)
             return [
               `[${currentBranch} ${hash}] ${message}`,
               ` ${stagedFiles.length} file(s) changed`,
-            ];
+            ]
           }
-          return ['usage: git commit -m "message"'];
+          return ['usage: git commit -m "message"']
 
         case 'branch':
           if (args[0]) {
-            setBranches([...branches, args[0]]);
-            return [`Branch '${args[0]}' created`];
+            setBranches([...branches, args[0]])
+            return [`Branch '${args[0]}' created`]
           }
-          return branches.map(b => b === currentBranch ? `* ${b}` : `  ${b}`);
+          return branches.map(b => (b === currentBranch ? `* ${b}` : `  ${b}`))
 
         case 'checkout':
           if (args[0] === '-b' && args[1]) {
-            setBranches([...branches, args[1]]);
-            setCurrentBranch(args[1]);
-            return [`Switched to a new branch '${args[1]}'`];
+            setBranches([...branches, args[1]])
+            setCurrentBranch(args[1])
+            return [`Switched to a new branch '${args[1]}'`]
           } else if (args[0]) {
             if (branches.includes(args[0])) {
-              setCurrentBranch(args[0]);
-              return [`Switched to branch '${args[0]}'`];
+              setCurrentBranch(args[0])
+              return [`Switched to branch '${args[0]}'`]
             }
-            return [`error: pathspec '${args[0]}' did not match any branch`];
+            return [`error: pathspec '${args[0]}' did not match any branch`]
           }
-          return ['usage: git checkout <branch> or git checkout -b <new-branch>'];
+          return [
+            'usage: git checkout <branch> or git checkout -b <new-branch>',
+          ]
 
         case 'log':
           return [
@@ -148,7 +173,7 @@ const GitTerminal = () => {
             'Date:   Thu Nov 21 10:00:00 2024',
             '',
             '    Initial commit',
-          ];
+          ]
 
         case 'push':
           return [
@@ -157,12 +182,10 @@ const GitTerminal = () => {
             'Writing objects: 100% (3/3), 234 bytes | 234.00 KiB/s, done.',
             'To https://github.com/user/repo.git',
             ` * [new branch]      ${currentBranch} -> ${currentBranch}`,
-          ];
+          ]
 
         case 'pull':
-          return [
-            'Already up to date.',
-          ];
+          return ['Already up to date.']
 
         case 'clone':
           if (args[0]) {
@@ -171,9 +194,9 @@ const GitTerminal = () => {
               'remote: Enumerating objects: 10, done.',
               'remote: Counting objects: 100% (10/10), done.',
               'Receiving objects: 100% (10/10), done.',
-            ];
+            ]
           }
-          return ['usage: git clone <repository-url>'];
+          return ['usage: git clone <repository-url>']
 
         case 'diff':
           return [
@@ -184,16 +207,18 @@ const GitTerminal = () => {
             '@@ -1 +1,2 @@',
             ' # My Project',
             '+This is a new line',
-          ];
+          ]
 
         case 'merge':
           if (args[0]) {
-            return [`Merge branch '${args[0]}' into ${currentBranch}`];
+            return [`Merge branch '${args[0]}' into ${currentBranch}`]
           }
-          return ['usage: git merge <branch>'];
+          return ['usage: git merge <branch>']
 
         default:
-          return [`git: '${subcommand}' is not a git command. See 'git --help'.`];
+          return [
+            `git: '${subcommand}' is not a git command. See 'git --help'.`,
+          ]
       }
     }
 
@@ -223,105 +248,126 @@ const GitTerminal = () => {
           '  echo "text" > file    - 寫入檔案',
           '  cat <file>            - 顯示檔案',
           '  clear                 - 清除畫面',
-        ];
+        ]
 
       case 'ls':
-        return files.map(f => f.name);
+        return files.map(f => f.name)
 
       case 'touch':
         if (args[0]) {
           if (!files.find(f => f.name === args[0])) {
-            setFiles([...files, {
-              name: args[0],
-              content: '',
-              status: 'untracked'
-            }]);
-            return [`Created file: ${args[0]}`];
+            setFiles([
+              ...files,
+              {
+                name: args[0],
+                content: '',
+                status: 'untracked',
+              },
+            ])
+            return [`Created file: ${args[0]}`]
           }
-          return [`touch: ${args[0]} already exists`];
+          return [`touch: ${args[0]} already exists`]
         }
-        return ['usage: touch <filename>'];
+        return ['usage: touch <filename>']
 
       case 'echo':
         if (args.length >= 3 && args[args.length - 2] === '>') {
-          const filename = args[args.length - 1];
-          const content = args.slice(0, args.length - 2).join(' ').replace(/"/g, '');
+          const filename = args[args.length - 1]
+          const content = args
+            .slice(0, args.length - 2)
+            .join(' ')
+            .replace(/"/g, '')
 
-          const existingFile = files.find(f => f.name === filename);
+          const existingFile = files.find(f => f.name === filename)
           if (existingFile) {
-            setFiles(files.map(f =>
-              f.name === filename
-                ? { ...f, content, status: f.status === 'committed' ? 'modified' : f.status }
-                : f
-            ));
+            setFiles(
+              files.map(f =>
+                f.name === filename
+                  ? {
+                      ...f,
+                      content,
+                      status: f.status === 'committed' ? 'modified' : f.status,
+                    }
+                  : f
+              )
+            )
           } else {
-            setFiles([...files, {
-              name: filename,
-              content,
-              status: 'untracked'
-            }]);
+            setFiles([
+              ...files,
+              {
+                name: filename,
+                content,
+                status: 'untracked',
+              },
+            ])
           }
-          return [`Written to ${filename}`];
+          return [`Written to ${filename}`]
         }
-        return args.join(' ').replace(/"/g, '').split('\n');
+        return args.join(' ').replace(/"/g, '').split('\n')
 
       case 'cat':
         if (args[0]) {
-          const file = files.find(f => f.name === args[0]);
+          const file = files.find(f => f.name === args[0])
           if (file) {
-            return file.content.split('\n');
+            return file.content.split('\n')
           }
-          return [`cat: ${args[0]}: No such file`];
+          return [`cat: ${args[0]}: No such file`]
         }
-        return ['usage: cat <filename>'];
+        return ['usage: cat <filename>']
 
       case 'pwd':
-        return ['/home/user/project'];
+        return ['/home/user/project']
 
       case 'clear':
-        setOutput([]);
-        return [];
+        setOutput([])
+        return []
 
       case 'whoami':
-        return ['developer'];
+        return ['developer']
 
       default:
-        return [`Command not found: ${command}. Type 'help' for available commands.`];
+        return [
+          `Command not found: ${command}. Type 'help' for available commands.`,
+        ]
     }
-  };
+  }
 
   const handleCommand = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!command.trim()) return;
+    e.preventDefault()
+    if (!command.trim()) return
 
-    const newOutput = [...output, `$ ${command}`, ...simulateGitCommand(command)];
-    setOutput(newOutput);
-    setHistory([...history, command]);
-    addTerminalCommand(command);
-    setCommand('');
-    setHistoryIndex(-1);
-  };
+    const newOutput = [
+      ...output,
+      `$ ${command}`,
+      ...simulateGitCommand(command),
+    ]
+    setOutput(newOutput)
+    setHistory([...history, command])
+    addTerminalCommand(command)
+    setCommand('')
+    setHistoryIndex(-1)
+  }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowUp') {
-      e.preventDefault();
+      e.preventDefault()
       if (historyIndex < history.length - 1) {
-        const newIndex = historyIndex + 1;
-        setHistoryIndex(newIndex);
-        setCommand(history[history.length - 1 - newIndex]);
+        const newIndex = historyIndex + 1
+        setHistoryIndex(newIndex)
+        setCommand(history[history.length - 1 - newIndex])
       }
     } else if (e.key === 'ArrowDown') {
-      e.preventDefault();
+      e.preventDefault()
       if (historyIndex > 0) {
-        const newIndex = historyIndex - 1;
-        setHistoryIndex(newIndex);
-        setCommand(history[history.length - 1 - newIndex]);
+        const newIndex = historyIndex - 1
+        setHistoryIndex(newIndex)
+        setCommand(history[history.length - 1 - newIndex])
       } else if (historyIndex === 0) {
-        setHistoryIndex(-1);
-        setCommand('');
+        setHistoryIndex(-1)
+        setCommand('')
       }
     }
-  };
+  }
 
   return (
     <div className="h-full flex flex-col bg-terminal-bg">
@@ -355,7 +401,7 @@ const GitTerminal = () => {
                 .replace(/\x1b\[32m/g, '<span style="color: #f59e0b">')
                 .replace(/\x1b\[33m/g, '<span style="color: #f59e0b">')
                 .replace(/\x1b\[31m/g, '<span style="color: #ff0000">')
-                .replace(/\x1b\[0m/g, '</span>')
+                .replace(/\x1b\[0m/g, '</span>'),
             }}
           />
         ))}
@@ -366,7 +412,7 @@ const GitTerminal = () => {
             ref={inputRef}
             type="text"
             value={command}
-            onChange={(e) => setCommand(e.target.value)}
+            onChange={e => setCommand(e.target.value)}
             onKeyDown={handleKeyDown}
             className="flex-1 bg-transparent outline-none text-terminal-text"
             placeholder="輸入 Git 指令..."
@@ -376,7 +422,7 @@ const GitTerminal = () => {
         </form>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default GitTerminal;
+export default GitTerminal

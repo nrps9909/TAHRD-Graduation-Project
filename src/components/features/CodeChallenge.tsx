@@ -1,46 +1,48 @@
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Check, X, Lightbulb } from 'lucide-react';
+import { useState } from 'react'
+import { motion } from 'framer-motion'
+import { Check, X, Lightbulb } from 'lucide-react'
 
 interface CodeChallengeProps {
   challenge: {
-    task: string;
-    code?: string;
-    solution: string;
-    hints: string[];
-    requirements?: string[];
-    starter?: string;
-  };
-  onComplete: (score: number) => void;
+    task: string
+    code?: string
+    solution: string
+    hints: string[]
+    requirements?: string[]
+    starter?: string
+  }
+  onComplete: (score: number) => void
 }
 
 const CodeChallenge = ({ challenge, onComplete }: CodeChallengeProps) => {
-  const [userCode, setUserCode] = useState(challenge.code || challenge.starter || '');
-  const [showHint, setShowHint] = useState(false);
-  const [hintIndex, setHintIndex] = useState(0);
-  const [feedback, setFeedback] = useState('');
-  const [isCorrect, setIsCorrect] = useState(false);
+  const [userCode, setUserCode] = useState(
+    challenge.code || challenge.starter || ''
+  )
+  const [showHint, setShowHint] = useState(false)
+  const [hintIndex, setHintIndex] = useState(0)
+  const [feedback, setFeedback] = useState('')
+  const [isCorrect, setIsCorrect] = useState(false)
 
   const checkSolution = () => {
     const normalizeCode = (code: string) =>
-      code.replace(/\s+/g, ' ').trim().toLowerCase();
+      code.replace(/\s+/g, ' ').trim().toLowerCase()
 
     if (normalizeCode(userCode) === normalizeCode(challenge.solution)) {
-      setIsCorrect(true);
-      setFeedback('Excellent! You solved the challenge!');
-      setTimeout(() => onComplete(200), 2000);
+      setIsCorrect(true)
+      setFeedback('Excellent! You solved the challenge!')
+      setTimeout(() => onComplete(200), 2000)
     } else {
-      setFeedback('Not quite right. Try again!');
-      setTimeout(() => setFeedback(''), 3000);
+      setFeedback('Not quite right. Try again!')
+      setTimeout(() => setFeedback(''), 3000)
     }
-  };
+  }
 
   const getHint = () => {
     if (hintIndex < challenge.hints.length) {
-      setShowHint(true);
-      setHintIndex(hintIndex + 1);
+      setShowHint(true)
+      setHintIndex(hintIndex + 1)
     }
-  };
+  }
 
   return (
     <div className="space-y-6">
@@ -50,10 +52,15 @@ const CodeChallenge = ({ challenge, onComplete }: CodeChallengeProps) => {
 
         {challenge.requirements && (
           <div className="mb-4">
-            <h4 className="text-retro-cyan font-cute text-xs mb-2">REQUIREMENTS:</h4>
+            <h4 className="text-retro-cyan font-cute text-xs mb-2">
+              REQUIREMENTS:
+            </h4>
             <ul className="space-y-1">
               {challenge.requirements.map((req, index) => (
-                <li key={index} className="text-terminal-text font-cute text-sm">
+                <li
+                  key={index}
+                  className="text-terminal-text font-cute text-sm"
+                >
                   • {req}
                 </li>
               ))}
@@ -66,7 +73,7 @@ const CodeChallenge = ({ challenge, onComplete }: CodeChallengeProps) => {
         <h3 className="text-amber-500 font-cute text-sm mb-4">CODE EDITOR</h3>
         <textarea
           value={userCode}
-          onChange={(e) => setUserCode(e.target.value)}
+          onChange={e => setUserCode(e.target.value)}
           className="w-full h-64 bg-gray-900 text-terminal-text font-mono text-sm p-4 rounded border border-gray-700 outline-none focus:border-amber-400"
           spellCheck={false}
         />
@@ -104,7 +111,9 @@ const CodeChallenge = ({ challenge, onComplete }: CodeChallengeProps) => {
             ) : (
               <X className="w-5 h-5 text-red-500" />
             )}
-            <span className={`font-cute ${isCorrect ? 'text-amber-500' : 'text-red-500'}`}>
+            <span
+              className={`font-cute ${isCorrect ? 'text-amber-500' : 'text-red-500'}`}
+            >
               {feedback}
             </span>
           </div>
@@ -120,16 +129,13 @@ const CodeChallenge = ({ challenge, onComplete }: CodeChallengeProps) => {
           CHECK SOLUTION
         </button>
         {hintIndex < challenge.hints.length && !isCorrect && (
-          <button
-            onClick={getHint}
-            className="retro-button"
-          >
+          <button onClick={getHint} className="retro-button">
             GET HINT ({hintIndex}/{challenge.hints.length})
           </button>
         )}
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default CodeChallenge;
+export default CodeChallenge

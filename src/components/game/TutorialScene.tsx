@@ -1,15 +1,15 @@
-import { useParams, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import SceneRenderer from './SceneRenderer';
-import { ArrowLeft } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
+import SceneRenderer from './SceneRenderer'
+import { ArrowLeft } from 'lucide-react'
 
 interface TutorialSceneProps {
-  triggerFeedback?: any;
+  triggerFeedback?: any
 }
 
-const TutorialScene = ({ }: TutorialSceneProps) => {
-  const { sceneId } = useParams<{ sceneId: string }>();
-  const navigate = useNavigate();
+const TutorialScene = ({}: TutorialSceneProps) => {
+  const { sceneId } = useParams<{ sceneId: string }>()
+  const navigate = useNavigate()
 
   if (!sceneId) {
     return (
@@ -18,15 +18,12 @@ const TutorialScene = ({ }: TutorialSceneProps) => {
           <h2 className="text-2xl font-cute text-retro-amber mb-4">
             Scene not found
           </h2>
-          <button
-            onClick={() => navigate('/')}
-            className="retro-button"
-          >
+          <button onClick={() => navigate('/')} className="retro-button">
             Return Home
           </button>
         </div>
       </div>
-    );
+    )
   }
 
   return (
@@ -50,7 +47,7 @@ const TutorialScene = ({ }: TutorialSceneProps) => {
         <SceneRenderer sceneId={sceneId} />
       </div>
     </motion.div>
-  );
-};
+  )
+}
 
-export default TutorialScene;
+export default TutorialScene

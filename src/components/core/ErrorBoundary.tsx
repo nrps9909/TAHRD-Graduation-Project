@@ -1,33 +1,33 @@
-import { Component, ErrorInfo, ReactNode } from 'react';
-import { motion } from 'framer-motion';
+import { Component, ErrorInfo, ReactNode } from 'react'
+import { motion } from 'framer-motion'
 
 interface Props {
-  children: ReactNode;
+  children: ReactNode
 }
 
 interface State {
-  hasError: boolean;
-  error: Error | null;
+  hasError: boolean
+  error: Error | null
 }
 
 class ErrorBoundary extends Component<Props, State> {
   public state: State = {
     hasError: false,
-    error: null
-  };
+    error: null,
+  }
 
   public static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error };
+    return { hasError: true, error }
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('Uncaught error:', error, errorInfo);
+    console.error('Uncaught error:', error, errorInfo)
   }
 
   private handleReset = () => {
-    this.setState({ hasError: false, error: null });
-    window.location.reload();
-  };
+    this.setState({ hasError: false, error: null })
+    window.location.reload()
+  }
 
   public render() {
     if (this.state.hasError) {
@@ -56,8 +56,7 @@ class ErrorBoundary extends Component<Props, State> {
             </h2>
 
             <p className="text-gray-600 mb-6 chinese-text">
-              看起來遇到了一些技術問題。
-              別擔心，我們可以重新開始！
+              看起來遇到了一些技術問題。 別擔心，我們可以重新開始！
             </p>
 
             {this.state.error && (
@@ -79,11 +78,11 @@ class ErrorBoundary extends Component<Props, State> {
             </button>
           </motion.div>
         </div>
-      );
+      )
     }
 
-    return this.props.children;
+    return this.props.children
   }
 }
 
-export default ErrorBoundary;
+export default ErrorBoundary

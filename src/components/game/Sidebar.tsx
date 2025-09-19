@@ -1,15 +1,16 @@
-import { motion, AnimatePresence } from 'framer-motion';
-import { Trophy, BookOpen, Star, X } from 'lucide-react';
-import { useGameStore } from '../store/gameStore';
+import { motion, AnimatePresence } from 'framer-motion'
+import { Trophy, BookOpen, Star, X } from 'lucide-react'
+import { useGameStore } from '../store/gameStore'
 
 interface SidebarProps {
-  isOpen: boolean;
-  onToggle: () => void;
+  isOpen: boolean
+  onToggle: () => void
 }
 
 const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
-  const { achievements, completedScenes, totalScore, resetGame } = useGameStore();
-  const unlockedCount = achievements.filter(a => a.unlocked).length;
+  const { achievements, completedScenes, totalScore, resetGame } =
+    useGameStore()
+  const unlockedCount = achievements.filter(a => a.unlocked).length
 
   return (
     <AnimatePresence>
@@ -43,15 +44,21 @@ const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
                 <div className="bg-pink-100/30 backdrop-blur rounded-lg p-4 border border-pink-200/40">
                   <div className="flex items-center gap-3 mb-2">
                     <Trophy className="w-5 h-5 text-pink-400" />
-                    <span className="font-cute text-sm text-pink-400">積分</span>
+                    <span className="font-cute text-sm text-pink-400">
+                      積分
+                    </span>
                   </div>
-                  <p className="text-2xl font-cute text-pink-500">{totalScore}</p>
+                  <p className="text-2xl font-cute text-pink-500">
+                    {totalScore}
+                  </p>
                 </div>
 
                 <div className="bg-pink-100/30 backdrop-blur rounded-lg p-4 border border-pink-200/40">
                   <div className="flex items-center gap-3 mb-2">
                     <BookOpen className="w-5 h-5 text-yellow-400" />
-                    <span className="font-cute text-sm text-yellow-600">課程進度</span>
+                    <span className="font-cute text-sm text-yellow-600">
+                      課程進度
+                    </span>
                   </div>
                   <p className="font-cute text-pink-500">
                     {completedScenes.length} / 9 已完成
@@ -81,7 +88,7 @@ const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
                     {unlockedCount} / {achievements.length} 已解鎖
                   </p>
                   <div className="space-y-2">
-                    {achievements.map((achievement) => (
+                    {achievements.map(achievement => (
                       <div
                         key={achievement.id}
                         className={`flex items-center gap-2 p-2 rounded ${
@@ -106,9 +113,11 @@ const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
 
                 <button
                   onClick={() => {
-                    if (confirm('Are you sure you want to reset your progress?')) {
-                      resetGame();
-                      onToggle();
+                    if (
+                      confirm('Are you sure you want to reset your progress?')
+                    ) {
+                      resetGame()
+                      onToggle()
                     }
                   }}
                   className="retro-button w-full text-sm"
@@ -121,7 +130,7 @@ const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
         </>
       )}
     </AnimatePresence>
-  );
-};
+  )
+}
 
-export default Sidebar;
+export default Sidebar

@@ -1,13 +1,13 @@
 // Vibe Coding 提示詞模板和範例
 
 export interface PromptTemplate {
-  id: string;
-  category: string;
-  title: string;
-  description: string;
-  template: string;
-  example: string;
-  tips: string[];
+  id: string
+  category: string
+  title: string
+  description: string
+  template: string
+  example: string
+  tips: string[]
 }
 
 export const promptTemplates: PromptTemplate[] = [
@@ -30,11 +30,7 @@ export const promptTemplates: PromptTemplate[] = [
 3. 可以刪除事項
 目標使用者：學生和上班族
 風格偏好：簡約現代`,
-    tips: [
-      '具體說明每個功能',
-      '描述目標使用者',
-      '說明視覺風格偏好'
-    ]
+    tips: ['具體說明每個功能', '描述目標使用者', '說明視覺風格偏好'],
   },
   {
     id: 'iterative-improvement',
@@ -49,11 +45,7 @@ export const promptTemplates: PromptTemplate[] = [
 改進1：「加上開根號和百分比功能」
 改進2：「加上歷史記錄功能」
 美化：「使用圓形按鈕和柔和色彩」`,
-    tips: [
-      '從最簡單開始',
-      '每次只改一個方向',
-      '測試後再繼續'
-    ]
+    tips: ['從最簡單開始', '每次只改一個方向', '測試後再繼續'],
   },
   {
     id: 'debugging',
@@ -74,11 +66,7 @@ export const promptTemplates: PromptTemplate[] = [
 1. 開啟網頁
 2. 點擊提交按鈕
 環境：Chrome瀏覽器`,
-    tips: [
-      '複製完整錯誤訊息',
-      '說明期望的結果',
-      '描述如何重現問題'
-    ]
+    tips: ['複製完整錯誤訊息', '說明期望的結果', '描述如何重現問題'],
   },
   {
     id: 'role-setting',
@@ -93,11 +81,7 @@ export const promptTemplates: PromptTemplate[] = [
 專長是使用者體驗設計
 請幫我設計一個老年人友善的掛號系統
 要求：大字體、高對比、簡單流程`,
-    tips: [
-      '設定專業角色',
-      '說明特定需求',
-      '提供背景資訊'
-    ]
+    tips: ['設定專業角色', '說明特定需求', '提供背景資訊'],
   },
   {
     id: 'example-driven',
@@ -110,11 +94,7 @@ export const promptTemplates: PromptTemplate[] = [
     example: `像 Instagram 的圖片上傳功能
 但是要專門用於寵物照片
 目標是建立寵物社群`,
-    tips: [
-      '參考知名應用',
-      '說明差異之處',
-      '解釋使用目的'
-    ]
+    tips: ['參考知名應用', '說明差異之處', '解釋使用目的'],
   },
   {
     id: 'constraint-based',
@@ -129,11 +109,7 @@ export const promptTemplates: PromptTemplate[] = [
 不要使用JavaScript
 必須支援手機瀏覽
 效能要求：載入時間小於2秒`,
-    tips: [
-      '明確技術限制',
-      '說明相容需求',
-      '設定效能目標'
-    ]
+    tips: ['明確技術限制', '說明相容需求', '設定效能目標'],
   },
   {
     id: 'project-planning',
@@ -172,11 +148,7 @@ export const promptTemplates: PromptTemplate[] = [
 技術需求：
 - 平台：手機網頁
 - 資料：交易記錄、分類`,
-    tips: [
-      '分階段開發',
-      '列出核心功能',
-      '考慮技術需求'
-    ]
+    tips: ['分階段開發', '列出核心功能', '考慮技術需求'],
   },
   {
     id: 'ui-design',
@@ -193,13 +165,9 @@ export const promptTemplates: PromptTemplate[] = [
 色彩方案：白底配藍色重點
 互動方式：點擊查看詳情
 響應式：優先手機體驗`,
-    tips: [
-      '描述視覺風格',
-      '說明互動方式',
-      '考慮不同裝置'
-    ]
-  }
-];
+    tips: ['描述視覺風格', '說明互動方式', '考慮不同裝置'],
+  },
+]
 
 // 快速提示詞範例
 export const quickPrompts = [
@@ -212,28 +180,28 @@ export const quickPrompts = [
   '做一個倒數計時器，可以自訂時間',
   '做一個擲骰子應用，有動畫效果',
   '做一個隨機密碼產生器，可選長度和複雜度',
-  '做一個單位轉換器，支援長度重量溫度'
-];
+  '做一個單位轉換器，支援長度重量溫度',
+]
 
 // 常見錯誤描述模板
 export const errorTemplates = [
   {
     error: '按鈕沒反應',
-    template: '按鈕點擊沒反應，Console顯示[錯誤訊息]，期望是[預期行為]'
+    template: '按鈕點擊沒反應，Console顯示[錯誤訊息]，期望是[預期行為]',
   },
   {
     error: '顯示不正常',
-    template: '[元素]顯示不正常，應該要[正確顯示]，但現在[錯誤顯示]'
+    template: '[元素]顯示不正常，應該要[正確顯示]，但現在[錯誤顯示]',
   },
   {
     error: '功能失效',
-    template: '[功能名稱]無法使用，操作[具體操作]後，沒有[預期結果]'
+    template: '[功能名稱]無法使用，操作[具體操作]後，沒有[預期結果]',
   },
   {
     error: '資料錯誤',
-    template: '輸入[輸入值]，顯示[錯誤結果]，應該要顯示[正確結果]'
-  }
-];
+    template: '輸入[輸入值]，顯示[錯誤結果]，應該要顯示[正確結果]',
+  },
+]
 
 // 專案階段模板
 export const projectStages = [
@@ -241,24 +209,24 @@ export const projectStages = [
     stage: 1,
     name: '基礎架構',
     focus: '建立核心功能',
-    deliverables: ['基本介面', '主要功能', '資料結構']
+    deliverables: ['基本介面', '主要功能', '資料結構'],
   },
   {
     stage: 2,
     name: '功能擴充',
     focus: '加入更多功能',
-    deliverables: ['次要功能', '使用者互動', '資料處理']
+    deliverables: ['次要功能', '使用者互動', '資料處理'],
   },
   {
     stage: 3,
     name: '優化體驗',
     focus: '改善使用體驗',
-    deliverables: ['介面美化', '動畫效果', '錯誤處理']
+    deliverables: ['介面美化', '動畫效果', '錯誤處理'],
   },
   {
     stage: 4,
     name: '完善發布',
     focus: '準備上線',
-    deliverables: ['效能優化', '相容性', '使用說明']
-  }
-];
+    deliverables: ['效能優化', '相容性', '使用說明'],
+  },
+]

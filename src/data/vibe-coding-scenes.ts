@@ -1,18 +1,18 @@
 // Vibe Coding 課程 - 整合 Git、Cursor、Claude Code
 
 export interface Scene {
-  id: string;
-  title: string;
-  description: string;
-  type: 'tutorial' | 'challenge' | 'interactive' | 'setup';
-  content: any;
-  nextScene?: string;
-  previousScene?: string;
-  points: number;
+  id: string
+  title: string
+  description: string
+  type: 'tutorial' | 'challenge' | 'interactive' | 'setup'
+  content: Record<string, unknown>
+  nextScene?: string
+  previousScene?: string
+  points: number
 }
 
 export const vibeCodingScenes: Record<string, Scene> = {
-  'intro': {
+  intro: {
     id: 'intro',
     title: '🚀 Vibe Coding 三大神器',
     description: '認識 Git、Cursor 和 Claude Code',
@@ -513,7 +513,7 @@ Git：commit -m "加入本地儲存"`,
     points: 250,
   },
 
-  'debugging': {
+  debugging: {
     id: 'debugging',
     title: '第七章：用 AI 除錯',
     description: '快速找出並修復問題',
@@ -825,7 +825,7 @@ Remember：
     points: 300,
   },
 
-  'completion': {
+  completion: {
     id: 'completion',
     title: '🎉 恭喜完成 Vibe Coding 課程！',
     description: '你已經是 AI 程式設計大師了！',
@@ -860,4 +860,4 @@ Remember：
     previousScene: 'best-practices',
     points: 1000,
   },
-};
+}

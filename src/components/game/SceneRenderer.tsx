@@ -1,21 +1,21 @@
-import { motion } from 'framer-motion';
-import { scenes } from '../data/scenes';
-import { useGameStore } from '../store/gameStore';
-import CodeChallenge from './CodeChallenge';
-import InteractiveDemo from './InteractiveDemo';
-import WSLSetupGuide from './WSLSetupGuide';
-import InteractiveLesson from './InteractiveLesson';
+import { motion } from 'framer-motion'
+import { scenes } from '../data/scenes'
+import { useGameStore } from '../store/gameStore'
+import CodeChallenge from './CodeChallenge'
+import InteractiveDemo from './InteractiveDemo'
+import WSLSetupGuide from './WSLSetupGuide'
+import InteractiveLesson from './InteractiveLesson'
 
 interface SceneRendererProps {
-  sceneId: string;
+  sceneId: string
 }
 
 const SceneRenderer = ({ sceneId }: SceneRendererProps) => {
-  const { completeScene, navigateToScene } = useGameStore();
-  const scene = scenes[sceneId];
+  const { completeScene, navigateToScene } = useGameStore()
+  const scene = scenes[sceneId]
 
   // Use InteractiveLesson for all tutorial scenes
-  const useInteractiveMode = scene?.type === 'tutorial';
+  const useInteractiveMode = scene?.type === 'tutorial'
 
   if (!scene) {
     return (
@@ -28,21 +28,21 @@ const SceneRenderer = ({ sceneId }: SceneRendererProps) => {
           Return to Start
         </button>
       </div>
-    );
+    )
   }
 
   const handleSceneComplete = (score: number) => {
-    completeScene(sceneId, score);
+    completeScene(sceneId, score)
     if (scene.nextScene) {
       setTimeout(() => {
-        navigateToScene(scene.nextScene!);
-      }, 1500);
+        navigateToScene(scene.nextScene!)
+      }, 1500)
     }
-  };
+  }
 
   // If it's a tutorial, use the interactive lesson component
   if (useInteractiveMode) {
-    return <InteractiveLesson sceneId={sceneId} />;
+    return <InteractiveLesson sceneId={sceneId} />
   }
 
   return (
@@ -55,9 +55,7 @@ const SceneRenderer = ({ sceneId }: SceneRendererProps) => {
         <h2 className="text-3xl font-cute text-amber-500 mb-2">
           {scene.title}
         </h2>
-        <p className="text-retro-cyan font-cute">
-          {scene.description}
-        </p>
+        <p className="text-retro-cyan font-cute">{scene.description}</p>
       </header>
 
       <div className="flex-1 overflow-hidden">
@@ -68,18 +66,23 @@ const SceneRenderer = ({ sceneId }: SceneRendererProps) => {
                 INSTRUCTIONS
               </h3>
               <div className="space-y-2 text-terminal-text font-mono text-sm">
-                {scene.content.instructions && scene.content.instructions.map((instruction: string, index: number) => (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    className="flex items-start"
-                  >
-                    <span className="text-amber-500 mr-2">{index + 1}.</span>
-                    <span>{instruction}</span>
-                  </motion.div>
-                ))}
+                {scene.content.instructions &&
+                  scene.content.instructions.map(
+                    (instruction: string, index: number) => (
+                      <motion.div
+                        key={index}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                        className="flex items-start"
+                      >
+                        <span className="text-amber-500 mr-2">
+                          {index + 1}.
+                        </span>
+                        <span>{instruction}</span>
+                      </motion.div>
+                    )
+                  )}
               </div>
             </div>
 
@@ -100,9 +103,10 @@ const SceneRenderer = ({ sceneId }: SceneRendererProps) => {
                   💡 TIPS
                 </h3>
                 <ul className="space-y-1 text-terminal-text font-mono text-sm">
-                  {scene.content.tips && scene.content.tips.map((tip: string, index: number) => (
-                    <li key={index}>• {tip}</li>
-                  ))}
+                  {scene.content.tips &&
+                    scene.content.tips.map((tip: string, index: number) => (
+                      <li key={index}>• {tip}</li>
+                    ))}
                 </ul>
               </div>
             )}
@@ -123,10 +127,8 @@ const SceneRenderer = ({ sceneId }: SceneRendererProps) => {
           />
         )}
 
-        {scene.type === 'setup' as any && (
-          <WSLSetupGuide
-            content={scene.content}
-          />
+        {scene.type === ('setup' as any) && (
+          <WSLSetupGuide content={scene.content} />
         )}
       </div>
 
@@ -149,7 +151,7 @@ const SceneRenderer = ({ sceneId }: SceneRendererProps) => {
         )}
       </footer>
     </motion.div>
-  );
-};
+  )
+}
 
-export default SceneRenderer;
+export default SceneRenderer

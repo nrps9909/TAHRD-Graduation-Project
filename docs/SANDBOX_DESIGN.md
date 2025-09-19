@@ -3,13 +3,16 @@
 ## 🎯 系統概述
 
 ### 核心概念
+
 用戶無需本地環境，透過瀏覽器即可：
+
 - 與 Claude Code 對話創建程式
 - 即時預覽網頁效果
 - 保存和分享專案
 - 學習和實驗程式開發
 
 ### 目標用戶
+
 - 初學者：零配置開始學習
 - 教育機構：課堂教學使用
 - 專業開發者：快速原型開發
@@ -65,6 +68,7 @@
 ## 👤 使用者流程
 
 ### 1. 進入系統
+
 ```yaml
 步驟1: 訪問網站
   ↓
@@ -76,6 +80,7 @@
 ```
 
 ### 2. 開發流程
+
 ```yaml
 使用者輸入: "幫我創建一個計算機網頁"
   ↓
@@ -89,6 +94,7 @@ Claude Code: 生成 HTML/CSS/JS 程式碼
 ```
 
 ### 3. 專案管理
+
 ```yaml
 儲存: 自動儲存到雲端
 分享: 生成分享連結
@@ -101,35 +107,37 @@ Claude Code: 生成 HTML/CSS/JS 程式碼
 ## 💻 技術實現方案
 
 ### 方案一：WebContainers (推薦)
+
 ```javascript
 // 使用 StackBlitz WebContainers API
-import { WebContainer } from '@webcontainer/api';
+import { WebContainer } from '@webcontainer/api'
 
 class SandboxManager {
   async createSandbox(userId) {
-    const container = await WebContainer.boot();
+    const container = await WebContainer.boot()
 
     // 掛載檔案系統
     await container.mount({
       'index.html': {
         file: {
-          contents: '<html>...</html>'
-        }
-      }
-    });
+          contents: '<html>...</html>',
+        },
+      },
+    })
 
     // 啟動開發伺服器
-    const process = await container.spawn('npm', ['run', 'dev']);
+    const process = await container.spawn('npm', ['run', 'dev'])
 
     return {
       containerId: container.id,
-      previewUrl: container.url
-    };
+      previewUrl: container.url,
+    }
   }
 }
 ```
 
 ### 方案二：Docker + Kubernetes
+
 ```yaml
 # Kubernetes Pod 定義
 apiVersion: v1
@@ -138,30 +146,31 @@ metadata:
   name: sandbox-{userId}
 spec:
   containers:
-  - name: sandbox
-    image: node:18-alpine
-    resources:
-      limits:
-        memory: "512Mi"
-        cpu: "0.5"
-    securityContext:
-      readOnlyRootFilesystem: true
-      allowPrivilegeEscalation: false
+    - name: sandbox
+      image: node:18-alpine
+      resources:
+        limits:
+          memory: '512Mi'
+          cpu: '0.5'
+      securityContext:
+        readOnlyRootFilesystem: true
+        allowPrivilegeEscalation: false
 ```
 
 ### 方案三：Serverless Functions + CDN
+
 ```typescript
 // 使用 Cloudflare Workers 或 Vercel Edge Functions
 export async function handleSandboxRequest(request: Request) {
-  const { code, language } = await request.json();
+  const { code, language } = await request.json()
 
   // 執行程式碼在隔離環境
   const result = await runInSandbox(code, {
     timeout: 5000,
-    memory: 128
-  });
+    memory: 128,
+  })
 
-  return new Response(result);
+  return new Response(result)
 }
 ```
 
@@ -170,6 +179,7 @@ export async function handleSandboxRequest(request: Request) {
 ## 🔐 安全策略
 
 ### 1. 資源隔離
+
 ```javascript
 const sandboxConfig = {
   // CPU 限制
@@ -187,12 +197,13 @@ const sandboxConfig = {
   // 網路限制
   network: {
     allowedDomains: ['apis.example.com'],
-    blockPrivateIPs: true
-  }
-};
+    blockPrivateIPs: true,
+  },
+}
 ```
 
 ### 2. 程式碼審查
+
 ```javascript
 class CodeValidator {
   static validate(code) {
@@ -201,49 +212,50 @@ class CodeValidator {
       'Function',
       'require("child_process")',
       'process.exit',
-      '__proto__'
-    ];
+      '__proto__',
+    ]
 
     for (const pattern of blacklist) {
       if (code.includes(pattern)) {
-        throw new SecurityError(`禁止使用: ${pattern}`);
+        throw new SecurityError(`禁止使用: ${pattern}`)
       }
     }
 
-    return true;
+    return true
   }
 }
 ```
 
 ### 3. 用戶權限管理
+
 ```typescript
 enum UserTier {
-  FREE = "free",      // 基礎功能
-  PRO = "pro",        // 進階功能
-  TEAM = "team"       // 團隊協作
+  FREE = 'free', // 基礎功能
+  PRO = 'pro', // 進階功能
+  TEAM = 'team', // 團隊協作
 }
 
 interface UserLimits {
-  maxProjects: number;
-  maxFileSize: number;
-  executionTime: number;
-  concurrentSandboxes: number;
+  maxProjects: number
+  maxFileSize: number
+  executionTime: number
+  concurrentSandboxes: number
 }
 
 const TIER_LIMITS: Record<UserTier, UserLimits> = {
   [UserTier.FREE]: {
     maxProjects: 3,
-    maxFileSize: 1024 * 100,  // 100KB
-    executionTime: 5000,       // 5秒
-    concurrentSandboxes: 1
+    maxFileSize: 1024 * 100, // 100KB
+    executionTime: 5000, // 5秒
+    concurrentSandboxes: 1,
   },
   [UserTier.PRO]: {
     maxProjects: 50,
     maxFileSize: 1024 * 1024, // 1MB
-    executionTime: 30000,      // 30秒
-    concurrentSandboxes: 5
-  }
-};
+    executionTime: 30000, // 30秒
+    concurrentSandboxes: 5,
+  },
+}
 ```
 
 ---
@@ -251,24 +263,25 @@ const TIER_LIMITS: Record<UserTier, UserLimits> = {
 ## 🛠️ 核心功能實現
 
 ### 1. 檔案系統管理
+
 ```typescript
 interface FileSystem {
-  createFile(path: string, content: string): Promise<void>;
-  readFile(path: string): Promise<string>;
-  updateFile(path: string, content: string): Promise<void>;
-  deleteFile(path: string): Promise<void>;
-  listFiles(): Promise<FileTree>;
+  createFile(path: string, content: string): Promise<void>
+  readFile(path: string): Promise<string>
+  updateFile(path: string, content: string): Promise<void>
+  deleteFile(path: string): Promise<void>
+  listFiles(): Promise<FileTree>
 }
 
 class VirtualFileSystem implements FileSystem {
-  private files: Map<string, string> = new Map();
+  private files: Map<string, string> = new Map()
 
   async createFile(path: string, content: string) {
     if (this.files.has(path)) {
-      throw new Error('檔案已存在');
+      throw new Error('檔案已存在')
     }
-    this.files.set(path, content);
-    this.notifyChange(path, 'create');
+    this.files.set(path, content)
+    this.notifyChange(path, 'create')
   }
 
   private notifyChange(path: string, action: string) {
@@ -276,41 +289,43 @@ class VirtualFileSystem implements FileSystem {
     this.websocket.send({
       type: 'file-change',
       path,
-      action
-    });
+      action,
+    })
   }
 }
 ```
 
 ### 2. 即時預覽系統
+
 ```typescript
 class PreviewManager {
-  private previewFrame: HTMLIFrameElement;
-  private bundler: Bundler;
+  private previewFrame: HTMLIFrameElement
+  private bundler: Bundler
 
   async updatePreview(files: FileMap) {
     // 打包程式碼
-    const bundle = await this.bundler.bundle(files);
+    const bundle = await this.bundler.bundle(files)
 
     // 創建 Blob URL
-    const blob = new Blob([bundle], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
+    const blob = new Blob([bundle], { type: 'text/html' })
+    const url = URL.createObjectURL(blob)
 
     // 更新 iframe
-    this.previewFrame.src = url;
+    this.previewFrame.src = url
   }
 
   async hotReload(changedFile: string) {
     // 支援熱重載
     this.previewFrame.contentWindow.postMessage({
       type: 'hot-reload',
-      file: changedFile
-    });
+      file: changedFile,
+    })
   }
 }
 ```
 
 ### 3. Claude Code 整合
+
 ```typescript
 class ClaudeCodeIntegration {
   async processUserMessage(message: string, context: SandboxContext) {
@@ -318,28 +333,28 @@ class ClaudeCodeIntegration {
     const response = await claudeAPI.complete({
       messages: [
         { role: 'system', content: this.getSystemPrompt(context) },
-        { role: 'user', content: message }
-      ]
-    });
+        { role: 'user', content: message },
+      ],
+    })
 
     // 解析回應並執行動作
-    const actions = this.parseActions(response);
+    const actions = this.parseActions(response)
 
     for (const action of actions) {
       switch (action.type) {
         case 'create-file':
-          await context.fs.createFile(action.path, action.content);
-          break;
+          await context.fs.createFile(action.path, action.content)
+          break
         case 'update-file':
-          await context.fs.updateFile(action.path, action.content);
-          break;
+          await context.fs.updateFile(action.path, action.content)
+          break
         case 'run-command':
-          await context.terminal.execute(action.command);
-          break;
+          await context.terminal.execute(action.command)
+          break
       }
     }
 
-    return response;
+    return response
   }
 }
 ```
@@ -396,6 +411,7 @@ CREATE TABLE chat_history (
 ## 🎨 前端介面設計
 
 ### UI 元件結構
+
 ```tsx
 // 主要佈局元件
 const SandboxLayout = () => {
@@ -428,11 +444,12 @@ const SandboxLayout = () => {
         </aside>
       </div>
     </div>
-  );
-};
+  )
+}
 ```
 
 ### 響應式設計
+
 ```css
 /* 桌面版 */
 @media (min-width: 1024px) {
@@ -472,6 +489,7 @@ const SandboxLayout = () => {
 ## 🚀 部署架構
 
 ### 推薦技術棧
+
 ```yaml
 前端:
   - Framework: Next.js 14
@@ -493,6 +511,7 @@ const SandboxLayout = () => {
 ```
 
 ### 擴展性設計
+
 ```
 用戶數量 -> 負載均衡器 -> API 伺服器集群
                             ↓
@@ -509,39 +528,40 @@ const SandboxLayout = () => {
 ## 📈 效能優化
 
 ### 1. 快取策略
+
 ```javascript
 // CDN 快取靜態資源
 const cacheControl = {
   'text/html': 'no-cache',
   'text/css': 'max-age=31536000',
   'application/javascript': 'max-age=31536000',
-  'image/*': 'max-age=31536000'
-};
+  'image/*': 'max-age=31536000',
+}
 
 // Redis 快取熱門專案
 const projectCache = new Redis({
   ttl: 3600, // 1小時
-  maxSize: '1GB'
-});
+  maxSize: '1GB',
+})
 ```
 
 ### 2. 程式碼分割
+
 ```javascript
 // 動態載入編輯器
-const MonacoEditor = dynamic(
-  () => import('@monaco-editor/react'),
-  { ssr: false }
-);
+const MonacoEditor = dynamic(() => import('@monaco-editor/react'), {
+  ssr: false,
+})
 
 // 按需載入語言支援
-const loadLanguageSupport = async (language) => {
-  switch(language) {
+const loadLanguageSupport = async language => {
+  switch (language) {
     case 'python':
-      return import('./languages/python');
+      return import('./languages/python')
     case 'javascript':
-      return import('./languages/javascript');
+      return import('./languages/javascript')
   }
-};
+}
 ```
 
 ---
@@ -549,24 +569,28 @@ const loadLanguageSupport = async (language) => {
 ## 🔄 開發路線圖
 
 ### Phase 1: MVP (2週)
+
 - [x] 基礎沙盒環境
 - [x] Claude Code 整合
 - [x] 簡單檔案管理
 - [x] 即時預覽
 
 ### Phase 2: 核心功能 (4週)
+
 - [ ] 用戶認證系統
 - [ ] 專案保存/載入
 - [ ] 多檔案支援
 - [ ] 終端機模擬
 
 ### Phase 3: 進階功能 (4週)
+
 - [ ] 協作編輯
 - [ ] Git 整合
 - [ ] NPM 套件支援
 - [ ] 部署功能
 
 ### Phase 4: 商業化 (4週)
+
 - [ ] 付費方案
 - [ ] 團隊功能
 - [ ] 分析儀表板
@@ -577,17 +601,20 @@ const loadLanguageSupport = async (language) => {
 ## 💰 商業模式
 
 ### 免費版
+
 - 3個專案
 - 基礎運算資源
 - 社群支援
 
 ### Pro版 ($9/月)
+
 - 無限專案
 - 進階運算資源
 - 私有專案
 - 優先支援
 
 ### Team版 ($29/月/人)
+
 - 團隊協作
 - 自訂網域
 - SSO 整合
@@ -598,16 +625,19 @@ const loadLanguageSupport = async (language) => {
 ## 📋 成功指標
 
 ### 技術指標
+
 - 沙盒啟動時間 < 3秒
 - 程式碼執行延遲 < 100ms
 - 系統可用性 > 99.9%
 
 ### 業務指標
+
 - 月活躍用戶 > 10,000
 - 付費轉換率 > 5%
 - 用戶留存率 > 40%
 
 ### 用戶體驗
+
 - NPS分數 > 50
 - 平均會話時長 > 15分鐘
 - 專案完成率 > 60%

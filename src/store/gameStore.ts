@@ -1,48 +1,48 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 
 export interface Achievement {
-  id: string;
-  name: string;
-  description: string;
-  icon: string;
-  unlocked: boolean;
-  unlockedAt?: Date;
+  id: string
+  name: string
+  description: string
+  icon: string
+  unlocked: boolean
+  unlockedAt?: Date
 }
 
 export interface GameProgress {
-  currentScene: string;
-  completedScenes: string[];
-  totalScore: number;
-  achievements: Achievement[];
-  codeSnippets: string[];
-  terminalHistory: string[];
+  currentScene: string
+  completedScenes: string[]
+  totalScore: number
+  achievements: Achievement[]
+  codeSnippets: string[]
+  terminalHistory: string[]
 }
 
 interface GameState {
-  isPlaying: boolean;
-  currentScene: string;
-  completedScenes: string[];
-  totalScore: number;
-  currentScore: number;
-  achievements: Achievement[];
-  codeSnippets: string[];
-  terminalHistory: string[];
-  playerName: string;
-  selectedOS: 'windows' | 'mac' | null;
-  waitingForAI: boolean;
-  aiResponseReceived: boolean;
+  isPlaying: boolean
+  currentScene: string
+  completedScenes: string[]
+  totalScore: number
+  currentScore: number
+  achievements: Achievement[]
+  codeSnippets: string[]
+  terminalHistory: string[]
+  playerName: string
+  selectedOS: 'windows' | 'mac' | null
+  waitingForAI: boolean
+  aiResponseReceived: boolean
 
-  startGame: (playerName: string) => void;
-  setOS: (os: 'windows' | 'mac') => void;
-  completeScene: (sceneId: string, score: number) => void;
-  unlockAchievement: (achievementId: string) => void;
-  addCodeSnippet: (snippet: string) => void;
-  addTerminalCommand: (command: string) => void;
-  navigateToScene: (sceneId: string) => void;
-  resetGame: () => void;
-  setWaitingForAI: (waiting: boolean) => void;
-  setAIResponseReceived: (received: boolean) => void;
+  startGame: (playerName: string) => void
+  setOS: (os: 'windows' | 'mac') => void
+  completeScene: (sceneId: string, score: number) => void
+  unlockAchievement: (achievementId: string) => void
+  addCodeSnippet: (snippet: string) => void
+  addTerminalCommand: (command: string) => void
+  navigateToScene: (sceneId: string) => void
+  resetGame: () => void
+  setWaitingForAI: (waiting: boolean) => void
+  setAIResponseReceived: (received: boolean) => void
 }
 
 const initialAchievements: Achievement[] = [
@@ -81,11 +81,11 @@ const initialAchievements: Achievement[] = [
     icon: '⚡',
     unlocked: false,
   },
-];
+]
 
 export const useGameStore = create<GameState>()(
   persist(
-    (set) => ({
+    set => ({
       isPlaying: false,
       currentScene: 'intro',
       completedScenes: [],
@@ -99,7 +99,7 @@ export const useGameStore = create<GameState>()(
       waitingForAI: false,
       aiResponseReceived: false,
 
-      startGame: (playerName) =>
+      startGame: playerName =>
         set({
           isPlaying: true,
           playerName,
@@ -110,36 +110,35 @@ export const useGameStore = create<GameState>()(
           terminalHistory: [`歡迎, ${playerName}! 讓我們開始學習 Git！`],
         }),
 
-      setOS: (os) => set({ selectedOS: os }),
+      setOS: os => set({ selectedOS: os }),
 
       completeScene: (sceneId, score) =>
-        set((state) => ({
+        set(state => ({
           completedScenes: [...state.completedScenes, sceneId],
           totalScore: state.totalScore + score,
           currentScore: score,
         })),
 
-      unlockAchievement: (achievementId) =>
-        set((state) => ({
-          achievements: state.achievements.map((achievement) =>
+      unlockAchievement: achievementId =>
+        set(state => ({
+          achievements: state.achievements.map(achievement =>
             achievement.id === achievementId
               ? { ...achievement, unlocked: true, unlockedAt: new Date() }
               : achievement
           ),
         })),
 
-      addCodeSnippet: (snippet) =>
-        set((state) => ({
+      addCodeSnippet: snippet =>
+        set(state => ({
           codeSnippets: [...state.codeSnippets, snippet],
         })),
 
-      addTerminalCommand: (command) =>
-        set((state) => ({
+      addTerminalCommand: command =>
+        set(state => ({
           terminalHistory: [...state.terminalHistory, command],
         })),
 
-      navigateToScene: (sceneId) =>
-        set({ currentScene: sceneId }),
+      navigateToScene: sceneId => set({ currentScene: sceneId }),
 
       resetGame: () =>
         set({
@@ -155,14 +154,13 @@ export const useGameStore = create<GameState>()(
           aiResponseReceived: false,
         }),
 
-      setWaitingForAI: (waiting) =>
+      setWaitingForAI: waiting =>
         set({ waitingForAI: waiting, aiResponseReceived: false }),
 
-      setAIResponseReceived: (received) =>
-        set({ aiResponseReceived: received }),
+      setAIResponseReceived: received => set({ aiResponseReceived: received }),
     }),
     {
       name: 'claude-code-adventure',
     }
   )
-);
+)

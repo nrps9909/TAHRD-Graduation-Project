@@ -2,9 +2,10 @@
 export const APP_CONFIG = {
   // API 端點
   api: {
-    baseUrl: process.env.NODE_ENV === 'production'
-      ? 'https://api.ccadventure.com'
-      : '',
+    baseUrl:
+      process.env.NODE_ENV === 'production'
+        ? 'https://api.ccadventure.com'
+        : '',
     endpoints: {
       auth: {
         login: '/api/auth/login',
@@ -48,23 +49,23 @@ export const APP_CONFIG = {
     // 不同頁面的貓咪大小配置（基礎值，會根據螢幕動態調整）
     sizes: {
       intro: {
-        width: 280,  // 降低基礎寬度
-        height: 280,  // 降低基礎高度
-        scale: 0.12,  // 降低基礎縮放
+        width: 280, // 降低基礎寬度
+        height: 280, // 降低基礎高度
+        scale: 0.12, // 降低基礎縮放
       },
       game: {
-        width: 200,  // 更小的遊戲頁面貓咪
+        width: 200, // 更小的遊戲頁面貓咪
         height: 200,
         scale: 0.08,
       },
       tutorial: {
         width: 240,
         height: 240,
-        scale: 0.10,
+        scale: 0.1,
       },
     },
     // 默認配置（用於舊代碼兼容）
-    defaultScale: 0.10,
+    defaultScale: 0.1,
     defaultWidth: 240,
     defaultHeight: 240,
   },
@@ -78,6 +79,6 @@ export const APP_CONFIG = {
     },
     easing: 'easeInOut',
   },
-} as const;
+} as const
 
-export type AppConfig = typeof APP_CONFIG;
+export type AppConfig = typeof APP_CONFIG

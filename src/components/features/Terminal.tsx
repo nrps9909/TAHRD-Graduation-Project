@@ -1,31 +1,32 @@
-import { useState, useRef, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { useGameStore } from '../store/gameStore';
+import { useState, useRef, useEffect } from 'react'
+import { motion } from 'framer-motion'
+import { useGameStore } from '../store/gameStore'
 
 const Terminal = () => {
-  const [command, setCommand] = useState('');
-  const [output, setOutput] = useState<string[]>([]);
-  const [history, setHistory] = useState<string[]>([]);
-  const [historyIndex, setHistoryIndex] = useState(-1);
-  const terminalRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [command, setCommand] = useState('')
+  const [output, setOutput] = useState<string[]>([])
+  const [history, setHistory] = useState<string[]>([])
+  const [historyIndex, setHistoryIndex] = useState(-1)
+  const terminalRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
-  const { addTerminalCommand, unlockAchievement, terminalHistory } = useGameStore();
+  const { addTerminalCommand, unlockAchievement, terminalHistory } =
+    useGameStore()
 
   useEffect(() => {
-    setOutput(terminalHistory);
-  }, [terminalHistory]);
+    setOutput(terminalHistory)
+  }, [terminalHistory])
 
   useEffect(() => {
     if (terminalRef.current) {
-      terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
+      terminalRef.current.scrollTop = terminalRef.current.scrollHeight
     }
-  }, [output]);
+  }, [output])
 
   const simulateCommand = (cmd: string): string[] => {
-    const parts = cmd.trim().split(' ');
-    const command = parts[0];
-    const args = parts.slice(1);
+    const parts = cmd.trim().split(' ')
+    const command = parts[0]
+    const args = parts.slice(1)
 
     switch (command) {
       case 'help':
@@ -39,10 +40,10 @@ const Terminal = () => {
           '  bash <cmd>   - Run a bash command',
           '  clear        - Clear terminal',
           '  exit         - Exit terminal',
-        ];
+        ]
 
       case 'ls':
-        unlockAchievement('first-command');
+        unlockAchievement('first-command')
         return [
           'main.py',
           'utils.py',
@@ -50,10 +51,10 @@ const Terminal = () => {
           'requirements.txt',
           'test/',
           'src/',
-        ];
+        ]
 
       case 'cat':
-        if (args.length === 0) return ['Usage: cat <filename>'];
+        if (args.length === 0) return ['Usage: cat <filename>']
         if (args[0] === 'README.md') {
           return [
             '# Claude Code Adventure',
@@ -66,71 +67,79 @@ const Terminal = () => {
             '3. Unlock achievements',
             '',
             'Happy coding!',
-          ];
+          ]
         }
-        return [`File not found: ${args[0]}`];
+        return [`File not found: ${args[0]}`]
 
       case 'grep':
-        if (args.length === 0) return ['Usage: grep <pattern>'];
+        if (args.length === 0) return ['Usage: grep <pattern>']
         return [
           `Searching for "${args.join(' ')}"...`,
           `main.py:42: def ${args[0]}():`,
           `utils.py:15: # ${args[0]} implementation`,
           `Found 2 matches`,
-        ];
+        ]
 
       case 'edit':
-        if (args.length === 0) return ['Usage: edit <filename>'];
-        return [`Opening ${args[0]} in editor...`, 'Editor mode activated. Press ESC to exit.'];
+        if (args.length === 0) return ['Usage: edit <filename>']
+        return [
+          `Opening ${args[0]} in editor...`,
+          'Editor mode activated. Press ESC to exit.',
+        ]
 
       case 'bash':
-        if (args.length === 0) return ['Usage: bash <command>'];
-        return [`Executing: ${args.join(' ')}`, '✓ Command executed successfully'];
+        if (args.length === 0) return ['Usage: bash <command>']
+        return [
+          `Executing: ${args.join(' ')}`,
+          '✓ Command executed successfully',
+        ]
 
       case 'clear':
-        setOutput([]);
-        return [];
+        setOutput([])
+        return []
 
       case 'exit':
-        return ['Goodbye!'];
+        return ['Goodbye!']
 
       default:
-        return [`Command not found: ${command}. Type 'help' for available commands.`];
+        return [
+          `Command not found: ${command}. Type 'help' for available commands.`,
+        ]
     }
-  };
+  }
 
   const handleCommand = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!command.trim()) return;
+    e.preventDefault()
+    if (!command.trim()) return
 
-    const newOutput = [...output, `$ ${command}`, ...simulateCommand(command)];
-    setOutput(newOutput);
-    setHistory([...history, command]);
-    addTerminalCommand(command);
-    setCommand('');
-    setHistoryIndex(-1);
-  };
+    const newOutput = [...output, `$ ${command}`, ...simulateCommand(command)]
+    setOutput(newOutput)
+    setHistory([...history, command])
+    addTerminalCommand(command)
+    setCommand('')
+    setHistoryIndex(-1)
+  }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowUp') {
-      e.preventDefault();
+      e.preventDefault()
       if (historyIndex < history.length - 1) {
-        const newIndex = historyIndex + 1;
-        setHistoryIndex(newIndex);
-        setCommand(history[history.length - 1 - newIndex]);
+        const newIndex = historyIndex + 1
+        setHistoryIndex(newIndex)
+        setCommand(history[history.length - 1 - newIndex])
       }
     } else if (e.key === 'ArrowDown') {
-      e.preventDefault();
+      e.preventDefault()
       if (historyIndex > 0) {
-        const newIndex = historyIndex - 1;
-        setHistoryIndex(newIndex);
-        setCommand(history[history.length - 1 - newIndex]);
+        const newIndex = historyIndex - 1
+        setHistoryIndex(newIndex)
+        setCommand(history[history.length - 1 - newIndex])
       } else if (historyIndex === 0) {
-        setHistoryIndex(-1);
-        setCommand('');
+        setHistoryIndex(-1)
+        setCommand('')
       }
     }
-  };
+  }
 
   return (
     <div className="h-full flex flex-col bg-terminal-bg">
@@ -156,7 +165,11 @@ const Terminal = () => {
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.1 }}
-            className={line.startsWith('$') ? 'text-text-primary font-semibold' : 'text-terminal-text'}
+            className={
+              line.startsWith('$')
+                ? 'text-text-primary font-semibold'
+                : 'text-terminal-text'
+            }
           >
             {line}
           </motion.div>
@@ -168,17 +181,19 @@ const Terminal = () => {
             ref={inputRef}
             type="text"
             value={command}
-            onChange={(e) => setCommand(e.target.value)}
+            onChange={e => setCommand(e.target.value)}
             onKeyDown={handleKeyDown}
             className="flex-1 bg-transparent outline-none text-terminal-text"
             placeholder="Enter command..."
             autoFocus
           />
-          <span className="animate-blink text-text-primary font-semibold">█</span>
+          <span className="animate-blink text-text-primary font-semibold">
+            █
+          </span>
         </form>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default Terminal;
+export default Terminal

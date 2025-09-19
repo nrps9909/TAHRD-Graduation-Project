@@ -1,38 +1,38 @@
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Check, Copy, Terminal, AlertCircle } from 'lucide-react';
+import { useState } from 'react'
+import { motion } from 'framer-motion'
+import { Check, Copy, Terminal, AlertCircle } from 'lucide-react'
 
 interface WSLSetupGuideProps {
   content: {
-    instructions: string[];
+    instructions: string[]
     commands: {
-      title: string;
-      steps: string[];
-      description: string;
-    }[];
-    tips: string[];
-  };
+      title: string
+      steps: string[]
+      description: string
+    }[]
+    tips: string[]
+  }
 }
 
 const WSLSetupGuide = ({ content }: WSLSetupGuideProps) => {
-  const [copiedIndex, setCopiedIndex] = useState<string | null>(null);
-  const [completedSteps, setCompletedSteps] = useState<Set<string>>(new Set());
+  const [copiedIndex, setCopiedIndex] = useState<string | null>(null)
+  const [completedSteps, setCompletedSteps] = useState<Set<string>>(new Set())
 
   const copyToClipboard = (text: string, index: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedIndex(index);
-    setTimeout(() => setCopiedIndex(null), 2000);
-  };
+    navigator.clipboard.writeText(text)
+    setCopiedIndex(index)
+    setTimeout(() => setCopiedIndex(null), 2000)
+  }
 
   const toggleStep = (stepId: string) => {
-    const newCompleted = new Set(completedSteps);
+    const newCompleted = new Set(completedSteps)
     if (newCompleted.has(stepId)) {
-      newCompleted.delete(stepId);
+      newCompleted.delete(stepId)
     } else {
-      newCompleted.add(stepId);
+      newCompleted.add(stepId)
     }
-    setCompletedSteps(newCompleted);
-  };
+    setCompletedSteps(newCompleted)
+  }
 
   return (
     <div className="space-y-6">
@@ -91,7 +91,7 @@ const WSLSetupGuide = ({ content }: WSLSetupGuideProps) => {
 
           <div className="space-y-2">
             {commandGroup.steps.map((step, stepIndex) => {
-              const uniqueKey = `${groupIndex}-${stepIndex}`;
+              const uniqueKey = `${groupIndex}-${stepIndex}`
               return (
                 <div
                   key={stepIndex}
@@ -112,7 +112,7 @@ const WSLSetupGuide = ({ content }: WSLSetupGuideProps) => {
                     )}
                   </button>
                 </div>
-              );
+              )
             })}
           </div>
         </motion.div>
@@ -161,7 +161,7 @@ const WSLSetupGuide = ({ content }: WSLSetupGuideProps) => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default WSLSetupGuide;
+export default WSLSetupGuide

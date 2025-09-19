@@ -1,18 +1,18 @@
-import React from 'react';
-import { useGameStore } from '../store/gameStore';
-import { Info } from 'lucide-react';
+import React from 'react'
+import { useGameStore } from '../store/gameStore'
+import { Info } from 'lucide-react'
 
 interface OSCommand {
-  windows?: string;
-  mac?: string;
-  description?: string;
+  windows?: string
+  mac?: string
+  description?: string
 }
 
 interface OSAwareContentProps {
-  command?: OSCommand;
-  windowsContent?: React.ReactNode;
-  macContent?: React.ReactNode;
-  commonContent?: React.ReactNode;
+  command?: OSCommand
+  windowsContent?: React.ReactNode
+  macContent?: React.ReactNode
+  commonContent?: React.ReactNode
 }
 
 export const OSAwareContent: React.FC<OSAwareContentProps> = ({
@@ -21,12 +21,12 @@ export const OSAwareContent: React.FC<OSAwareContentProps> = ({
   macContent,
   commonContent,
 }) => {
-  const { selectedOS } = useGameStore();
+  const { selectedOS } = useGameStore()
 
   if (command) {
-    const cmdText = selectedOS === 'windows' ? command.windows : command.mac;
+    const cmdText = selectedOS === 'windows' ? command.windows : command.mac
 
-    if (!cmdText) return null;
+    if (!cmdText) return null
 
     return (
       <div className="bg-gray-900 p-3 rounded font-mono text-sm">
@@ -39,28 +39,30 @@ export const OSAwareContent: React.FC<OSAwareContentProps> = ({
           )}
         </div>
         {command.description && (
-          <p className="text-xs text-gray-500 mt-2 font-cute">{command.description}</p>
+          <p className="text-xs text-gray-500 mt-2 font-cute">
+            {command.description}
+          </p>
         )}
       </div>
-    );
+    )
   }
 
   if (selectedOS === 'windows' && windowsContent) {
-    return <>{windowsContent}</>;
+    return <>{windowsContent}</>
   }
 
   if (selectedOS === 'mac' && macContent) {
-    return <>{macContent}</>;
+    return <>{macContent}</>
   }
 
-  return <>{commonContent}</>;
-};
+  return <>{commonContent}</>
+}
 
 // 輔助函數：根據 OS 返回對應的指令
 export const getOSCommand = (windows: string, mac: string): OSCommand => ({
   windows,
   mac,
-});
+})
 
 // 常用指令集
 export const commonCommands = {
@@ -68,14 +70,8 @@ export const commonCommands = {
     'winget install OpenJS.NodeJS.LTS',
     'brew install node'
   ),
-  installGit: getOSCommand(
-    'winget install Git.Git',
-    'brew install git'
-  ),
-  openEditor: getOSCommand(
-    'cursor .',
-    'cursor .'
-  ),
+  installGit: getOSCommand('winget install Git.Git', 'brew install git'),
+  openEditor: getOSCommand('cursor .', 'cursor .'),
   createProject: getOSCommand(
     'mkdir my-project && cd my-project',
     'mkdir my-project && cd my-project'
@@ -84,11 +80,11 @@ export const commonCommands = {
     'node --version && npm --version',
     'node --version && npm --version'
   ),
-};
+}
 
 // OS 特定內容組件
 export const OSSpecificTips: React.FC = () => {
-  const { selectedOS } = useGameStore();
+  const { selectedOS } = useGameStore()
 
   const tips = {
     windows: [
@@ -103,9 +99,9 @@ export const OSSpecificTips: React.FC = () => {
       '確保 Xcode Command Line Tools 已安裝',
       '使用 .zshrc 或 .bash_profile 設定環境變數',
     ],
-  };
+  }
 
-  const currentTips = selectedOS === 'windows' ? tips.windows : tips.mac;
+  const currentTips = selectedOS === 'windows' ? tips.windows : tips.mac
 
   return (
     <div className="terminal-window bg-opacity-50">
@@ -123,24 +119,33 @@ export const OSSpecificTips: React.FC = () => {
         ))}
       </ul>
     </div>
-  );
-};
+  )
+}
 
 // 安裝指令組件
 export const InstallCommands: React.FC = () => {
-  const { selectedOS } = useGameStore();
+  const { selectedOS } = useGameStore()
 
-  const commands = selectedOS === 'windows' ? [
-    { cmd: 'wsl --install', desc: '安裝 WSL2' },
-    { cmd: 'winget install Microsoft.WindowsTerminal', desc: '安裝 Windows Terminal' },
-    { cmd: 'winget install Cursor.Cursor', desc: '安裝 Cursor 編輯器' },
-    { cmd: 'winget install OpenJS.NodeJS.LTS', desc: '安裝 Node.js' },
-  ] : [
-    { cmd: '/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"', desc: '安裝 Homebrew' },
-    { cmd: 'brew install --cask cursor', desc: '安裝 Cursor 編輯器' },
-    { cmd: 'brew install node', desc: '安裝 Node.js' },
-    { cmd: 'brew install --cask iterm2', desc: '安裝 iTerm2' },
-  ];
+  const commands =
+    selectedOS === 'windows'
+      ? [
+          { cmd: 'wsl --install', desc: '安裝 WSL2' },
+          {
+            cmd: 'winget install Microsoft.WindowsTerminal',
+            desc: '安裝 Windows Terminal',
+          },
+          { cmd: 'winget install Cursor.Cursor', desc: '安裝 Cursor 編輯器' },
+          { cmd: 'winget install OpenJS.NodeJS.LTS', desc: '安裝 Node.js' },
+        ]
+      : [
+          {
+            cmd: '/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"',
+            desc: '安裝 Homebrew',
+          },
+          { cmd: 'brew install --cask cursor', desc: '安裝 Cursor 編輯器' },
+          { cmd: 'brew install node', desc: '安裝 Node.js' },
+          { cmd: 'brew install --cask iterm2', desc: '安裝 iTerm2' },
+        ]
 
   return (
     <div className="space-y-3">
@@ -156,5 +161,5 @@ export const InstallCommands: React.FC = () => {
         </div>
       ))}
     </div>
-  );
-};
+  )
+}

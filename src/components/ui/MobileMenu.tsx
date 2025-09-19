@@ -1,43 +1,43 @@
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, Home, BookOpen, Trophy, Settings } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { useGameStore } from '../store/gameStore';
+import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Menu, X, Home, BookOpen, Trophy, Settings } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { useGameStore } from '../store/gameStore'
 
 const MobileMenu = () => {
-  const [isOpen, setIsOpen] = useState(false);
-  const navigate = useNavigate();
-  const { totalScore, completedScenes } = useGameStore();
+  const [isOpen, setIsOpen] = useState(false)
+  const navigate = useNavigate()
+  const { totalScore, completedScenes } = useGameStore()
 
   const menuItems = [
     { icon: Home, label: '首頁', path: '/' },
     { icon: BookOpen, label: '課程', path: '/game' },
     { icon: Trophy, label: '成就', action: 'achievements' },
     { icon: Settings, label: '設定', action: 'settings' },
-  ];
+  ]
 
   const handleItemClick = (item: any) => {
     if (item.path) {
-      navigate(item.path);
+      navigate(item.path)
     } else if (item.action === 'achievements') {
       // 顯示成就
-      showAchievements();
+      showAchievements()
     } else if (item.action === 'settings') {
       // 顯示設定
-      showSettings();
+      showSettings()
     }
-    setIsOpen(false);
-  };
+    setIsOpen(false)
+  }
 
   const showAchievements = () => {
     // TODO: 實作成就顯示
-    alert(`總分：${totalScore}\n完成章節：${completedScenes.length}`);
-  };
+    alert(`總分：${totalScore}\n完成章節：${completedScenes.length}`)
+  }
 
   const showSettings = () => {
     // TODO: 實作設定頁面
-    alert('設定功能開發中...');
-  };
+    alert('設定功能開發中...')
+  }
 
   return (
     <>
@@ -123,10 +123,14 @@ const MobileMenu = () => {
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600 chinese-text">總分</span>
-                      <span className="font-bold text-cat-purple">{totalScore}</span>
+                      <span className="font-bold text-cat-purple">
+                        {totalScore}
+                      </span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-600 chinese-text">完成章節</span>
+                      <span className="text-gray-600 chinese-text">
+                        完成章節
+                      </span>
                       <span className="font-bold text-cat-purple">
                         {completedScenes.length} / 9
                       </span>
@@ -156,7 +160,7 @@ const MobileMenu = () => {
         )}
       </AnimatePresence>
     </>
-  );
-};
+  )
+}
 
-export default MobileMenu;
+export default MobileMenu

@@ -153,8 +153,8 @@ Processes import statements in GEMINI.md content.
 
 ```typescript
 interface ProcessImportsResult {
-  content: string; // The processed content with imports resolved
-  importTree: MemoryFile; // Tree structure showing the import hierarchy
+  content: string // The processed content with imports resolved
+  importTree: MemoryFile // Tree structure showing the import hierarchy
 }
 ```
 
@@ -162,8 +162,8 @@ interface ProcessImportsResult {
 
 ```typescript
 interface MemoryFile {
-  path: string; // The file path
-  imports?: MemoryFile[]; // Direct imports, in the order they were imported
+  path: string // The file path
+  imports?: MemoryFile[] // Direct imports, in the order they were imported
 }
 ```
 
@@ -211,5 +211,5 @@ Finds the project root by searching for a `.git` directory upwards from the give
 Enable debug mode to see detailed logging of the import process:
 
 ```typescript
-const result = await processImports(content, basePath, true);
+const result = await processImports(content, basePath, true)
 ```

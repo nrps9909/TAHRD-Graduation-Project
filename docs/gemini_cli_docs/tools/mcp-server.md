@@ -404,7 +404,7 @@ Each `DiscoveredMCPTool` implements sophisticated confirmation logic:
 
 ```typescript
 if (this.trust) {
-  return false; // No confirmation needed
+  return false // No confirmation needed
 }
 ```
 
@@ -437,7 +437,7 @@ Upon confirmation (or trust bypass):
        name: this.serverToolName, // Original server tool name
        args: params,
      },
-   ];
+   ]
    ```
 
 3. **Response processing:** Results are formatted for both LLM context and user display
@@ -654,14 +654,14 @@ In addition to tools, MCP servers can expose predefined prompts that can be exec
 Here's a small example of a stdio MCP server that defines prompts:
 
 ```ts
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { z } from 'zod';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
+import { z } from 'zod'
 
 const server = new McpServer({
   name: 'prompt-server',
   version: '1.0.0',
-});
+})
 
 server.registerPrompt(
   'poem-writer',
@@ -680,11 +680,11 @@ server.registerPrompt(
         },
       },
     ],
-  }),
-);
+  })
+)
 
-const transport = new StdioServerTransport();
-await server.connect(transport);
+const transport = new StdioServerTransport()
+await server.connect(transport)
 ```
 
 This can be included in `settings.json` under `mcpServers` with:
