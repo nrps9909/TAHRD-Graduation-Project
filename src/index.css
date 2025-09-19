@@ -1,0 +1,46 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-retro-bg text-retro-green font-mono;
+  }
+}
+
+@layer components {
+  .retro-button {
+    @apply px-6 py-3 bg-transparent border-2 border-retro-green text-retro-green
+           hover:bg-retro-green hover:text-retro-bg transition-all duration-200
+           font-pixel text-sm uppercase tracking-wider;
+    box-shadow: 4px 4px 0px rgba(0, 255, 0, 0.3);
+  }
+
+  .retro-button:active {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0px rgba(0, 255, 0, 0.3);
+  }
+
+  .terminal-window {
+    @apply bg-terminal-bg border-2 border-retro-green p-4 rounded-sm;
+    box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
+  }
+
+  .typing-effect {
+    overflow: hidden;
+    white-space: nowrap;
+    margin: 0 auto;
+    animation: typing 3s steps(40, end), blink-caret 0.75s step-end infinite;
+  }
+
+  @keyframes typing {
+    from { width: 0 }
+    to { width: 100% }
+  }
+
+  @keyframes blink-caret {
+    from, to { border-color: transparent }
+    50% { border-color: #00ff00 }
+  }
+}
