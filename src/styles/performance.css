@@ -1,0 +1,161 @@
+/* Performance optimizations for animations */
+
+/* Enable GPU acceleration for frequently animated elements */
+.gpu-accelerated {
+  transform: translateZ(0);
+  will-change: transform;
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+/* Optimize smooth scrolling */
+.smooth-scroll {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Optimize text rendering */
+.optimize-text {
+  text-rendering: optimizeSpeed;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Disable animations for reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Optimize image rendering */
+.optimize-image {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  will-change: transform;
+}
+
+/* Optimize hover effects */
+.hover-optimize {
+  transition: transform 0.2s ease, opacity 0.2s ease;
+  will-change: transform, opacity;
+}
+
+.hover-optimize:hover {
+  transform: translateY(-2px);
+}
+
+/* Optimize typing animation */
+.typing-cursor {
+  animation: blink 1s infinite;
+  will-change: opacity;
+}
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+/* Optimize loading animations */
+.loading-spinner {
+  animation: spin 1s linear infinite;
+  will-change: transform;
+  transform-origin: center;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Optimize card animations */
+.card-animate {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, box-shadow;
+}
+
+/* Optimize fade animations */
+.fade-in {
+  animation: fadeIn 0.3s ease-out;
+  will-change: opacity;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Optimize slide animations */
+.slide-up {
+  animation: slideUp 0.3s ease-out;
+  will-change: transform, opacity;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Virtual scroll container */
+.virtual-scroll {
+  contain: layout style;
+  will-change: scroll-position;
+}
+
+.virtual-scroll-item {
+  contain: layout style paint;
+}
+
+/* Optimize button interactions */
+.button-optimize {
+  transform: translateZ(0);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  will-change: transform;
+}
+
+.button-optimize:active {
+  transform: translateZ(0) scale(0.98);
+}
+
+/* Optimize modal backdrops */
+.modal-backdrop {
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  will-change: opacity;
+}
+
+/* Optimize code editor */
+.code-editor {
+  contain: layout style;
+  will-change: contents;
+}
+
+/* Optimize terminal scrolling */
+.terminal-scroll {
+  contain: layout style;
+  overflow-anchor: none;
+  will-change: scroll-position;
+}
+
+/* Lazy load images */
+img.lazy {
+  loading: lazy;
+}
+
+/* Optimize Live2D canvas */
+.live2d-canvas {
+  transform: translateZ(0);
+  will-change: transform;
+  image-rendering: optimizeSpeed;
+}

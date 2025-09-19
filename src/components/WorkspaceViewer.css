@@ -1,0 +1,143 @@
+/* Cute animations for WorkspaceViewer */
+
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes bounce-in {
+  0% {
+    transform: scale(0.3) rotate(-10deg);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.05) rotate(5deg);
+  }
+  70% {
+    transform: scale(0.9) rotate(-2deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+@keyframes pulse-cute {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(236, 72, 153, 0.7);
+  }
+  70% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 10px rgba(236, 72, 153, 0);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(236, 72, 153, 0);
+  }
+}
+
+@keyframes wiggle {
+  0% { transform: rotate(0deg); }
+  25% { transform: rotate(-3deg); }
+  50% { transform: rotate(3deg); }
+  75% { transform: rotate(-3deg); }
+  100% { transform: rotate(0deg); }
+}
+
+@keyframes sparkle {
+  0%, 100% {
+    opacity: 0;
+    transform: scale(0) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1) rotate(180deg);
+  }
+}
+
+.workspace-viewer {
+  animation: bounce-in 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.floating-button {
+  animation: pulse-cute 2s infinite;
+}
+
+.floating-button:hover {
+  animation: wiggle 0.5s ease-in-out;
+}
+
+.file-icon {
+  transition: transform 0.2s ease;
+}
+
+.file-icon:hover {
+  transform: scale(1.1) rotate(5deg);
+}
+
+.tab-active {
+  position: relative;
+}
+
+.tab-active::before {
+  content: '✨';
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  animation: sparkle 1.5s infinite;
+  pointer-events: none;
+}
+
+.cute-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.cute-scrollbar::-webkit-scrollbar-track {
+  background: linear-gradient(to right, #fce7f3, #ede9fe);
+  border-radius: 10px;
+}
+
+.cute-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(to right, #ec4899, #8b5cf6);
+  border-radius: 10px;
+}
+
+.cute-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(to right, #db2777, #7c3aed);
+}
+
+/* CodeEditor specific styles for perfect alignment */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Ensure perfect line alignment */
+.code-line {
+  height: 21px;
+  line-height: 21px;
+  display: block;
+}
+
+/* Remove default margin/padding that can cause misalignment */
+.code-editor * {
+  box-sizing: border-box;
+}
+
+/* Smooth scrolling for all code editor elements */
+.code-editor-scroll {
+  scroll-behavior: smooth;
+}

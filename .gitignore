@@ -1,12 +1,19 @@
-# Dependencies
-node_modules/
+# Logs
+logs
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Dependencies
+node_modules
 
 # Build outputs
-dist/
-build/
+dist
+dist-ssr
+build
 *.local
 
 # Environment variables
@@ -27,20 +34,42 @@ workspace/
 
 # Cache
 .cache
+.parcel-cache
 .npm
 .eslintcache
 *.tsbuildinfo
 
-# OS generated files
+# Runtime
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage
+coverage/
+*.lcov
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
 .DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS generated files
 .DS_Store?
 ._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
-*:Zone.Identifier
 
-# Logs
-*.log
-logs/
+# Windows Zone Identifier files
+*:Zone.Identifier
 
 # Temporary
 tmp/

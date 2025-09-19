@@ -24,18 +24,25 @@ interface GameState {
   currentScene: string;
   completedScenes: string[];
   totalScore: number;
+  currentScore: number;
   achievements: Achievement[];
   codeSnippets: string[];
   terminalHistory: string[];
   playerName: string;
+  selectedOS: 'windows' | 'mac' | null;
+  waitingForAI: boolean;
+  aiResponseReceived: boolean;
 
   startGame: (playerName: string) => void;
+  setOS: (os: 'windows' | 'mac') => void;
   completeScene: (sceneId: string, score: number) => void;
   unlockAchievement: (achievementId: string) => void;
   addCodeSnippet: (snippet: string) => void;
   addTerminalCommand: (command: string) => void;
   navigateToScene: (sceneId: string) => void;
   resetGame: () => void;
+  setWaitingForAI: (waiting: boolean) => void;
+  setAIResponseReceived: (received: boolean) => void;
 }
 
 const initialAchievements: Achievement[] = [
@@ -83,10 +90,14 @@ export const useGameStore = create<GameState>()(
       currentScene: 'intro',
       completedScenes: [],
       totalScore: 0,
+      currentScore: 0,
       achievements: initialAchievements,
       codeSnippets: [],
       terminalHistory: [],
       playerName: '',
+      selectedOS: null,
+      waitingForAI: false,
+      aiResponseReceived: false,
 
       startGame: (playerName) =>
         set({
@@ -95,13 +106,17 @@ export const useGameStore = create<GameState>()(
           currentScene: 'tutorial-1',
           completedScenes: [],
           totalScore: 0,
-          terminalHistory: [`Welcome, ${playerName}! Let's begin your Claude Code adventure.`],
+          currentScore: 0,
+          terminalHistory: [`歡迎, ${playerName}! 讓我們開始學習 Git！`],
         }),
+
+      setOS: (os) => set({ selectedOS: os }),
 
       completeScene: (sceneId, score) =>
         set((state) => ({
           completedScenes: [...state.completedScenes, sceneId],
           totalScore: state.totalScore + score,
+          currentScore: score,
         })),
 
       unlockAchievement: (achievementId) =>
@@ -136,7 +151,15 @@ export const useGameStore = create<GameState>()(
           codeSnippets: [],
           terminalHistory: [],
           playerName: '',
+          waitingForAI: false,
+          aiResponseReceived: false,
         }),
+
+      setWaitingForAI: (waiting) =>
+        set({ waitingForAI: waiting, aiResponseReceived: false }),
+
+      setAIResponseReceived: (received) =>
+        set({ aiResponseReceived: received }),
     }),
     {
       name: 'claude-code-adventure',

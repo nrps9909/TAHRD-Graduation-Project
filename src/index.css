@@ -1,30 +1,131 @@
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Kalam:wght@400;700&family=Comfortaa:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700;900&display=swap');
+@import url('https://cdn.jsdelivr.net/gh/justfont/open-huninn-font@latest/font/jf-openhuninn-2.1.css');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+@layer utilities {
+  @keyframes pulse-slow {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.7;
+    }
+  }
+
+  .animate-pulse-slow {
+    animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+}
+
 @layer base {
+  * {
+    font-family: 'jf open 粉圓', 'Comfortaa', 'Noto Sans TC', sans-serif !important;
+  }
+
+  html, body {
+    height: 100%;
+    overflow: auto;
+  }
+
   body {
-    @apply bg-retro-bg text-retro-green font-mono;
+    color: #8B4B7C;
+    background: linear-gradient(135deg,
+      #FFE4E9 0%,
+      #FFE7CC 25%,
+      #FFEAA7 50%,
+      #FFCFD9 75%,
+      #F8D7DA 100%);
+    font-family: 'jf open 粉圓', 'Comfortaa', 'Noto Sans TC', sans-serif !important;
+    font-weight: 500;
+    position: relative;
+  }
+
+  #root {
+    min-height: 100%;
+    overflow: visible;
+  }
+
+  /* Force all text elements to use cute fonts */
+  h1, h2, h3, h4, h5, h6,
+  p, span, div, a, button,
+  input, textarea, select,
+  label, li, td, th, strong, b, i, em,
+  blockquote, cite, small, mark {
+    font-family: 'jf open 粉圓', 'Comfortaa', 'Noto Sans TC', sans-serif !important;
+  }
+
+  /* Ensure button text uses cute fonts */
+  button *, button span, button div {
+    font-family: 'jf open 粉圓', 'Comfortaa', 'Noto Sans TC', sans-serif !important;
+  }
+
+  /* Special override for elements without classes */
+  div:not([class]),
+  span:not([class]),
+  p:not([class]) {
+    font-family: 'jf open 粉圓', 'Comfortaa', 'Noto Sans TC', sans-serif !important;
+    color: #8B4B7C;
+    font-weight: 500;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background:
+      radial-gradient(ellipse at top left, rgba(255, 207, 217, 0.3) 0%, transparent 50%),
+      radial-gradient(ellipse at bottom right, rgba(255, 234, 167, 0.2) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
   }
 }
 
 @layer components {
-  .retro-button {
-    @apply px-6 py-3 bg-transparent border-2 border-retro-green text-retro-green
-           hover:bg-retro-green hover:text-retro-bg transition-all duration-200
-           font-pixel text-sm uppercase tracking-wider;
-    box-shadow: 4px 4px 0px rgba(0, 255, 0, 0.3);
+  .cat-button {
+    @apply px-6 py-3 transition-all duration-300
+           font-semibold rounded-full shadow-lg hover:shadow-xl transform hover:scale-105;
+    background: linear-gradient(135deg, #F8BBD9, #FFF9C4);
+    color: #AD1457;
+    box-shadow:
+      0 4px 15px rgba(248, 187, 217, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2);
   }
 
-  .retro-button:active {
-    transform: translate(2px, 2px);
-    box-shadow: 2px 2px 0px rgba(0, 255, 0, 0.3);
+  .cat-button:hover {
+    background: linear-gradient(135deg, #FFF9C4, #F8BBD9);
+    box-shadow:
+      0 6px 20px rgba(248, 187, 217, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  }
+
+  .cat-button:active {
+    transform: scale(0.98);
   }
 
   .terminal-window {
-    @apply bg-terminal-bg border-2 border-retro-green p-4 rounded-sm;
-    box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
+    @apply p-4 rounded-2xl shadow-xl;
+    background: linear-gradient(135deg, rgba(255, 228, 236, 0.95), rgba(255, 240, 179, 0.9));
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(233, 30, 99, 0.4);
+    box-shadow:
+      0 10px 40px rgba(233, 30, 99, 0.25),
+      inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  }
+
+  .cat-card {
+    @apply rounded-3xl p-6 shadow-xl;
+    background: linear-gradient(145deg, rgba(255, 228, 236, 0.9), rgba(255, 240, 179, 0.8));
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(255, 213, 79, 0.3);
+    box-shadow:
+      0 10px 40px rgba(255, 213, 79, 0.2),
+      0 2px 10px rgba(139, 75, 124, 0.1);
   }
 
   .typing-effect {
@@ -41,6 +142,282 @@
 
   @keyframes blink-caret {
     from, to { border-color: transparent }
-    50% { border-color: #00ff00 }
+    50% { border-color: #F4A460 }
+  }
+
+  .celebration-emoji {
+    position: fixed;
+    top: -50px;
+    font-size: 30px;
+    z-index: 9999;
+    animation: fall 3s linear;
+  }
+
+  @keyframes fall {
+    to {
+      transform: translateY(calc(100vh + 50px)) rotate(360deg);
+    }
+  }
+
+  /* Enhanced text styles with better contrast */
+  .warm-title {
+    @apply font-bold;
+    color: #8B4B7C;
+    font-family: 'jf open 粉圓', 'Comfortaa', sans-serif;
+    font-size: 1.1em;
+    text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.8);
+    letter-spacing: 0.5px;
+  }
+
+  .warm-subtitle {
+    @apply font-semibold;
+    color: #AD1457;
+    font-family: 'Comfortaa', 'jf open 粉圓', sans-serif;
+    text-shadow: 1px 1px 1px rgba(255, 255, 255, 0.6);
+  }
+
+  .warm-text {
+    color: #E91E63;
+    font-weight: 500;
+    line-height: 1.6;
+  }
+
+  /* Better contrast for all headings */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'jf open 粉圓', 'Comfortaa', sans-serif !important;
+    color: #8B4B7C;
+    font-weight: 700;
+    text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.5);
+  }
+
+  /* Ensure all paragraph and span text is styled */
+  p, span, div, li, a {
+    color: #8B4B7C;
+    font-weight: 500;
+    font-family: inherit;
+  }
+
+  /* Code blocks should keep monospace but be cute */
+  code, pre, .font-mono {
+    font-family: 'Courier New', monospace !important;
+  }
+
+  /* Cute style for Chinese text - with higher priority */
+  .chinese-text, .font-chinese {
+    font-family: 'jf open 粉圓', 'Noto Sans TC', sans-serif !important;
+    font-weight: 500;
+    letter-spacing: 1px;
+    color: #8B4B7C;
+  }
+
+  /* Override any inline styles that use wrong fonts */
+  [style*="font-family"] {
+    font-family: 'jf open 粉圓', 'Comfortaa', 'Noto Sans TC', sans-serif !important;
+  }
+
+  /* Ensure non-code elements never use monospace */
+  :not(code):not(pre):not(.font-mono) {
+    font-family: 'jf open 粉圓', 'Comfortaa', 'Noto Sans TC', sans-serif !important;
+  }
+
+  /* Warm button variants */
+  .warm-button {
+    @apply px-5 py-2 rounded-lg font-semibold transition-all duration-200;
+    background: linear-gradient(135deg, #F8BBD9, #FFEAA7);
+    color: #8B4B7C;
+    font-family: 'Comfortaa', 'jf open 粉圓', sans-serif;
+    box-shadow: 0 2px 10px rgba(248, 187, 217, 0.3);
+    text-shadow: 1px 1px 1px rgba(255, 255, 255, 0.4);
+  }
+
+  .warm-button:hover {
+    background: linear-gradient(135deg, #FFEAA7, #F8BBD9);
+    box-shadow: 0 4px 15px rgba(248, 187, 217, 0.4);
+    transform: translateY(-1px);
+  }
+
+  /* Retro button with warm pink theme */
+  .retro-button {
+    @apply px-4 py-2 rounded-lg font-semibold transition-all duration-200;
+    background: linear-gradient(135deg, #F8BBD9, #FFEAA7);
+    color: #8B4B7C;
+    font-family: 'Comfortaa', 'jf open 粉圓', sans-serif;
+    box-shadow: 0 2px 10px rgba(248, 187, 217, 0.4);
+    border: 1px solid rgba(248, 187, 217, 0.3);
+    text-shadow: 1px 1px 1px rgba(255, 255, 255, 0.5);
+  }
+
+  .retro-button:hover {
+    background: linear-gradient(135deg, #FFEAA7, #F8BBD9);
+    box-shadow: 0 4px 15px rgba(248, 187, 217, 0.6);
+    transform: translateY(-1px);
+    border: 1px solid rgba(248, 187, 217, 0.5);
+  }
+
+  .retro-button:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(248, 187, 217, 0.4);
+  }
+
+  /* Warm container styles */
+  .warm-container {
+    @apply rounded-2xl p-6;
+    background: linear-gradient(135deg,
+      rgba(255, 248, 231, 0.95),
+      rgba(255, 237, 213, 0.9));
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 200, 124, 0.2);
+    box-shadow:
+      0 8px 32px rgba(244, 164, 96, 0.15),
+      inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  }
+
+  /* Terminal window with warm pink theme */
+  .terminal-window {
+    @apply rounded-lg p-4;
+    background: linear-gradient(135deg,
+      rgba(255, 240, 245, 0.9),
+      rgba(255, 228, 225, 0.85));
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 182, 193, 0.3);
+    box-shadow:
+      0 4px 20px rgba(255, 182, 193, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  }
+
+  /* Warm glow effect */
+  .warm-glow {
+    box-shadow:
+      0 0 20px rgba(248, 187, 217, 0.3),
+      0 0 40px rgba(255, 234, 167, 0.1);
+  }
+
+  /* Soft animations */
+  @keyframes warm-pulse {
+    0%, 100% {
+      box-shadow: 0 0 20px rgba(248, 187, 217, 0.3);
+    }
+    50% {
+      box-shadow: 0 0 30px rgba(248, 187, 217, 0.5);
+    }
+  }
+
+  .warm-pulse {
+    animation: warm-pulse 2s ease-in-out infinite;
+  }
+
+  /* 優化的動畫效果 */
+  @keyframes slide-in {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes fade-out {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+
+  @keyframes bounce-gentle {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-5px);
+    }
+  }
+
+  .animate-slide-in {
+    animation: slide-in 0.3s ease-out;
+  }
+
+  .animate-fade-out {
+    animation: fade-out 0.3s ease-out;
+  }
+
+  .animate-bounce-gentle {
+    animation: bounce-gentle 2s ease-in-out infinite;
+  }
+
+  /* 響應式文字大小 */
+  @media (max-width: 640px) {
+    .text-responsive {
+      font-size: 0.875rem;
+    }
+
+    /* 移動設備上確保底部元素不被遮蓋 */
+    .min-h-screen {
+      min-height: 100vh;
+      min-height: 100dvh; /* 動態視窗高度，考慮移動瀏覽器地址欄 */
+    }
+
+    /* 為移動設備添加額外的底部邊距 */
+    .mobile-safe-area {
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+  }
+
+  @media (min-width: 641px) and (max-width: 768px) {
+    .text-responsive {
+      font-size: 1rem;
+    }
+  }
+
+  @media (min-width: 769px) {
+    .text-responsive {
+      font-size: 1.125rem;
+    }
+  }
+
+  /* 性能優化：使用 GPU 加速 */
+  .gpu-accelerated {
+    transform: translateZ(0);
+    will-change: transform;
+  }
+
+  /* 平滑滾動 */
+  .smooth-scroll {
+    scroll-behavior: smooth;
+  }
+
+  /* 隱藏滾動條但保持可滾動 */
+  .hide-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* 觸控優化 */
+  @media (hover: none) {
+    .touch-target {
+      min-height: 44px;
+      min-width: 44px;
+    }
+  }
+
+  /* 深色模式支援（未來擴展） */
+  @media (prefers-color-scheme: dark) {
+    /* 可以在這裡加入深色模式樣式 */
+  }
+
+  /* 減少動畫（無障礙功能） */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }
