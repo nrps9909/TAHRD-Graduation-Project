@@ -229,7 +229,7 @@ const GeminiAssistant = () => {
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
         onClick={() => setIsOpen(true)}
-        className={`fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg z-40 ${
+        className={`fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-r from-cat-pink to-cat-beige rounded-full flex items-center justify-center shadow-lg z-40 ${
           isOpen ? 'hidden' : ''
         }`}
       >
@@ -243,12 +243,12 @@ const GeminiAssistant = () => {
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="fixed bottom-6 right-6 w-96 h-[600px] bg-gray-900 border border-gray-700 rounded-lg shadow-2xl z-50 flex flex-col"
+            className="fixed bottom-6 right-6 w-96 h-[600px] bg-cat-purple/95 backdrop-blur border border-cat-pink/50 rounded-lg shadow-2xl z-50 flex flex-col"
           >
             {/* 標題列 */}
-            <div className="flex items-center justify-between p-4 border-b border-gray-700">
+            <div className="flex items-center justify-between p-4 border-b border-cat-pink/30 bg-gradient-to-r from-cat-pink/20 to-cat-beige/20">
               <div className="flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-blue-400" />
+                <Sparkles className="w-5 h-5 text-cat-yellow" />
                 <span className="font-semibold text-white">Gemini 助手</span>
               </div>
               <button
@@ -274,8 +274,8 @@ const GeminiAssistant = () => {
                   <div
                     className={`max-w-[80%] p-3 rounded-lg ${
                       message.role === 'user'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-800 text-gray-100'
+                        ? 'bg-cat-pink text-white'
+                        : 'bg-cat-cream/30 text-text-primary'
                     }`}
                   >
                     <div className="text-sm whitespace-pre-wrap break-words">
@@ -289,8 +289,8 @@ const GeminiAssistant = () => {
               ))}
               {isLoading && (
                 <div className="flex justify-start">
-                  <div className="bg-gray-800 p-3 rounded-lg">
-                    <Loader className="w-5 h-5 text-blue-400 animate-spin" />
+                  <div className="bg-cat-cream/30 p-3 rounded-lg">
+                    <Loader className="w-5 h-5 text-cat-pink animate-spin" />
                   </div>
                 </div>
               )}
@@ -299,14 +299,14 @@ const GeminiAssistant = () => {
 
             {/* 快速問題 */}
             {messages.length === 1 && (
-              <div className="px-4 py-2 border-t border-gray-700">
+              <div className="px-4 py-2 border-t border-cat-pink/30 bg-cat-cream/10">
                 <p className="text-xs text-gray-400 mb-2">快速問題：</p>
                 <div className="flex flex-wrap gap-2">
                   {quickQuestions.map((question, index) => (
                     <button
                       key={index}
                       onClick={() => setInput(question)}
-                      className="text-xs px-2 py-1 bg-gray-800 text-gray-300 rounded hover:bg-gray-700 transition-colors"
+                      className="text-xs px-2 py-1 bg-cat-pink/20 text-text-primary rounded hover:bg-cat-pink/30 transition-colors"
                     >
                       {question}
                     </button>
@@ -321,7 +321,7 @@ const GeminiAssistant = () => {
                 e.preventDefault()
                 handleSendMessage()
               }}
-              className="p-4 border-t border-gray-700"
+              className="p-4 border-t border-cat-pink/30 bg-gradient-to-r from-cat-cream/10 to-cat-beige/10"
             >
               <div className="flex gap-2">
                 <input
@@ -329,13 +329,13 @@ const GeminiAssistant = () => {
                   value={input}
                   onChange={e => setInput(e.target.value)}
                   placeholder="問我任何問題..."
-                  className="flex-1 px-3 py-2 bg-gray-800 text-white rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+                  className="flex-1 px-3 py-2 bg-cat-purple text-white rounded-lg outline-none focus:ring-2 focus:ring-cat-pink"
                   disabled={isLoading}
                 />
                 <button
                   type="submit"
                   disabled={!input.trim() || isLoading}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-4 py-2 bg-cat-pink text-white rounded-lg hover:bg-cat-pink-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Send className="w-5 h-5" />
                 </button>

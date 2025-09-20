@@ -55,7 +55,7 @@ const InstantFeedback: React.FC<InstantFeedbackProps> = ({
       case 'points':
         return 'bg-gradient-to-r from-green-400 to-green-600 text-white'
       case 'progress':
-        return 'bg-gradient-to-r from-blue-400 to-blue-600 text-white'
+        return 'bg-gradient-to-r from-cat-pink to-cat-beige text-white'
       case 'skill':
         return 'bg-gradient-to-r from-purple-400 to-purple-600 text-white'
       case 'encouragement':

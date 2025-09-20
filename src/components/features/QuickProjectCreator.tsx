@@ -28,7 +28,7 @@ const QuickProjectCreator: React.FC<QuickProjectCreatorProps> = ({
       title: '計算機應用',
       description: '功能完整的計算器',
       prompt: '做一個漂亮的計算機',
-      color: 'from-blue-500 to-cyan-500',
+      color: 'from-cat-pink to-cat-beige',
     },
     {
       icon: ListTodo,

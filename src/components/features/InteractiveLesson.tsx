@@ -337,52 +337,56 @@ const InteractiveLesson = ({
         </div>
       </div>
 
-      {/* Main Content - Fixed height to prevent layout shifts */}
-      <div className="flex-1 flex flex-col items-center p-8 relative overflow-hidden">
-        {/* Cat-themed background decoration */}
+      {/* Main Content - Responsive height */}
+      <div className="flex-1 flex flex-col items-center justify-center p-4 md:p-6 lg:p-8 relative overflow-hidden min-h-0">
+        {/* Cat-themed background decoration - Responsive sizes */}
         <div className="absolute inset-0 opacity-10 pointer-events-none">
-          <div className="absolute top-10 left-10 text-8xl animate-pulse">
+          <div className="absolute top-5 md:top-10 left-5 md:left-10 text-5xl md:text-7xl lg:text-8xl animate-pulse">
             🐱
           </div>
-          <div className="absolute bottom-10 right-10 text-8xl animate-bounce">
+          <div className="absolute bottom-5 md:bottom-10 right-5 md:right-10 text-5xl md:text-7xl lg:text-8xl animate-bounce">
             🐾
           </div>
-          <div className="absolute top-1/2 left-20 text-6xl animate-ping">
+          <div className="absolute top-1/2 left-5 md:left-20 text-4xl md:text-5xl lg:text-6xl animate-ping">
             💕
           </div>
-          <div className="absolute top-20 right-20 text-7xl">🌸</div>
-          <div className="absolute bottom-20 left-1/3 text-6xl animate-pulse">
+          <div className="absolute top-10 md:top-20 right-10 md:right-20 text-4xl md:text-6xl lg:text-7xl">
+            🌸
+          </div>
+          <div className="absolute bottom-10 md:bottom-20 left-1/3 text-4xl md:text-5xl lg:text-6xl animate-pulse">
             🎀
           </div>
         </div>
 
-        {/* Content wrapper with fixed layout */}
-        <div className="w-full max-w-4xl flex flex-col items-center">
-          {/* Virtual Teacher - Fixed height container */}
-          <div className="w-full flex justify-center">
-            <VirtualTeacher
-              currentDialogue={currentDialogue?.text || ''}
-              mood={currentDialogue?.mood || 'happy'}
-              onNext={!showChoices ? handleNext : undefined}
-              requiresAIResponse={currentDialogue?.action === 'show_terminal'}
-            />
+        {/* Content wrapper with responsive layout */}
+        <div className="w-full max-w-4xl flex flex-col items-center gap-4 md:gap-6">
+          {/* Virtual Teacher - Responsive container */}
+          <div className="w-full flex justify-center flex-shrink-0">
+            <div className="w-full max-w-3xl">
+              <VirtualTeacher
+                currentDialogue={currentDialogue?.text || ''}
+                mood={currentDialogue?.mood || 'happy'}
+                onNext={!showChoices ? handleNext : undefined}
+                requiresAIResponse={currentDialogue?.action === 'show_terminal'}
+              />
+            </div>
           </div>
 
-          {/* Choice Buttons - Fixed height container */}
-          <div className="h-[80px] flex items-center justify-center w-full">
+          {/* Choice Buttons - Responsive height */}
+          <div className="min-h-[60px] md:min-h-[80px] flex items-center justify-center w-full flex-shrink-0">
             <AnimatePresence mode="wait">
               {showChoices && currentDialogue.choices && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
-                  className="flex gap-4"
+                  className="flex flex-col sm:flex-row gap-3 md:gap-4 w-full sm:w-auto px-4 sm:px-0"
                 >
                   {currentDialogue.choices.map((choice, index) => (
                     <button
                       key={index}
                       onClick={() => handleChoice(choice.nextId)}
-                      className="bg-gradient-to-r from-cat-pink to-cat-purple hover:from-cat-pink-dark hover:to-cat-purple-dark text-white px-6 py-3 rounded-full font-bold transition-all transform hover:scale-105 shadow-lg"
+                      className="bg-gradient-to-r from-cat-pink to-cat-purple hover:from-cat-pink-dark hover:to-cat-purple-dark text-white px-4 md:px-6 py-2 md:py-3 rounded-full font-bold transition-all transform hover:scale-105 shadow-lg text-sm md:text-base chinese-text"
                     >
                       {choice.text}
                     </button>

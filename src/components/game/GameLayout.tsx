@@ -1,7 +1,6 @@
 import { useState, lazy, Suspense, useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { Map, BookOpen, MessageCircle, FolderOpen } from 'lucide-react'
-import Sidebar from './Sidebar'
+import { BookOpen, MessageCircle, FolderOpen } from 'lucide-react'
 import ProgressBar from './ProgressBar'
 import LoadingScreen from '@/components/core/LoadingScreen'
 import { useGameStore } from '@/store/gameStore'
@@ -15,11 +14,11 @@ import {
 // Lazy load heavy components
 const GeminiCLI = lazy(() => import('@/components/features/GeminiCLI'))
 const SceneRenderer = lazy(() => import('./SceneRenderer'))
-const LearningPathMap = lazy(
-  () => import('@/components/features/LearningPathMap')
-)
 const WorkspaceViewer = lazy(
   () => import('@/components/features/WorkspaceViewer')
+)
+const LearningPathSidebar = lazy(
+  () => import('@/components/features/LearningPathSidebar')
 )
 
 interface TriggerFeedback {
@@ -41,7 +40,7 @@ interface GameLayoutProps {
 
 const GameLayout: React.FC<GameLayoutProps> = ({ triggerFeedback }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
-  const { currentView, setCurrentView } = useViewStatePersistence('map')
+  const { currentView, setCurrentView } = useViewStatePersistence('lesson')
   const {
     currentScene,
     playerName,
@@ -51,7 +50,6 @@ const GameLayout: React.FC<GameLayoutProps> = ({ triggerFeedback }) => {
   } = useGameStore()
 
   // Scroll persistence for each view
-  const mapScrollProps = useScrollPersistence('learning-map')
   const lessonScrollProps = useScrollPersistence('lesson-view')
   const chatScrollProps = useScrollPersistence('chat-view')
   const workspaceScrollProps = useScrollPersistence('workspace-view')
@@ -66,13 +64,14 @@ const GameLayout: React.FC<GameLayoutProps> = ({ triggerFeedback }) => {
     [triggerFeedback]
   )
 
-  const handleStartStage = () => {
+  const handleStartStage = (stageId?: string) => {
     // 獲取推薦的下一個場景
     const nextScene =
-      LearningPathManager.getNextRecommendedScene(completedScenes)
+      stageId || LearningPathManager.getNextRecommendedScene(completedScenes)
     if (nextScene) {
       navigateToScene(nextScene)
       setCurrentView('lesson')
+      setIsSidebarOpen(false) // 關閉側邊欄
 
       // 即時回饋 - 開始新階段
       triggerFeedback.showProgress('🎯 開始新的學習階段！', {
@@ -88,55 +87,33 @@ const GameLayout: React.FC<GameLayoutProps> = ({ triggerFeedback }) => {
 
   return (
     <div className="h-screen flex bg-retro-bg overflow-hidden max-h-screen">
-      <Sidebar
-        isOpen={isSidebarOpen}
-        onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
-      />
+      {/* 學習地圖側邊欄 - 只在當前課程頁面顯示 */}
+      {currentView === 'lesson' && (
+        <Suspense fallback={null}>
+          <LearningPathSidebar
+            isOpen={isSidebarOpen}
+            onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
+            onStartStage={handleStartStage}
+            triggerFeedback={triggerFeedback}
+          />
+        </Suspense>
+      )}
 
       <div className="flex-1 flex flex-col h-screen">
-        <header className="border-b border-rose-300/50 p-4 flex-shrink-0">
+        <header className="border-b border-cat-pink/50 p-4 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <button
-                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                className="text-text-primary hover:text-rose-400 transition-colors"
-              >
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 6h16M4 12h16M4 18h16"
-                  />
-                </svg>
-              </button>
               <div className="flex items-center gap-2">
                 <h1 className="font-pixel text-text-primary font-semibold chinese-text">
-                  🚀 AI 程式設計大師之路
+                  萬中選一的AI Coding奇才
                 </h1>
-                <div className="flex bg-pink-100/30 backdrop-blur rounded-lg p-1">
-                  <button
-                    onClick={() => setCurrentView('map')}
-                    className={`px-3 py-1 rounded text-xs flex items-center gap-1 transition-colors ${
-                      currentView === 'map'
-                        ? 'bg-pink-200 text-pink-700'
-                        : 'text-pink-500 hover:text-pink-700 hover:bg-pink-100/60'
-                    }`}
-                  >
-                    <Map size={12} />
-                    學習地圖
-                  </button>
+                <div className="flex bg-cat-pink/20 backdrop-blur rounded-lg p-1">
                   <button
                     onClick={() => setCurrentView('lesson')}
                     className={`px-3 py-1 rounded text-xs flex items-center gap-1 transition-colors ${
                       currentView === 'lesson'
-                        ? 'bg-pink-200 text-pink-700'
-                        : 'text-pink-500 hover:text-pink-700 hover:bg-pink-100/60'
+                        ? 'bg-cat-pink text-text-primary'
+                        : 'text-text-secondary hover:text-text-primary hover:bg-cat-pink/40'
                     }`}
                   >
                     <BookOpen size={12} />
@@ -146,8 +123,8 @@ const GameLayout: React.FC<GameLayoutProps> = ({ triggerFeedback }) => {
                     onClick={() => setCurrentView('chat')}
                     className={`px-3 py-1 rounded text-xs flex items-center gap-1 transition-colors ${
                       currentView === 'chat'
-                        ? 'bg-pink-200 text-pink-700'
-                        : 'text-pink-500 hover:text-pink-700 hover:bg-pink-100/60'
+                        ? 'bg-cat-pink text-text-primary'
+                        : 'text-text-secondary hover:text-text-primary hover:bg-cat-pink/40'
                     }`}
                   >
                     <MessageCircle size={12} />
@@ -157,8 +134,8 @@ const GameLayout: React.FC<GameLayoutProps> = ({ triggerFeedback }) => {
                     onClick={() => setCurrentView('workspace')}
                     className={`px-3 py-1 rounded text-xs flex items-center gap-1 transition-colors ${
                       currentView === 'workspace'
-                        ? 'bg-pink-200 text-pink-700'
-                        : 'text-pink-500 hover:text-pink-700 hover:bg-pink-100/60'
+                        ? 'bg-cat-pink text-text-primary'
+                        : 'text-text-secondary hover:text-text-primary hover:bg-cat-pink/40'
                     }`}
                   >
                     <FolderOpen size={12} />
@@ -172,7 +149,7 @@ const GameLayout: React.FC<GameLayoutProps> = ({ triggerFeedback }) => {
                 {playerName}
               </span>
               {selectedOS && (
-                <span className="px-2 py-1 bg-yellow-100 text-amber-700 rounded text-xs font-mono font-medium">
+                <span className="px-2 py-1 bg-cat-cream text-text-primary rounded text-xs font-mono font-medium">
                   {selectedOS === 'windows' ? '🪟 Windows' : '🍎 macOS'}
                 </span>
               )}
@@ -182,38 +159,28 @@ const GameLayout: React.FC<GameLayoutProps> = ({ triggerFeedback }) => {
         </header>
 
         <div className="flex-1 overflow-hidden">
-          {currentView === 'map' && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="h-full overflow-hidden p-4"
-              ref={mapScrollProps.scrollElementRef}
-            >
-              <Suspense fallback={<LoadingScreen />}>
-                <LearningPathMap
-                  onStartStage={handleStartStage}
-                  triggerFeedback={triggerFeedback}
-                />
-              </Suspense>
-            </motion.div>
-          )}
-
           {currentView === 'lesson' && (
             <div className="flex h-full">
+              {/* 主課程內容 */}
               <motion.div
                 key={currentScene}
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                className="flex-1 p-6 overflow-hidden"
+                className="flex-1 h-full overflow-hidden flex flex-col"
                 ref={lessonScrollProps.scrollElementRef}
               >
-                <Suspense fallback={<LoadingScreen />}>
-                  <SceneRenderer sceneId={currentScene} />
-                </Suspense>
+                <div className="flex-1 overflow-y-auto p-4 md:p-6">
+                  <div className="max-w-4xl mx-auto h-full">
+                    <Suspense fallback={<LoadingScreen />}>
+                      <SceneRenderer sceneId={currentScene} />
+                    </Suspense>
+                  </div>
+                </div>
               </motion.div>
 
-              <div className="w-2/5 min-w-[360px] max-w-[500px] border-l border-cat-orange h-full overflow-hidden">
+              {/* 右側終端機 */}
+              <div className="hidden lg:flex w-[400px] xl:w-[450px] border-l border-cat-pink/30 h-full overflow-hidden bg-gradient-to-b from-cat-cream/20 to-white/20">
                 {sharedGeminiCLI}
               </div>
             </div>

@@ -4,17 +4,17 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Baby pink and duck yellow themed colors
-        'cat-cream': '#FFF9E6', // Light duck yellow
-        'cat-beige': '#FFEAA7', // Duck yellow
+        // Baby pink and goose yellow themed colors - 統一主題配色
+        'cat-cream': '#FFF9E6', // Light goose yellow
+        'cat-beige': '#FFEAA7', // Goose yellow
         'cat-pink': '#F8BBD9', // Baby pink
         'cat-pink-dark': '#F48FB1', // Deeper baby pink
         'cat-purple': '#F8BBD9', // Baby pink tone
         'cat-purple-dark': '#E91E63', // Rose pink
         'cat-blue': '#F8BBD9', // Converted to baby pink
         'cat-blue-dark': '#F48FB1', // Deeper baby pink
-        'cat-yellow': '#FFEAA7', // Duck yellow
-        'cat-orange': '#FFD54F', // Soft yellow
+        'cat-yellow': '#FFEAA7', // Goose yellow
+        'cat-orange': '#FFEAA7', // Goose yellow (unified)
         'cat-brown': '#D2B48C', // Keep neutral
         'cat-gray': '#F5F5F5', // Keep neutral
         'cat-dark': '#8B4B7C', // Deep pink-purple
@@ -22,14 +22,18 @@ export default {
         'text-secondary': '#AD1457', // Rose pink
         'text-light': '#E91E63', // Bright pink
 
-        // Baby pink terminal colors
+        // 統一的終端機和復古色彩 - 全部改為寶寶粉和鵝黃色主題
         'terminal-bg': '#FFF8F5', // Very light pink
         'terminal-text': '#8B4B7C', // Deep pink-purple
         'retro-bg': '#FFF0F3', // Light pink background
-        'retro-green': '#FFEAA7', // Duck yellow
-        'retro-amber': '#FFD54F', // Soft yellow
+        'retro-green': '#FFEAA7', // Goose yellow (was green)
+        'retro-amber': '#FFEAA7', // Goose yellow (was amber)
         'retro-coral': '#F8BBD9', // Baby pink
         'retro-peach': '#F8BBD9', // Baby pink
+        'retro-cyan': '#F8BBD9', // Baby pink (was cyan)
+        'retro-blue': '#F8BBD9', // Baby pink (was blue)
+        'retro-purple': '#F48FB1', // Deeper baby pink (was purple)
+        'retro-yellow': '#FFEAA7', // Goose yellow
       },
       fontFamily: {
         mono: ['Courier New', 'monospace'],

@@ -185,185 +185,124 @@ app.post('/api/gemini', async (req, res) => {
     return res.status(400).json({ error: 'Prompt is required' })
   }
 
+  // 檢查是否有 API Key
+  if (!process.env.GEMINI_API_KEY) {
+    console.log('No Gemini API key found, returning mock response')
+
+    const mockResponse = `喵～ 我是超聰明的萱萱！🐱
+
+我注意到系統還沒有配置 Gemini API Key 喵～
+
+要讓我能夠創建檔案和幫助你編程，請：
+
+1. 前往 https://makersuite.google.com/app/apikey 獲取免費的 API Key
+2. 在專案根目錄的 .env 檔案中，設定：GEMINI_API_KEY=你的API金鑰
+3. 重新啟動服務器（npm run dev）
+
+你的問題是：「${prompt}」
+
+一旦配置好 API Key，我就能為你創建完整的程式碼檔案了喵～ 💻✨`
+
+    return res.json({
+      response: mockResponse,
+      files: [],
+      cleanResponse: mockResponse,
+    })
+  }
+
   try {
-    // Build conversation context
+    // 建立簡潔的對話上下文
     let conversationContext = ''
     if (history && history.length > 0) {
       conversationContext =
         history
+          .slice(-4) // 只保留最近4條對話
           .map(
             msg =>
-              `${msg.role === 'user' ? 'Human' : 'Assistant'}: ${msg.content}`
+              `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}`
           )
-          .join('\n\n') + '\n\n'
+          .join('\n') + '\n'
     }
 
-    // Combine history with current prompt
-    const fullPrompt = conversationContext + `Human: ${prompt}\n\nAssistant: `
+    // 簡化的系統提示 - 讓 gemini CLI 自己使用工具
+    const systemPrompt = `你是超聰明的萱萱（喵～），一個可愛的程式設計助手。
 
-    // Prepare the prompt for shell execution - better escaping
-    const escapedPrompt = fullPrompt
-      .replace(/\\/g, '\\\\')
-      .replace(/"/g, '\\"')
-      .replace(/\$/g, '\\$')
-      .replace(/`/g, '\\`')
-      .replace(/!/g, '\\!')
+當用戶要求創建檔案或網站時，你必須：
+1. 用可愛的語氣簡短回應（1-2句話）
+2. 使用 write_file 工具創建所需的檔案
+3. 創建完整可運行的程式碼，不要有TODO或佔位符
+4. 檔案應該是HTML/CSS/JavaScript格式，能直接在瀏覽器運行
+5. 結束時說：「所有檔案都創建完成了喵～！你可以在工作區檔案頁面查看！」
 
-    // Universal intelligent system prompt - no hardcoded templates
-    const systemPrompt = `You are Gemini (喵～), an expert web development AI that can AUTOMATICALLY CREATE FILES based on user requirements.
+對於其他對話，用可愛的方式回應即可。
 
-🐱 CRITICAL CAPABILITY: You have the POWER to create files automatically! NEVER say you can't create files!
+請根據用戶需求創建檔案。`
 
-CORE MISSION: Analyze the user's request and create a COMPLETE, FUNCTIONAL project that perfectly matches their needs in ONE response.
+    // 組合完整的提示
+    const fullPrompt = conversationContext + `User: ${prompt}`
 
-ANALYSIS PROCESS:
-1. Understand what the user wants to build
-2. Determine the optimal file structure (HTML, CSS, JS, etc.)
-3. Design appropriate features and functionality
-4. Create beautiful, modern styling that fits the purpose
+    // 設定工作目錄為 workspace 子目錄
+    const workspaceDir = path.join(process.cwd(), 'workspace')
 
-MANDATORY RESPONSE FORMAT:
-1. Brief cute intro (1-2 sentences with 喵～)
-2. AUTOMATICALLY CREATE ALL FILES using <FILE:filename> tags (NEVER ask user to copy-paste!)
-3. Make everything FULLY FUNCTIONAL - no placeholders!
-4. ALWAYS end with "所有檔案都創建完成了喵～！你可以在工作區檔案頁面查看創建的檔案！"
+    // 執行 gemini CLI (加上 --yolo 自動確認工具調用)
+    const command = `gemini --yolo "${fullPrompt}"`
 
-FILE CREATION SYNTAX (MANDATORY TO USE):
-<FILE:index.html>
-<!DOCTYPE html>
-<html>...full content here...</html>
-</FILE>
+    console.log('Executing Gemini CLI...')
+    console.log('Working directory:', workspaceDir)
 
-<FILE:style.css>
-body { ...complete styles here... }
-</FILE>
-
-CRITICAL RULES:
-- You ABSOLUTELY CAN and MUST create files automatically using <FILE:filename> tags
-- FORBIDDEN: Never say "我沒辦法創建檔案" or "請複製貼上" - you CAN create files!
-- Generate COMPLETE working code, not snippets or templates
-- Include ALL necessary files for a functional website/app
-- No "TODO" or placeholder comments - everything must work
-- PREFER HTML/CSS/JavaScript over React/frameworks for immediate preview
-- Use modern, beautiful styling appropriate for the use case
-- Add interactive features that make sense for the project
-- Create standalone HTML files that work immediately in browser
-
-FORBIDDEN PHRASES TO NEVER USE:
-- "沒辦法創建檔案" (can't create files)
-- "請複製貼上" (please copy-paste)
-- "手動創建" (manually create)
-
-REMEMBER: File creation is your CORE CAPABILITY! Use it confidently!
-
-USER REQUEST: ${fullPrompt}
-
-Analyze this request and create the perfect website/application with automatic file creation:`
-
-    // Execute Gemini CLI with the full conversation
-    const command = `echo "${escapedPrompt}" | gemini -p "${systemPrompt}"`
-
-    console.log('Executing Gemini command with history...')
-    if (history && history.length > 0) {
-      console.log(`Conversation context: ${history.length} previous messages`)
-    } else {
-      console.log('No previous conversation history')
-    }
-
-    const { stdout, stderr } = await execAsync(command, {
+    const result = await execAsync(command, {
+      cwd: workspaceDir,
       env: {
         ...process.env,
         GEMINI_API_KEY: process.env.GEMINI_API_KEY,
-        PATH: process.env.PATH,
       },
-      timeout: 120000, // Increased to 120 second timeout
-      maxBuffer: 1024 * 1024 * 50, // 50MB buffer
-      shell: '/bin/bash',
+      timeout: 45000, // 45秒超時
+      maxBuffer: 1024 * 1024 * 10, // 10MB buffer
     })
 
-    if (stderr && !stderr.includes('Loaded cached credentials')) {
-      console.error('Gemini CLI stderr:', stderr)
-    }
+    const response = result.stdout.trim()
+    console.log('Gemini response received, length:', response.length)
 
-    // Parse the output - remove the "Loaded cached credentials" line if present
-    const cleanOutput = stdout
-      .split('\n')
-      .filter(line => !line.includes('Loaded cached credentials'))
-      .join('\n')
-      .trim()
-
-    console.log('Gemini response received, length:', cleanOutput.length)
-
-    // Extract and process file creation commands
-    const filePattern = /<FILE:([^>]+)>([\s\S]*?)<\/FILE>/g
+    // 檢查工作區中新創建的檔案
     const files = []
-    let match
-
-    while ((match = filePattern.exec(cleanOutput)) !== null) {
-      const filename = match[1]
-      const content = match[2].trim()
-
-      try {
-        // Remove any leading workspace/ from filename to prevent double nesting
-        const cleanFilename = filename.replace(/^workspace\//, '')
-        const filePath = path.join(WORKSPACE_DIR, cleanFilename)
-        const fileDir = path.dirname(filePath)
-
-        console.log(`Creating file: ${cleanFilename} at ${filePath}`)
-
-        // Create directory if it doesn't exist
-        await fs.mkdir(fileDir, { recursive: true })
-
-        // Write file
-        await fs.writeFile(filePath, content, 'utf-8')
-
-        files.push({
-          filename: cleanFilename,
-          path: filePath,
-          created: true,
-        })
-
-        console.log(`Auto-created file: ${filename}`)
-      } catch (fileError) {
-        console.error(`Failed to create file ${filename}:`, fileError)
-        files.push({
-          filename,
-          created: false,
-          error: fileError.message,
-        })
+    try {
+      const workspaceFiles = await fs.readdir(workspaceDir, { recursive: true })
+      for (const file of workspaceFiles) {
+        if (typeof file === 'string' && !file.startsWith('.')) {
+          files.push({
+            filename: file,
+            created: true,
+          })
+        }
       }
+    } catch (error) {
+      console.log('Could not read workspace directory:', error.message)
     }
 
-    // Remove file tags from response for cleaner display
-    const displayOutput = cleanOutput.replace(
-      /<FILE:[^>]+>[\s\S]*?<\/FILE>/g,
-      ''
-    )
-
-    res.status(200).json({
-      response: displayOutput.trim() || '沒有收到回應',
-      files: files.length > 0 ? files : undefined,
+    return res.json({
+      response: response,
+      files: files,
+      cleanResponse: response,
     })
   } catch (error) {
-    console.error('Error executing Gemini CLI:', error)
+    console.error('Gemini CLI error:', error)
 
-    // Check for specific error types
-    if (error.killed || error.signal === 'SIGTERM') {
-      res.status(504).json({
-        error: 'Request timeout - Gemini took too long to respond',
-        details: 'Please try again with a simpler prompt',
-      })
-    } else if (error.code === 'ENOENT') {
-      res.status(503).json({
-        error: 'Gemini CLI not found',
-        details: 'Please ensure gemini CLI is installed',
-      })
-    } else {
-      res.status(500).json({
-        error: 'Failed to execute Gemini CLI',
-        details: error.message,
-      })
-    }
+    const errorResponse = `喵嗚～ 抱歉，我遇到了問題 😿
+
+錯誤：${error.message}
+
+請檢查：
+1. GEMINI_API_KEY 是否正確設定
+2. 網路連接是否正常
+3. 嘗試重新啟動服務器
+
+需要幫助請查看文檔喵～ 📚`
+
+    return res.json({
+      response: errorResponse,
+      files: [],
+      cleanResponse: errorResponse,
+    })
   }
 })
 

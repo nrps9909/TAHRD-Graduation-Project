@@ -11,7 +11,7 @@ interface WebPreviewProps {
 
 const WebPreview: React.FC<WebPreviewProps> = ({ files }) => {
   const API_BASE =
-    (import.meta as any).env?.VITE_API_BASE || 'http://localhost:3002'
+    (import.meta as any).env?.VITE_API_BASE || 'http://localhost:3001'
 
   // Always show preview if any files were created
   const hasFiles = files && files.length > 0 && files.some(f => f.created)

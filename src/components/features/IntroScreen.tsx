@@ -1,4 +1,4 @@
-import { useState, useEffect, Suspense, lazy } from 'react'
+import { useState, useEffect, Suspense, lazy, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Mail, Lock, User } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
@@ -8,6 +8,8 @@ import { APP_CONFIG } from '@/config/app.config'
 
 // Lazy load Live2D component
 const Live2DPixi6 = lazy(() => import('./Live2DPixi6'))
+// Import the type for Live2D ref
+import { type Live2DRef } from './Live2DPixi6'
 
 interface IntroScreenProps {
   triggerFeedback?: (
@@ -21,6 +23,7 @@ const IntroScreen = ({}: IntroScreenProps) => {
   const { startGame, setOS } = useGameStore()
   const [userCount, setUserCount] = useState(0)
   const [loading, setLoading] = useState(false)
+  const live2dRef = useRef<Live2DRef>(null)
 
   // 清除舊的持久化狀態，確保顯示新UI
   const [introState, setIntroState] = useState({
@@ -133,12 +136,19 @@ const IntroScreen = ({}: IntroScreenProps) => {
     }
   }
 
+  // 處理按鈕點擊並觸發貓咪互動
+  const handleButtonClick = (action: 'speed' | 'cute' | 'beginner' | 'ai') => {
+    if (live2dRef.current) {
+      live2dRef.current.triggerAction(action)
+    }
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="w-full h-screen bg-gradient-to-br from-pink-100 via-yellow-50 to-pink-50 relative overflow-hidden"
+      className="w-full h-screen bg-gradient-to-br from-pink-50 via-yellow-50 to-pink-100 relative overflow-hidden"
     >
       {/* 背景裝飾 - 寶寶粉和鵝黃色調 */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -540,6 +550,7 @@ const IntroScreen = ({}: IntroScreenProps) => {
                         }
                       >
                         <Live2DPixi6
+                          ref={live2dRef}
                           modelPath={APP_CONFIG.live2d.models.tororo.white}
                           fallbackImage={
                             APP_CONFIG.live2d.models.tororo.fallback
@@ -563,7 +574,10 @@ const IntroScreen = ({}: IntroScreenProps) => {
                       transition={{ delay: 0.8, duration: 0.6, type: 'spring' }}
                       className="absolute top-4 lg:top-8 right-4 lg:right-8 xl:right-12"
                     >
-                      <div className="bg-white/90 backdrop-blur-xl rounded-2xl lg:rounded-3xl p-4 lg:p-6 shadow-xl border border-pink-200/60 hover:scale-110 transition-all duration-300 hover:shadow-2xl cursor-pointer group">
+                      <div
+                        className="bg-white/90 backdrop-blur-xl rounded-2xl lg:rounded-3xl p-4 lg:p-6 shadow-xl border border-pink-200/60 hover:scale-110 transition-all duration-300 hover:shadow-2xl cursor-pointer group"
+                        onClick={() => handleButtonClick('cute')}
+                      >
                         <div className="text-center">
                           <div className="text-3xl lg:text-4xl mb-2 group-hover:scale-110 transition-transform">
                             😺
@@ -585,7 +599,10 @@ const IntroScreen = ({}: IntroScreenProps) => {
                       transition={{ delay: 1.0, duration: 0.6, type: 'spring' }}
                       className="absolute top-4 lg:top-8 left-4 lg:left-8 xl:left-12"
                     >
-                      <div className="bg-white/90 backdrop-blur-xl rounded-2xl lg:rounded-3xl p-4 lg:p-6 shadow-xl border border-yellow-200/60 hover:scale-110 transition-all duration-300 hover:shadow-2xl cursor-pointer group">
+                      <div
+                        className="bg-white/90 backdrop-blur-xl rounded-2xl lg:rounded-3xl p-4 lg:p-6 shadow-xl border border-yellow-200/60 hover:scale-110 transition-all duration-300 hover:shadow-2xl cursor-pointer group"
+                        onClick={() => handleButtonClick('speed')}
+                      >
                         <div className="text-center">
                           <div className="text-3xl lg:text-4xl mb-2 group-hover:scale-110 transition-transform">
                             ⚡
@@ -607,7 +624,10 @@ const IntroScreen = ({}: IntroScreenProps) => {
                       transition={{ delay: 1.2, duration: 0.6, type: 'spring' }}
                       className="absolute bottom-4 lg:bottom-8 right-4 lg:right-8 xl:right-12"
                     >
-                      <div className="bg-white/90 backdrop-blur-xl rounded-2xl lg:rounded-3xl p-4 lg:p-6 shadow-xl border border-pink-300/60 hover:scale-110 transition-all duration-300 hover:shadow-2xl cursor-pointer group">
+                      <div
+                        className="bg-white/90 backdrop-blur-xl rounded-2xl lg:rounded-3xl p-4 lg:p-6 shadow-xl border border-pink-300/60 hover:scale-110 transition-all duration-300 hover:shadow-2xl cursor-pointer group"
+                        onClick={() => handleButtonClick('ai')}
+                      >
                         <div className="text-center">
                           <div className="text-3xl lg:text-4xl mb-2 group-hover:scale-110 transition-transform">
                             🤖
@@ -629,7 +649,10 @@ const IntroScreen = ({}: IntroScreenProps) => {
                       transition={{ delay: 1.4, duration: 0.6, type: 'spring' }}
                       className="absolute bottom-4 lg:bottom-8 left-4 lg:left-8 xl:left-12"
                     >
-                      <div className="bg-white/90 backdrop-blur-xl rounded-2xl lg:rounded-3xl p-4 lg:p-6 shadow-xl border border-yellow-300/60 hover:scale-110 transition-all duration-300 hover:shadow-2xl cursor-pointer group">
+                      <div
+                        className="bg-white/90 backdrop-blur-xl rounded-2xl lg:rounded-3xl p-4 lg:p-6 shadow-xl border border-yellow-300/60 hover:scale-110 transition-all duration-300 hover:shadow-2xl cursor-pointer group"
+                        onClick={() => handleButtonClick('beginner')}
+                      >
                         <div className="text-center">
                           <div className="text-3xl lg:text-4xl mb-2 group-hover:scale-110 transition-transform">
                             🎯

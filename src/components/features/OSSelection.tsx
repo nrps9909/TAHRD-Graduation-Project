@@ -32,7 +32,7 @@ const OSSelection = ({}: OSSelectionProps) => {
         <h1 className="text-4xl font-chinese text-retro-green mb-4">
           選擇你的作業系統
         </h1>
-        <p className="text-lg font-chinese text-retro-cyan">
+        <p className="text-lg font-chinese text-text-primary">
           我們將提供對應系統的專屬教學內容
         </p>
         {playerName && (
@@ -55,8 +55,8 @@ const OSSelection = ({}: OSSelectionProps) => {
         >
           <div className="terminal-window hover:border-retro-amber transition-all duration-300">
             <div className="flex flex-col items-center py-8 px-6">
-              <Monitor className="w-24 h-24 text-retro-amber mb-4 group-hover:animate-pulse" />
-              <h2 className="text-2xl font-cute text-retro-amber mb-3">
+              <Monitor className="w-24 h-24 text-retro-green mb-4 group-hover:animate-pulse" />
+              <h2 className="text-2xl font-cute text-retro-green mb-3">
                 Windows
               </h2>
               <div className="space-y-2 text-left w-full">
@@ -76,7 +76,7 @@ const OSSelection = ({}: OSSelectionProps) => {
                   ✓ Windows 專屬優化技巧
                 </p>
               </div>
-              <div className="mt-6 flex items-center gap-2 text-retro-amber">
+              <div className="mt-6 flex items-center gap-2 text-retro-green">
                 <span className="font-chinese text-sm">開始 Windows 教學</span>
                 <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </div>
@@ -94,10 +94,12 @@ const OSSelection = ({}: OSSelectionProps) => {
           onClick={() => handleOSSelection('mac')}
           className="cursor-pointer group"
         >
-          <div className="terminal-window hover:border-retro-cyan transition-all duration-300">
+          <div className="terminal-window hover:border-retro-coral transition-all duration-300">
             <div className="flex flex-col items-center py-8 px-6">
-              <Apple className="w-24 h-24 text-retro-cyan mb-4 group-hover:animate-pulse" />
-              <h2 className="text-2xl font-cute text-retro-cyan mb-3">macOS</h2>
+              <Apple className="w-24 h-24 text-retro-coral mb-4 group-hover:animate-pulse" />
+              <h2 className="text-2xl font-cute text-retro-coral mb-3">
+                macOS
+              </h2>
               <div className="space-y-2 text-left w-full">
                 <p className="text-sm font-chinese text-terminal-text">
                   ✓ Homebrew 套件管理
@@ -115,7 +117,7 @@ const OSSelection = ({}: OSSelectionProps) => {
                   ✓ 開發環境最佳化
                 </p>
               </div>
-              <div className="mt-6 flex items-center gap-2 text-retro-cyan">
+              <div className="mt-6 flex items-center gap-2 text-retro-coral">
                 <span className="font-chinese text-sm">開始 macOS 教學</span>
                 <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </div>
@@ -135,13 +137,13 @@ const OSSelection = ({}: OSSelectionProps) => {
           <h3 className="text-sm font-chinese text-retro-green mb-3">
             為什麼需要選擇作業系統？
           </h3>
-          <p className="text-xs font-chinese text-gray-400 mb-2">
+          <p className="text-xs font-chinese text-terminal-text mb-2">
             不同作業系統的開發環境設置方式有很大差異。
           </p>
-          <p className="text-xs font-chinese text-gray-400 mb-2">
+          <p className="text-xs font-chinese text-terminal-text mb-2">
             Windows 使用者需要設置 WSL2 來獲得 Linux 環境。
           </p>
-          <p className="text-xs font-mono text-gray-400">
+          <p className="text-xs font-mono text-terminal-text">
             macOS 使用者則可以直接使用原生的 Unix 環境。
           </p>
         </div>
@@ -153,7 +155,7 @@ const OSSelection = ({}: OSSelectionProps) => {
         animate={{ opacity: 1 }}
         transition={{ delay: 0.5 }}
         onClick={() => navigate('/')}
-        className="mt-8 text-sm font-chinese text-gray-500 hover:text-amber-500 transition-colors"
+        className="mt-8 text-sm font-chinese text-terminal-text hover:text-retro-green transition-colors"
       >
         ← 返回首頁
       </motion.button>

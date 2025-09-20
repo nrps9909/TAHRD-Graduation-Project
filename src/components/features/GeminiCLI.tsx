@@ -33,18 +33,24 @@ interface GeminiCLIProps {
   triggerFeedback?: TriggerFeedback
 }
 
-// 聊天記錄持久化函數
-const saveChatToStorage = (messages: ChatMessage[]) => {
+// 聊天記錄持久化函數 - 用戶特定
+const saveChatToStorage = (messages: ChatMessage[], userId?: string) => {
   try {
-    localStorage.setItem('claude-code-adventure-chat', JSON.stringify(messages))
+    const storageKey = userId
+      ? `claude-code-adventure-chat-${userId}`
+      : 'claude-code-adventure-chat-guest'
+    localStorage.setItem(storageKey, JSON.stringify(messages))
   } catch (error) {
     console.warn('無法保存聊天記錄到本地存儲:', error)
   }
 }
 
-const loadChatFromStorage = (): ChatMessage[] => {
+const loadChatFromStorage = (userId?: string): ChatMessage[] => {
   try {
-    const saved = localStorage.getItem('claude-code-adventure-chat')
+    const storageKey = userId
+      ? `claude-code-adventure-chat-${userId}`
+      : 'claude-code-adventure-chat-guest'
+    const saved = localStorage.getItem(storageKey)
     if (saved) {
       const parsed = JSON.parse(saved)
       // 轉換時間戳字符串回 Date 對象
@@ -70,9 +76,6 @@ const loadChatFromStorage = (): ChatMessage[] => {
 
 const GeminiCLI: React.FC<GeminiCLIProps> = ({ triggerFeedback }) => {
   const [message, setMessage] = useState('')
-  const [messages, setMessages] = useState<ChatMessage[]>(() =>
-    loadChatFromStorage()
-  )
   const [history, setHistory] = useState<string[]>([])
   const [historyIndex, setHistoryIndex] = useState(-1)
 
@@ -91,13 +94,30 @@ const GeminiCLI: React.FC<GeminiCLIProps> = ({ triggerFeedback }) => {
     unlockAchievement,
     setAIResponseReceived,
     waitingForAI,
+    playerName,
   } = useGameStore()
+
+  // 用戶特定的消息狀態 - 基於玩家名稱
+  const [messages, setMessages] = useState<ChatMessage[]>(() =>
+    loadChatFromStorage(playerName)
+  )
+
+  // 當玩家名稱變化時重新載入聊天記錄
+  useEffect(() => {
+    const userMessages = loadChatFromStorage(playerName)
+    setMessages(userMessages)
+  }, [playerName])
 
   useEffect(() => {
     if (chatRef.current) {
       chatRef.current.scrollTop = chatRef.current.scrollHeight
     }
   }, [messages])
+
+  // 保存聊天記錄時使用用戶特定的key
+  useEffect(() => {
+    saveChatToStorage(messages, playerName)
+  }, [messages, playerName])
 
   // 頁面可見性保護 - 防止切換視窗中斷AI思考
   useEffect(() => {
@@ -168,7 +188,9 @@ const GeminiCLI: React.FC<GeminiCLIProps> = ({ triggerFeedback }) => {
     userPrompt: string
   ): Promise<{ text: string; files?: any[] }> => {
     const API_BASE =
-      (import.meta as any).env?.VITE_API_BASE || 'http://localhost:3002'
+      (import.meta as any).env?.VITE_API_BASE || 'http://localhost:3001'
+    let timeoutId: NodeJS.Timeout | null = null
+
     try {
       // 創建新的 AbortController 用於此次請求
       const controller = new AbortController()
@@ -187,6 +209,10 @@ const GeminiCLI: React.FC<GeminiCLIProps> = ({ triggerFeedback }) => {
         .filter(msg => msg.content.length > 0) // Remove empty messages
 
       // Call Gemini CLI with conversation history
+      timeoutId = setTimeout(() => {
+        controller.abort()
+      }, 60000) // 60秒前端超時
+
       const response = await fetch(`${API_BASE}/api/gemini`, {
         method: 'POST',
         headers: {
@@ -198,6 +224,7 @@ const GeminiCLI: React.FC<GeminiCLIProps> = ({ triggerFeedback }) => {
         }),
         signal: controller.signal, // 添加 AbortController signal
       })
+      clearTimeout(timeoutId)
 
       const data = await response.json()
 
@@ -233,6 +260,7 @@ const GeminiCLI: React.FC<GeminiCLIProps> = ({ triggerFeedback }) => {
         files: data.files,
       }
     } catch (error) {
+      if (timeoutId) clearTimeout(timeoutId) // 確保清除超時計時器
       // 檢查是否為用戶主動取消的請求
       if (error instanceof Error && error.name === 'AbortError') {
         console.log('🐱 AI請求被主動取消')
@@ -506,7 +534,7 @@ const GeminiCLI: React.FC<GeminiCLIProps> = ({ triggerFeedback }) => {
             className="flex-shrink-0"
           >
             {isUser ? (
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-lg font-bold shadow-lg">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cat-pink to-cat-beige flex items-center justify-center text-white text-lg font-bold shadow-lg">
                 👤
               </div>
             ) : (
@@ -536,7 +564,7 @@ const GeminiCLI: React.FC<GeminiCLIProps> = ({ triggerFeedback }) => {
                 px-4 py-3 rounded-2xl shadow-lg
                 ${
                   isUser
-                    ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white'
+                    ? 'bg-gradient-to-br from-cat-pink to-cat-beige text-white'
                     : 'bg-white text-gray-800 border border-pink-200'
                 }
                 ${isUser ? 'rounded-br-md' : 'rounded-bl-md'}
@@ -566,7 +594,7 @@ const GeminiCLI: React.FC<GeminiCLIProps> = ({ triggerFeedback }) => {
 
   return (
     <motion.div
-      className={`h-full flex flex-col bg-gradient-to-br from-pink-50 to-purple-50 relative ${waitingForAI ? 'ring-2 ring-cat-purple ring-opacity-50' : ''}`}
+      className={`h-full flex flex-col bg-gradient-to-br from-cat-cream/30 to-cat-pink/20 relative ${waitingForAI ? 'ring-2 ring-cat-purple ring-opacity-50' : ''}`}
       animate={
         waitingForAI
           ? {
@@ -580,34 +608,11 @@ const GeminiCLI: React.FC<GeminiCLIProps> = ({ triggerFeedback }) => {
       }
       transition={{ duration: 2, repeat: Infinity }}
     >
-      <AnimatePresence>
-        {waitingForAI && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-cat-pink to-cat-purple text-white px-6 py-3 rounded-full text-sm font-medium z-10 chinese-text shadow-lg"
-          >
-            <motion.span
-              animate={{
-                scale: [1, 1.2, 1],
-                rotate: [0, 10, -10, 0],
-              }}
-              transition={{ duration: 2, repeat: Infinity }}
-              className="inline-block mr-2"
-            >
-              🐱
-            </motion.span>
-            喵～來跟我聊天吧！
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Header */}
+      {/* Header - IG 風格 */}
       <motion.div
         initial={{ y: -50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="bg-gradient-to-r from-cat-pink to-cat-purple text-white p-4 shadow-lg"
+        className="bg-gradient-to-r from-cat-pink to-cat-purple text-white px-4 py-3 shadow-lg flex-shrink-0"
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -622,10 +627,8 @@ const GeminiCLI: React.FC<GeminiCLIProps> = ({ triggerFeedback }) => {
               🐱
             </motion.div>
             <div>
-              <h2 className="font-chinese text-lg font-bold">貓咪AI助手</h2>
-              <p className="font-chinese text-sm opacity-90">
-                你的可愛程式學習夥伴
-              </p>
+              <h2 className="font-chinese text-lg font-bold">超聰明的萱萱</h2>
+              <p className="font-chinese text-sm opacity-90">我什麼都知道</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -745,11 +748,11 @@ const GeminiCLI: React.FC<GeminiCLIProps> = ({ triggerFeedback }) => {
         )}
       </div>
 
-      {/* Input Area */}
+      {/* Input Area - IG 風格 */}
       <motion.div
         initial={{ y: 50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="bg-white border-t border-pink-200 p-4 shadow-lg"
+        className="bg-white/95 backdrop-blur border-t border-white/30 px-4 py-3 shadow-lg flex-shrink-0"
       >
         <form onSubmit={handleSendMessage} className="flex items-center gap-3">
           <div className="flex-1 relative">
@@ -759,8 +762,8 @@ const GeminiCLI: React.FC<GeminiCLIProps> = ({ triggerFeedback }) => {
               value={message}
               onChange={e => setMessage(e.target.value)}
               onKeyDown={handleKeyDown}
-              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full outline-none font-chinese text-sm focus:border-cat-pink focus:bg-white transition-all duration-200"
-              placeholder="輸入訊息跟貓咪聊天... 🐾"
+              className="w-full px-4 py-3 bg-gray-100 border-0 rounded-full outline-none font-chinese text-sm focus:bg-white focus:ring-2 focus:ring-cat-pink/50 transition-all duration-200 placeholder-gray-500"
+              placeholder="傳送訊息..."
               disabled={aiState.isLoading}
             />
           </div>
@@ -769,27 +772,23 @@ const GeminiCLI: React.FC<GeminiCLIProps> = ({ triggerFeedback }) => {
             disabled={aiState.isLoading || !message.trim()}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="w-12 h-12 bg-gradient-to-r from-cat-pink to-cat-purple text-white rounded-full flex items-center justify-center shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+            className="w-10 h-10 bg-gradient-to-r from-cat-pink to-cat-purple text-white rounded-full flex items-center justify-center shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
           >
             {aiState.isLoading ? (
               <motion.div
                 animate={{ rotate: 360 }}
                 transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                className="text-sm"
               >
                 ⏳
               </motion.div>
             ) : (
-              <motion.span whileHover={{ scale: 1.2 }} className="text-lg">
-                💌
+              <motion.span whileHover={{ scale: 1.2 }} className="text-sm">
+                ➤
               </motion.span>
             )}
           </motion.button>
         </form>
-        <div className="mt-2 text-center">
-          <p className="font-chinese text-xs text-gray-500">
-            💡 提示：輸入 "help" 查看更多功能
-          </p>
-        </div>
       </motion.div>
     </motion.div>
   )

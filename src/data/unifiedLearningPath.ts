@@ -32,7 +32,7 @@ export interface LearningPath {
 // 統一學習路徑
 export const unifiedLearningPath: LearningPath = {
   id: 'ai-coding-mastery',
-  title: '🚀 AI 程式設計大師之路',
+  title: 'AI Coding小師之路',
   description: '從零開始，3小時掌握用AI寫程式的超能力！',
   targetAudience: '完全新手、轉職者、想提升效率的開發者',
   totalTime: 180, // 3小時

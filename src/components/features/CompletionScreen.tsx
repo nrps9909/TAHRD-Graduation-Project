@@ -36,13 +36,13 @@ const CompletionScreen = ({}: CompletionScreenProps) => {
         ...defaults,
         particleCount,
         origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
-        colors: ['#f59e0b', '#ff8c00', '#00ffff', '#9d4edd'],
+        colors: ['#F8BBD9', '#FFEAA7', '#F48FB1', '#E91E63'],
       })
       confetti({
         ...defaults,
         particleCount,
         origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
-        colors: ['#f59e0b', '#ff8c00', '#00ffff', '#9d4edd'],
+        colors: ['#F8BBD9', '#FFEAA7', '#F48FB1', '#E91E63'],
       })
     }, 250)
 
@@ -71,11 +71,11 @@ const CompletionScreen = ({}: CompletionScreenProps) => {
           transition={{ delay: 0.2, type: 'spring' }}
           className="text-center mb-8"
         >
-          <Trophy className="w-24 h-24 text-retro-amber mx-auto mb-4" />
-          <h1 className="text-5xl font-cute text-amber-500 mb-2">
+          <Trophy className="w-24 h-24 text-retro-green mx-auto mb-4" />
+          <h1 className="text-5xl font-cute text-retro-green mb-2">
             CONGRATULATIONS!
           </h1>
-          <p className="text-xl font-cute text-retro-cyan">
+          <p className="text-xl font-cute text-text-primary">
             {playerName}, you are now a Claude Code Master!
           </p>
         </motion.div>
@@ -86,29 +86,35 @@ const CompletionScreen = ({}: CompletionScreenProps) => {
           transition={{ delay: 0.4 }}
           className="terminal-window mb-6"
         >
-          <h2 className="text-retro-amber font-cute mb-4">FINAL SCORE</h2>
+          <h2 className="text-retro-green font-cute mb-4">FINAL SCORE</h2>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="text-sm font-cute text-gray-400">Total Points</p>
-              <p className="text-3xl font-cute text-amber-500">{totalScore}</p>
+              <p className="text-sm font-cute text-terminal-text">
+                Total Points
+              </p>
+              <p className="text-3xl font-cute text-retro-green">
+                {totalScore}
+              </p>
             </div>
             <div>
-              <p className="text-sm font-cute text-gray-400">Grade</p>
-              <p className="text-3xl font-cute text-retro-amber">
+              <p className="text-sm font-cute text-terminal-text">Grade</p>
+              <p className="text-3xl font-cute text-retro-green">
                 {getGrade()}
               </p>
             </div>
             <div>
-              <p className="text-sm font-cute text-gray-400">
+              <p className="text-sm font-cute text-terminal-text">
                 Chapters Completed
               </p>
-              <p className="text-2xl font-cute text-retro-cyan">
+              <p className="text-2xl font-cute text-retro-coral">
                 {completedScenes.length}/9
               </p>
             </div>
             <div>
-              <p className="text-sm font-cute text-gray-400">Achievements</p>
-              <p className="text-2xl font-cute text-retro-purple">
+              <p className="text-sm font-cute text-terminal-text">
+                Achievements
+              </p>
+              <p className="text-2xl font-cute text-retro-coral">
                 {unlockedAchievements.length}/{achievements.length}
               </p>
             </div>
@@ -121,21 +127,21 @@ const CompletionScreen = ({}: CompletionScreenProps) => {
           transition={{ delay: 0.6 }}
           className="terminal-window mb-6"
         >
-          <h2 className="text-retro-cyan font-cute mb-4">
+          <h2 className="text-retro-coral font-cute mb-4">
             ACHIEVEMENTS EARNED
           </h2>
           <div className="grid grid-cols-2 gap-3">
             {unlockedAchievements.map(achievement => (
               <div
                 key={achievement.id}
-                className="flex items-center gap-2 p-2 bg-amber-900 bg-opacity-20 rounded"
+                className="flex items-center gap-2 p-2 bg-cat-cream/20 rounded border border-cat-yellow/30"
               >
                 <span className="text-2xl">{achievement.icon}</span>
                 <div>
-                  <p className="font-cute text-xs text-amber-500">
+                  <p className="font-cute text-xs text-retro-green">
                     {achievement.name}
                   </p>
-                  <p className="font-cute text-xs text-gray-400">
+                  <p className="font-cute text-xs text-terminal-text">
                     {achievement.description}
                   </p>
                 </div>
@@ -173,7 +179,7 @@ const CompletionScreen = ({}: CompletionScreenProps) => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1 }}
-          className="text-center mt-8 font-cute text-sm text-gray-400"
+          className="text-center mt-8 font-cute text-sm text-terminal-text"
         >
           Thank you for playing Claude Code Adventure!
         </motion.p>

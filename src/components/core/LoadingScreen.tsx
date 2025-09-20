@@ -6,7 +6,7 @@ const LoadingScreen = () => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="h-screen w-screen flex flex-col items-center justify-center bg-gradient-to-br from-pink-100 to-purple-100 gpu-accelerated"
+      className="h-screen w-screen flex flex-col items-center justify-center bg-gradient-to-br from-cat-cream to-cat-pink gpu-accelerated"
     >
       <motion.div
         animate={{

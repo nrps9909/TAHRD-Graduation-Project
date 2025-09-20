@@ -137,7 +137,7 @@ const AchievementNotification: React.FC<AchievementNotificationProps> = ({
                     ) : achievement.icon === '⭐' ? (
                       <Star className="w-16 h-16 text-yellow-400 mx-auto" />
                     ) : achievement.icon === '⚡' ? (
-                      <Zap className="w-16 h-16 text-blue-400 mx-auto" />
+                      <Zap className="w-16 h-16 text-cat-yellow mx-auto" />
                     ) : achievement.icon === '🎁' ? (
                       <Gift className="w-16 h-16 text-purple-400 mx-auto" />
                     ) : (
@@ -167,7 +167,7 @@ const AchievementNotification: React.FC<AchievementNotificationProps> = ({
                           : achievement.rarity === 'epic'
                             ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white'
                             : achievement.rarity === 'rare'
-                              ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white'
+                              ? 'bg-gradient-to-r from-cat-pink to-cat-beige text-white'
                               : 'bg-gradient-to-r from-green-500 to-teal-500 text-white'
                       }`}
                     >

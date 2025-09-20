@@ -92,20 +92,20 @@ const VirtualTeacher = memo(
     }, [onNext])
 
     return (
-      <div className="w-full h-full flex items-center justify-center p-4">
-        {/* 並排布局：貓咪和對話框並排 */}
-        <div className="flex flex-col lg:flex-row items-center lg:items-start gap-6 w-full max-w-5xl h-full">
-          {/* 左側：貓咪區域 */}
-          <div className="flex-shrink-0 flex flex-col items-center lg:w-80">
+      <div className="w-full h-full flex items-center justify-center p-6">
+        {/* 中央對齊的垂直佈局 */}
+        <div className="flex flex-col items-center justify-center w-full max-w-4xl h-full gap-8">
+          {/* 上部：貓咪區域 - 放大並置中 */}
+          <div className="flex-shrink-0 flex flex-col items-center">
             <motion.div className="relative" animate={getAvatarAnimation()}>
-              {/* Live2D Character - 縮小尺寸 */}
+              {/* Live2D Character - 放大尺寸 */}
               <div className="flex items-center justify-center">
                 <Suspense
                   fallback={
                     <div
                       style={{
-                        width: live2dSize.width,
-                        height: live2dSize.height,
+                        width: Math.max(live2dSize.width * 1.5, 320),
+                        height: Math.max(live2dSize.height * 1.5, 320),
                       }}
                       className="flex items-center justify-center"
                     >
@@ -118,9 +118,9 @@ const VirtualTeacher = memo(
                   <Live2DPixi6
                     modelPath="/models/hijiki/hijiki.model3.json"
                     fallbackImage="/models/hijiki/hijiki.2048/texture_00.png"
-                    width={live2dSize.width}
-                    height={live2dSize.height}
-                    scale={live2dSize.scale}
+                    width={Math.max(live2dSize.width * 1.5, 320)}
+                    height={Math.max(live2dSize.height * 1.5, 320)}
+                    scale={live2dSize.scale * 1.2}
                     triggerMotion={triggerMotion}
                     mood={mood}
                   />
@@ -128,34 +128,34 @@ const VirtualTeacher = memo(
               </div>
             </motion.div>
 
-            {/* Name Badge - 緊湊版 */}
-            <div className="mt-2 bg-gradient-to-r from-cat-pink to-cat-purple text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg flex items-center gap-2">
+            {/* Name Badge - 優化樣式 */}
+            <div className="mt-4 bg-gradient-to-r from-cat-pink to-cat-purple text-white px-6 py-3 rounded-full text-base font-bold shadow-lg flex items-center gap-3">
               <span>🐾</span>
-              <span className="font-chinese">Hijiki 老師</span>
+              <span className="font-chinese">萱萱同學</span>
               <span>😺</span>
             </div>
           </div>
 
-          {/* 右側：對話框區域 */}
-          <div className="flex-1 flex flex-col justify-center min-h-0">
+          {/* 下部：對話框區域 - 改為水平居中 */}
+          <div className="flex-1 flex flex-col justify-start items-center w-full max-w-3xl">
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
               className="relative w-full"
             >
-              {/* 對話框 - 適應剩餘空間 */}
+              {/* 對話框 - 更大更清晰 */}
               <div
-                className="bg-gradient-to-br from-white/95 to-rose-50/90 backdrop-blur rounded-3xl p-5 shadow-2xl border-2 border-rose-300/50 relative"
-                style={{ boxShadow: '0 10px 40px rgba(255, 182, 193, 0.4)' }}
+                className="bg-gradient-to-br from-white/95 to-cat-cream/90 backdrop-blur rounded-3xl p-6 shadow-2xl border-2 border-cat-pink/50 relative mx-auto"
+                style={{ boxShadow: '0 10px 40px rgba(248, 187, 217, 0.4)' }}
               >
-                {/* Cat ear bubble tails - 指向左側貓咪 */}
-                <div className="absolute top-8 -left-3 lg:top-1/2 lg:-translate-y-1/2">
-                  <div className="w-0 h-0 border-t-[12px] border-t-transparent border-b-[12px] border-b-transparent border-r-[16px] border-r-rose-50/90" />
+                {/* Cat ear bubble tail - 指向上方貓咪 */}
+                <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                  <div className="w-0 h-0 border-l-[12px] border-l-transparent border-r-[12px] border-r-transparent border-b-[16px] border-b-white/95" />
                 </div>
 
-                {/* Message content */}
-                <div className="text-cat-dark font-medium text-lg whitespace-pre-wrap break-words max-h-[200px] lg:max-h-[300px] overflow-y-auto scrollbar-thin scrollbar-thumb-cat-pink scrollbar-track-transparent pr-2 chinese-text">
+                {/* Message content - 更大的文字和更好的可讀性 */}
+                <div className="text-text-primary font-medium text-xl leading-relaxed whitespace-pre-wrap break-words max-h-[300px] overflow-y-auto scrollbar-thin scrollbar-thumb-cat-pink scrollbar-track-transparent pr-2 chinese-text text-center">
                   {displayedText && displayedText !== 'undefined'
                     ? displayedText
                     : ''}

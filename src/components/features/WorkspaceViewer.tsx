@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import CodeEditor from './CodeEditor'
 import { usePageStatePersistence } from '@/hooks/usePageStatePersistence'
+import { useGameStore } from '@/store/gameStore'
 import '@/components/WorkspaceViewer.css'
 
 interface WorkspaceFile {
@@ -44,9 +45,15 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({
   const [isCreatingFile, setIsCreatingFile] = useState(false)
   const [newFileName, setNewFileName] = useState('')
 
-  // Persistent state
+  // 獲取玩家名稱以實現用戶隔離
+  const { playerName } = useGameStore()
+
+  // 用戶特定的持久化狀態
+  const stateKey = playerName
+    ? `workspaceViewer-${playerName}`
+    : 'workspaceViewer-guest'
   const [workspaceState, setWorkspaceState] = usePageStatePersistence(
-    'workspaceViewer',
+    stateKey,
     {
       openTabs: [] as OpenTab[],
       activeTab: null as string | null,
@@ -56,6 +63,15 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({
       expandedFolders: [] as string[],
     }
   )
+
+  // 當玩家切換時，清空當前用戶的 openTabs（因為檔案屬於不同用戶）
+  useEffect(() => {
+    setWorkspaceState(prev => ({
+      ...prev,
+      openTabs: [],
+      activeTab: null,
+    }))
+  }, [playerName, setWorkspaceState])
 
   // Auto-save and auto-refresh are always enabled
   const autoSave = true
@@ -78,17 +94,42 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({
 
   const API_BASE =
     (import.meta as unknown as { env?: { VITE_API_BASE?: string } }).env
-      ?.VITE_API_BASE || 'http://localhost:3002'
+      ?.VITE_API_BASE || 'http://localhost:3001'
 
   const loadFiles = async () => {
     setLoading(true)
     try {
-      const response = await fetch(`${API_BASE}/api/files`)
+      const userId = playerName || 'guest'
+      const response = await fetch(
+        `${API_BASE}/api/files?userId=${encodeURIComponent(userId)}`
+      )
       const data = await response.json()
       if (data.success) {
         // Convert flat file list to tree structure
         const fileTree = buildFileTree(data.files)
         setFiles(fileTree)
+
+        // 如果沒有檔案，清空所有 openTabs
+        if (!data.files || data.files.length === 0) {
+          setWorkspaceState(prev => ({
+            ...prev,
+            openTabs: [],
+            activeTab: null,
+          }))
+        } else {
+          // 移除不存在的檔案的 tabs
+          const existingFiles = new Set(data.files)
+          setWorkspaceState(prev => ({
+            ...prev,
+            openTabs: prev.openTabs.filter(tab =>
+              existingFiles.has(tab.filename)
+            ),
+            activeTab:
+              prev.activeTab && existingFiles.has(prev.activeTab)
+                ? prev.activeTab
+                : null,
+          }))
+        }
       }
     } catch (error) {
       console.error('Failed to load files:', error)
@@ -164,8 +205,9 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({
     }
 
     try {
+      const userId = playerName || 'guest'
       const response = await fetch(
-        `${API_BASE}/api/file/read/${encodeURIComponent(filepath)}`
+        `${API_BASE}/api/file/read/${encodeURIComponent(filepath)}?userId=${encodeURIComponent(userId)}`
       )
       const data = await response.json()
       if (data.success) {
@@ -187,10 +229,11 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({
 
   const saveFile = async (filepath: string, content: string) => {
     try {
+      const userId = playerName || 'guest'
       const response = await fetch(`${API_BASE}/api/file/update`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filename: filepath, content }),
+        body: JSON.stringify({ filename: filepath, content, userId }),
       })
 
       if (response.ok) {
@@ -209,10 +252,11 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({
 
   const createFile = async (filename: string) => {
     try {
+      const userId = playerName || 'guest'
       const response = await fetch(`${API_BASE}/api/file/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filename, content: '' }),
+        body: JSON.stringify({ filename, content: '', userId }),
       })
 
       if (response.ok) {
@@ -230,10 +274,11 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({
     if (!confirm(`確定要刪除 ${filepath} 嗎？`)) return
 
     try {
+      const userId = playerName || 'guest'
       const response = await fetch(`${API_BASE}/api/file/delete`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filename: filepath }),
+        body: JSON.stringify({ filename: filepath, userId }),
       })
 
       if (response.ok) {
@@ -269,10 +314,11 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({
       return
 
     try {
+      const userId = playerName || 'guest'
       const response = await fetch(`${API_BASE}/api/folder/delete`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ folderPath }),
+        body: JSON.stringify({ folderPath, userId }),
       })
 
       if (response.ok) {
@@ -486,7 +532,7 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({
                 className={`w-6 h-6 rounded-lg flex items-center justify-center mr-2 ${
                   expandedFolders.has(item.path)
                     ? 'bg-gradient-to-br from-yellow-400 to-orange-400'
-                    : 'bg-gradient-to-br from-blue-400 to-purple-400'
+                    : 'bg-gradient-to-br from-cat-pink to-cat-beige'
                 }`}
               >
                 <span className="text-xs text-white">
@@ -497,7 +543,7 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({
           ) : (
             <>
               <div className="w-4 mr-2" />
-              <div className="w-6 h-6 bg-gradient-to-br from-green-400 to-emerald-400 rounded-lg flex items-center justify-center mr-2">
+              <div className="w-6 h-6 bg-gradient-to-br from-cat-yellow to-cat-beige rounded-lg flex items-center justify-center mr-2">
                 <span className="text-xs text-white">
                   {item.name.endsWith('.html')
                     ? '🌐'
@@ -541,7 +587,7 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="floating-button fixed bottom-4 left-4 bg-gradient-to-br from-pink-500 via-purple-500 to-indigo-500 hover:from-pink-600 hover:via-purple-600 hover:to-indigo-600 text-white p-5 rounded-full shadow-2xl transition-all duration-300 z-50 transform hover:scale-110 border-4 border-white/30"
+        className="floating-button fixed bottom-4 left-4 bg-gradient-to-br from-cat-pink via-cat-purple to-cat-beige hover:from-cat-pink-dark hover:via-cat-purple-dark hover:to-cat-beige text-white p-5 rounded-full shadow-2xl transition-all duration-300 z-50 transform hover:scale-110 border-4 border-white/30"
         title="✨ 超可愛程式編輯器 💖"
         style={{
           backgroundSize: '200% 200%',
@@ -563,7 +609,7 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({
 
   return (
     <div
-      className={`workspace-viewer bg-gradient-to-br from-pink-50 to-purple-100 flex flex-col overflow-hidden h-full ${
+      className={`workspace-viewer bg-gradient-to-br from-cat-cream/30 to-cat-pink/20 flex flex-col overflow-hidden h-full ${
         embedded
           ? 'border-0 rounded-none'
           : `fixed border-4 border-pink-300 rounded-3xl shadow-2xl z-50 ${isMobile ? 'inset-2' : 'inset-4'}`
@@ -696,7 +742,7 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({
               </span>
               <button
                 onClick={() => setIsCreatingFile(true)}
-                className="bg-gradient-to-r from-green-400 to-emerald-400 hover:from-green-500 hover:to-emerald-500 text-white rounded-full p-2 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-110"
+                className="bg-gradient-to-r from-cat-yellow to-cat-beige hover:from-cat-yellow hover:to-cat-beige text-white rounded-full p-2 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-110"
                 title="➕ 新增檔案"
               >
                 <Plus size={14} />
@@ -727,7 +773,7 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({
                     onClick={() =>
                       newFileName.trim() && createFile(newFileName.trim())
                     }
-                    className="px-4 py-2 bg-gradient-to-r from-green-400 to-emerald-400 hover:from-green-500 hover:to-emerald-500 text-white text-sm rounded-full font-medium shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+                    className="px-4 py-2 bg-gradient-to-r from-cat-yellow to-cat-beige hover:from-cat-yellow hover:to-cat-beige text-white text-sm rounded-full font-medium shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
                   >
                     ✨ 建立
                   </button>
@@ -769,7 +815,7 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({
         {!isMobile && workspaceState.showSidebar && (
           <div
             ref={resizeRef}
-            className="w-1 bg-gray-700 hover:bg-purple-500 cursor-col-resize"
+            className="w-1 bg-cat-pink/60 hover:bg-cat-pink cursor-col-resize"
             onMouseDown={e => {
               const startX = e.clientX
               const startWidth = workspaceState.sidebarWidth
@@ -825,7 +871,7 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({
                       tab.filename.endsWith('.html')
                         ? 'bg-gradient-to-br from-orange-400 to-red-400'
                         : tab.filename.endsWith('.css')
-                          ? 'bg-gradient-to-br from-blue-400 to-purple-400'
+                          ? 'bg-gradient-to-br from-cat-pink to-cat-beige'
                           : tab.filename.endsWith('.js') ||
                               tab.filename.endsWith('.ts')
                             ? 'bg-gradient-to-br from-yellow-400 to-orange-400'
@@ -949,11 +995,11 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({
                 {currentTab && currentTab.filename.endsWith('.html') ? (
                   <div className="flex-1 flex flex-col">
                     {/* Preview header with auto-refresh indicator */}
-                    <div className="px-4 py-2 bg-gradient-to-r from-blue-100 to-cyan-100 border-b border-cyan-200 flex justify-between items-center">
-                      <span className="text-sm text-blue-600 font-medium flex items-center gap-2">
+                    <div className="px-4 py-2 bg-gradient-to-r from-cat-cream to-cat-yellow/30 border-b border-cat-pink/30 flex justify-between items-center">
+                      <span className="text-sm text-cat-purple font-medium flex items-center gap-2">
                         🌍 預覽: {currentTab.filename}
                       </span>
-                      <span className="text-xs bg-blue-300 text-blue-800 px-2 py-1 rounded-full font-bold">
+                      <span className="text-xs bg-cat-pink text-white px-2 py-1 rounded-full font-bold">
                         🔄✨ 即時更新
                       </span>
                     </div>
@@ -965,7 +1011,7 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({
                     />
                   </div>
                 ) : (
-                  <div className="flex-1 flex items-center justify-center text-gray-500 bg-gray-100">
+                  <div className="flex-1 flex items-center justify-center text-cat-purple/60 bg-cat-cream/20">
                     <div className="text-center">
                       <Globe size={48} className="mx-auto mb-2 opacity-50" />
                       <p className="text-sm">選擇 HTML 檔案進行預覽</p>

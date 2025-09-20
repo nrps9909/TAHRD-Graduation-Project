@@ -6,14 +6,14 @@ const ProgressBar = () => {
 
   return (
     <div className="flex items-center gap-2">
-      <span className="font-cute text-xs text-pink-400">進度</span>
-      <div className="w-32 h-3 bg-pink-100/60 border-2 border-pink-200 rounded-full">
+      <span className="font-cute text-xs text-cat-pink-dark">進度</span>
+      <div className="w-32 h-3 bg-cat-cream/60 border-2 border-cat-pink rounded-full">
         <div
-          className="h-full bg-gradient-to-r from-pink-200 to-yellow-200 transition-all duration-500 rounded-full"
+          className="h-full bg-gradient-to-r from-cat-pink to-cat-beige transition-all duration-500 rounded-full"
           style={{ width: `${progress}%` }}
         />
       </div>
-      <span className="font-cute text-xs text-pink-500">
+      <span className="font-cute text-xs text-text-primary">
         {Math.round(progress)}%
       </span>
     </div>
