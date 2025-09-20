@@ -1,2 +1,14 @@
 #!/bin/sh
-npx lint-staged
+. "$(dirname "$0")/_/husky.sh"
+
+# Try multiple ways to run lint-staged
+if command -v npx >/dev/null 2>&1; then
+    npx lint-staged
+elif [ -f "./node_modules/.bin/lint-staged" ]; then
+    ./node_modules/.bin/lint-staged
+elif [ -f "./node_modules/.bin/lint-staged.cmd" ]; then
+    ./node_modules/.bin/lint-staged.cmd
+else
+    echo "lint-staged not found"
+    exit 1
+fi
