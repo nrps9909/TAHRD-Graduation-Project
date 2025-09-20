@@ -144,8 +144,8 @@ const GeminiCLI: React.FC<GeminiCLIProps> = ({ triggerFeedback }) => {
   useEffect(() => {
     if (aiState.isLoading && aiState.lastRequestTime) {
       const timeSinceRequest = Date.now() - aiState.lastRequestTime
-      // 如果請求超過 90 秒，認為可能已經失敗（比前端超時更長）
-      if (timeSinceRequest > 90000) {
+      // 如果請求超過 12 分鐘，認為可能已經失敗（比前端超時更長）
+      if (timeSinceRequest > 720000) {
         console.log('🐱 檢測到過期的 AI 請求，重置狀態')
         setAiState(prev => ({
           ...prev,
@@ -211,7 +211,7 @@ const GeminiCLI: React.FC<GeminiCLIProps> = ({ triggerFeedback }) => {
       // Call Gemini CLI with conversation history
       timeoutId = setTimeout(() => {
         controller.abort()
-      }, 60000) // 60秒前端超時
+      }, 480000) // 8分鐘前端超時 (480秒)
 
       const response = await fetch(`${API_BASE}/api/gemini`, {
         method: 'POST',

@@ -256,7 +256,7 @@ app.post('/api/gemini', async (req, res) => {
         ...process.env,
         GEMINI_API_KEY: process.env.GEMINI_API_KEY,
       },
-      timeout: 45000, // 45秒超時
+      timeout: 600000, // 10分鐘超時 (600秒)
       maxBuffer: 1024 * 1024 * 10, // 10MB buffer
     })
 
