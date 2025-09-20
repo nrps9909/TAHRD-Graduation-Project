@@ -144,8 +144,8 @@ const GeminiCLI: React.FC<GeminiCLIProps> = ({ triggerFeedback }) => {
   useEffect(() => {
     if (aiState.isLoading && aiState.lastRequestTime) {
       const timeSinceRequest = Date.now() - aiState.lastRequestTime
-      // 如果請求超過 30 秒，認為可能已經失敗
-      if (timeSinceRequest > 30000) {
+      // 如果請求超過 90 秒，認為可能已經失敗（比前端超時更長）
+      if (timeSinceRequest > 90000) {
         console.log('🐱 檢測到過期的 AI 請求，重置狀態')
         setAiState(prev => ({
           ...prev,
@@ -255,6 +255,7 @@ const GeminiCLI: React.FC<GeminiCLIProps> = ({ triggerFeedback }) => {
       }
 
       // Process the response to remove technical markdown
+      console.log('🐱 executeGeminiCommand 成功完成')
       return {
         text: processMarkdown(rawResponse) + fileNotification,
         files: data.files,
@@ -266,7 +267,7 @@ const GeminiCLI: React.FC<GeminiCLIProps> = ({ triggerFeedback }) => {
         console.log('🐱 AI請求被主動取消')
         return { text: '🐱 喵～請求已取消' }
       }
-      console.error('Gemini CLI Error:', error)
+      console.error('🐱 executeGeminiCommand error:', error)
       return {
         text:
           '🐱 喵嗚～連接有問題！請確保服務正在運行。\n錯誤訊息：' +
@@ -384,6 +385,14 @@ const GeminiCLI: React.FC<GeminiCLIProps> = ({ triggerFeedback }) => {
 
       setMessages(prev => [...prev, assistantMessage])
 
+      // 清除 AI 請求狀態 - 重要！
+      console.log('🐱 AI 回應成功，清除 loading 狀態')
+      setAiState(prev => ({
+        ...prev,
+        isLoading: false,
+        currentRequestId: null,
+      }))
+
       // Mark that AI response has been received
       setAIResponseReceived(true)
 
@@ -467,14 +476,15 @@ const GeminiCLI: React.FC<GeminiCLIProps> = ({ triggerFeedback }) => {
         unlockAchievement('branch-master')
       }
     } catch (error) {
+      console.error('🐱 handleSendMessage error:', error)
       const errorMessage: ChatMessage = {
         type: 'assistant',
         content: '🐱 喵嗚～出了點小問題，請再試一次！',
         timestamp: new Date(),
       }
       setMessages(prev => [...prev, errorMessage])
-    } finally {
-      // Only clear loading if this is the current request
+
+      // 只有在出現錯誤時才清除狀態
       setAiState(prev => ({
         ...prev,
         isLoading: false,
