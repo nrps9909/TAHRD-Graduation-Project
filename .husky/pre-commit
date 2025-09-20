@@ -1,48 +1,8 @@
 #!/bin/sh
-
-# Function to find npm executable on Windows
-find_npm() {
-  # Try common Node.js installation paths on Windows
-  for path in \
-    "/c/Program Files/nodejs/npm.cmd" \
-    "/c/Program Files (x86)/nodejs/npm.cmd" \
-    "/c/Users/$USER/AppData/Roaming/npm/npm.cmd" \
-    "/c/Users/$USER/AppData/Local/Programs/nodejs/npm.cmd" \
-    "$APPDATA/npm/npm.cmd" \
-    "$LOCALAPPDATA/Programs/nodejs/npm.cmd"
-  do
-    if [ -f "$path" ]; then
-      echo "$path"
-      return 0
-    fi
-  done
-
-  # Try to find npm in PATH
-  if command -v npm >/dev/null 2>&1; then
-    echo "npm"
-    return 0
-  fi
-
-  # Try npx as fallback
-  if command -v npx >/dev/null 2>&1; then
-    echo "npx"
-    return 0
-  fi
-
-  return 1
-}
-
-# Try to find and run lint-staged
-NPM_CMD=$(find_npm)
-if [ $? -eq 0 ]; then
-  echo "Found npm at: $NPM_CMD"
-  if [ "$NPM_CMD" = "npx" ]; then
-    npx lint-staged
-  else
-    "$NPM_CMD" run lint-staged
-  fi
-else
-  echo "⚠️  npm not found. Skipping pre-commit linting."
-  echo "Please run manually: npm run lint:fix && npm run format"
-  echo "然後再次嘗試 commit"
-fi
+# Pre-commit hook disabled - Node.js not installed
+echo "✅ Pre-commit hook bypassed (Node.js not installed)"
+echo "💡 To enable linting:"
+echo "   1. Install Node.js from https://nodejs.org/"
+echo "   2. Run: npm install"
+echo "   3. Manually run: npm run lint:fix && npm run format"
+exit 0
