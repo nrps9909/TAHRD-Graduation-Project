@@ -131,7 +131,7 @@ const VirtualTeacher = memo(
             {/* Name Badge - 優化樣式 */}
             <div className="mt-4 bg-gradient-to-r from-cat-pink to-cat-purple text-white px-6 py-3 rounded-full text-base font-bold shadow-lg flex items-center gap-3">
               <span>🐾</span>
-              <span className="font-chinese">萱萱同學</span>
+              <span className="font-chinese">黑噗噗同學</span>
               <span>😺</span>
             </div>
           </div>

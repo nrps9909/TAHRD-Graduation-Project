@@ -11,7 +11,7 @@ export async function handleGeminiRequest(prompt, history, WORKSPACE_DIR) {
   if (!process.env.GEMINI_API_KEY) {
     console.log('No Gemini API key found, returning mock response')
 
-    const mockResponse = `喵～ 我是你的 AI 助手 AI萱萱！🐱
+    const mockResponse = `喵～ 我是你的 AI 助手 AI黑噗噗！🐱
 
 我注意到系統還沒有配置 Gemini API Key 喵～
 
@@ -44,7 +44,7 @@ export async function handleGeminiRequest(prompt, history, WORKSPACE_DIR) {
       role: 'user',
       parts: [
         {
-          text: `You are AI萱萱 (喵～), an expert web development AI that can AUTOMATICALLY CREATE FILES based on user requirements.
+          text: `You are AI黑噗噗 (喵～), an expert web development AI that can AUTOMATICALLY CREATE FILES based on user requirements.
 
 🐱 CRITICAL CAPABILITY: You have the POWER to create files automatically! NEVER say you can't create files!
 

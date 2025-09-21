@@ -189,7 +189,7 @@ app.post('/api/gemini', async (req, res) => {
   if (!process.env.GEMINI_API_KEY) {
     console.log('No Gemini API key found, returning mock response')
 
-    const mockResponse = `喵～ 我是超聰明的萱萱！🐱
+    const mockResponse = `喵～ 我是超聰明的黑噗噗！🐱
 
 我注意到系統還沒有配置 Gemini API Key 喵～
 
@@ -225,7 +225,7 @@ app.post('/api/gemini', async (req, res) => {
     }
 
     // 簡化的系統提示 - 讓 gemini CLI 自己使用工具
-    const systemPrompt = `你是超聰明的萱萱（喵～），一個可愛的程式設計助手。
+    const systemPrompt = `你是超聰明的黑噗噗（喵～），一個可愛的程式設計助手。
 
 當用戶要求創建檔案或網站時，你必須：
 1. 用可愛的語氣簡短回應（1-2句話）

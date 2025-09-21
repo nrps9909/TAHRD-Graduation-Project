@@ -142,21 +142,26 @@ const GeminiCLI: React.FC<GeminiCLIProps> = ({ triggerFeedback }) => {
 
   // 組件重新掛載時檢查是否有進行中的請求
   useEffect(() => {
-    if (aiState.isLoading && aiState.lastRequestTime) {
-      const timeSinceRequest = Date.now() - aiState.lastRequestTime
-      // 如果請求超過 12 分鐘，認為可能已經失敗（比前端超時更長）
-      if (timeSinceRequest > 720000) {
-        console.log('🐱 檢測到過期的 AI 請求，重置狀態')
-        setAiState(prev => ({
-          ...prev,
-          isLoading: false,
-          currentRequestId: null,
-        }))
-      } else {
-        console.log('🐱 恢復進行中的 AI 請求狀態')
+    // 添加防抖，避免頻繁觸發
+    const timeoutId = setTimeout(() => {
+      if (aiState.isLoading && aiState.lastRequestTime) {
+        const timeSinceRequest = Date.now() - aiState.lastRequestTime
+        // 如果請求超過 12 分鐘，認為可能已經失敗
+        if (timeSinceRequest > 720000) {
+          console.log('🐱 檢測到過期的 AI 請求，重置狀態')
+          setAiState(prev => ({
+            ...prev,
+            isLoading: false,
+            currentRequestId: null,
+          }))
+        } else {
+          console.log(`🐱 恢復進行中的 AI 請求狀態 (已等待 ${Math.round(timeSinceRequest / 1000)} 秒)`)
+        }
       }
-    }
-  }, []) // 只在組件掛載時執行一次
+    }, 100) // 100ms 防抖
+
+    return () => clearTimeout(timeoutId)
+  }, [aiState.isLoading, aiState.lastRequestTime]) // 依賴狀態變化
 
   // 組件卸載時的清理邏輯 - 保持請求繼續進行
   useEffect(() => {
@@ -213,6 +218,7 @@ const GeminiCLI: React.FC<GeminiCLIProps> = ({ triggerFeedback }) => {
         controller.abort()
       }, 480000) // 8分鐘前端超時 (480秒)
 
+      console.log('🐱 發送請求到後端...')
       const response = await fetch(`${API_BASE}/api/gemini`, {
         method: 'POST',
         headers: {
@@ -224,9 +230,11 @@ const GeminiCLI: React.FC<GeminiCLIProps> = ({ triggerFeedback }) => {
         }),
         signal: controller.signal, // 添加 AbortController signal
       })
+      console.log('🐱 收到後端回應，狀態碼:', response.status)
       clearTimeout(timeoutId)
 
       const data = await response.json()
+      console.log('🐱 解析 JSON 成功，回應長度:', data.response?.length || 0)
 
       if (!response.ok) {
         if (response.status === 504) {
@@ -637,7 +645,7 @@ const GeminiCLI: React.FC<GeminiCLIProps> = ({ triggerFeedback }) => {
               🐱
             </motion.div>
             <div>
-              <h2 className="font-chinese text-lg font-bold">超聰明的萱萱</h2>
+              <h2 className="font-chinese text-lg font-bold">超聰明的黑噗噗</h2>
               <p className="font-chinese text-sm opacity-90">我什麼都知道</p>
             </div>
           </div>
@@ -671,13 +679,29 @@ const GeminiCLI: React.FC<GeminiCLIProps> = ({ triggerFeedback }) => {
               </div>
             )}
             {aiState.isLoading && (
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                className="text-2xl"
-              >
-                🌸
-              </motion.div>
+              <>
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                  className="text-2xl"
+                >
+                  🌸
+                </motion.div>
+                <button
+                  onClick={() => {
+                    console.log('🐱 強制重置 AI 狀態')
+                    setAiState(prev => ({
+                      ...prev,
+                      isLoading: false,
+                      currentRequestId: null,
+                    }))
+                  }}
+                  className="bg-red-500 bg-opacity-20 hover:bg-opacity-30 text-white px-2 py-1 rounded-full text-xs font-chinese transition-all"
+                  title="強制停止 AI 思考"
+                >
+                  🛑 重置
+                </button>
+              </>
             )}
           </div>
         </div>
