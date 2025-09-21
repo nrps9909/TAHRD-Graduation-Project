@@ -1,5 +1,5 @@
 import { useGLTF } from '@react-three/drei'
-import { useRef, useEffect, useMemo, useState } from 'react'
+import { useRef, useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { collisionSystem } from '@/utils/collision'
@@ -8,6 +8,7 @@ import { TerrainGlow } from './TerrainGlow'
 import { useTimeStore } from '@/stores/timeStore'
 import { buildWorldBVH } from '@/game/physics/worldBVH'
 import { markWalkable, registerWalkable } from '@/game/physics/walkable'
+import { registerGroundRoot } from '@/game/ground'
 
 // 全域地形參考，用於高度檢測
 let terrainMesh: THREE.Mesh | null = null
@@ -215,9 +216,10 @@ interface TerrainModelProps {
 
 export const TerrainModel = ({ position = [0, 0, 0] }: TerrainModelProps) => {
   const groupRef = useRef<THREE.Group>(null)
+  const terrainRootRef = useRef<THREE.Group>(null!)
   const [terrainScene, setTerrainScene] = useState<THREE.Group | null>(null)
   const { timeOfDay } = useTimeStore()
-  
+
   // 載入GLTF模型
   const { scene } = useGLTF('/terrain_low_poly/scene.gltf')
 
@@ -1104,11 +1106,20 @@ export const TerrainModel = ({ position = [0, 0, 0] }: TerrainModelProps) => {
     }
   }, [cleanedScene])
 
+  // Register ground root early using useLayoutEffect
+  useLayoutEffect(() => {
+    if (terrainRootRef.current) {
+      registerGroundRoot(terrainRootRef.current)
+    }
+  }, [])
+
   return (
     <group ref={groupRef} position={position}>
       {/* 讓XZ軸10倍擴展，Y軸5倍擴展以保持比例協調 */}
-      <group scale={[10, 5, 10]}>
-        <primitive object={cleanedScene} />
+      <group ref={terrainRootRef} name="TerrainRoot">
+        <group scale={[10, 5, 10]} name="TerrainGround">
+          <primitive object={cleanedScene} />
+        </group>
       </group>
       
       {/* 樹幹發光效果 */}

@@ -1,20 +1,21 @@
 import { io, Socket } from 'socket.io-client';
+import { WS_HOST, SOCKET_OPTS } from './config';
 
-const URL  = import.meta.env.VITE_WS_URL || 'ws://localhost:4001';
-const PATH = import.meta.env.VITE_WS_PATH || '/socket.io';
+let socket: Socket | null = null;
+let lastLog = 0;
 
-export const socket: Socket = io(URL, {
-  path: PATH,
-  transports: ['websocket', 'polling'],  // websocket first, fallback to polling
-  withCredentials: false,
-  timeout: 10000,
-  reconnection: true,
-  reconnectionAttempts: Infinity,
-  reconnectionDelay: 1000,
-  reconnectionDelayMax: 8000,
-  autoConnect: true,
-});
+export function getSocket(){
+  if (!socket) {
+    socket = io(WS_HOST, SOCKET_OPTS);
+    socket.on('connect', ()=>console.info('[Socket] connected', socket?.id));
+    socket.on('connect_error', ()=>{
+      const now=Date.now();
+      if(now-lastLog>5000){ console.warn('[Socket] offline (retrying)…'); lastLog=now; }
+    });
+  }
+  if (!socket.connected) socket.connect();
+  return socket;
+}
 
-socket.on('connect', () => console.info('[WS] connected', socket.id));
-socket.on('connect_error', (e) => console.warn('[WS] connect_error', e.message));
-socket.on('disconnect', (r) => console.warn('[WS] disconnected:', r));
+// Legacy export for backward compatibility
+export const socket = getSocket();

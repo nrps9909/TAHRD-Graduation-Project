@@ -7,7 +7,8 @@ import { safeNormalize2, isFiniteVec3 } from '@/game/utils/mathSafe'
 import { collisionSystem } from '@/utils/collision'
 import { wrapWithFeetPivot } from '@/game/utils/fixPivotAtFeet'
 import NameplateOverlay from '@/game/ui/NameplateOverlay'
-import { KCC } from '@/game/physics/kcc'
+import { snapSpawnToGround, hardStickToGround } from '@/game/snap'
+import { crowd, separation } from '@/game/crowd'
 
 interface NPCCharacterProps {
   npc: {
@@ -56,10 +57,9 @@ export const NPCCharacter: React.FC<NPCCharacterProps> = ({
 
   const [animationMixer, setAnimationMixer] = useState<THREE.AnimationMixer | null>(null)
 
-  // KCC physics controller
-  const kcc = useRef<KCC | null>(null)
-  const FIXED_DT = 1/60
-  const accumulator = useRef(0)
+  // Movement physics
+  const vel = useRef(new THREE.Vector3())
+  const lastSafe = useRef(new THREE.Vector3())
   const lastMoveTime = useRef(Date.now())
   const hasInitialized = useRef(false)
 
@@ -130,23 +130,13 @@ export const NPCCharacter: React.FC<NPCCharacterProps> = ({
     }
   }, [kenneyModel])
 
-  // Initialize KCC
+  // Initialize ground position
   useEffect(() => {
-    if (!kcc.current) {
-      kcc.current = new KCC({
-        radius: 0.35,
-        height: 1.20,
-        stepHeight: 0.35,
-        maxSlopeDeg: 42,
-        skin: 0.035,
-        maxSnap: 0.6,
-        gravity: 18,
-      })
-    }
-
     // Initial position
     const initialPos = new THREE.Vector3(...npc.position)
-    kcc.current.reset(initialPos)
+    snapSpawnToGround(initialPos)
+    lastSafe.current.copy(initialPos)
+    // Position is set in the other useEffect below
     if (feetPivotRef.current) {
       feetPivotRef.current.position.copy(initialPos)
     }
@@ -186,75 +176,54 @@ export const NPCCharacter: React.FC<NPCCharacterProps> = ({
   }, [setNewTarget])
 
   // Main frame update loop
-  useFrame((state, delta) => {
-    if (!feetPivotRef.current || !kcc.current) return
+  useFrame((state, dtRaw) => {
+    const dt = Math.min(0.05, Math.max(0.0001, dtRaw))
+    const g = feetPivotRef.current
+    if (!g) return
 
-    // Fixed timestep accumulator
-    accumulator.current += Math.min(delta, 0.05)
+    // 你的 AI 方向（例：往路點）
+    const distance = currentPosition.distanceTo(targetPosition)
+    const desired = new THREE.Vector3()
 
-    while (accumulator.current >= FIXED_DT) {
-      const dt = FIXED_DT
+    if (distance > 0.3) {
+      desired.subVectors(targetPosition, currentPosition)
+      desired.y = 0
+      desired.normalize()
 
-      const distance = currentPosition.distanceTo(targetPosition)
-      const moveSpeed = 3.0 // Slower speed for smoother movement
-
-      if (distance > 0.3) {
-        // Moving towards target
-        const direction = new THREE.Vector3()
-          .subVectors(targetPosition, currentPosition)
-        direction.y = 0 // Keep horizontal
-        direction.normalize()
-
-        // Use KCC for physics
-        // 1) Get normalized direction
-        const inputDir = new THREE.Vector2(direction.x, direction.z);
-        if (inputDir.lengthSq() > 0) inputDir.normalize();
-
-        // 2) Calculate desired movement for this frame
-        const desiredXZ = inputDir.multiplyScalar(moveSpeed * dt);
-
-        // 3) Update KCC (handles collision, step-up, grounding)
-        kcc.current.pos.copy(feetPivotRef.current.position);
-        kcc.current.update(desiredXZ, dt);
-        feetPivotRef.current.position.copy(kcc.current.pos);
-
-        // Sync currentPosition with feetPivot position
-        currentPosition.copy(feetPivotRef.current.position)
-
-        // Smooth rotation towards movement direction
-        if (distance > 0.1 && !hovered) {
-          const targetRotation = Math.atan2(direction.x, direction.z)
-          const currentRotation = feetPivotRef.current.rotation.y
-          let rotationDiff = targetRotation - currentRotation
-
-          if (rotationDiff > Math.PI) rotationDiff -= 2 * Math.PI
-          if (rotationDiff < -Math.PI) rotationDiff += 2 * Math.PI
-
-          feetPivotRef.current.rotation.y += rotationDiff * 0.1 // Smoother rotation
-        }
-
-        lastMoveTime.current = Date.now()
-      } else {
-        // Near target - just maintain ground position using KCC gravity
-        kcc.current.pos.copy(feetPivotRef.current.position);
-        kcc.current.update(new THREE.Vector2(0, 0), dt);
-        feetPivotRef.current.position.copy(kcc.current.pos);
-        currentPosition.copy(feetPivotRef.current.position)
-
-        // Occasionally set new target when idle
-        if (Date.now() - lastMoveTime.current > 3000 && Math.random() < 0.01) {
-          setNewTarget()
-        } else if (Math.random() < 0.005) {
-          // When at target, occasionally pick new target
-          setNewTarget()
-        }
-      }
-
-      accumulator.current -= FIXED_DT
+      // Occasionally set new target when moving
+      if (Math.random() < 0.001) setNewTarget()
+    } else {
+      // Near target - set new target
+      if (Math.random() < 0.01) setNewTarget()
     }
 
-    // Apply position to mesh
-    if (isFiniteVec3(currentPosition) && feetPivotRef.current) {
+    // 分離力（避免 NPC 互黏、也避免撞到玩家）
+    const sep = separation(npc.id, g.position.x, g.position.z, 1.2, 6)
+    desired.add(new THREE.Vector3(sep.fx, 0, sep.fz))
+    if (desired.length() > 0) desired.normalize()
+
+    // 加速 + 上限
+    const MAX = 2.2
+    const ACC = 10
+    vel.current.x += desired.x * ACC * dt
+    vel.current.z += desired.z * ACC * dt
+    const s = Math.hypot(vel.current.x, vel.current.z)
+    if (s > MAX) {
+      vel.current.x = (vel.current.x / s) * MAX
+      vel.current.z = (vel.current.z / s) * MAX
+    }
+
+    g.position.x += vel.current.x * dt
+    g.position.z += vel.current.z * dt
+
+    // 讓朝向與速度一致（可保留你的動畫/朝向邏輯）
+    if (s > 0.05 && !hovered) {
+      g.quaternion.setFromEuler(new THREE.Euler(0, Math.atan2(vel.current.x, vel.current.z), 0, 'YXZ'))
+    }
+
+    // Sync currentPosition
+    currentPosition.copy(g.position)
+    if (isFiniteVec3(currentPosition)) {
       setCurrentPosition(currentPosition.clone())
 
       // Update store position occasionally
@@ -265,13 +234,16 @@ export const NPCCharacter: React.FC<NPCCharacterProps> = ({
 
     // Update animation mixer
     if (animationMixer) {
-      animationMixer.update(delta)
+      animationMixer.update(dtRaw)
     }
 
     // Apply hover effects
-    if (hovered && feetPivotRef.current) {
-      feetPivotRef.current.position.y = currentPosition.y + Math.sin(state.clock.elapsedTime * 3) * 0.1
+    if (hovered) {
+      g.position.y = currentPosition.y + Math.sin(state.clock.elapsedTime * 3) * 0.1
     }
+
+    // ☆☆☆ 保證貼地（一定放最後）
+    hardStickToGround(g.position, lastSafe.current, dt)
   })
 
   const handleClick = (event: any) => {
@@ -292,21 +264,16 @@ export const NPCCharacter: React.FC<NPCCharacterProps> = ({
 
   // 初始化 NPC 位置
   useEffect(() => {
-    if (feetPivotRef.current && !hasInitialized.current && kcc.current) {
-      hasInitialized.current = true
-
-      // 延遲初始化以等待地形載入
-      setTimeout(() => {
-        if (!feetPivotRef.current || !kcc.current) return
-
-        const initialPos = new THREE.Vector3(...npc.position)
-        kcc.current.reset(initialPos)
-        feetPivotRef.current.position.copy(initialPos)
-
-        console.log(`🎮 NPC ${npc.name} 初始化完成: [${initialPos.x.toFixed(2)}, ${initialPos.y.toFixed(2)}, ${initialPos.z.toFixed(2)}]`)
-        console.log(`✅ NPCCharacter: ${npc.name} is ready and visible`)
-      }, 1500)
-    }
+    const g = feetPivotRef.current
+    if (!g) return
+    snapSpawnToGround(g.position)
+    lastSafe.current.copy(g.position)
+    const id = npc.id
+    crowd.add({
+      id,
+      getPos: () => ({ x: g.position.x, z: g.position.z })
+    })
+    return () => crowd.remove(id)
   }, [])
 
   return (
@@ -344,4 +311,33 @@ export const NPCCharacter: React.FC<NPCCharacterProps> = ({
       </mesh>
     </group>
   )
+}
+
+// Tree collision detection helper function
+function resolveTreeCollisions(position: THREE.Vector3, previousPosition: THREE.Vector3, treeColliders: any[]) {
+  for (const collider of treeColliders) {
+    const distance = Math.sqrt(
+      Math.pow(position.x - collider.position.x, 2) +
+      Math.pow(position.z - collider.position.z, 2)
+    )
+
+    if (distance < collider.radius) {
+      // Push NPC away from tree
+      const pushDirection = new THREE.Vector3(
+        position.x - collider.position.x,
+        0,
+        position.z - collider.position.z
+      )
+
+      if (pushDirection.length() > 0) {
+        pushDirection.normalize()
+        position.x = collider.position.x + pushDirection.x * collider.radius
+        position.z = collider.position.z + pushDirection.z * collider.radius
+      } else {
+        // If exactly at tree center, use previous position
+        position.x = previousPosition.x
+        position.z = previousPosition.z
+      }
+    }
+  }
 }

@@ -4,11 +4,11 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import * as THREE from 'three'
 import { useGameStore } from '@/stores/gameStore'
 import { collisionSystem } from '@/utils/collision'
-import { getTerrainHeight, getTerrainRotation, getTerrainSlope, isPathClear } from './TerrainModel'
 import { CameraController } from './CameraController'
-import { safeNormalize2, isFiniteVec3 } from '@/game/utils/mathSafe'
 import { wrapWithFeetPivot } from '@/game/utils/fixPivotAtFeet'
-import { KCC } from '@/game/physics/kcc'
+import { snapSpawnToGround, hardStickToGround } from '@/game/snap'
+import { isGroundReady } from '@/game/ground'
+import { crowd, separation } from '@/game/crowd'
 
 // NPC 類型定義（與 gameStore 保持一致）
 interface NPC {
@@ -75,26 +75,21 @@ const PlayerComponent = (props: PlayerProps, ref: React.Ref<PlayerRef>) => {
     getRef: () => feetPivotRef.current
   }), [])
 
-  // 移動相關狀態
-  const velocity = useRef(new THREE.Vector3())
-  const direction = useRef(new THREE.Vector3())
-  const cameraRotation = useRef(0)
-  const keys = useRef({
-    forward: false,
-    backward: false,
-    left: false,
-    right: false,
-    shift: false  // Shift鍵奔跑
-  })
+  const { camera } = useThree()
+  const vel = useRef(new THREE.Vector3())
+  const lastSafe = useRef(new THREE.Vector3())
+  const keys = useRef({up:false,down:false,left:false,right:false,w:false,a:false,s:false,d:false,shift:false})
 
-  // 玩家狀態
+  // Movement constants
+  const UP = new THREE.Vector3(0, 1, 0)
+  const BASE = 3.8
+  const SPRINT = 5.8
+  const ACC = 18
+  const FRI = 11
+
+  // Velocity and safety tracking
   const isMoving = useRef(false)
   const walkCycle = useRef(0)
-
-  // KCC physics controller
-  const kcc = useRef<KCC | null>(null)
-  const FIXED_DT = 1/60
-  const accumulator = useRef(0)
 
   // 處理模型載入完成 - 與 NPC 完全相同的邏輯
   useEffect(() => {
@@ -164,25 +159,28 @@ const PlayerComponent = (props: PlayerProps, ref: React.Ref<PlayerRef>) => {
     }
   }, [kenneyModel])
 
-  // Initialize KCC
+  // 等地形 ready → 出生貼地
   useEffect(() => {
-    if (!kcc.current) {
-      kcc.current = new KCC({
-        radius: 0.35,
-        height: 1.20,
-        stepHeight: 0.35,
-        maxSlopeDeg: 42,
-        skin: 0.035,
-        maxSnap: 0.6,
-        gravity: 18,
+    const init = () => {
+      if (!isGroundReady()) {
+        requestAnimationFrame(init)
+        return
+      }
+      const g = feetPivotRef.current
+      if (!g) return
+      snapSpawnToGround(g.position)
+      lastSafe.current.copy(g.position)
+    }
+    init()
+    // 進入 crowd（避免與 NPC 相撞）
+    crowd.add({
+      id: 'player',
+      getPos: () => ({
+        x: feetPivotRef.current?.position.x || 0,
+        z: feetPivotRef.current?.position.z || 0
       })
-    }
-
-    // Initial position
-    if (feetPivotRef.current) {
-      kcc.current.reset(feetPivotRef.current.position)
-      console.log(`✅ [Player] KCC initialized at ${feetPivotRef.current.position.toArray().map(v => v.toFixed(2)).join(', ')}`)
-    }
+    })
+    return () => crowd.remove('player')
   }, [])
 
   // 檢查附近的 NPC
@@ -223,217 +221,91 @@ const PlayerComponent = (props: PlayerProps, ref: React.Ref<PlayerRef>) => {
 
   // 鍵盤事件處理
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      // 防止方向鍵的默認滾動行為
-      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.code)) {
-        event.preventDefault()
-      }
-
-      // Remove debug log
-      switch (event.code) {
-        case 'KeyW':
-        case 'ArrowUp':
-          keys.current.forward = true
-          break
-        case 'KeyS':
-        case 'ArrowDown':
-          keys.current.backward = true
-          break
-        case 'KeyA':
-        case 'ArrowLeft':
-          keys.current.left = true
-          break
-        case 'KeyD':
-        case 'ArrowRight':
-          keys.current.right = true
-          break
-        case 'ShiftLeft':
-        case 'ShiftRight':
-          keys.current.shift = true  // Shift鍵奔跑
-          break
-        case 'KeyF':
-          // F鍵互動 - 檢查附近的NPC
-          handleInteraction()
-          break
-        case 'KeyR':
-          // R鍵重置人物位置到安全地點
-          if (feetPivotRef.current && kcc.current) {
-            const safePosition = new THREE.Vector3(0, 5, 0) // 安全的中心位置
-            kcc.current.reset(safePosition)
-            feetPivotRef.current.position.copy(safePosition)
-
-            setPlayerPosition([safePosition.x, safePosition.y, safePosition.z])
-            console.log(`按R鍵重置人物位置: [${safePosition.x.toFixed(2)}, ${safePosition.y.toFixed(2)}, ${safePosition.z.toFixed(2)}]`)
-          }
-          break
+    const on = (e: KeyboardEvent, v: boolean) => {
+      const k = e.key
+      if (k.startsWith('Arrow')) e.preventDefault()
+      if (k === 'w' || k === 'W') keys.current.w = v
+      if (k === 'a' || k === 'A') keys.current.a = v
+      if (k === 's' || k === 'S') keys.current.s = v
+      if (k === 'd' || k === 'D') keys.current.d = v
+      if (k === 'ArrowUp') keys.current.up = v
+      if (k === 'ArrowDown') keys.current.down = v
+      if (k === 'ArrowLeft') keys.current.left = v
+      if (k === 'ArrowRight') keys.current.right = v
+      if (k === 'Shift') keys.current.shift = v
+      if (k === 'F' || k === 'f') {
+        if (v) handleInteraction() // Only on keydown
       }
     }
-
-    const handleKeyUp = (event: KeyboardEvent) => {
-      // Remove debug log
-      switch (event.code) {
-        case 'KeyW':
-        case 'ArrowUp':
-          keys.current.forward = false
-          break
-        case 'KeyS':
-        case 'ArrowDown':
-          keys.current.backward = false
-          break
-        case 'KeyA':
-        case 'ArrowLeft':
-          keys.current.left = false
-          break
-        case 'KeyD':
-        case 'ArrowRight':
-          keys.current.right = false
-          break
-        case 'ShiftLeft':
-        case 'ShiftRight':
-          keys.current.shift = false  // 釋放Shift鍵
-          break
-      }
-    }
-
-    // 確保事件監聽器正確綁定
-    window.addEventListener('keydown', handleKeyDown)
-    window.addEventListener('keyup', handleKeyUp)
-
-    // 點擊畫面來獲得焦點
-    const handleClick = () => {
-      console.log('🎯 畫面獲得焦點')
-      window.focus()
-    }
-    document.addEventListener('click', handleClick)
-
+    const kd = (e: KeyboardEvent) => on(e, true)
+    const ku = (e: KeyboardEvent) => on(e, false)
+    addEventListener('keydown', kd, { passive: false })
+    addEventListener('keyup', ku, { passive: false })
     return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-      window.removeEventListener('keyup', handleKeyUp)
-      document.removeEventListener('click', handleClick)
+      removeEventListener('keydown', kd)
+      removeEventListener('keyup', ku)
     }
-  }, [handleInteraction])  // 加入 handleInteraction 依賴
+  }, [handleInteraction])
 
   // 每幀更新
-  useFrame((_, delta) => {
-    if (!feetPivotRef.current || !kcc.current) return
+  useFrame((_, dtRaw) => {
+    const dt = Math.min(0.05, Math.max(0.0001, dtRaw))
+    const g = feetPivotRef.current
+    if (!g) return
 
-    // Fixed timestep accumulator
-    accumulator.current += Math.min(delta, 0.05)
+    // 相機基底：right = UP × forward
+    const fwd = new THREE.Vector3()
+    camera.getWorldDirection(fwd)
+    fwd.y = 0
+    fwd.normalize()
+    const right = new THREE.Vector3().crossVectors(UP, fwd).normalize()
 
-    while (accumulator.current >= FIXED_DT) {
-      const dt = FIXED_DT
+    const k = keys.current
+    const forw = (k.up || k.w ? 1 : 0) + (k.down || k.s ? -1 : 0)
+    const r = (k.right || k.d ? 1 : 0) + (k.left || k.a ? -1 : 0)
+    const dir = new THREE.Vector3()
+    if (forw || r) dir.addScaledVector(fwd, forw).addScaledVector(right, r).normalize()
 
-      // 重置方向向量
-      direction.current.set(0, 0, 0)
+    // 群體分離（避免撞到 NPC/玩家）
+    const sep = separation('player', g.position.x, g.position.z)
+    dir.add(new THREE.Vector3(sep.fx, 0, sep.fz))
+    if (dir.length() > 0) dir.normalize()
 
-      // PC遊戲：鍵盤輸入 (設定本地方向向量)
-      if (keys.current.forward) direction.current.z = 1    // W鍵：本地前方
-      if (keys.current.backward) direction.current.z = -1  // S鍵：本地後方
-      if (keys.current.left) direction.current.x = -1      // A鍵：本地左方（修正方向）
-      if (keys.current.right) direction.current.x = 1      // D鍵：本地右方（修正方向）
+    const spd = k.shift ? SPRINT : BASE
+    const des = dir.multiplyScalar(spd)
 
-    // 調試：檢查按鍵狀態和方向向量 (throttled)
-    const anyKeyPressed = keys.current.forward || keys.current.backward || keys.current.left || keys.current.right
+    vel.current.x += (des.x - vel.current.x) * Math.min(1, ACC * dt)
+    vel.current.z += (des.z - vel.current.z) * Math.min(1, ACC * dt)
+    if (!(forw || r)) {
+      vel.current.x *= Math.max(0, 1 - FRI * dt)
+      vel.current.z *= Math.max(0, 1 - FRI * dt)
+    }
 
-    // 安全正規化方向向量
-    if (direction.current.length() > 0) {
-      const dir2D = new THREE.Vector2(direction.current.x, direction.current.z)
-      safeNormalize2(dir2D)
-      direction.current.x = dir2D.x
-      direction.current.z = dir2D.y
+    g.position.x += vel.current.x * dt
+    g.position.z += vel.current.z * dt
 
-      // 計算移動方向
-      const moveDirection = new THREE.Vector3()
-
-      // 檢查是否在 Pointer Lock 模式
-      const isPointerLocked = !!document.pointerLockElement
-
-      if (isPointerLocked) {
-        // PC遊戲 Pointer Lock 模式 - 基於相機朝向移動
-        // Three.js坐標系：Z軸負方向為forward，X軸正方向為right
-        const forward = new THREE.Vector3(0, 0, -1)
-        const right = new THREE.Vector3(1, 0, 0)    // 標準右向量
-
-        // 根據相機旋轉調整方向向量
-        forward.applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraRotation.current)
-        right.applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraRotation.current)
-
-        // 正確的方向映射
-        moveDirection.addScaledVector(forward, direction.current.z)   // Z軸：前後移動
-        moveDirection.addScaledVector(right, direction.current.x)     // X軸：左右移動
-      } else {
-        // 標準模式 - 世界坐標移動
-        // 在 Three.js 中，Z 軸負方向是前進
-        moveDirection.x = direction.current.x
-        moveDirection.z = -direction.current.z
-      }
-
-      const moveDir2D = new THREE.Vector2(moveDirection.x, moveDirection.z)
-      safeNormalize2(moveDir2D)
-      moveDirection.x = moveDir2D.x
-      moveDirection.z = moveDir2D.y
-
-      // Use KCC for physics
-      // 1) Get normalized input direction
-      const inputDir = new THREE.Vector2(moveDirection.x, moveDirection.z);
-      if (inputDir.lengthSq() > 0) inputDir.normalize();
-
-      // 2) Calculate speed
-      let speed = 5;  // Normal walking speed (m/s)
-      if (keys.current.shift) speed = 10;  // Shift - running
-
-      // 3) Calculate desired movement for this frame
-      const desiredXZ = inputDir.multiplyScalar(speed * dt);
-
-      // 4) Update KCC (handles collision, step-up, grounding)
-      kcc.current.pos.copy(feetPivotRef.current.position);
-      kcc.current.update(desiredXZ, dt);
-      feetPivotRef.current.position.copy(kcc.current.pos);
-
-      // 走路動畫
+    const speed = Math.hypot(vel.current.x, vel.current.z)
+    if (speed > 0.05) {
+      g.quaternion.setFromEuler(new THREE.Euler(0, Math.atan2(vel.current.x, vel.current.z), 0, 'YXZ'))
       isMoving.current = true
       walkCycle.current += dt * 10
-
-      // PC遊戲：角色朝向邏輯
-      if (moveDirection.length() > 0 && !isPointerLocked) {
-        // 只在非 Pointer Lock 模式下，角色面向移動方向
-        const targetRotation = Math.atan2(moveDirection.x, moveDirection.z)
-        feetPivotRef.current.rotation.y = THREE.MathUtils.lerp(
-          feetPivotRef.current.rotation.y,
-          targetRotation,
-          8 * dt
-        )
-      } else if (isPointerLocked) {
-        // Pointer Lock 模式下，角色朝向跟隨移動方向
-        if (moveDirection.length() > 0) {
-          const targetRotation = Math.atan2(moveDirection.x, moveDirection.z)
-          feetPivotRef.current.rotation.y = THREE.MathUtils.lerp(
-            feetPivotRef.current.rotation.y,
-            targetRotation,
-            10 * dt
-          )
-          if (isMounted.current) {
-            setPlayerRotation(targetRotation)
-          }
-        }
-      }
     } else {
       isMoving.current = false
     }
 
-      accumulator.current -= FIXED_DT
+    // Update player position to store
+    if (isMounted.current) {
+      setPlayerPosition([g.position.x, g.position.y, g.position.z])
+      setPlayerRotation([g.rotation.x, g.rotation.y, g.rotation.z])
     }
 
     // Update animation mixer
     if (animationMixer) {
-      animationMixer.update(delta)
+      animationMixer.update(dtRaw)
     }
 
-    // 走路動畫效果（簡單的上下擺動）
-    if (isMoving.current && feetPivotRef.current && kcc.current) {
-      const bobAmount = Math.sin(walkCycle.current) * 0.02
-      // Don't modify position directly when using KCC
-    }
+    // ☆☆☆ 保證貼地（一定放最後）
+    hardStickToGround(g.position, lastSafe.current, dt)
   })
 
   // Component lifecycle management
@@ -446,23 +318,27 @@ const PlayerComponent = (props: PlayerProps, ref: React.Ref<PlayerRef>) => {
   // 使用ref跟踪是否已經初始化，避免重複初始化
   const hasInitialized = useRef(false)
 
-  // 初始化玩家位置 - 使用KCC
+  // Secondary fallback initialization (disabled to avoid conflicts)
   useEffect(() => {
-    if (feetPivotRef.current && !hasInitialized.current && isMounted.current && kcc.current) {
+    // Commented out to avoid conflicts with the primary initialization above
+    /*
+    if (feetPivotRef.current && !hasInitialized.current && isMounted.current) {
       hasInitialized.current = true
       console.log('開始初始化玩家位置...')
 
       // 使用更安全的初始化方式 - 延遲等待地形載入
       setTimeout(() => {
-        if (!feetPivotRef.current || !kcc.current) return
+        if (!feetPivotRef.current) return
 
         const initialPos = new THREE.Vector3(...position)
-        kcc.current.reset(initialPos)
+        snapSpawnToGround(initialPos)
         feetPivotRef.current.position.copy(initialPos)
+        lastSafe.current.copy(initialPos)
 
         console.log(`🎮 玩家初始化完成: [${initialPos.x.toFixed(2)}, ${initialPos.y.toFixed(2)}, ${initialPos.z.toFixed(2)}]`)
       }, 1500) // 等待1.5秒讓地形完全載入
     }
+    */
   }, []) // 不依賴任何props，只在組件掛載時執行一次
 
   return (
@@ -474,7 +350,6 @@ const PlayerComponent = (props: PlayerProps, ref: React.Ref<PlayerRef>) => {
         smoothness={8}  // 更平滑的相機移動
         enableRotation={true}  // PC模式：啟用旋轉
         enablePointerLock={true}  // 啟用永久 pointer lock
-        onRotationChange={(rotation) => { cameraRotation.current = rotation }}
       />
 
       <group ref={feetPivotRef} position={position}>
@@ -505,5 +380,6 @@ const PlayerComponent = (props: PlayerProps, ref: React.Ref<PlayerRef>) => {
     </>
   )
 }
+
 
 export const Player = forwardRef(PlayerComponent)
