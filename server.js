@@ -15,7 +15,7 @@ const execAsync = promisify(exec)
 const PORT = process.env.PORT || 3001
 const WORKSPACE_DIR = path.join(process.cwd(), 'workspace')
 
-// Database setup
+// Database setup (SQLite - temporary)
 const db = new sqlite3.Database('./database.sqlite')
 
 // Initialize database tables
@@ -179,7 +179,7 @@ app.get('/api/users/count', (req, res) => {
 })
 
 app.post('/api/gemini', async (req, res) => {
-  const { prompt, history } = req.body
+  const { prompt, history, userId } = req.body
 
   if (!prompt) {
     return res.status(400).json({ error: 'Prompt is required' })
@@ -241,8 +241,11 @@ app.post('/api/gemini', async (req, res) => {
     // 組合完整的提示
     const fullPrompt = conversationContext + `User: ${prompt}`
 
-    // 設定工作目錄為 workspace 子目錄
-    const workspaceDir = path.join(process.cwd(), 'workspace')
+    // 設定工作目錄為用戶特定的 workspace 子目錄
+    const workspaceDir = path.join(process.cwd(), 'workspace', userId || 'guest')
+
+    // 確保用戶工作目錄存在
+    await fs.mkdir(workspaceDir, { recursive: true })
 
     // 執行 gemini CLI (加上 --yolo 自動確認工具調用)
     const command = `gemini --yolo "${fullPrompt}"`
@@ -308,14 +311,15 @@ app.post('/api/gemini', async (req, res) => {
 
 // File creation endpoint
 app.post('/api/file/create', async (req, res) => {
-  const { filename, content } = req.body
+  const { filename, content, userId } = req.body
 
   if (!filename || content === undefined) {
     return res.status(400).json({ error: 'Filename and content are required' })
   }
 
   try {
-    const filePath = path.join(WORKSPACE_DIR, filename)
+    const userWorkspace = path.join(WORKSPACE_DIR, userId || 'guest')
+    const filePath = path.join(userWorkspace, filename)
     const fileDir = path.dirname(filePath)
 
     // Create directory if it doesn't exist
@@ -342,10 +346,12 @@ app.post('/api/file/create', async (req, res) => {
 // File reading endpoint
 app.get('/api/file/read/:filename', async (req, res) => {
   const { filename } = req.params
+  const { userId } = req.query
 
   try {
     const decodedFilename = decodeURIComponent(filename)
-    const filePath = path.join(WORKSPACE_DIR, decodedFilename)
+    const userWorkspace = path.join(WORKSPACE_DIR, userId || 'guest')
+    const filePath = path.join(userWorkspace, decodedFilename)
     const content = await fs.readFile(filePath, 'utf-8')
 
     res.status(200).json({
@@ -364,14 +370,15 @@ app.get('/api/file/read/:filename', async (req, res) => {
 
 // File update endpoint
 app.post('/api/file/update', async (req, res) => {
-  const { filename, content } = req.body
+  const { filename, content, userId } = req.body
 
   if (!filename || content === undefined) {
     return res.status(400).json({ error: 'Filename and content are required' })
   }
 
   try {
-    const filePath = path.join(WORKSPACE_DIR, filename)
+    const userWorkspace = path.join(WORKSPACE_DIR, userId || 'guest')
+    const filePath = path.join(userWorkspace, filename)
     const fileDir = path.dirname(filePath)
 
     // Create directory if it doesn't exist
@@ -397,14 +404,15 @@ app.post('/api/file/update', async (req, res) => {
 
 // File delete endpoint
 app.delete('/api/file/delete', async (req, res) => {
-  const { filename } = req.body
+  const { filename, userId } = req.body
 
   if (!filename) {
     return res.status(400).json({ error: 'Filename is required' })
   }
 
   try {
-    const filePath = path.join(WORKSPACE_DIR, filename)
+    const userWorkspace = path.join(WORKSPACE_DIR, userId || 'guest')
+    const filePath = path.join(userWorkspace, filename)
     await fs.unlink(filePath)
 
     console.log(`File deleted: ${filename}`)
@@ -423,14 +431,15 @@ app.delete('/api/file/delete', async (req, res) => {
 
 // Folder delete endpoint
 app.delete('/api/folder/delete', async (req, res) => {
-  const { folderPath } = req.body
+  const { folderPath, userId } = req.body
 
   if (!folderPath) {
     return res.status(400).json({ error: 'Folder path is required' })
   }
 
   try {
-    const fullPath = path.join(WORKSPACE_DIR, folderPath)
+    const userWorkspace = path.join(WORKSPACE_DIR, userId || 'guest')
+    const fullPath = path.join(userWorkspace, folderPath)
 
     // Check if folder exists
     const stats = await fs.stat(fullPath)
@@ -458,20 +467,20 @@ app.delete('/api/folder/delete', async (req, res) => {
 // List files endpoint with recursive directory support
 app.get('/api/files', async (req, res) => {
   try {
-    const allFiles = await getFilesRecursively(WORKSPACE_DIR, '')
-    // Filter out files that contain home paths or nested workspace paths
-    const filteredFiles = allFiles.filter(file => {
-      // Remove any files that contain home paths
-      if (file.includes('home/') || file.includes('/home/')) return false
-      // Remove any files in nested workspace directories
-      if (file.startsWith('workspace/')) return false
-      // Remove the directories themselves
-      if (file === 'home' || file === 'workspace') return false
-      return true
-    })
+    const { userId } = req.query
+    const userWorkspace = path.join(WORKSPACE_DIR, userId || 'guest')
+
+    // Check if user workspace exists, create if it doesn't
+    try {
+      await fs.access(userWorkspace)
+    } catch (error) {
+      await fs.mkdir(userWorkspace, { recursive: true })
+    }
+
+    const allFiles = await getFilesRecursively(userWorkspace, '')
     res.status(200).json({
       success: true,
-      files: filteredFiles,
+      files: allFiles,
     })
   } catch (error) {
     console.error('Error listing files:', error)
@@ -512,6 +521,306 @@ async function getFilesRecursively(dir, relativePath) {
 
   return files
 }
+
+// Helper function to detect project type
+async function detectProjectType(userId, projectPath = '') {
+  try {
+    const userWorkspace = projectPath
+      ? path.join(WORKSPACE_DIR, userId || 'guest', projectPath)
+      : path.join(WORKSPACE_DIR, userId || 'guest')
+
+    // 檢查路徑是否存在
+    try {
+      await fs.access(userWorkspace)
+    } catch (error) {
+      console.log(`Path does not exist: ${userWorkspace}`)
+      return {
+        type: 'unknown',
+        entryPoint: null
+      }
+    }
+
+    const files = await fs.readdir(userWorkspace, { withFileTypes: true })
+
+    const fileNames = files.filter(f => f.isFile()).map(f => f.name)
+    const dirNames = files.filter(f => f.isDirectory()).map(f => f.name)
+
+    // React 項目檢測
+    if (fileNames.includes('package.json')) {
+      const packageJsonPath = path.join(userWorkspace, 'package.json')
+      const packageJson = JSON.parse(await fs.readFile(packageJsonPath, 'utf-8'))
+
+      if (packageJson.dependencies?.react || packageJson.devDependencies?.react) {
+        return {
+          type: 'react',
+          entryPoint: 'src/index.js',
+          devCommand: 'npm start',
+          buildCommand: 'npm run build',
+          port: 3000
+        }
+      }
+
+      if (packageJson.dependencies?.vue || packageJson.devDependencies?.vue) {
+        return {
+          type: 'vue',
+          entryPoint: 'src/main.js',
+          devCommand: 'npm run serve',
+          buildCommand: 'npm run build',
+          port: 8080
+        }
+      }
+
+      if (packageJson.dependencies?.express) {
+        return {
+          type: 'node-express',
+          entryPoint: packageJson.main || 'server.js',
+          devCommand: 'npm start',
+          port: 3000
+        }
+      }
+
+      // 其他 Node.js 項目
+      return {
+        type: 'node',
+        entryPoint: packageJson.main || 'index.js',
+        devCommand: 'npm start',
+        port: 3000
+      }
+    }
+
+    // Python 項目檢測
+    if (fileNames.some(f => f.endsWith('.py'))) {
+      if (fileNames.includes('requirements.txt') || fileNames.includes('setup.py')) {
+        return {
+          type: 'python',
+          entryPoint: 'main.py',
+          devCommand: 'python main.py',
+          port: 5000
+        }
+      }
+    }
+
+    // 純靜態檔案檢測
+    if (fileNames.includes('index.html')) {
+      return {
+        type: 'static',
+        entryPoint: 'index.html'
+      }
+    }
+
+    // 其他 HTML 檔案
+    const htmlFiles = fileNames.filter(f => f.endsWith('.html'))
+    if (htmlFiles.length > 0) {
+      return {
+        type: 'static',
+        entryPoint: htmlFiles[0]
+      }
+    }
+
+    return {
+      type: 'unknown',
+      entryPoint: null
+    }
+  } catch (error) {
+    console.error('Error detecting project type:', error)
+    return {
+      type: 'unknown',
+      entryPoint: null
+    }
+  }
+}
+
+// 項目類型檢測 API
+app.get('/api/project/detect', async (req, res) => {
+  const { userId, projectPath } = req.query
+
+  try {
+    const projectInfo = await detectProjectType(userId, projectPath)
+    res.json({ success: true, projectInfo })
+  } catch (error) {
+    console.error('Error detecting project:', error)
+    res.status(500).json({
+      error: 'Failed to detect project type',
+      details: error.message
+    })
+  }
+})
+
+// 存儲正在運行的開發服務器
+const runningServers = new Map()
+
+// 啟動開發服務器 API
+app.post('/api/project/start', async (req, res) => {
+  const { userId, projectPath, projectType } = req.body
+
+  if (!userId || !projectType) {
+    return res.status(400).json({ error: 'userId and projectType are required' })
+  }
+
+  const serverKey = `${userId}-${projectPath || 'root'}`
+
+  // 檢查是否已在運行
+  if (runningServers.has(serverKey)) {
+    const serverInfo = runningServers.get(serverKey)
+    return res.json({
+      success: true,
+      message: 'Server already running',
+      port: serverInfo.port,
+      url: `http://localhost:${serverInfo.port}`
+    })
+  }
+
+  try {
+    const userWorkspace = projectPath
+      ? path.join(WORKSPACE_DIR, userId, projectPath)
+      : path.join(WORKSPACE_DIR, userId)
+    const projectInfo = await detectProjectType(userId, projectPath)
+
+    if (projectInfo.type === 'static') {
+      // 靜態文件不需要啟動服務器，直接返回文件路徑
+      const staticUrl = `${req.protocol}://${req.get('host')}/workspace/${userId}/${projectPath || ''}/${projectInfo.entryPoint}`
+      return res.json({
+        success: true,
+        type: 'static',
+        url: staticUrl,
+        entryPoint: projectInfo.entryPoint
+      })
+    }
+
+    // 為動態項目分配端口
+    const basePort = 4000
+    let port = basePort
+
+    // 找到可用端口
+    while (Array.from(runningServers.values()).some(s => s.port === port)) {
+      port++
+    }
+
+    let command
+    switch (projectInfo.type) {
+      case 'react':
+        command = 'npm start'
+        break
+      case 'vue':
+        command = 'npm run serve'
+        break
+      case 'node':
+      case 'node-express':
+        command = `PORT=${port} npm start`
+        break
+      case 'python':
+        command = `python ${projectInfo.entryPoint}`
+        break
+      default:
+        return res.status(400).json({ error: `Unsupported project type: ${projectInfo.type}` })
+    }
+
+    // 啟動開發服務器
+    const childProcess = exec(command, {
+      cwd: userWorkspace,
+      env: { ...process.env, PORT: port }
+    })
+
+    const serverInfo = {
+      process: childProcess,
+      port,
+      type: projectInfo.type,
+      startTime: Date.now()
+    }
+
+    runningServers.set(serverKey, serverInfo)
+
+    // 設置進程事件監聽
+    childProcess.on('exit', (code) => {
+      console.log(`Server ${serverKey} exited with code ${code}`)
+      runningServers.delete(serverKey)
+    })
+
+    childProcess.on('error', (error) => {
+      console.error(`Server ${serverKey} error:`, error)
+      runningServers.delete(serverKey)
+    })
+
+    // 給服務器一些時間啟動
+    setTimeout(() => {
+      res.json({
+        success: true,
+        message: 'Development server started',
+        port,
+        type: projectInfo.type,
+        url: `http://localhost:${port}`,
+        command
+      })
+    }, 2000)
+
+  } catch (error) {
+    console.error('Error starting project:', error)
+    res.status(500).json({
+      error: 'Failed to start project',
+      details: error.message
+    })
+  }
+})
+
+// 停止開發服務器 API
+app.post('/api/project/stop', async (req, res) => {
+  const { userId, projectPath } = req.body
+
+  if (!userId) {
+    return res.status(400).json({ error: 'userId is required' })
+  }
+
+  const serverKey = `${userId}-${projectPath || 'root'}`
+
+  if (!runningServers.has(serverKey)) {
+    return res.json({ success: true, message: 'Server not running' })
+  }
+
+  try {
+    const serverInfo = runningServers.get(serverKey)
+    serverInfo.process.kill('SIGTERM')
+    runningServers.delete(serverKey)
+
+    res.json({
+      success: true,
+      message: 'Development server stopped'
+    })
+  } catch (error) {
+    console.error('Error stopping project:', error)
+    res.status(500).json({
+      error: 'Failed to stop project',
+      details: error.message
+    })
+  }
+})
+
+// 獲取運行中的服務器狀態 API
+app.get('/api/project/status', async (req, res) => {
+  const { userId, projectPath } = req.query
+
+  if (!userId) {
+    return res.status(400).json({ error: 'userId is required' })
+  }
+
+  const serverKey = `${userId}-${projectPath || 'root'}`
+
+  if (runningServers.has(serverKey)) {
+    const serverInfo = runningServers.get(serverKey)
+    res.json({
+      success: true,
+      running: true,
+      port: serverInfo.port,
+      type: serverInfo.type,
+      url: `http://localhost:${serverInfo.port}`,
+      uptime: Date.now() - serverInfo.startTime
+    })
+  } else {
+    res.json({
+      success: true,
+      running: false
+    })
+  }
+})
 
 app.listen(PORT, () => {
   console.log(`Gemini CLI server running on port ${PORT}`)

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { useGameStore } from '@/store/gameStore'
 import { usePageStatePersistence } from '@/hooks/usePageStatePersistence'
 import WebPreview from './WebPreview'
@@ -84,6 +84,11 @@ const GeminiCLI: React.FC<GeminiCLIProps> = ({ triggerFeedback }) => {
     isLoading: false,
     currentRequestId: null as string | null,
     lastRequestTime: null as number | null,
+    progress: {
+      stage: '',
+      percentage: 0,
+      elapsedTime: 0,
+    }
   })
 
   const chatRef = useRef<HTMLDivElement>(null)
@@ -153,6 +158,11 @@ const GeminiCLI: React.FC<GeminiCLIProps> = ({ triggerFeedback }) => {
             ...prev,
             isLoading: false,
             currentRequestId: null,
+            progress: {
+              stage: '',
+              percentage: 0,
+              elapsedTime: 0,
+            }
           }))
         } else {
           console.log(`🐱 恢復進行中的 AI 請求狀態 (已等待 ${Math.round(timeSinceRequest / 1000)} 秒)`)
@@ -162,6 +172,51 @@ const GeminiCLI: React.FC<GeminiCLIProps> = ({ triggerFeedback }) => {
 
     return () => clearTimeout(timeoutId)
   }, [aiState.isLoading, aiState.lastRequestTime]) // 依賴狀態變化
+
+  // 進度追蹤和階段更新
+  useEffect(() => {
+    if (!aiState.isLoading || !aiState.lastRequestTime) return
+
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - aiState.lastRequestTime!
+      const elapsedSeconds = Math.floor(elapsed / 1000)
+
+      // 模擬不同階段的進度
+      let stage = '🔍 分析您的請求...'
+      let percentage = 0
+
+      if (elapsedSeconds < 10) {
+        stage = '🔍 分析您的請求...'
+        percentage = Math.min(15, elapsedSeconds * 1.5)
+      } else if (elapsedSeconds < 30) {
+        stage = '🧠 AI 正在思考中...'
+        percentage = Math.min(35, 15 + (elapsedSeconds - 10) * 1)
+      } else if (elapsedSeconds < 60) {
+        stage = '⚙️ 處理複雜任務...'
+        percentage = Math.min(60, 35 + (elapsedSeconds - 30) * 0.8)
+      } else if (elapsedSeconds < 120) {
+        stage = '🛠️ 生成代碼中...'
+        percentage = Math.min(80, 60 + (elapsedSeconds - 60) * 0.3)
+      } else if (elapsedSeconds < 300) {
+        stage = '🔧 優化和檢查...'
+        percentage = Math.min(90, 80 + (elapsedSeconds - 120) * 0.05)
+      } else {
+        stage = '⏳ 這是個複雜任務，請耐心等待...'
+        percentage = Math.min(95, 90 + (elapsedSeconds - 300) * 0.01)
+      }
+
+      setAiState(prev => ({
+        ...prev,
+        progress: {
+          stage,
+          percentage,
+          elapsedTime: elapsedSeconds,
+        }
+      }))
+    }, 1000) // 每秒更新一次
+
+    return () => clearInterval(interval)
+  }, [aiState.isLoading, aiState.lastRequestTime])
 
   // 組件卸載時的清理邏輯 - 保持請求繼續進行
   useEffect(() => {
@@ -194,7 +249,7 @@ const GeminiCLI: React.FC<GeminiCLIProps> = ({ triggerFeedback }) => {
   ): Promise<{ text: string; files?: any[] }> => {
     const API_BASE =
       (import.meta as any).env?.VITE_API_BASE || 'http://localhost:3001'
-    let timeoutId: NodeJS.Timeout | null = null
+    let timeoutId: number | null = null
 
     try {
       // 創建新的 AbortController 用於此次請求
@@ -227,6 +282,7 @@ const GeminiCLI: React.FC<GeminiCLIProps> = ({ triggerFeedback }) => {
         body: JSON.stringify({
           prompt: userPrompt,
           history: conversationHistory,
+          userId: playerName || 'guest',
         }),
         signal: controller.signal, // 添加 AbortController signal
       })
@@ -377,6 +433,11 @@ const GeminiCLI: React.FC<GeminiCLIProps> = ({ triggerFeedback }) => {
       isLoading: true,
       currentRequestId: requestId,
       lastRequestTime: Date.now(),
+      progress: {
+        stage: '🔍 開始分析您的請求...',
+        percentage: 0,
+        elapsedTime: 0,
+      }
     }))
 
     try {
@@ -388,7 +449,7 @@ const GeminiCLI: React.FC<GeminiCLIProps> = ({ triggerFeedback }) => {
         type: 'assistant',
         content: response.text,
         timestamp: new Date(),
-        files: response.files,
+        ...(response.files && { files: response.files.map(f => ({ filename: f.filename, created: f.created })) }),
       }
 
       setMessages(prev => [...prev, assistantMessage])
@@ -399,6 +460,11 @@ const GeminiCLI: React.FC<GeminiCLIProps> = ({ triggerFeedback }) => {
         ...prev,
         isLoading: false,
         currentRequestId: null,
+        progress: {
+          stage: '',
+          percentage: 0,
+          elapsedTime: 0,
+        }
       }))
 
       // Mark that AI response has been received
@@ -497,6 +563,11 @@ const GeminiCLI: React.FC<GeminiCLIProps> = ({ triggerFeedback }) => {
         ...prev,
         isLoading: false,
         currentRequestId: null,
+        progress: {
+          stage: '',
+          percentage: 0,
+          elapsedTime: 0,
+        }
       }))
     }
   }
@@ -680,13 +751,25 @@ const GeminiCLI: React.FC<GeminiCLIProps> = ({ triggerFeedback }) => {
             )}
             {aiState.isLoading && (
               <>
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                  className="text-2xl"
-                >
-                  🌸
-                </motion.div>
+                {/* 狀態和進度顯示 */}
+                <div className="flex items-center gap-2">
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                    className="text-xl"
+                  >
+                    🌸
+                  </motion.div>
+                  <div className="text-right">
+                    <div className="text-xs font-chinese opacity-90">
+                      {aiState.progress.stage.replace(/[🔍🧠⚙️🛠️🔧⏳]/gu, '').trim()}
+                    </div>
+                    <div className="text-xs font-chinese opacity-75">
+                      {Math.round(aiState.progress.percentage)}% • {aiState.progress.elapsedTime}秒
+                    </div>
+                  </div>
+                </div>
+
                 <button
                   onClick={() => {
                     console.log('🐱 強制重置 AI 狀態')
@@ -694,6 +777,11 @@ const GeminiCLI: React.FC<GeminiCLIProps> = ({ triggerFeedback }) => {
                       ...prev,
                       isLoading: false,
                       currentRequestId: null,
+                      progress: {
+                        stage: '',
+                        percentage: 0,
+                        elapsedTime: 0,
+                      }
                     }))
                   }}
                   className="bg-red-500 bg-opacity-20 hover:bg-opacity-30 text-white px-2 py-1 rounded-full text-xs font-chinese transition-all"
@@ -744,7 +832,7 @@ const GeminiCLI: React.FC<GeminiCLIProps> = ({ triggerFeedback }) => {
             animate={{ opacity: 1, y: 0 }}
             className="flex justify-start mb-4"
           >
-            <div className="flex items-start gap-3 max-w-[80%]">
+            <div className="flex items-start gap-3 max-w-[85%]">
               <motion.div
                 animate={{
                   rotate: [0, 5, -5, 0],
@@ -755,8 +843,9 @@ const GeminiCLI: React.FC<GeminiCLIProps> = ({ triggerFeedback }) => {
               >
                 🐱
               </motion.div>
-              <div className="bg-white rounded-2xl rounded-bl-md px-4 py-3 shadow-lg border border-pink-200">
-                <div className="flex items-center gap-1">
+              <div className="bg-white rounded-2xl rounded-bl-md px-4 py-4 shadow-lg border border-pink-200 min-w-[280px]">
+                {/* 當前狀態 */}
+                <div className="flex items-center gap-1 mb-3">
                   <motion.div
                     animate={{ scale: [1, 1.5, 1] }}
                     transition={{ duration: 0.6, repeat: Infinity, delay: 0 }}
@@ -773,9 +862,44 @@ const GeminiCLI: React.FC<GeminiCLIProps> = ({ triggerFeedback }) => {
                     className="w-2 h-2 bg-cat-pink rounded-full"
                   />
                   <span className="ml-2 font-chinese text-sm text-gray-600">
-                    貓咪正在思考中...
+                    {aiState.progress.stage}
                   </span>
                 </div>
+
+                {/* 進度條 */}
+                <div className="mb-2">
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <motion.div
+                      className="bg-gradient-to-r from-cat-pink to-cat-purple h-2 rounded-full"
+                      initial={{ width: '0%' }}
+                      animate={{ width: `${aiState.progress.percentage}%` }}
+                      transition={{ duration: 0.8, ease: "easeOut" }}
+                    />
+                  </div>
+                </div>
+
+                {/* 時間和百分比 */}
+                <div className="flex justify-between items-center">
+                  <span className="font-chinese text-xs text-gray-500">
+                    {Math.round(aiState.progress.percentage)}%
+                  </span>
+                  <span className="font-chinese text-xs text-gray-500">
+                    {aiState.progress.elapsedTime}秒
+                  </span>
+                </div>
+
+                {/* 耐心等待提示 */}
+                {aiState.progress.elapsedTime > 60 && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="mt-2 p-2 bg-yellow-50 rounded-lg border border-yellow-200"
+                  >
+                    <span className="font-chinese text-xs text-yellow-700">
+                      💡 複雜任務需要更多時間，感謝您的耐心等待！
+                    </span>
+                  </motion.div>
+                )}
               </div>
             </div>
           </motion.div>

@@ -31,6 +31,15 @@ interface OpenTab {
 
 type ViewMode = 'code' | 'preview' | 'split'
 
+interface ProjectInfo {
+  type: 'static' | 'react' | 'vue' | 'node' | 'node-express' | 'python' | 'unknown'
+  entryPoint: string | null
+  devCommand?: string
+  port?: number
+  url?: string
+  running?: boolean
+}
+
 interface WorkspaceViewerProps {
   embedded?: boolean
 }
@@ -44,6 +53,9 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({
   const [isMobile, setIsMobile] = useState(false)
   const [isCreatingFile, setIsCreatingFile] = useState(false)
   const [newFileName, setNewFileName] = useState('')
+  const [projectInfo, setProjectInfo] = useState<ProjectInfo | null>(null)
+  const [serverStatus, setServerStatus] = useState<{running: boolean, url?: string, port?: number}>({ running: false })
+  const [selectedFolder, setSelectedFolder] = useState<string>('')
 
   // 獲取玩家名稱以實現用戶隔離
   const { playerName } = useGameStore()
@@ -78,8 +90,8 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({
   const autoRefresh = true
 
   // Auto-save timer ref
-  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null)
-  const previewRefreshTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const autoSaveTimerRef = useRef<number | null>(null)
+  const previewRefreshTimerRef = useRef<number | null>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
 
   // Convert array to Set for expandedFolders (for easier manipulation)
@@ -109,6 +121,9 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({
         const fileTree = buildFileTree(data.files)
         setFiles(fileTree)
 
+        // 檢測項目類型
+        await detectProjectType(userId)
+
         // 如果沒有檔案，清空所有 openTabs
         if (!data.files || data.files.length === 0) {
           setWorkspaceState(prev => ({
@@ -135,6 +150,113 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({
       console.error('Failed to load files:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  // 檢測項目類型
+  const detectProjectType = async (userId: string, projectPath?: string) => {
+    try {
+      const url = projectPath
+        ? `${API_BASE}/api/project/detect?userId=${encodeURIComponent(userId)}&projectPath=${encodeURIComponent(projectPath)}`
+        : `${API_BASE}/api/project/detect?userId=${encodeURIComponent(userId)}`
+
+      const response = await fetch(url)
+      const data = await response.json()
+      if (data.success) {
+        setProjectInfo(data.projectInfo)
+        // 同時檢查服務器狀態
+        await checkServerStatus(userId, projectPath)
+      }
+    } catch (error) {
+      console.error('Failed to detect project type:', error)
+    }
+  }
+
+  // 檢查服務器狀態
+  const checkServerStatus = async (userId: string, projectPath?: string) => {
+    try {
+      const url = projectPath
+        ? `${API_BASE}/api/project/status?userId=${encodeURIComponent(userId)}&projectPath=${encodeURIComponent(projectPath)}`
+        : `${API_BASE}/api/project/status?userId=${encodeURIComponent(userId)}`
+
+      const response = await fetch(url)
+      const data = await response.json()
+      if (data.success) {
+        setServerStatus({
+          running: data.running,
+          url: data.url,
+          port: data.port
+        })
+      }
+    } catch (error) {
+      console.error('Failed to check server status:', error)
+    }
+  }
+
+  // 啟動項目預覽
+  const startProjectPreview = async () => {
+    if (!projectInfo || !playerName) return
+
+    try {
+      const userId = playerName
+      const response = await fetch(`${API_BASE}/api/project/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          projectPath: selectedFolder,
+          projectType: projectInfo.type
+        })
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        setServerStatus({
+          running: true,
+          url: data.url,
+          port: data.port
+        })
+
+        // 如果是靜態項目，直接設置 URL
+        if (data.type === 'static') {
+          setProjectInfo(prev => prev ? { ...prev, url: data.url } : null)
+        }
+      }
+    } catch (error) {
+      console.error('Failed to start project:', error)
+    }
+  }
+
+  // 停止項目預覽
+  const stopProjectPreview = async () => {
+    if (!playerName) return
+
+    try {
+      const userId = playerName
+      const response = await fetch(`${API_BASE}/api/project/stop`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          projectPath: selectedFolder
+        })
+      })
+
+      if (response.ok) {
+        setServerStatus({ running: false })
+      }
+    } catch (error) {
+      console.error('Failed to stop project:', error)
+    }
+  }
+
+  // 新增：選擇資料夾進行預覽
+  const selectFolderForPreview = async (folderPath: string) => {
+    setSelectedFolder(folderPath)
+    if (playerName) {
+      await detectProjectType(playerName, folderPath)
+      // 自動切換到預覽模式
+      setWorkspaceState(prev => ({ ...prev, viewMode: 'preview' }))
     }
   }
 
@@ -442,6 +564,7 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({
       const interval = setInterval(loadFiles, 10000)
       return () => clearInterval(interval)
     }
+    return undefined
   }, [isOpen]) // loadFiles is stable and doesn't need to be in deps
 
   // Cleanup timers on unmount
@@ -520,6 +643,11 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({
               openFile(item.path)
             }
           }}
+          onDoubleClick={() => {
+            if (item.type === 'folder') {
+              selectFolderForPreview(item.path)
+            }
+          }}
         >
           {item.type === 'folder' ? (
             <>
@@ -532,7 +660,9 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({
                 className={`w-6 h-6 rounded-lg flex items-center justify-center mr-2 ${
                   expandedFolders.has(item.path)
                     ? 'bg-gradient-to-br from-yellow-400 to-orange-400'
-                    : 'bg-gradient-to-br from-cat-pink to-cat-beige'
+                    : selectedFolder === item.path
+                      ? 'bg-gradient-to-br from-green-400 to-emerald-400'
+                      : 'bg-gradient-to-br from-cat-pink to-cat-beige'
                 }`}
               >
                 <span className="text-xs text-white">
@@ -559,6 +689,11 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({
             </>
           )}
           <span className="truncate flex-1 font-medium">{item.name}</span>
+          {item.type === 'folder' && (
+            <span className="text-xs text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+              💫 雙擊預覽
+            </span>
+          )}
           <button
             onClick={e => {
               e.stopPropagation()
@@ -669,10 +804,13 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({
                 onClick={() =>
                   setWorkspaceState(prev => ({ ...prev, viewMode: 'preview' }))
                 }
+                disabled={!projectInfo || projectInfo.type === 'unknown'}
                 className={`px-4 py-2 rounded-full text-sm flex items-center gap-2 transition-all duration-200 font-medium ${
                   workspaceState.viewMode === 'preview'
                     ? 'bg-gradient-to-r from-pink-500 to-purple-500 text-white shadow-lg transform scale-105'
-                    : 'text-pink-600 hover:bg-pink-100'
+                    : (!projectInfo || projectInfo.type === 'unknown')
+                      ? 'text-gray-400 cursor-not-allowed'
+                      : 'text-pink-600 hover:bg-pink-100'
                 }`}
               >
                 <Globe size={16} />
@@ -682,15 +820,32 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({
                 onClick={() =>
                   setWorkspaceState(prev => ({ ...prev, viewMode: 'split' }))
                 }
+                disabled={!projectInfo || projectInfo.type === 'unknown'}
                 className={`px-4 py-2 rounded-full text-sm flex items-center gap-2 transition-all duration-200 font-medium ${
                   workspaceState.viewMode === 'split'
                     ? 'bg-gradient-to-r from-pink-500 to-purple-500 text-white shadow-lg transform scale-105'
-                    : 'text-pink-600 hover:bg-pink-100'
+                    : (!projectInfo || projectInfo.type === 'unknown')
+                      ? 'text-gray-400 cursor-not-allowed'
+                      : 'text-pink-600 hover:bg-pink-100'
                 }`}
               >
                 <Monitor size={16} />
                 🖥️ 分割
               </button>
+            </div>
+          )}
+
+          {/* Project Type Indicator */}
+          {projectInfo && projectInfo.type !== 'unknown' && (
+            <div className="flex items-center gap-2 bg-white/70 backdrop-blur-sm rounded-full px-3 py-1 shadow-sm border border-pink-200">
+              <span className="text-xs font-medium text-purple-600">
+                {projectInfo.type === 'static' && '📄 靜態網頁'}
+                {projectInfo.type === 'react' && '⚛️ React'}
+                {projectInfo.type === 'vue' && '🚀 Vue'}
+                {projectInfo.type === 'node' && '🟢 Node.js'}
+                {projectInfo.type === 'node-express' && '🚀 Express'}
+                {projectInfo.type === 'python' && '🐍 Python'}
+              </span>
             </div>
           )}
 
@@ -992,29 +1147,104 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({
               <div
                 className={`${!isMobile && workspaceState.viewMode === 'split' ? 'w-1/2' : 'w-full'} flex flex-col bg-white`}
               >
-                {currentTab && currentTab.filename.endsWith('.html') ? (
+                {projectInfo && projectInfo.type !== 'unknown' ? (
                   <div className="flex-1 flex flex-col">
-                    {/* Preview header with auto-refresh indicator */}
+                    {/* Smart Preview Header */}
                     <div className="px-4 py-2 bg-gradient-to-r from-cat-cream to-cat-yellow/30 border-b border-cat-pink/30 flex justify-between items-center">
-                      <span className="text-sm text-cat-purple font-medium flex items-center gap-2">
-                        🌍 預覽: {currentTab.filename}
-                      </span>
-                      <span className="text-xs bg-cat-pink text-white px-2 py-1 rounded-full font-bold">
-                        🔄✨ 即時更新
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-cat-purple font-medium">
+                          {projectInfo.type === 'static' && '📄 靜態預覽'}
+                          {projectInfo.type === 'react' && '⚛️ React 應用'}
+                          {projectInfo.type === 'vue' && '🚀 Vue 應用'}
+                          {projectInfo.type === 'node' && '🟢 Node.js 應用'}
+                          {projectInfo.type === 'node-express' && '🚀 Express 服務'}
+                          {projectInfo.type === 'python' && '🐍 Python 應用'}
+                        </span>
+                        {projectInfo.entryPoint && (
+                          <span className="text-xs text-gray-500">({projectInfo.entryPoint})</span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {/* Server Status */}
+                        {serverStatus.running ? (
+                          <span className="text-xs bg-green-500 text-white px-2 py-1 rounded-full font-bold flex items-center gap-1">
+                            🟢 運行中 {serverStatus.port && `:${serverStatus.port}`}
+                          </span>
+                        ) : projectInfo.type !== 'static' ? (
+                          <span className="text-xs bg-gray-400 text-white px-2 py-1 rounded-full font-bold">
+                            ⚫ 未啟動
+                          </span>
+                        ) : (
+                          <span className="text-xs bg-cat-pink text-white px-2 py-1 rounded-full font-bold">
+                            🔄✨ 即時更新
+                          </span>
+                        )}
+
+                        {/* Start/Stop Button for Dynamic Projects */}
+                        {projectInfo.type !== 'static' && (
+                          <button
+                            onClick={serverStatus.running ? stopProjectPreview : startProjectPreview}
+                            className={`text-xs px-3 py-1 rounded-full font-bold transition-all duration-200 ${
+                              serverStatus.running
+                                ? 'bg-red-500 hover:bg-red-600 text-white'
+                                : 'bg-green-500 hover:bg-green-600 text-white'
+                            }`}
+                          >
+                            {serverStatus.running ? '🛑 停止' : '▶️ 啟動'}
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    <iframe
-                      ref={iframeRef}
-                      src={`${API_BASE}/workspace/${currentTab.filename}?t=${Date.now()}`}
-                      className="flex-1 border-0"
-                      title="預覽"
-                    />
+
+                    {/* Preview Content */}
+                    {projectInfo.type === 'static' || serverStatus.running ? (
+                      <iframe
+                        ref={iframeRef}
+                        src={
+                          projectInfo.type === 'static'
+                            ? selectedFolder
+                              ? `${API_BASE}/workspace/${playerName || 'guest'}/${selectedFolder}/${projectInfo.entryPoint}?t=${Date.now()}`
+                              : `${API_BASE}/workspace/${playerName || 'guest'}/${projectInfo.entryPoint}?t=${Date.now()}`
+                            : serverStatus.url
+                        }
+                        className="flex-1 border-0"
+                        title="預覽"
+                      />
+                    ) : (
+                      <div className="flex-1 flex items-center justify-center text-cat-purple/60 bg-cat-cream/20">
+                        <div className="text-center p-8">
+                          <div className="w-16 h-16 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                            <span className="text-2xl">
+                              {projectInfo.type === 'react' && '⚛️'}
+                              {projectInfo.type === 'vue' && '🚀'}
+                              {projectInfo.type === 'node' && '🟢'}
+                              {projectInfo.type === 'node-express' && '🚀'}
+                              {projectInfo.type === 'python' && '🐍'}
+                            </span>
+                          </div>
+                          <p className="text-lg font-bold text-purple-600 mb-2">
+                            準備啟動 {projectInfo.type} 應用
+                          </p>
+                          <p className="text-sm text-pink-600 mb-4">
+                            點擊「啟動」按鈕開始運行開發服務器
+                          </p>
+                          <button
+                            onClick={startProjectPreview}
+                            className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-6 py-3 rounded-full font-bold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+                          >
+                            ▶️ 啟動預覽
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="flex-1 flex items-center justify-center text-cat-purple/60 bg-cat-cream/20">
                     <div className="text-center">
                       <Globe size={48} className="mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">選擇 HTML 檔案進行預覽</p>
+                      <p className="text-sm">沒有可預覽的項目</p>
+                      <p className="text-xs text-gray-400 mt-1">創建 HTML 檔案或完整項目開始預覽</p>
                     </div>
                   </div>
                 )}
