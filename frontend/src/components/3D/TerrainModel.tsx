@@ -6,14 +6,16 @@ import { collisionSystem } from '@/utils/collision'
 import { TreeGlow } from './TreeGlow'
 import { TerrainGlow } from './TerrainGlow'
 import { useTimeStore } from '@/stores/timeStore'
-import { buildWorldBVH } from '@/game/physics/worldBVH'
-import { markWalkable, registerWalkable } from '@/game/physics/walkable'
 import { registerGroundRoot } from '@/game/ground'
 
 // 全域地形參考，用於高度檢測
 let terrainMesh: THREE.Mesh | null = null
 let brownMountainMeshes: THREE.Mesh[] = [] // 專門儲存棕色山體mesh
 let raycaster: THREE.Raycaster | null = null
+
+// 全域樹木碰撞器數據，供出生點系統使用
+export let latestTreeColliders: { x: number; z: number; r: number }[] = [];
+export function getTreeColliders() { return latestTreeColliders; }
 
 // 地形高度檢測功能 - 適應XZ軸5倍擴展，Y軸2.5倍擴展
 export const getTerrainHeight = (x: number, z: number): number => {
@@ -138,6 +140,19 @@ export const updateGlobalTreePositions = (trees: THREE.Mesh[]) => {
   })
   
   console.log(`🌳 已更新全域樹木位置數據，共 ${globalTreePositions.length} 個樹木物件`)
+
+  // B) 樹木網格：多語系名稱白名單；找不到時只 log 一次，不洗版
+  const names = ['tree','樹','trunk','oak','pine']
+  const foundTrees = globalTreePositions.filter(tree => {
+    const nm = (tree.name||'').toLowerCase()
+    return names.some(k=>nm.includes(k))
+  })
+
+  // 使用 module 變數避免重複警告
+  if (!foundTrees.length && !globalTreePositions._treeWarned){
+    console.warn('[Terrain] 未找到真實樹木網格，使用預設樹木位置') // 只印一次
+    ;(globalTreePositions as any)._treeWarned = true
+  }
 }
 
 // 獲取玩家附近的樹木
@@ -614,15 +629,16 @@ export const TerrainModel = ({ position = [0, 0, 0] }: TerrainModelProps) => {
           mesh.updateMatrixWorld(true);
         });
 
-        console.log(`🔨 建立BVH世界碰撞網格，包含 ${collisionMeshes.length} 個mesh`)
-        const worldMesh = buildWorldBVH(collisionMeshes)
-        if (worldMesh) {
-          console.log('✅ BVH世界碰撞網格建立成功')
-          // 加入場景用於調試（不可見）
-          scene.add(worldMesh)
-        } else {
-          console.error('❌ BVH世界碰撞網格建立失敗')
-        }
+        console.log(`🔨 準備建立BVH世界碰撞網格，包含 ${collisionMeshes.length} 個mesh`)
+        // const worldMesh = buildWorldBVH(collisionMeshes) // Temporarily disabled
+        // if (worldMesh) {
+        //   console.log('✅ BVH世界碰撞網格建立成功')
+        //   // 加入場景用於調試（不可見）
+        //   scene.add(worldMesh)
+        // } else {
+        //   console.error('❌ BVH世界碰撞網格建立失敗')
+        // }
+        console.log('🔨 BVH世界碰撞網格建立已暫時禁用')
       } else {
         console.warn('⚠️ 沒有找到可用於碰撞檢測的mesh')
       }
@@ -702,7 +718,7 @@ export const TerrainModel = ({ position = [0, 0, 0] }: TerrainModelProps) => {
           child.castShadow = true
           child.receiveShadow = false
           // 樹木不是可行走層
-          markWalkable(child, false);
+          // markWalkable(child, false); // Temporarily disabled
 
           // 將樹木加入全域數組
           if (!treeMeshes.current.includes(child)) {
@@ -870,7 +886,7 @@ export const TerrainModel = ({ position = [0, 0, 0] }: TerrainModelProps) => {
     
     // 如果沒有找到真實樹木，使用備用預設位置，設置合適的碰撞半徑
     if (treeMeshes.current.length === 0) {
-      console.warn('未找到真實樹木網格，使用預設樹木位置')
+      // console.warn('未找到真實樹木網格，使用預設樹木位置')
       const fallbackTreePositions = [
         { x: 15, z: 12, radius: 2.0 }, // 恢復碰撞半徑
         { x: -18, z: 25, radius: 2.5 },
@@ -879,7 +895,7 @@ export const TerrainModel = ({ position = [0, 0, 0] }: TerrainModelProps) => {
         { x: 35, z: 20, radius: 2.0 },
         { x: -30, z: 35, radius: 2.5 },
       ]
-      
+
       fallbackTreePositions.forEach((tree, index) => {
         colliders.push({
           position: new THREE.Vector3(tree.x, 0, tree.z),
@@ -895,7 +911,6 @@ export const TerrainModel = ({ position = [0, 0, 0] }: TerrainModelProps) => {
   
   // 註冊真實樹木碰撞物體到碰撞系統
   useEffect(() => {
-    if (treeMeshes.current.length === 0) return
     
     const timer = setTimeout(() => {
       // 清除舊的樹木碰撞物體
@@ -947,7 +962,45 @@ export const TerrainModel = ({ position = [0, 0, 0] }: TerrainModelProps) => {
       })
       
       console.log(`已註冊 ${treeMeshes.current.length} 個真實樹木碰撞器`)
-      
+
+      // 更新全域樹木碰撞器數據供出生點系統使用
+      latestTreeColliders = treeMeshes.current.map((treeMesh, index) => {
+        const position = treeMesh.position.clone()
+        position.multiply(new THREE.Vector3(10, 5, 10))
+
+        const name = treeMesh.name.toLowerCase()
+        const isTrunk = name.includes('trunk') || name.includes('tronco') ||
+                       name.includes('bark') || name.includes('木') ||
+                       (treeMesh.material && (() => {
+                         const materials = Array.isArray(treeMesh.material) ? treeMesh.material : [treeMesh.material]
+                         return materials.some(mat => {
+                           const matName = mat.name?.toLowerCase() || ''
+                           return matName.includes('trunk') || matName.includes('bark') ||
+                                  matName.includes('wood') || matName.includes('madera')
+                         })
+                       })())
+
+        const radius = isTrunk ? 1.5 : 2.5
+        return { x: position.x, z: position.z, r: radius }
+      })
+
+      console.log(`已更新 ${latestTreeColliders.length} 個樹木碰撞器數據供出生點系統使用`)
+
+      // 如果沒有真實樹木，使用備用樹木碰撞器
+      if (treeMeshes.current.length === 0) {
+        const fallbackTreePositions = [
+          { x: 15, z: 12, r: 2.0 },
+          { x: -18, z: 25, r: 2.5 },
+          { x: 28, z: -15, r: 2.0 },
+          { x: -25, z: -18, r: 2.5 },
+          { x: 35, z: 20, r: 2.0 },
+          { x: -30, z: 35, r: 2.5 },
+        ]
+
+        latestTreeColliders = fallbackTreePositions
+        console.log(`使用備用樹木碰撞器數據: ${latestTreeColliders.length} 個`)
+      }
+
       // 顯示完整的碰撞系統統計
       setTimeout(() => {
         collisionSystem.getCollisionStats()
@@ -1108,9 +1161,10 @@ export const TerrainModel = ({ position = [0, 0, 0] }: TerrainModelProps) => {
 
   // Register ground root early using useLayoutEffect
   useLayoutEffect(() => {
-    if (terrainRootRef.current) {
-      registerGroundRoot(terrainRootRef.current)
-    }
+    if (!terrainRootRef.current) return
+    // ✅ 把整個地形 group 註冊，Ray 會自動過濾水/天空/樹
+    registerGroundRoot(terrainRootRef.current)
+    console.log('[TERRAIN] ground root =', terrainRootRef.current.name)
   }, [])
 
   return (
@@ -1286,10 +1340,72 @@ export const isOnBrownMountain = (x: number, z: number): boolean => {
   return false
 }
 
-// 檢測是否為山脈區域 - 移除山脈檢測限制，適應XZ軸10倍擴展，Y軸5倍擴展
-export const isMountainArea = (_x: number, _z: number): boolean => {
-  // 移除所有山脈區域檢測，允許在任何地形自由行走
-  return false
+// 檢測是否為山脈區域 - 超嚴格版本，特別針對半山腰問題
+export const isMountainArea = (x: number, z: number): boolean => {
+  // 獲取地形高度
+  const height = getTerrainHeight(x, z)
+
+  // 檢查是否在棕色山體上（更危險的區域）
+  const onBrownMountain = isOnBrownMountain(x, z)
+
+  // 如果在棕色山體上，肯定是山脈區域
+  if (onBrownMountain) {
+    console.log(`🚨 山脈檢測 (${x}, ${z}): 棕色山體 - 禁止放置`)
+    return true
+  }
+
+  // 極度嚴格的高度判斷：高度超過5視為山脈（針對半山腰問題）
+  const isTooHigh = height > 5
+
+  // 極度嚴格的坡度檢查：任何明顯坡度都禁止
+  const slope = getTerrainSlope(x, z)
+  const isTooSteep = slope > Math.PI / 12 // 超過15度的坡度就禁止
+
+  // 極度保守的距離限制：只允許非常中心的區域
+  const distanceFromCenter = Math.sqrt(x * x + z * z)
+  const isTooFar = distanceFromCenter > 50 // 進一步降低到50單位
+
+  // 加強周圍區域的地形變化檢測 - 擴大檢測範圍
+  const surroundingHeights = [
+    getTerrainHeight(x + 3, z),     // 近距離檢測
+    getTerrainHeight(x - 3, z),
+    getTerrainHeight(x, z + 3),
+    getTerrainHeight(x, z - 3),
+    getTerrainHeight(x + 10, z),    // 遠距離檢測
+    getTerrainHeight(x - 10, z),
+    getTerrainHeight(x, z + 10),
+    getTerrainHeight(x, z - 10),
+    getTerrainHeight(x + 5, z + 5), // 對角線檢測
+    getTerrainHeight(x - 5, z + 5),
+    getTerrainHeight(x + 5, z - 5),
+    getTerrainHeight(x - 5, z - 5)
+  ]
+
+  const maxSurroundingHeight = Math.max(...surroundingHeights)
+  const minSurroundingHeight = Math.min(...surroundingHeights)
+  const heightVariation = maxSurroundingHeight - minSurroundingHeight
+  const isUnstableTerrain = heightVariation > 2 // 降低到2，更嚴格
+
+  // 新增：檢查是否在半山腰 - 特別針對這個問題
+  const isOnSlope = height > 3 && (
+    Math.abs(getTerrainHeight(x + 2, z) - height) > 1 ||
+    Math.abs(getTerrainHeight(x - 2, z) - height) > 1 ||
+    Math.abs(getTerrainHeight(x, z + 2) - height) > 1 ||
+    Math.abs(getTerrainHeight(x, z - 2) - height) > 1
+  )
+
+  const isMountain = isTooHigh || isTooSteep || isTooFar || isUnstableTerrain || isOnSlope
+
+  // 詳細日誌，特別標注半山腰檢測
+  console.log(`🏔️ 超嚴格山脈檢測 (${x}, ${z}):`)
+  console.log(`   高度=${height.toFixed(1)} (限制:5) ${isTooHigh ? '❌' : '✅'}`)
+  console.log(`   坡度=${(slope * 180 / Math.PI).toFixed(1)}° (限制:15°) ${isTooSteep ? '❌' : '✅'}`)
+  console.log(`   距離=${distanceFromCenter.toFixed(1)} (限制:50) ${isTooFar ? '❌' : '✅'}`)
+  console.log(`   地形變化=${heightVariation.toFixed(1)} (限制:2) ${isUnstableTerrain ? '❌' : '✅'}`)
+  console.log(`   半山腰檢測=${isOnSlope ? '❌檢測到' : '✅通過'}`)
+  console.log(`   最終結果=${isMountain ? '❌絕對禁止' : '✅允許放置'}`)
+
+  return isMountain
 }
 
 // 檢查兩點之間是否可以安全通行 - 移除所有路徑限制，適應XZ軸10倍擴展，Y軸5倍擴展

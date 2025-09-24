@@ -1,0 +1,7 @@
+# 統一所有文字檔以 LF 提交（最穩）
+*         text=auto eol=lf
+
+# Windows 批次/腳本保留 CRLF（必要）
+*.bat     eol=crlf
+*.cmd     eol=crlf
+*.ps1     eol=crlf

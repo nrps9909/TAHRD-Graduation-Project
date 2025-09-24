@@ -3,7 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import { useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 import { useTimeStore } from '@/stores/timeStore'
-import { markWalkable } from '@/game/physics/layers'
+// import { markWalkable } from '@/game/physics/layers' // Temporarily disabled
 
 // 真實月球3D模型組件
 const MoonModel = ({ position, onLoad }: { position: [number, number, number], onLoad: (ref: THREE.Group) => void }) => {
@@ -84,7 +84,7 @@ const MoonModel = ({ position, onLoad }: { position: [number, number, number], o
           child.castShadow = false
           child.receiveShadow = false
           // 確保月球不是可行走層
-          markWalkable(child, false)
+          // markWalkable(child, false) // Temporarily disabled
           
           // 優化新月球材質
           if (child.material) {

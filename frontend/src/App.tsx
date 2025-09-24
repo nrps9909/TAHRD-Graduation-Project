@@ -22,6 +22,16 @@ function App() {
     initializeGame()
   }, []) // 只在組件掛載時初始化一次
 
+  // 阻止方向鍵/空白鍵觸發瀏覽器捲動
+  useEffect(() => {
+    const prevent = (e: KeyboardEvent) => {
+      const keys = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '];
+      if (keys.includes(e.key)) e.preventDefault();
+    };
+    window.addEventListener('keydown', prevent, { passive:false });
+    return () => window.removeEventListener('keydown', prevent as any);
+  }, []);
+
   if (isLoading) {
     return (
       <div className="w-full h-screen bg-gradient-to-br from-sky-200 via-green-100 to-yellow-100 flex items-center justify-center overflow-hidden relative">

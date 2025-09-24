@@ -2,7 +2,7 @@ import React, { useEffect } from 'react'
 import * as THREE from 'three'
 import { NPCCharacter } from './3D/NPCCharacter'
 import { useGameStore } from '@/stores/gameStore'
-import { snapToNearestGround } from '@/game/physics/grounding'
+// import { snapToNearestGround } from '@/game/physics/grounding' // Temporarily disabled
 
 const DEFAULT_NPCS = [
   { id: 'npc-1', name: '陸培修', pos: new THREE.Vector3(5, 10, 8), color: '#ff6b6b' },
@@ -36,7 +36,7 @@ export function NPCManager() {
     const timer = setTimeout(() => {
       console.log('🎮 NPCManager: Snapping NPCs to ground...')
       DEFAULT_NPCS.forEach(npc => {
-        snapToNearestGround(npc.pos, 3, 0.25)
+        // snapToNearestGround(npc.pos, 3, 0.25) // Temporarily disabled
         console.log(`  NPC ${npc.name}: ${npc.pos.toArray()}`)
       })
     }, 2000)

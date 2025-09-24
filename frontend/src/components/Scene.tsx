@@ -20,13 +20,14 @@ import { MountainClouds } from './3D/MountainClouds'
 import { MagicalFloatingParticles, AmbientLightDust } from './3D/MagicalParticles'
 import { Ocean } from './3D/Ocean'
 import { BoundaryWall } from './3D/BoundaryWall'
+import BuildingsManager from './3D/buildings/BuildingsManager'
 import { preloadAllCharacterModels } from './CharacterSkinSystem'
 import { useGameStore } from '@/stores/gameStore'
 import { useTimeStore } from '@/stores/timeStore'
 import { collisionSystem } from '@/utils/collision'
 import { ContactShadows } from '@react-three/drei'
 import { useThree } from '@react-three/fiber'
-import { bindScene } from '@/game/physics/slopeController'
+// import { bindScene } from '@/game/physics/slopeController' // Temporarily disabled
 
 export const Scene = () => {
   const { npcs, playerPosition } = useGameStore()
@@ -35,8 +36,8 @@ export const Scene = () => {
 
   // 綁定場景到坡度控制器
   useEffect(() => {
-    bindScene(scene)
-    console.log('🏞️ 已綁定場景到坡度控制器')
+    // bindScene(scene) // Temporarily disabled
+    console.log('🏞️ 場景綁定已暫時禁用')
   }, [scene])
 
   // 預載入所有角色模型
@@ -173,7 +174,10 @@ export const Scene = () => {
 
       {/* 邊界牆壁 */}
       <BoundaryWall />
-      
+
+      {/* 新建築系統 - GLB格式，自動去除黑線，智能佈局 */}
+      <BuildingsManager />
+
       {/* 移除測試立方體 - 樹木陰影系統現已完整 */}
       
       {/* 簡單的陰影接收平面 - 移除以防止覆蓋地形 */}

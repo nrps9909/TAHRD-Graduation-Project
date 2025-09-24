@@ -4,6 +4,7 @@ import { ApolloProvider } from '@apollo/client'
 import { apolloClient } from './utils/apollo-client'
 import App from './App'
 import './index.css'
+import './styles/fullscreen.css'
 
 // 配置 Troika 不使用 Web Workers 來避免 CSP 問題
 if (typeof window !== 'undefined') {

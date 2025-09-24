@@ -5,10 +5,10 @@ import * as THREE from 'three'
 import { useGameStore } from '@/stores/gameStore'
 import { collisionSystem } from '@/utils/collision'
 import { CameraController } from './CameraController'
-import { wrapWithFeetPivot } from '@/game/utils/fixPivotAtFeet'
-import { snapSpawnToGround, hardStickToGround } from '@/game/snap'
-import { isGroundReady } from '@/game/ground'
-import { crowd, separation } from '@/game/crowd'
+import { waitForGroundReady, getGroundSmoothed } from '@/game/ground'
+import { mountModelAndLiftFeet } from '@/game/foot'
+import { tickActorOnGround } from '@/game/actorMove'
+import BlobShadow from '@/components/3D/effects/BlobShadow'
 
 // NPC 類型定義（與 gameStore 保持一致）
 interface NPC {
@@ -41,6 +41,8 @@ const PlayerComponent = (props: PlayerProps, ref: React.Ref<PlayerRef>) => {
     modelPath = '/characters/CHAR-F-A',
     modelFile = '/CHAR-F-A.glb'
   } = props;
+  const groupRef = useRef<THREE.Group>(null!)  // 角色根：負責貼地（y=地高）
+  const modelRef = useRef<THREE.Group>(null!)  // 模型容器：負責抬腳
   const feetPivotRef = useRef<THREE.Group>(null)
   const playerRef = useRef<THREE.Group>(null) // 保留為相容性
   const { setPlayerPosition, setPlayerRotation, npcs, startConversation } = useGameStore()
@@ -67,12 +69,12 @@ const PlayerComponent = (props: PlayerProps, ref: React.Ref<PlayerRef>) => {
   // 提供 ref 介面給父組件
   useImperativeHandle(ref, () => ({
     getPosition: () => {
-      if (feetPivotRef.current) {
-        return feetPivotRef.current.position.clone()
+      if (groupRef.current) {
+        return groupRef.current.position.clone()
       }
       return new THREE.Vector3(...position)
     },
-    getRef: () => feetPivotRef.current
+    getRef: () => groupRef.current
   }), [])
 
   const { camera } = useThree()
@@ -80,26 +82,56 @@ const PlayerComponent = (props: PlayerProps, ref: React.Ref<PlayerRef>) => {
   const lastSafe = useRef(new THREE.Vector3())
   const keys = useRef({up:false,down:false,left:false,right:false,w:false,a:false,s:false,d:false,shift:false})
 
-  // Movement constants
+  // Movement constants - 大幅增加移動速度
   const UP = new THREE.Vector3(0, 1, 0)
-  const BASE = 3.8
-  const SPRINT = 5.8
-  const ACC = 18
-  const FRI = 11
+  const BASE = 6.0  // 大幅增加基础速度到 6.0
+  const SPRINT = 10.0  // 大幅增加衝刺速度到 10.0
+  const ACC = 25  // 增加加速度
+  const FRI = 15  // 增加摩擦力
 
   // Velocity and safety tracking
   const isMoving = useRef(false)
   const walkCycle = useRef(0)
 
-  // 處理模型載入完成 - 與 NPC 完全相同的邏輯
-  useEffect(() => {
-    if (kenneyModel?.scene && feetPivotRef.current) {
-      console.log(`✅ Player ${fullModelPath} 模型載入成功:`, kenneyModel.scene)
+  // Debug logging helper
+  let __t0 = performance.now();
+  const logFew = (...a:any[]) => { if (performance.now() - __t0 < 2000) console.log(...a); };
 
-      // 套用腳底對齊
-      const { group: feetPivot, offsetY } = wrapWithFeetPivot(kenneyModel.scene)
-      feetPivotRef.current.add(feetPivot)
-      console.info('👣 Player feet-pivot offsetY =', offsetY.toFixed(3))
+  // 處理模型載入完成 - 統一管線
+  useEffect(() => {
+    (async () => {
+      console.log('[Player] Model loading effect, kenneyModel:', !!kenneyModel?.scene);
+
+      if (!kenneyModel?.scene) {
+        console.warn('[Player] No kenney model scene');
+        return;
+      }
+
+      await waitForGroundReady() // 先等地形ready
+
+      if (kenneyModel?.scene && modelRef.current && groupRef.current) {
+        console.log('[Player] Starting model mount...');
+        // 先將模型掛載
+        mountModelAndLiftFeet(modelRef.current, kenneyModel.scene);
+
+        // 忽略任何來源的 y；強制使用地面高度
+        const p = groupRef.current.position;
+        // 使用初始位置的 x, z
+        const gx = position[0];
+        const gz = position[2];
+
+        // 獲取地面高度
+        const g = getGroundSmoothed(gx, gz);
+        if (g.ok) {
+          p.set(gx, g.y, gz);
+          lastSafe.current.set(gx, g.y, gz);
+          console.log('[SPAWN] player snapped to ground y=', g.y.toFixed(2), 'at', gx.toFixed(1), gz.toFixed(1));
+        } else {
+          // 如果找不到地面，使用安全預設值
+          p.set(gx, 5, gz);
+          lastSafe.current.set(gx, 5, gz);
+          console.warn('[SPAWN] player fallback position at y=5');
+        }
 
       kenneyModel.scene.traverse((child: any) => {
         if (child.isMesh || child.isSkinnedMesh) {
@@ -109,30 +141,36 @@ const PlayerComponent = (props: PlayerProps, ref: React.Ref<PlayerRef>) => {
           child.receiveShadow = false
 
           if (child.material) {
-            if (child.isSkinnedMesh) {
-              child.material.skinning = true
-            }
+            const materials = Array.isArray(child.material) ? child.material : [child.material]
+            materials.forEach((mat: any) => {
+              if (child.isSkinnedMesh) {
+                mat.skinning = true
+              }
 
-            if (child.material.map) {
-              child.material.map.colorSpace = THREE.SRGBColorSpace
-              child.material.map.needsUpdate = true
-            }
+              if (mat.map) {
+                mat.map.colorSpace = THREE.SRGBColorSpace
+                mat.map.needsUpdate = true
+                mat.map.flipY = false
+              }
 
-            child.material.metalness = 0
-            child.material.roughness = 0.8
-            child.material.side = THREE.DoubleSide
-            child.material.transparent = false
-            child.material.opacity = 1
-            child.material.depthWrite = true
-            child.material.colorWrite = true
-            child.material.needsUpdate = true
+              // 保留原本材質的顏色和紋理
+              if (!mat.color) mat.color = new THREE.Color(0xffffff)
+              mat.metalness = 0.1
+              mat.roughness = 0.7
+              mat.transparent = false
+              mat.opacity = 1
+              mat.depthWrite = true
+              mat.needsUpdate = true
+            })
           }
         }
       })
 
-      kenneyModel.scene.visible = true
-      kenneyModel.scene.frustumCulled = false
-    }
+        kenneyModel.scene.visible = true
+        kenneyModel.scene.frustumCulled = false
+        console.log('[Player] Model loaded successfully:', kenneyModel.scene)
+      }
+    })()
   }, [kenneyModel, fullModelPath])
 
   // 處理動畫 - 與 NPC 相同邏輯
@@ -159,36 +197,13 @@ const PlayerComponent = (props: PlayerProps, ref: React.Ref<PlayerRef>) => {
     }
   }, [kenneyModel])
 
-  // 等地形 ready → 出生貼地
-  useEffect(() => {
-    const init = () => {
-      if (!isGroundReady()) {
-        requestAnimationFrame(init)
-        return
-      }
-      const g = feetPivotRef.current
-      if (!g) return
-      snapSpawnToGround(g.position)
-      lastSafe.current.copy(g.position)
-    }
-    init()
-    // 進入 crowd（避免與 NPC 相撞）
-    crowd.add({
-      id: 'player',
-      getPos: () => ({
-        x: feetPivotRef.current?.position.x || 0,
-        z: feetPivotRef.current?.position.z || 0
-      })
-    })
-    return () => crowd.remove('player')
-  }, [])
 
   // 檢查附近的 NPC
   const checkNearbyNPC = useCallback((): NPC | null => {
-    if (!feetPivotRef.current) return null
+    if (!groupRef.current) return null
 
     const playerPos = new THREE.Vector3()
-    feetPivotRef.current.getWorldPosition(playerPos)
+    groupRef.current.getWorldPosition(playerPos)
 
     // 尋找最近的 NPC
     let nearestNPC: NPC | null = null
@@ -224,6 +239,12 @@ const PlayerComponent = (props: PlayerProps, ref: React.Ref<PlayerRef>) => {
     const on = (e: KeyboardEvent, v: boolean) => {
       const k = e.key
       if (k.startsWith('Arrow')) e.preventDefault()
+
+      // Debug: 顯示按鍵輸入
+      if (['w','a','s','d','W','A','S','D','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(k)) {
+        console.log('[INPUT]', k, v ? 'DOWN' : 'UP')
+      }
+
       if (k === 'w' || k === 'W') keys.current.w = v
       if (k === 'a' || k === 'A') keys.current.a = v
       if (k === 's' || k === 'S') keys.current.s = v
@@ -247,46 +268,40 @@ const PlayerComponent = (props: PlayerProps, ref: React.Ref<PlayerRef>) => {
     }
   }, [handleInteraction])
 
-  // 每幀更新
+  // 每幀更新 - 使用統一管線
   useFrame((_, dtRaw) => {
     const dt = Math.min(0.05, Math.max(0.0001, dtRaw))
-    const g = feetPivotRef.current
+    const g = groupRef.current
     if (!g) return
 
-    // 相機基底：right = UP × forward
+    // 取玩家輸入方向
     const fwd = new THREE.Vector3()
     camera.getWorldDirection(fwd)
     fwd.y = 0
     fwd.normalize()
-    const right = new THREE.Vector3().crossVectors(UP, fwd).normalize()
+    const right = new THREE.Vector3().crossVectors(fwd, UP).normalize()
 
     const k = keys.current
     const forw = (k.up || k.w ? 1 : 0) + (k.down || k.s ? -1 : 0)
     const r = (k.right || k.d ? 1 : 0) + (k.left || k.a ? -1 : 0)
-    const dir = new THREE.Vector3()
-    if (forw || r) dir.addScaledVector(fwd, forw).addScaledVector(right, r).normalize()
-
-    // 群體分離（避免撞到 NPC/玩家）
-    const sep = separation('player', g.position.x, g.position.z)
-    dir.add(new THREE.Vector3(sep.fx, 0, sep.fz))
-    if (dir.length() > 0) dir.normalize()
-
-    const spd = k.shift ? SPRINT : BASE
-    const des = dir.multiplyScalar(spd)
-
-    vel.current.x += (des.x - vel.current.x) * Math.min(1, ACC * dt)
-    vel.current.z += (des.z - vel.current.z) * Math.min(1, ACC * dt)
-    if (!(forw || r)) {
-      vel.current.x *= Math.max(0, 1 - FRI * dt)
-      vel.current.z *= Math.max(0, 1 - FRI * dt)
+    let dir = new THREE.Vector3()
+    if (forw || r) {
+      dir.addScaledVector(fwd, forw).addScaledVector(right, r)
+      if (dir.lengthSq() > 0) dir.normalize()
     }
 
-    g.position.x += vel.current.x * dt
-    g.position.z += vel.current.z * dt
+    // Debug: 每幾幀印一次移動狀態
+    if (Math.random() < 0.01 && (forw || r)) {
+      console.log('[Player] Keys:', {w:k.w, a:k.a, s:k.s, d:k.d}, 'forw:', forw, 'r:', r, 'dir:', dir.toArray())
+    }
 
-    const speed = Math.hypot(vel.current.x, vel.current.z)
-    if (speed > 0.05) {
-      g.quaternion.setFromEuler(new THREE.Euler(0, Math.atan2(vel.current.x, vel.current.z), 0, 'YXZ'))
+    const speed = k.shift ? SPRINT : BASE
+
+    // 使用統一的 actor 移動管線
+    tickActorOnGround(g, {dir, speed}, dt, lastSafe.current)
+
+    const moveSpeed = Math.hypot(dir.x, dir.z) * speed
+    if (moveSpeed > 0.05) {
       isMoving.current = true
       walkCycle.current += dt * 10
     } else {
@@ -303,9 +318,6 @@ const PlayerComponent = (props: PlayerProps, ref: React.Ref<PlayerRef>) => {
     if (animationMixer) {
       animationMixer.update(dtRaw)
     }
-
-    // ☆☆☆ 保證貼地（一定放最後）
-    hardStickToGround(g.position, lastSafe.current, dt)
   })
 
   // Component lifecycle management
@@ -344,7 +356,7 @@ const PlayerComponent = (props: PlayerProps, ref: React.Ref<PlayerRef>) => {
   return (
     <>
       <CameraController
-        target={feetPivotRef}
+        target={groupRef}
         offset={new THREE.Vector3(0, 5, 8)}  // 更近的第三人稱視角
         lookAtOffset={new THREE.Vector3(0, 1.5, 0)}
         smoothness={8}  // 更平滑的相機移動
@@ -352,31 +364,14 @@ const PlayerComponent = (props: PlayerProps, ref: React.Ref<PlayerRef>) => {
         enablePointerLock={true}  // 啟用永久 pointer lock
       />
 
-      <group ref={feetPivotRef} position={position}>
-        {/* Kenney GLB 角色模型已在 useEffect 中通過 wrapWithFeetPivot 添加 */}
-
-        {/* 玩家自然陰影 - 更大更柔和 */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]} receiveShadow>
-          <circleGeometry args={[1.2, 32]} />
-          <meshBasicMaterial
-            color="#000000"
-            transparent
-            opacity={0.25}
-            depthWrite={false}
-          />
-        </mesh>
-
-        {/* 內層深色陰影 */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]} receiveShadow>
-          <circleGeometry args={[0.6, 24]} />
-          <meshBasicMaterial
-            color="#000000"
-            transparent
-            opacity={0.35}
-            depthWrite={false}
-          />
-        </mesh>
+      <group ref={groupRef} position={position}>
+        <group ref={modelRef} scale={[2.0, 2.0, 2.0]} /> {/* GLB 掛在這，已抬腳 - 增大到2倍 */}
       </group>
+
+      {/* 圓形柔邊 blob-shadow - 放在 group 後面（不當子節點，因為 BlobShadow 自己會加到 scene） */}
+      {groupRef.current && (
+        <BlobShadow target={groupRef.current} radius={0.9} maxOpacity={0.5} />
+      )}
     </>
   )
 }

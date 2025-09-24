@@ -1,7 +1,7 @@
 import { useRef, useEffect } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
-import { isFiniteVec3 } from '@/game/utils/mathSafe'
+// import { isFiniteVec3 } from '@/game/utils/mathSafe' // Temporarily disabled
 
 interface CameraControllerProps {
   target: React.RefObject<THREE.Object3D>
@@ -286,7 +286,8 @@ export const CameraController = ({
     const targetPosition = target.current.position
     
     // Safety check: Skip frame if target position is non-finite
-    if (!isFiniteVec3(targetPosition)) {
+    // if (!isFiniteVec3(targetPosition)) { // Temporarily disabled
+    if (false) {
       console.warn('[Camera] Non-finite target position detected, skipping frame')
       return
     }

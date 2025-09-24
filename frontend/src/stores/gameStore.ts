@@ -1,5 +1,77 @@
 import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
+import { generateSpawnPoints } from '@/game/spawn'
+import { getTreeColliders } from '@/components/3D/TerrainModel'
+import { getGround } from '@/game/ground'
+
+const PLAYER_SAFE_OFFSET = 0.12
+const CENTER = { x: 0, z: 0 }
+
+// 分配出生點給玩家和 NPC
+function assignSpawnPoints(npcList: NPC[]): {
+  playerPosition: [number, number, number],
+  updatedNpcs: NPC[]
+} {
+  const count = npcList.length + 1 // 玩家 + NPC
+  const trees = getTreeColliders()
+
+  // 建築物碰撞數據 - 根據實際建築位置和大小
+  const buildingColliders = [
+    { x: -15, z: -45, r: 12 },  // Inn旅館
+    { x: 45, z: -60, r: 15 },   // 風車
+    { x: -55, z: -45, r: 12 },  // 房屋A
+    { x: 35, z: 25, r: 13 },    // 倉庫
+    { x: -45, z: 25, r: 12 },   // 房屋B
+    { x: -5, z: -5, r: 10 },    // Bell Tower 起始視野內
+    { x: 5, z: -25, r: 16 },    // 大型鐵匠鋪 (較大碰撞半徑)
+  ]
+
+  console.log(`🎯 生成 ${count} 個出生點 (1個玩家 + ${npcList.length}個NPC)`)
+  console.log(`🌳 使用 ${trees.length} 個樹木碰撞器`)
+  console.log(`🏠 使用 ${buildingColliders.length} 個建築物碰撞器，避免NPC生成在建築物內`)
+
+  // 依地圖中心產生一圈分散點 - 超大間距避免NPC碰撞，並避開建築物
+  const spawns = generateSpawnPoints({
+    count,
+    center: CENTER,
+    startRadius: 25,     // 大幅增大初始半徑，讓NPC離得更遠
+    step: 10.0,          // 大幅增大每點往外擴距
+    minDist: 15.0,       // 超大兩點最小距離（避免NPC相撞）
+    maxSlopeDeg: 25,     // 稍微降低坡度要求，確保有足夠安全位置
+    treeColliders: trees,
+    buildingColliders: buildingColliders, // 新增建築物避讓
+  })
+
+  console.log(`✅ 成功生成 ${spawns.length} 個出生點`)
+
+  // 第一個給玩家
+  const playerSpawn = spawns.shift()
+  let playerPosition: [number, number, number] = [-15, 5, -15] // 預設位置
+
+  if (playerSpawn) {
+    const gh = getGround(playerSpawn.x, playerSpawn.z)
+    const y = (gh.y ?? playerSpawn.y) + PLAYER_SAFE_OFFSET
+    playerPosition = [playerSpawn.x, y, playerSpawn.z]
+    console.log(`🎮 玩家出生點: (${playerSpawn.x.toFixed(1)}, ${y.toFixed(1)}, ${playerSpawn.z.toFixed(1)})`)
+  }
+
+  // 其餘給 NPC
+  const updatedNpcs = npcList.map((npc, i) => {
+    const spawn = spawns[i] ?? spawns[spawns.length - 1] ?? { x: 0, y: 5, z: 0 }
+    const gh = getGround(spawn.x, spawn.z)
+    const y = (gh.y ?? spawn.y) + PLAYER_SAFE_OFFSET
+    const newPosition: [number, number, number] = [spawn.x, y, spawn.z]
+
+    console.log(`🤖 ${npc.name} 出生點: (${spawn.x.toFixed(1)}, ${y.toFixed(1)}, ${spawn.z.toFixed(1)})`)
+
+    return {
+      ...npc,
+      position: newPosition
+    }
+  })
+
+  return { playerPosition, updatedNpcs }
+}
 
 interface NPC {
   id: string
@@ -121,38 +193,44 @@ export const useGameStore = create<GameState>()(
       initializeGame: async () => {
         set({ isLoading: true })
         
+        // 建立預設NPC數據（暫時位置，稍後會被出生點替換）
+        const defaultNPCs = [
+          {
+            id: 'npc-1',
+            name: '陸培修',
+            personality: '夢幻的藝術家',
+            currentMood: 'cheerful',
+            position: [0, 5, 0] as [number, number, number], // 臨時位置
+            relationshipLevel: 1,
+          },
+          {
+            id: 'npc-2',
+            name: '劉宇岑',
+            personality: '充滿活力的朋友',
+            currentMood: 'excited',
+            position: [0, 5, 0] as [number, number, number], // 臨時位置
+            relationshipLevel: 1,
+          },
+          {
+            id: 'npc-3',
+            name: '陳庭安',
+            personality: '溫柔的靈魂',
+            currentMood: 'dreamy',
+            position: [0, 5, 0] as [number, number, number], // 臨時位置
+            relationshipLevel: 1,
+          },
+        ]
+
+        // 使用出生點系統分配預設NPC位置
+        const { playerPosition: defaultPlayerPos, updatedNpcs: defaultNPCsWithSpawns } = assignSpawnPoints(defaultNPCs)
+
         try {
           console.log('🎮 開始載入NPC數據...')
-          
-          // 直接使用預設NPC數據確保顯示
-          const defaultNPCs = [
-            {
-              id: 'npc-1',
-              name: '陸培修',
-              personality: '夢幻的藝術家',
-              currentMood: 'cheerful',
-              position: [5, 5, 8] as [number, number, number],
-              relationshipLevel: 1,
-            },
-            {
-              id: 'npc-2', 
-              name: '劉宇岑',
-              personality: '充滿活力的朋友',
-              currentMood: 'excited',
-              position: [-8, 5, 5] as [number, number, number],
-              relationshipLevel: 1,
-            },
-            {
-              id: 'npc-3',
-              name: '陳庭安', 
-              personality: '溫柔的靈魂',
-              currentMood: 'dreamy',
-              position: [3, 5, -6] as [number, number, number],
-              relationshipLevel: 1,
-            },
-          ]
-          
-          console.log('✅ 使用預設NPC數據:', defaultNPCs.map(npc => ({ name: npc.name, position: npc.position })))
+
+          console.log('✅ 使用預設NPC數據並分配出生點:')
+          defaultNPCsWithSpawns.forEach(npc =>
+            console.log(`  ${npc.name}: (${npc.position[0].toFixed(1)}, ${npc.position[1].toFixed(1)}, ${npc.position[2].toFixed(1)})`)
+          )
           
           set({
             playerId: 'player-1',
@@ -199,34 +277,32 @@ export const useGameStore = create<GameState>()(
                 'npc-3': [3, 10, -6]     // 陳庭安 - 中央附近安全位置
               }
               
-              // 將後端資料轉換為前端格式，使用預設3D安全位置
+              // 將後端資料轉換為前端格式，暫時使用臨時位置
               const npcs = data.data.npcs.map((npc: any) => {
-                const defaultPos = defaultPositions[npc.id]
-                const backendPos = [npc.location?.x || 0, npc.location?.y || 0, npc.location?.z || 0]
-                const finalPos = defaultPos || backendPos as [number, number, number]
-                
-                console.log(`NPC ${npc.name} (${npc.id}):`)
-                console.log('  預設位置:', defaultPos)
-                console.log('  後端位置:', backendPos) 
-                console.log('  最終位置:', finalPos)
-                
                 return {
                   id: npc.id,
                   name: npc.name,
                   personality: npc.personality || '載入中...',
                   currentMood: npc.currentMood || 'neutral',
-                  position: finalPos,
+                  position: [0, 5, 0] as [number, number, number], // 臨時位置，稍後會被出生點替換
                   relationshipLevel: 1,
                 }
               })
-              
-              console.log('✅ 成功從後端載入NPC資料:', npcs.map((n: any) => ({ name: n.name, position: n.position })))
-              
+
+              // 使用出生點系統分配位置，確保彼此不相撞
+              const { playerPosition, updatedNpcs } = assignSpawnPoints(npcs)
+
+              console.log('✅ 成功從後端載入NPC資料並分配出生點:')
+              updatedNpcs.forEach(npc =>
+                console.log(`  ${npc.name}: (${npc.position[0].toFixed(1)}, ${npc.position[1].toFixed(1)}, ${npc.position[2].toFixed(1)})`)
+              )
+              console.log(`✅ 玩家出生點: (${playerPosition[0].toFixed(1)}, ${playerPosition[1].toFixed(1)}, ${playerPosition[2].toFixed(1)})`)
+
               set({
                 playerId: 'player-1',
                 playerName: '旅人',
-                playerPosition: [-15, 18, -15],
-                npcs,
+                playerPosition,
+                npcs: updatedNpcs,
                 isLoading: false,
               })
             } else {
@@ -235,18 +311,18 @@ export const useGameStore = create<GameState>()(
               set({
                 playerId: 'player-1',
                 playerName: '旅人',
-                playerPosition: [-15, 18, -15],
-                npcs: defaultNPCs,
+                playerPosition: defaultPlayerPos,
+                npcs: defaultNPCsWithSpawns,
                 isLoading: false,
               })
             }
           } catch (backendError) {
-            console.log('📡 後端載入失敗（使用預設數據）:', backendError.message)
+            console.log('📡 後端載入失敗（使用預設數據）:', backendError)
             set({
               playerId: 'player-1',
               playerName: '旅人',
-              playerPosition: [-15, 18, -15],
-              npcs: defaultNPCs,
+              playerPosition: defaultPlayerPos,
+              npcs: defaultNPCsWithSpawns,
               isLoading: false,
             })
           }
@@ -256,8 +332,8 @@ export const useGameStore = create<GameState>()(
           set({
             playerId: 'player-1',
             playerName: '旅人',
-            playerPosition: [-15, 18, -15],
-            npcs: defaultNPCs,
+            playerPosition: defaultPlayerPos,
+            npcs: defaultNPCsWithSpawns,
             isLoading: false,
           })
         }
