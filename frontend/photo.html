@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>遊戲選單</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #f5f3f0 0%, #e8e4df 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .menu-container {
+            width: 800px;
+            height: 600px;
+            background: linear-gradient(135deg, #f8f6f3 0%, #ede9e4 100%);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 40px;
+            padding: 60px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .menu-container::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .menu-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: white;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .menu-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.3), transparent);
+            transform: translateX(-100%);
+            transition: transform 0.6s ease;
+        }
+
+        .menu-item:hover::before {
+            transform: translateX(100%);
+        }
+
+        .menu-item:hover {
+            transform: translateY(-8px) scale(1.05);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+        }
+
+        .menu-item:active {
+            transform: translateY(-4px) scale(1.02);
+        }
+
+        .icon {
+            width: 120px;
+            height: 120px;
+            margin-bottom: 15px;
+            position: relative;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+
+        .menu-item h3 {
+            font-size: 24px;
+            font-weight: bold;
+            color: #5a4a3a;
+            margin: 0;
+            letter-spacing: 1px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        /* 使用上傳的圖片作為背景，並針對每個區域進行裁切 */
+        .game-icon {
+            background-image: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDQwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPCEtLSBHYW1lIENvbnRyb2xsZXIgLS0+CiAgPHJlY3QgeD0iMjAiIHk9IjIwIiB3aWR0aD0iMTYwIiBoZWlnaHQ9IjEyMCIgcng9IjIwIiBmaWxsPSIjZjVmM2YwIi8+CiAgPCEtLSBDb250cm9sbGVyIGJvZHkgLS0+CiAgPHJlY3QgeD0iNDAiIHk9IjQwIiB3aWR0aD0iMTIwIiBoZWlnaHQ9IjgwIiByeD0iMTUiIGZpbGw9IiM5Y2FmZmYiLz4KICA8IS0tIEQtcGFkIC0tPgogIDxyZWN0IHg9IjU1IiB5PSI2MCIgd2lkdGg9IjIwIiBoZWlnaHQ9IjgiIHJ4PSI0IiBmaWxsPSIjMzMzIi8+CiAgPHJlY3QgeD0iNjMiIHk9IjUyIiB3aWR0aD0iOCIgaGVpZ2h0PSIyMCIgcng9IjQiIGZpbGw9IiMzMzMiLz4KICA8IS0tIEJ1dHRvbnMgLS0+CiAgPGNpcmNsZSBjeD0iMTIwIiBjeT0iNjAiIHI9IjYiIGZpbGw9IiNmZmQ3MDAiLz4KICA8Y2lyY2xlIGN4PSIxMzUiIGN5PSI2MCIgcj0iNiIgZmlsbD0iIzJkYzZkNiIvPgogIDxjaXJjbGUgY3g9IjEyMCIgY3k9Ijc1IiByPSI2IiBmaWxsPSIjZWY0NDQ0Ii8+CiAgPGNpcmNsZSBjeD0iMTM1IiBjeT0iNzUiIHI9IjYiIGZpbGw9IiMyMmMzNWUiLz4KICA8IS0tIFNwYXJrbGVzIC0tPgogIDx0ZXh0IHg9IjMwIiB5PSI0MCIgZm9udC1zaXplPSIxMiIgZmlsbD0iI2ZmZDcwMCI+4pyoPC90ZXh0PgogIDx0ZXh0IHg9IjE0MCIgeT0iNDAiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiNmZmQ3MDAiPuKtkzwvdGV4dD4KICA8dGV4dCB4PSIzNSIgeT0iMTMwIiBmb250LXNpemU9IjEwIiBmaWxsPSIjZmZkNzAwIj7inKg8L3RleHQ+Cjwvc3ZnPgo=');
+        }
+
+        .world-icon {
+            background-image: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDQwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPCEtLSBTZWEgLS0+CiAgPGVsbGlwc2UgY3g9IjMwMCIgY3k9IjEyMCIgcng9Ijk1IiByeT0iNzUiIGZpbGw9IiM2N2U4ZjkiLz4KICA8IS0tIElzbGFuZCAtLT4KICA8ZWxsaXBzZSBjeD0iMzAwIiBjeT0iMTEwIiByeD0iNzUiIHJ5PSI1NSIgZmlsbD0iIzIyYzU1ZSIvPgogIDwhLS0gUGFsbSBUcmVlIC0tPgogIDxyZWN0IHg9IjI3NSIgeT0iODAiIHdpZHRoPSI4IiBoZWlnaHQ9IjQwIiBmaWxsPSIjYTY1NTJjIi8+CiAgPGVsbGlwc2UgY3g9IjI3OSIgY3k9Ijc1IiByeD0iMTgiIHJ5PSIxMCIgZmlsbD0iIzIyYzU1ZSIvPgogIDxlbGxpcHNlIGN4PSIyNzkiIGN5PSI3MCIgcng9IjE1IiByeT0iOCIgZmlsbD0iIzIyYzU1ZSIvPgogIDxlbGxpcHNlIGN4PSIyNzkiIGN5PSI2NSIgcng9IjEyIiByeT0iNiIgZmlsbD0iIzIyYzU1ZSIvPgogIDwhLS0gSG91c2UgLS0+CiAgPHJlY3QgeD0iMzEwIiB5PSI5NSIgd2lkdGg9IjI1IiBoZWlnaHQ9IjIwIiBmaWxsPSIjZWY0NDQ0Ii8+CiAgPHBvbHlnb24gcG9pbnRzPSIzMDgsOTUgMzIyLjUsODAgMzM3LDk1IiBmaWxsPSIjZGMxZDFkIi8+CiAgPHJlY3QgeD0iMzMwIiB5PSIxMDAiIHdpZHRoPSI0IiBoZWlnaHQ9IjEwIiBmaWxsPSIjYTY1NTJjIi8+CiAgPCEtLSBCb2F0IC0tPgogIDxwYXRoIGQ9Ik0zNTAgMTMwIEwzNzAgMTMwIEwzNjggMTM4IEwzNTIgMTM4IFoiIGZpbGw9IiNhNjU1MmMiLz4KICA8cG9seWdvbiBwb2ludHM9IjM2MiwxMzAgMzY4LDEyMCAzNzAsMTMwIiBmaWxsPSIjZjNmNGY2Ii8+CiAgPCEtLSBDbG91ZHMgLS0+CiAgPGNpcmNsZSBjeD0iMzYwIiBjeT0iNDAiIHI9IjEwIiBmaWxsPSIjZjNmNGY2Ii8+CiAgPGNpcmNsZSBjeD0iMzcwIiBjeT0iNDAiIHI9IjgiIGZpbGw9IiNmM2Y0ZjYiLz4KICA8Y2lyY2xlIGN4PSIzNzgiIGN5PSI0NSIgcj0iNiIgZmlsbD0iI2YzZjRmNiIvPgo8L3N2Zz4K');
+        }
+
+        .social-icon {
+            background-image: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDQwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPCEtLSBEb2cgLS0+CiAgPGVsbGlwc2UgY3g9IjcwIiBjeT0iMjIwIiByeD0iMzUiIHJ5PSIzMCIgZmlsbD0iI2ZiYmYyNCIvPgogIDxjaXJjbGUgY3g9IjY1IiBjeT0iMjEwIiByPSIzIiBmaWxsPSIjMzMzIi8+CiAgPGNpcmNsZSBjeD0iNzUiIGN5PSIyMTAiIHI9IjMiIGZpbGw9IiMzMzMiLz4KICA8ZWxsaXBzZSBjeD0iNzAiIGN5PSIyMjAiIHJ4PSI4IiByeT0iNSIgZmlsbD0iIzMzMyIvPgogIDxwYXRoIGQ9Ik03MCAyMjUgUTY1IDIzMCA3NSAyMzAiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIiBmaWxsPSJub25lIi8+CiAgPCEtLSBEb2cgZWFycyAtLT4KICA8ZWxsaXBzZSBjeD0iNTUiIGN5PSIxOTUiIHJ4PSI4IiByeT0iMTUiIGZpbGw9IiNmYmJmMjQiLz4KICA8ZWxsaXBzZSBjeD0iODUiIGN5PSIxOTUiIHJ4PSI4IiByeT0iMTUiIGZpbGw9IiNmYmJmMjQiLz4KICA8IS0tIENhdCAtLT4KICA8ZWxsaXBzZSBjeD0iMTQwIiBjeT0iMjIwIiByeD0iMzAiIHJ5PSIyOCIgZmlsbD0iI2Y5NzMxNiIvPgogIDxjaXJjbGUgY3g9IjEzNSIgY3k9IjIxMCIgcj0iMyIgZmlsbD0iIzMzMyIvPgogIDxjaXJjbGUgY3g9IjE0NSIgY3k9IjIxMCIgcj0iMyIgZmlsbD0iIzMzMyIvPgogIDx0cmlhbmdsZSBwb2ludHM9IjE0MiwyMTggMTM4LDIyNSAxNDYsMjI1IiBmaWxsPSIjMzMzIi8+CiAgPCEtLSBDYXQgZWFycyAtLT4KICA8cG9seWdvbiBwb2ludHM9IjEyNSwxOTUgMTMwLDE4NSAxMzUsMTk1IiBmaWxsPSIjZjk3MzE2Ii8+CiAgPHBvbHlnb24gcG9pbnRzPSIxNDUsMTk1IDE1MCwxODUgMTU1LDE5NSIgZmlsbD0iI2Y5NzMxNiIvPgogIDwhLS0gSGVhcnQgLS0+CiAgPHBhdGggZD0iTTEwNSAxNzAgTTEwNSAxNzAgUSA5OCAxNjUgOTUgMTcwIFE5MiAxNzUgOTUgMTgwIEwxMDUgMTkwIEwxMTUgMTgwIFExMTggMTc1IDExNSAxNzAgUTExMiAxNjUgMTA1IDE3MFoiIGZpbGw9IiNlZjQ0NDQiLz4KPC9zdmc+Cg==');
+        }
+
+        .settings-icon {
+            background-image: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDQwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPCEtLSBHZWFyIG91dGVyIC0tPgogIDxwYXRoIGQ9Ik0zMDAgMTUwIG0tNTUgMCBhIDU1IDU1IDAgMCAxIDY1IC0zNSBsIDEwIDAgYSA2NSA2NSAwIDAgMSAzNSA2NSBsIDAgMTAgYSA2NSA2NSAwIDAgMSAtNjUgMzUgbCAtMTAgMCBhIDY1IDY1IDAgMCAxIC0zNSAtNjUgbCAwIC0xMCB6IiBmaWxsPSIjNmI3MjgwIi8+CiAgPCEtLSBHZWFyIGlubmVyIC0tPgogIDxjaXJjbGUgY3g9IjMwMCIgY3k9IjE1MCIgcj0iMjgiIGZpbGw9IiNmM2Y0ZjYiLz4KICA8IS0tIEdlYXIgdGVldGggLS0+CiAgPHJlY3QgeD0iMjk3IiB5PSI5NSIgd2lkdGg9IjYiIGhlaWdodD0iMTUiIGZpbGw9IiM2YjcyODAiLz4KICA8cmVjdCB4PSIyOTciIHk9IjE5MCIgd2lkdGg9IjYiIGhlaWdodD0iMTUiIGZpbGw9IiM2YjcyODAiLz4KICA8cmVjdCB4PSIzODAiIHk9IjE0NyIgd2lkdGg9IjE1IiBoZWlnaHQ9IjYiIGZpbGw9IiM2YjcyODAiLz4KICA8cmVjdCB4PSIyMjUiIHk9IjE0NyIgd2lkdGg9IjE1IiBoZWlnaHQ9IjYiIGZpbGw9IiM2YjcyODAiLz4KICA8IS0tIERpYWdvbmFsIHRlZXRoIC0tPgogIDxyZWN0IHg9IjM0NSIgeT0iMTE1IiB3aWR0aD0iMTIiIGhlaWdodD0iNiIgdHJhbnNmb3JtPSJyb3RhdGUoNDUgMzQ1IDExNSkiIGZpbGw9IiM2YjcyODAiLz4KICA8cmVjdCB4PSIyNTUiIHk9IjE4NSIgd2lkdGg9IjEyIiBoZWlnaHQ9IjYiIHRyYW5zZm9ybT0icm90YXRlKDQ1IDI1NSAxODUpIiBmaWxsPSIjNmI3MjgwIi8+CiAgPHJlY3QgeD0iMzQ1IiB5PSIxODUiIHdpZHRoPSIxMiIgaGVpZ2h0PSI2IiB0cmFuc2Zvcm09InJvdGF0ZSgtNDUgMzQ1IDE4NSkiIGZpbGw9IiM2YjcyODAiLz4KICA8cmVjdCB4PSIyNTUiIHk9IjExNSIgd2lkdGg9IjEyIiBoZWlnaHQ9IjYiIHRyYW5zZm9ybT0icm90YXRlKC00NSAyNTUgMTE1KSIgZmlsbD0iIzZiNzI4MCIvPgogIDwhLS0gV3JlbmNoIC0tPgogIDxyZWN0IHg9IjI5NSIgeT0iMTQwIiB3aWR0aD0iMTAiIGhlaWdodD0iMjAiIGZpbGw9IiM5Y2EzYWYiLz4KICA8Y2lyY2xlIGN4PSIzMDAiIGN5PSIxNTAiIHI9IjUiIGZpbGw9IiM2YjcyODAiLz4KPC9zdmc+Cg==');
+        }
+
+        /* Sparkle effects */
+        .sparkles {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .sparkle {
+            position: absolute;
+            color: #fbbf24;
+            font-size: 12px;
+            animation: sparkle 2s infinite ease-in-out;
+        }
+
+        @keyframes sparkle {
+            0%, 100% { opacity: 0; transform: scale(0); }
+            50% { opacity: 1; transform: scale(1); }
+        }
+
+        .sparkle:nth-child(1) { top: 10%; left: 15%; animation-delay: 0s; }
+        .sparkle:nth-child(2) { top: 20%; right: 20%; animation-delay: 0.5s; }
+        .sparkle:nth-child(3) { bottom: 15%; left: 25%; animation-delay: 1s; }
+        .sparkle:nth-child(4) { bottom: 25%; right: 15%; animation-delay: 1.5s; }
+
+        /* Click feedback */
+        .menu-item.clicked {
+            animation: clickPulse 0.3s ease;
+        }
+
+        @keyframes clickPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(0.95); }
+            100% { transform: scale(1); }
+        }
+
+        /* Responsive design */
+        @media (max-width: 900px) {
+            .menu-container {
+                width: 90vw;
+                height: 67.5vw;
+                padding: 40px;
+                gap: 30px;
+            }
+            
+            .icon {
+                width: 80px;
+                height: 80px;
+            }
+            
+            .menu-item h3 {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="menu-container">
+        <div class="sparkles">
+            <div class="sparkle">✨</div>
+            <div class="sparkle">⭐</div>
+            <div class="sparkle">✨</div>
+            <div class="sparkle">⭐</div>
+        </div>
+        
+        <div class="menu-item" onclick="selectMenuItem('game')">
+            <div class="icon game-icon"></div>
+            <h3>Game</h3>
+        </div>
+        
+        <div class="menu-item" onclick="selectMenuItem('world')">
+            <div class="icon world-icon"></div>
+            <h3>World</h3>
+        </div>
+        
+        <div class="menu-item" onclick="selectMenuItem('social')">
+            <div class="icon social-icon"></div>
+            <h3>Social</h3>
+        </div>
+        
+        <div class="menu-item" onclick="selectMenuItem('settings')">
+            <div class="icon settings-icon"></div>
+            <h3>Settings</h3>
+        </div>
+    </div>
+
+    <script>
+        function selectMenuItem(item) {
+            const menuItem = event.target.closest('.menu-item');
+            
+            // Add click animation
+            menuItem.classList.add('clicked');
+            setTimeout(() => {
+                menuItem.classList.remove('clicked');
+            }, 300);
+            
+            // Handle menu selection
+            console.log(`Selected: ${item}`);
+            
+            // 在這裡修改導航邏輯，連接到你在 Cursor 中寫好的遊戲介面
+            switch(item) {
+                case 'game':
+                    // 替換成你的遊戲頁面路徑
+                    alert('開始遊戲！');
+                    // window.location.href = 'game.html';
+                    break;
+                case 'world':
+                    // 替換成你的世界頁面路徑
+                    alert('進入世界！');
+                    // window.location.href = 'world.html';
+                    break;
+                case 'social':
+                    // 替換成你的社交頁面路徑
+                    alert('社交功能！');
+                    // window.location.href = 'social.html';
+                    break;
+                case 'settings':
+                    // 替換成你的設定頁面路徑
+                    alert('設定選單！');
+                    // window.location.href = 'settings.html';
+                    break;
+            }
+        }
+
+        // 鍵盤導航支援
+        document.addEventListener('keydown', (e) => {
+            const menuItems = document.querySelectorAll('.menu-item');
+            let currentIndex = Array.from(menuItems).findIndex(item => 
+                item.classList.contains('focused'));
+            
+            if (currentIndex === -1) currentIndex = 0;
+            
+            switch(e.key) {
+                case 'ArrowUp':
+                    e.preventDefault();
+                    if (currentIndex > 1) currentIndex -= 2;
+                    break;
+                case 'ArrowDown':
+                    e.preventDefault();
+                    if (currentIndex < 2) currentIndex += 2;
+                    break;
+                case 'ArrowLeft':
+                    e.preventDefault();
+                    if (currentIndex % 2 !== 0) currentIndex -= 1;
+                    break;
+                case 'ArrowRight':
+                    e.preventDefault();
+                    if (currentIndex % 2 === 0 && currentIndex < 3) currentIndex += 1;
+                    break;
+                case 'Enter':
+                case ' ':
+                    e.preventDefault();
+                    if (currentIndex >= 0 && currentIndex < menuItems.length) {
+                        menuItems[currentIndex].click();
+                    }
+                    return;
+            }
+            
+            // 更新焦點
+            menuItems.forEach(item => item.classList.remove('focused'));
+            if (currentIndex >= 0 && currentIndex < menuItems.length) {
+                menuItems[currentIndex].classList.add('focused');
+            }
+        });
+    </script>
+</body>
+</html>

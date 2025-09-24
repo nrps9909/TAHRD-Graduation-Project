@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>遊戲模式選單</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #f5f3f0 0%, #e8e4df 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .menu-container {
+            width: 800px;
+            height: 600px;
+            background: linear-gradient(135deg, #f8f6f3 0%, #ede9e4 100%);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 40px;
+            padding: 60px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .menu-container::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .menu-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: white;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+            position: relative;
+            overflow: hidden;
+            text-align: center;
+        }
+
+        .menu-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.3), transparent);
+            transform: translateX(-100%);
+            transition: transform 0.6s ease;
+        }
+
+        .menu-item:hover::before {
+            transform: translateX(100%);
+        }
+
+        .menu-item:hover {
+            transform: translateY(-8px) scale(1.05);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+        }
+
+        .menu-item:active {
+            transform: translateY(-4px) scale(1.02);
+        }
+
+        /* 挑戰模式特殊效果 */
+        .menu-item.special {
+            background: linear-gradient(135deg, #fff9c4 0%, #fef08a 50%, #facc15 100%);
+            border: 2px solid #eab308;
+            position: relative;
+        }
+
+        .menu-item.special::after {
+            content: '✨';
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            font-size: 1.5rem;
+            animation: sparkle 2s infinite ease-in-out;
+        }
+
+        @keyframes sparkle {
+            0%, 100% { opacity: 1; transform: scale(1) rotate(0deg); }
+            50% { opacity: 0.7; transform: scale(1.2) rotate(180deg); }
+        }
+
+        .icon {
+            font-size: 4rem;
+            margin-bottom: 15px;
+            transition: transform 0.3s ease;
+        }
+
+        .menu-item:hover .icon {
+            transform: scale(1.1) rotate(5deg);
+        }
+
+        .menu-item h3 {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #5a4a3a;
+            margin: 0 0 8px 0;
+            letter-spacing: 1px;
+        }
+
+        .menu-item.special h3 {
+            color: #92400e;
+        }
+
+        .menu-item p {
+            font-size: 1rem;
+            color: #6b7280;
+            margin: 0;
+            line-height: 1.4;
+        }
+
+        .menu-item.special p {
+            color: #a16207;
+        }
+
+        /* Sparkle effects */
+        .sparkles {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .sparkle {
+            position: absolute;
+            color: #fbbf24;
+            font-size: 12px;
+            animation: sparkle-bg 2s infinite ease-in-out;
+        }
+
+        @keyframes sparkle-bg {
+            0%, 100% { opacity: 0; transform: scale(0); }
+            50% { opacity: 1; transform: scale(1); }
+        }
+
+        .sparkle:nth-child(1) { top: 10%; left: 15%; animation-delay: 0s; }
+        .sparkle:nth-child(2) { top: 20%; right: 20%; animation-delay: 0.5s; }
+        .sparkle:nth-child(3) { bottom: 15%; left: 25%; animation-delay: 1s; }
+        .sparkle:nth-child(4) { bottom: 25%; right: 15%; animation-delay: 1.5s; }
+
+        /* Click feedback */
+        .menu-item.clicked {
+            animation: clickPulse 0.3s ease;
+        }
+
+        @keyframes clickPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(0.95); }
+            100% { transform: scale(1); }
+        }
+
+        /* Responsive design */
+        @media (max-width: 900px) {
+            .menu-container {
+                width: 90vw;
+                height: 67.5vw;
+                padding: 40px;
+                gap: 30px;
+            }
+            
+            .icon {
+                font-size: 3rem;
+            }
+            
+            .menu-item h3 {
+                font-size: 1.3rem;
+            }
+
+            .menu-item p {
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="menu-container">
+        <div class="sparkles">
+            <div class="sparkle">✨</div>
+            <div class="sparkle">⭐</div>
+            <div class="sparkle">✨</div>
+            <div class="sparkle">⭐</div>
+        </div>
+        
+        <div class="menu-item" onclick="selectGameMode('single')">
+            <div class="icon">🎮</div>
+            <h3>單人模式</h3>
+            <p>開始你的個人冒險</p>
+        </div>
+        
+        <div class="menu-item" onclick="selectGameMode('multi')">
+            <div class="icon">👥</div>
+            <h3>多人模式</h3>
+            <p>與朋友一起遊玩</p>
+        </div>
+        
+        <div class="menu-item special" onclick="selectGameMode('challenge')">
+            <div class="icon">🏆</div>
+            <h3>挑戰模式</h3>
+            <p>測試你的技能</p>
+        </div>
+        
+        <div class="menu-item" onclick="selectGameMode('tutorial')">
+            <div class="icon">📚</div>
+            <h3>教學模式</h3>
+            <p>學習遊戲基礎</p>
+        </div>
+    </div>
+
+    <script>
+        function selectGameMode(mode) {
+            const menuItem = event.target.closest('.menu-item');
+            
+            // Add click animation
+            menuItem.classList.add('clicked');
+            setTimeout(() => {
+                menuItem.classList.remove('clicked');
+            }, 300);
+            
+            // 模式描述
+            const descriptions = {
+                'single': '歡迎進入單人冒險模式！你將在這個神奇的世界中獨自探索，與AI夥伴建立友誼，體驗獨特的故事情節。',
+                'multi': '邀請你的朋友們一起加入！多人模式讓你與朋友共同體驗這個溫暖的世界，一起探索、聊天、分享美好時光。',
+                'challenge': '準備好接受挑戰了嗎？在這裡測試你的技能和智慧，完成各種任務和謎題，獲得專屬的成就和獎勵！',
+                'tutorial': '新手訓練營開始！通過互動式教學，快速掌握遊戲的所有玩法，開始你的奇妙旅程。'
+            };
+
+            const modeNames = {
+                'single': '單人模式',
+                'multi': '多人模式',
+                'challenge': '挑戰模式',
+                'tutorial': '教學模式'
+            };
+            
+            console.log(`Selected game mode: ${mode}`);
+            
+            // 顯示確認對話框
+            setTimeout(() => {
+                const confirmed = confirm(`${descriptions[mode]}\n\n確定要開始 ${modeNames[mode]} 嗎？`);
+                if (confirmed) {
+                    alert(`正在啟動 ${modeNames[mode]}...`);
+                    // 這裡可以添加跳轉到對應遊戲模式的邏輯
+                    // window.location.href = `${mode}-mode.html`;
+                }
+            }, 300);
+        }
+
+        // 鍵盤導航支援
+        document.addEventListener('keydown', (e) => {
+            const menuItems = document.querySelectorAll('.menu-item');
+            let currentIndex = Array.from(menuItems).findIndex(item => 
+                item.classList.contains('focused'));
+            
+            if (currentIndex === -1) currentIndex = 0;
+            
+            switch(e.key) {
+                case 'ArrowUp':
+                    e.preventDefault();
+                    if (currentIndex > 1) currentIndex -= 2;
+                    break;
+                case 'ArrowDown':
+                    e.preventDefault();
+                    if (currentIndex < 2) currentIndex += 2;
+                    break;
+                case 'ArrowLeft':
+                    e.preventDefault();
+                    if (currentIndex % 2 !== 0) currentIndex -= 1;
+                    break;
+                case 'ArrowRight':
+                    e.preventDefault();
+                    if (currentIndex % 2 === 0 && currentIndex < 3) currentIndex += 1;
+                    break;
+                case 'Enter':
+                case ' ':
+                    e.preventDefault();
+                    if (currentIndex >= 0 && currentIndex < menuItems.length) {
+                        menuItems[currentIndex].click();
+                    }
+                    return;
+                case '1':
+                    e.preventDefault();
+                    selectGameMode('single');
+                    break;
+                case '2':
+                    e.preventDefault();
+                    selectGameMode('multi');
+                    break;
+                case '3':
+                    e.preventDefault();
+                    selectGameMode('challenge');
+                    break;
+                case '4':
+                    e.preventDefault();
+                    selectGameMode('tutorial');
+                    break;
+            }
+            
+            // 更新焦點
+            menuItems.forEach(item => item.classList.remove('focused'));
+            if (currentIndex >= 0 && currentIndex < menuItems.length) {
+                menuItems[currentIndex].classList.add('focused');
+            }
+        });
+
+        console.log('遊戲模式選單已載入');
+        console.log('可用模式: 單人(1)、多人(2)、挑戰(3)、教學(4)');
+        console.log('快捷鍵: 方向鍵導航、Enter/空白鍵選擇、數字鍵直接選擇');
+    </script>
+</body>
+</html>

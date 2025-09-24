@@ -7,13 +7,22 @@ export const HotkeyManager = () => {
     setShowMap, 
     setShowSettings, 
     setShowDiary,
+    setShowGameMenu,
+    setShowSocialMenu,
+    setShowWorldMenu,
+    setShowQuickGameModeMenu,
     showInventory,
     showMap,
     showSettings,
     showDiary,
+    showGameMenu,
+    showSocialMenu,
+    showWorldMenu,
+    showQuickGameModeMenu,
     endConversation,
     showDialogue
   } = useGameStore()
+
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -23,74 +32,61 @@ export const HotkeyManager = () => {
       }
 
       switch (event.key.toLowerCase()) {
-        case 'i':
+
+        case 'g':
           event.preventDefault()
-          setShowInventory(!showInventory)
+          setShowQuickGameModeMenu(!showQuickGameModeMenu)
           break
 
-        case 'm':
+        case 'x':
           event.preventDefault()
-          setShowMap(!showMap)
+          setShowWorldMenu(!showWorldMenu)
           break
+
+        case 'c':
+          event.preventDefault()
+          setShowSocialMenu(!showSocialMenu)
+          break
+
+        case 'z':
+          event.preventDefault()
+          setShowSettings(!showSettings)
+          break
+
 
         case 'escape':
           // ESC 優先級：對話框 > UI面板 > Pointer Lock (由CameraController處理)
           if (showDialogue) {
             event.preventDefault()
             endConversation()
-          } else if (showSettings || showInventory || showMap || showDiary) {
+          } else if (showSettings || showInventory || showMap || showDiary || showGameMenu || showSocialMenu || showWorldMenu || showQuickGameModeMenu) {
             event.preventDefault()
             // 關閉所有UI面板
             if (showSettings) setShowSettings(false)
             if (showInventory) setShowInventory(false)
             if (showMap) setShowMap(false)
             if (showDiary) setShowDiary(false)
+            if (showGameMenu) setShowGameMenu(false)
+            if (showSocialMenu) setShowSocialMenu(false)
+            if (showWorldMenu) setShowWorldMenu(false)
+            if (showQuickGameModeMenu) setShowQuickGameModeMenu(false)
           }
           // 如果沒有UI面板開啟，讓 CameraController 處理 Pointer Lock
           break
 
-        case 'j':
-          event.preventDefault()
-          setShowDiary(!showDiary)
-          break
 
         case 'tab':
           event.preventDefault()
-          // TAB 在有其他UI開啟時關閉所有UI，否則開啟設定
-          if (showInventory || showMap || showDiary) {
+          // TAB 關閉所有UI面板
+          if (showInventory || showMap || showDiary || showGameMenu || showSocialMenu || showWorldMenu || showSettings || showQuickGameModeMenu) {
             setShowInventory(false)
             setShowMap(false)
             setShowDiary(false)
-          } else {
-            setShowSettings(!showSettings)
-          }
-          break
-
-        case 'f1':
-          event.preventDefault()
-          // F1 顯示幫助
-          setShowSettings(true)
-          break
-
-        case 'f5':
-          event.preventDefault()
-          // F5 刷新/重載遊戲狀態
-          window.location.reload()
-          break
-
-        case 'enter':
-          // Enter 在對話中可能有特殊用途
-          if (showDialogue) {
-            event.preventDefault()
-            // 這裡可以添加快速回復或繼續對話的邏輯
-          }
-          break
-
-        case ' ':
-          // 空白鍵 - 互動鍵
-          if (!showDialogue) {
-            event.preventDefault()
-            // 這裡可以添加與最近NPC互動的邏輯
+            setShowGameMenu(false)
+            setShowSocialMenu(false)
+            setShowWorldMenu(false)
+            setShowSettings(false)
+            setShowQuickGameModeMenu(false)
           }
           break
       }
@@ -103,10 +99,18 @@ export const HotkeyManager = () => {
     setShowMap, 
     setShowSettings, 
     setShowDiary,
+    setShowGameMenu,
+    setShowSocialMenu,
+    setShowWorldMenu,
+    setShowQuickGameModeMenu,
     showInventory,
     showMap,
     showSettings,
     showDiary,
+    showGameMenu,
+    showSocialMenu,
+    showWorldMenu,
+    showQuickGameModeMenu,
     showDialogue,
     endConversation
   ])
@@ -130,7 +134,12 @@ export const HotkeyHints = ({ visible = false }: { visible?: boolean }) => {
         <div><kbd className="bg-gray-700 px-2 py-1 rounded">I</kbd> 背包</div>
         <div><kbd className="bg-gray-700 px-2 py-1 rounded">M</kbd> 地圖</div>
         <div><kbd className="bg-gray-700 px-2 py-1 rounded">J</kbd> 日記</div>
-        <div><kbd className="bg-gray-700 px-2 py-1 rounded">Tab</kbd> 設定</div>
+        <div><kbd className="bg-gray-700 px-2 py-1 rounded">Q</kbd> 總選單</div>
+        <div><kbd className="bg-gray-700 px-2 py-1 rounded">G</kbd> 遊戲模式</div>
+        <div><kbd className="bg-gray-700 px-2 py-1 rounded">C</kbd> 社交功能</div>
+        <div><kbd className="bg-gray-700 px-2 py-1 rounded">X</kbd> 探索世界</div>
+        <div><kbd className="bg-gray-700 px-2 py-1 rounded">Z</kbd> 遊戲設定</div>
+        <div><kbd className="bg-gray-700 px-2 py-1 rounded">Tab</kbd> 關閉所有選單</div>
         <div><kbd className="bg-gray-700 px-2 py-1 rounded">ESC</kbd> 取消/退出</div>
         <div><kbd className="bg-gray-700 px-2 py-1 rounded">F1</kbd> 幫助</div>
         <div><kbd className="bg-gray-700 px-2 py-1 rounded">F5</kbd> 重載</div>

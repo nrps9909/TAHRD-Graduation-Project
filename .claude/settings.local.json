@@ -28,6 +28,9 @@
       "Bash(docker-compose restart:*)",
       "Bash(kill:*)"
     ],
-    "deny": []
+    "deny": [],
+    "additionalDirectories": [
+      "/Users/huangtzuhsin/Desktop"
+    ]
   }
 }

@@ -70,8 +70,8 @@ export const Scene = () => {
           key={npc.id}
           npc={npc}
           position={npc.position}
-          conversationContent={npc.conversationContent}
-          isInConversation={npc.isInConversation}
+          conversationContent={undefined}
+          isInConversation={false}
         />
       ))}
       

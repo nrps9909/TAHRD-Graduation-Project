@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { Environment } from '@react-three/drei'
 import { Scene } from './components/Scene'
@@ -6,6 +6,9 @@ import { TestScene } from './components/TestScene'
 import { UI } from './components/UI'
 import { PointerLockManager } from './components/3D/PointerLockManager'
 import { FontPreloader } from './components/FontPreloader'
+import { ClickEffects } from './components/ClickEffects'
+import { StartScreen } from './components/StartScreen'
+import { HotkeyGuide } from './components/HotkeyGuide'
 // import { NookPhone } from './components/UI/NookPhone' // 已移除，使用 AnimalCrossingPhone
 import { VisualSoundEffects, BubbleEffect, MusicalNoteRain } from './components/UI/VisualSoundEffects'
 import { NPCConversationBubble } from './components/UI/NPCConversationBubble'
@@ -16,11 +19,66 @@ import './styles/npc-animations.css'
 
 function App() {
   const { initializeGame, isLoading } = useGameStore()
+  const [showStartScreen, setShowStartScreen] = useState(true)
+  const [gameStarting, setGameStarting] = useState(false)
+  const [showHotkeyGuide, setShowHotkeyGuide] = useState(false)
   useSocketConnection()
 
+  const handleStartGame = async () => {
+    setGameStarting(true)
+    // 先初始化遊戲，等待完成後再隱藏開始畫面
+    try {
+      await initializeGame()
+      // 確保有足夠時間顯示載入動畫
+      setTimeout(() => {
+        setShowStartScreen(false)
+        setGameStarting(false)
+        setShowHotkeyGuide(true) // 顯示快捷鍵指南
+      }, 1000)
+    } catch (error) {
+      console.error('遊戲初始化失敗:', error)
+      // 即使失敗也要進入遊戲，使用預設資料
+      setTimeout(() => {
+        setShowStartScreen(false)
+        setGameStarting(false)
+        setShowHotkeyGuide(true) // 顯示快捷鍵指南
+      }, 2000)
+    }
+  }
+
+  const handleCloseHotkeyGuide = () => {
+    setShowHotkeyGuide(false)
+  }
+
+  const handleBackToStart = () => {
+    setShowStartScreen(true)
+    setGameStarting(false)
+    setShowHotkeyGuide(false)
+  }
+
+  // 添加返回開始畫面的熱鍵監聽 - 必須在所有條件返回之前
   useEffect(() => {
-    initializeGame()
-  }, [initializeGame])
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Home鍵返回開始畫面
+      if (e.key === 'Home' || (e.ctrlKey && e.key === 'h')) {
+        e.preventDefault()
+        setShowStartScreen(true)
+        setGameStarting(false)
+        setShowHotkeyGuide(false)
+      }
+    }
+
+    if (!showStartScreen && !gameStarting) {
+      window.addEventListener('keydown', handleKeyDown)
+      return () => window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [showStartScreen, gameStarting])
+
+  // 如果顯示開始畫面，直接返回開始畫面組件
+  if (showStartScreen) {
+    return <StartScreen onStartGame={handleStartGame} />
+  }
+
 
   if (isLoading) {
     return (
@@ -80,12 +138,17 @@ function App() {
     )
   }
 
+
   return (
-    <div className="game-container">
+    <div className="game-container" style={{ width: '100vw', height: '100vh', background: '#87CEEB' }}>
       <FontPreloader />
       <PointerLockManager />
       
-      <div className="game-scene">
+      {/* Click effects for entire app */}
+      <ClickEffects />
+      
+      
+      <div className="game-scene" style={{ width: '100%', height: '100%', position: 'relative' }}>
         <Canvas
           camera={{ position: [0, 8, 12], fov: 75 }}
           shadows
@@ -94,7 +157,15 @@ function App() {
             height: '100%',
             position: 'absolute',
             top: 0,
-            left: 0
+            left: 0,
+            background: '#87CEEB'
+          }}
+          onCreated={({ gl }) => {
+            console.log('Canvas created successfully')
+            console.log('WebGL context:', gl.getContext())
+          }}
+          onError={(error) => {
+            console.error('Canvas error:', error)
           }}
         >
           <ambientLight intensity={0.4} />
@@ -127,6 +198,9 @@ function App() {
       {/* NPC Conversation Bubbles */}
       <NPCConversationBubble />
       
+      {/* Hotkey Guide */}
+      <HotkeyGuide isVisible={showHotkeyGuide} onClose={handleCloseHotkeyGuide} />
+      
       {/* Corner decorations */}
       <div className="fixed top-4 left-4 z-20 pointer-events-none">
         <div className="bg-gradient-to-br from-green-400 to-emerald-500 rounded-2xl p-3 shadow-xl border-3 border-white animate-wiggle">
@@ -137,6 +211,15 @@ function App() {
       <div className="fixed top-4 right-4 z-20 pointer-events-none">
         <div className="bg-gradient-to-br from-yellow-400 to-orange-500 rounded-2xl p-3 shadow-xl border-3 border-white animate-pulse">
           <span className="text-2xl">✨</span>
+        </div>
+      </div>
+      
+      {/* Hotkey hints */}
+      <div className="fixed bottom-4 left-4 z-20 bg-black/50 text-white px-3 py-2 rounded-lg">
+        <div className="text-sm">
+          <div>G: 遊戲模式</div>
+          <div>C: 社交功能 | X: 探索世界 | Z: 設定</div>
+          <div>Ctrl+H: 返回開始畫面</div>
         </div>
       </div>
     </div>

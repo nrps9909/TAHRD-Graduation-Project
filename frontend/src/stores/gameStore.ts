@@ -35,6 +35,40 @@ interface MemoryFlower {
   conversation?: { content: string }
 }
 
+interface Friend {
+  id: string
+  name: string
+  avatar: string
+  status: 'online' | 'offline' | 'away' | 'busy'
+  level: number
+  lastSeen: Date
+  relationshipLevel: number
+  location?: string
+}
+
+interface ChatRoom {
+  id: string
+  name: string
+  type: 'group' | 'direct'
+  participants: string[]
+  lastMessage?: {
+    content: string
+    sender: string
+    timestamp: Date
+  }
+  unreadCount: number
+}
+
+interface ChatMessage {
+  id: string
+  chatRoomId: string
+  content: string
+  sender: string
+  senderName: string
+  timestamp: Date
+  messageType: 'text' | 'image' | 'gift'
+}
+
 interface GameState {
   // Player data
   playerId: string | null
@@ -57,10 +91,18 @@ interface GameState {
   // Memory flowers
   memoryFlowers: MemoryFlower[]
   
+  // Social features
+  friends: Friend[]
+  chatRooms: ChatRoom[]
+  chatMessages: ChatMessage[]
+  
   // World state
   weather: string
   timeOfDay: number
   season: string
+  
+  // Game mode
+  gameMode: 'single' | 'multiplayer' | 'exploration' | 'social' | null
   
   // UI state
   isLoading: boolean
@@ -69,6 +111,11 @@ interface GameState {
   showMap: boolean
   showSettings: boolean
   showDiary: boolean
+  showGameMenu: boolean
+  showSocialMenu: boolean
+  showWorldMenu: boolean
+  showQuickCommandMenu: boolean
+  showQuickGameModeMenu: boolean
   
   // Actions
   initializeGame: () => void
@@ -81,14 +128,24 @@ interface GameState {
   updateNpcMood: (npcId: string, mood: string) => void
   updateNpcPosition: (npcId: string, position: [number, number, number]) => void
   setWorldState: (state: { weather?: string; timeOfDay?: number; season?: string }) => void
+  setGameMode: (mode: 'single' | 'multiplayer' | 'exploration' | 'social' | null) => void
   setShowInventory: (show: boolean) => void
   setShowMap: (show: boolean) => void
   setShowSettings: (show: boolean) => void
   setShowDiary: (show: boolean) => void
+  setShowGameMenu: (show: boolean) => void
+  setShowSocialMenu: (show: boolean) => void
+  setShowWorldMenu: (show: boolean) => void
+  setShowQuickCommandMenu: (show: boolean) => void
+  setShowQuickGameModeMenu: (show: boolean) => void
   setPlayerPosition: (position: [number, number, number]) => void
   setPlayerRotation: (rotation: number) => void
   setJoystickInput: (x: number, y: number) => void
   updateNpcConversation: (npcId: string, partnerId: string | null, content: string | null) => void
+  addFriend: (friend: Friend) => void
+  updateFriendStatus: (friendId: string, status: 'online' | 'offline' | 'away' | 'busy') => void
+  addChatRoom: (chatRoom: ChatRoom) => void
+  addChatMessage: (message: ChatMessage) => void
 }
 
 export const useGameStore = create<GameState>()(
@@ -106,15 +163,166 @@ export const useGameStore = create<GameState>()(
       isInConversation: false,
       isTyping: false,
       memoryFlowers: [],
+      friends: [
+        {
+          id: 'friend-1',
+          name: '陸培修',
+          avatar: '🎨',
+          status: 'online',
+          level: 15,
+          lastSeen: new Date(),
+          relationshipLevel: 3,
+          location: '藝術工作室'
+        },
+        {
+          id: 'friend-2',
+          name: '劉宇岑',
+          avatar: '⚡',
+          status: 'online',
+          level: 22,
+          lastSeen: new Date(Date.now() - 300000), // 5 minutes ago
+          relationshipLevel: 4,
+          location: '冒險廣場'
+        },
+        {
+          id: 'friend-3',
+          name: '陳庭安',
+          avatar: '🌸',
+          status: 'away',
+          level: 18,
+          lastSeen: new Date(Date.now() - 600000), // 10 minutes ago
+          relationshipLevel: 2,
+          location: '花園小徑'
+        },
+        {
+          id: 'friend-4',
+          name: '小雲',
+          avatar: '☁️',
+          status: 'offline',
+          level: 8,
+          lastSeen: new Date(Date.now() - 3600000), // 1 hour ago
+          relationshipLevel: 1,
+          location: '未知'
+        }
+      ],
+      chatRooms: [
+        {
+          id: 'room-1',
+          name: '心語小鎮大廳',
+          type: 'group',
+          participants: ['player-1', 'friend-1', 'friend-2', 'friend-3'],
+          lastMessage: {
+            content: '今天天氣真好呢！',
+            sender: 'friend-2',
+            timestamp: new Date(Date.now() - 180000) // 3 minutes ago
+          },
+          unreadCount: 2
+        },
+        {
+          id: 'room-2',
+          name: '藝術交流群',
+          type: 'group',
+          participants: ['player-1', 'friend-1'],
+          lastMessage: {
+            content: '我剛完成了一幅新畫作',
+            sender: 'friend-1',
+            timestamp: new Date(Date.now() - 900000) // 15 minutes ago
+          },
+          unreadCount: 0
+        },
+        {
+          id: 'room-3',
+          name: '與陳庭安的對話',
+          type: 'direct',
+          participants: ['player-1', 'friend-3'],
+          lastMessage: {
+            content: '謝謝你的幫助！',
+            sender: 'player-1',
+            timestamp: new Date(Date.now() - 1800000) // 30 minutes ago
+          },
+          unreadCount: 1
+        }
+      ],
+      chatMessages: [
+        {
+          id: 'msg-1',
+          chatRoomId: 'room-1',
+          content: '大家好！歡迎來到心語小鎮 💕',
+          sender: 'friend-1',
+          senderName: '陸培修',
+          timestamp: new Date(Date.now() - 3600000), // 1 hour ago
+          messageType: 'text'
+        },
+        {
+          id: 'msg-2',
+          chatRoomId: 'room-1',
+          content: '哇！這個地方好美！',
+          sender: 'player-1',
+          senderName: '旅人',
+          timestamp: new Date(Date.now() - 3300000), // 55 minutes ago
+          messageType: 'text'
+        },
+        {
+          id: 'msg-3',
+          chatRoomId: 'room-1',
+          content: '我們一起去探險吧！🌟',
+          sender: 'friend-2',
+          senderName: '劉宇岑',
+          timestamp: new Date(Date.now() - 900000), // 15 minutes ago
+          messageType: 'text'
+        },
+        {
+          id: 'msg-4',
+          chatRoomId: 'room-1',
+          content: '今天天氣真好呢！',
+          sender: 'friend-2',
+          senderName: '劉宇岑',
+          timestamp: new Date(Date.now() - 180000), // 3 minutes ago
+          messageType: 'text'
+        },
+        {
+          id: 'msg-5',
+          chatRoomId: 'room-2',
+          content: '我剛完成了一幅新畫作',
+          sender: 'friend-1',
+          senderName: '陸培修',
+          timestamp: new Date(Date.now() - 900000), // 15 minutes ago
+          messageType: 'text'
+        },
+        {
+          id: 'msg-6',
+          chatRoomId: 'room-3',
+          content: '你今天過得怎麼樣？',
+          sender: 'friend-3',
+          senderName: '陳庭安',
+          timestamp: new Date(Date.now() - 2100000), // 35 minutes ago
+          messageType: 'text'
+        },
+        {
+          id: 'msg-7',
+          chatRoomId: 'room-3',
+          content: '謝謝你的幫助！',
+          sender: 'player-1',
+          senderName: '旅人',
+          timestamp: new Date(Date.now() - 1800000), // 30 minutes ago
+          messageType: 'text'
+        }
+      ],
       weather: 'sunny',
       timeOfDay: 12,
       season: 'spring',
+      gameMode: null,
       isLoading: true,
       showDialogue: false,
       showInventory: false,
       showMap: false,
       showSettings: false,
       showDiary: false,
+      showGameMenu: false,
+      showSocialMenu: false,
+      showWorldMenu: false,
+      showQuickCommandMenu: false,
+      showQuickGameModeMenu: false,
 
       // Actions
       initializeGame: async () => {
@@ -314,10 +522,17 @@ export const useGameStore = create<GameState>()(
         }))
       },
 
+      setGameMode: (mode) => set({ gameMode: mode }),
+
       setShowInventory: (show) => set({ showInventory: show }),
       setShowMap: (show) => set({ showMap: show }),
       setShowSettings: (show) => set({ showSettings: show }),
       setShowDiary: (show) => set({ showDiary: show }),
+      setShowGameMenu: (show) => set({ showGameMenu: show }),
+      setShowSocialMenu: (show) => set({ showSocialMenu: show }),
+      setShowWorldMenu: (show) => set({ showWorldMenu: show }),
+      setShowQuickCommandMenu: (show) => set({ showQuickCommandMenu: show }),
+      setShowQuickGameModeMenu: (show) => set({ showQuickGameModeMenu: show }),
       setPlayerPosition: (position) => set({ playerPosition: position }),
       setPlayerRotation: (rotation) => set({ playerRotation: rotation }),
       setJoystickInput: (x, y) => set({ joystickInput: { x, y } }),
@@ -335,6 +550,32 @@ export const useGameStore = create<GameState>()(
             }
             return npc
           })
+        }))
+      },
+
+      addFriend: (friend) => {
+        set(state => ({
+          friends: [...state.friends, friend]
+        }))
+      },
+
+      updateFriendStatus: (friendId, status) => {
+        set(state => ({
+          friends: state.friends.map(friend =>
+            friend.id === friendId ? { ...friend, status, lastSeen: new Date() } : friend
+          )
+        }))
+      },
+
+      addChatRoom: (chatRoom) => {
+        set(state => ({
+          chatRooms: [...state.chatRooms, chatRoom]
+        }))
+      },
+
+      addChatMessage: (message) => {
+        set(state => ({
+          chatMessages: [...state.chatMessages, message]
         }))
       },
     }),
