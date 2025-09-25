@@ -56,7 +56,7 @@ export const NPCConversationBubble: React.FC = () => {
         })
         return newMap
       })
-    }, 100) // 每100ms更新一次位置
+    }, 1000) // 每1000ms更新一次位置
 
     return () => clearInterval(interval)
   }, [npcs])
@@ -103,16 +103,26 @@ export const NPCConversationBubble: React.FC = () => {
           // 每次收到新消息時更新位置
           conversation.position = calculatePosition(data.speakerId, data.listenerId)
           
-          conversation.messages.push({
-            speakerId: data.speakerId,
-            speakerName: data.speakerName,
-            listenerId: data.listenerId,
-            listenerName: data.listenerName,
-            content: data.content,
-            emotion: data.emotion,
-            topic: data.topic,
-            timestamp: new Date(data.timestamp)
-          })
+          // 檢查是否為重複消息
+          const isDuplicate = conversation.messages.some(msg => 
+            msg.content === data.content && 
+            msg.speakerId === data.speakerId &&
+            Math.abs(new Date(msg.timestamp).getTime() - new Date(data.timestamp).getTime()) < 1000
+          )
+          
+          // 只添加非重複消息
+          if (!isDuplicate) {
+            conversation.messages.push({
+              speakerId: data.speakerId,
+              speakerName: data.speakerName,
+              listenerId: data.listenerId,
+              listenerName: data.listenerName,
+              content: data.content,
+              emotion: data.emotion,
+              topic: data.topic,
+              timestamp: new Date(data.timestamp)
+            })
+          }
           
           // 只保留最近5條消息
           if (conversation.messages.length > 5) {
@@ -121,7 +131,7 @@ export const NPCConversationBubble: React.FC = () => {
           
           // 設定7秒後自動移除
           const timeoutId = setTimeout(() => {
-            console.log(`移除NPC對話泡泡: ${existingKey}`)
+            // console.log(`移除NPC對話泡泡: ${existingKey}`) // 減少日誌輸出
             setConversations(prev => {
               const newMap = new Map(prev)
               newMap.delete(existingKey)
@@ -129,7 +139,7 @@ export const NPCConversationBubble: React.FC = () => {
             })
           }, 7000)
           
-          console.log(`新增NPC對話泡泡: ${existingKey}，將在7秒後消失`)
+          // console.log(`新增NPC對話泡泡: ${existingKey}，將在7秒後消失`) // 減少日誌輸出
           
           conversation.timeoutId = timeoutId
           conversation.createdAt = Date.now()

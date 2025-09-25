@@ -1,213 +1,185 @@
+import React from 'react'
 import { useGameStore } from '@/stores/gameStore'
 
-interface ModalProps {
-  isOpen: boolean
-  onClose: () => void
-  title: string
-  children: React.ReactNode
-}
+// 設定選單組件
+const SettingsModal: React.FC = () => {
+  const { showSettings, setShowSettings } = useGameStore()
 
-const Modal = ({ isOpen, onClose, title, children }: ModalProps) => {
-  if (!isOpen) return null
+  if (!showSettings) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
-      <div className="bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl border border-white/20 
-                      w-11/12 max-w-2xl max-h-[80vh] overflow-hidden">
-        <div className="bg-gradient-to-r from-healing-gentle to-healing-soft p-6 border-b border-white/20">
-          <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-bold text-gray-800">{title}</h2>
-            <button
-              onClick={onClose}
-              className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 
-                         flex items-center justify-center transition-colors duration-200"
-            >
-              ✕
-            </button>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+        <h2 className="text-2xl font-bold mb-4 text-gray-800">遊戲設定</h2>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              音效音量
+            </label>
+            <input type="range" min="0" max="100" className="w-full" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              背景音樂
+            </label>
+            <input type="range" min="0" max="100" className="w-full" />
+          </div>
+          <div className="flex items-center">
+            <input type="checkbox" id="fullscreen" className="mr-2" />
+            <label htmlFor="fullscreen" className="text-sm text-gray-700">
+              全螢幕模式
+            </label>
           </div>
         </div>
-        <div className="p-6 overflow-y-auto max-h-[60vh]">
-          {children}
+        <div className="flex justify-end mt-6 space-x-2">
+          <button
+            onClick={() => setShowSettings(false)}
+            className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 transition-colors"
+          >
+            取消
+          </button>
+          <button
+            onClick={() => setShowSettings(false)}
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+          >
+            確定
+          </button>
         </div>
       </div>
     </div>
   )
 }
 
-export const GameModals = () => {
-  const {
-    showInventory,
-    showMap,
-    showSettings,
-    showDiary,
-    setShowInventory,
-    setShowMap,
-    setShowSettings,
-    setShowDiary,
-    npcs,
-    memoryFlowers
-  } = useGameStore()
+// 背包組件
+const InventoryModal: React.FC = () => {
+  const { showInventory, setShowInventory } = useGameStore()
+
+  if (!showInventory) return null
 
   return (
-    <>
-      {/* 背包模態框 */}
-      <Modal isOpen={showInventory} onClose={() => setShowInventory(false)} title="🎒 我的背包">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-96 overflow-y-auto">
+        <h2 className="text-2xl font-bold mb-4 text-gray-800">背包</h2>
         <div className="grid grid-cols-4 gap-4">
-          {Array.from({ length: 16 }, (_, i) => (
-            <div
-              key={i}
-              className="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 
-                         rounded-xl border-2 border-dashed border-gray-300
-                         flex items-center justify-center text-gray-400 text-2xl
-                         hover:border-healing-gentle transition-colors duration-200"
-            >
-              {i === 0 && '🌸'}
-              {i === 1 && '🎁'}
-              {i === 2 && '📝'}
+          {Array.from({ length: 16 }).map((_, index) => (
+            <div key={index} className="aspect-square bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
+              <span className="text-gray-400 text-sm">空</span>
             </div>
           ))}
         </div>
-        <div className="mt-6 p-4 bg-healing-gentle/20 rounded-xl">
-          <p className="text-gray-600 text-sm">
-            在心語小鎮的旅程中收集的珍貴物品會出現在這裡。與居民對話、完成心願，都可能獲得特別的禮物哦！
-          </p>
-        </div>
-      </Modal>
-
-      {/* 地圖模態框 */}
-      <Modal isOpen={showMap} onClose={() => setShowMap(false)} title="🗺️ 小鎮地圖">
-        <div className="relative bg-gradient-to-br from-green-100 to-blue-100 rounded-2xl p-8 min-h-[400px]">
-          {npcs.map((npc) => (
-            <div
-              key={npc.id}
-              className="absolute transform -translate-x-1/2 -translate-y-1/2"
-              style={{
-                left: `${50 + (npc.position[0] / 60) * 40}%`,
-                top: `${50 - (npc.position[2] / 60) * 40}%`,
-              }}
-            >
-              <div className="bg-white/90 rounded-full p-2 shadow-lg border border-white/30">
-                <div className="w-6 h-6 bg-healing-gentle rounded-full flex items-center justify-center text-xs">
-                  👤
-                </div>
-              </div>
-              <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 
-                            bg-gray-800/80 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
-                {npc.name}
-              </div>
-            </div>
-          ))}
-          
-          {memoryFlowers.map((flower) => (
-            <div
-              key={flower.id}
-              className="absolute transform -translate-x-1/2 -translate-y-1/2"
-              style={{
-                left: `${50 + (flower.position[0] / 60) * 40}%`,
-                top: `${50 - (flower.position[2] / 60) * 40}%`,
-              }}
-            >
-              <div className="text-lg animate-gentle-float">🌸</div>
-            </div>
-          ))}
-          
-          <div className="absolute bottom-4 left-4 bg-white/80 rounded-lg p-3">
-            <h4 className="font-bold text-sm mb-2">圖例</h4>
-            <div className="flex flex-col space-y-1 text-xs">
-              <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 bg-healing-gentle rounded-full"></div>
-                <span>居民</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <span>🌸</span>
-                <span>記憶花朵</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </Modal>
-
-      {/* 日記模態框 */}
-      <Modal isOpen={showDiary} onClose={() => setShowDiary(false)} title="📖 我的日記">
-        <div className="space-y-4">
-          <div className="bg-gradient-to-r from-healing-warm/20 to-healing-gentle/20 rounded-xl p-4">
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="font-bold text-gray-800">今天的心情</h3>
-              <span className="text-sm text-gray-500">2024年3月15日</span>
-            </div>
-            <p className="text-gray-700">
-              今天來到了心語小鎮，遇到了很多溫暖的居民。小雅的咖啡香氣讓人感到放鬆，
-              阿山推薦的書籍很有趣，月兒的音樂如夢境般美妙...
-            </p>
-          </div>
-
-          <div className="bg-gradient-to-r from-healing-soft/20 to-healing-warm/20 rounded-xl p-4">
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="font-bold text-gray-800">特別的回憶</h3>
-              <span className="text-sm text-gray-500">2024年3月14日</span>
-            </div>
-            <p className="text-gray-700">
-              第一次踏進這個小鎮，心中充滿了期待。每一次對話都像是在心中種下一朵花，
-              希望能與這裡的每個人建立深厚的友誼...
-            </p>
-          </div>
-
-          <button className="w-full bg-gradient-to-r from-healing-gentle to-healing-soft 
-                           text-gray-800 py-3 rounded-xl font-medium
-                           hover:from-healing-soft hover:to-healing-gentle 
-                           transition-all duration-300">
-            ✏️ 寫下今天的感受
+        <div className="flex justify-end mt-6">
+          <button
+            onClick={() => setShowInventory(false)}
+            className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 transition-colors"
+          >
+            關閉
           </button>
         </div>
-      </Modal>
+      </div>
+    </div>
+  )
+}
 
-      {/* 設定模態框 */}
-      <Modal isOpen={showSettings} onClose={() => setShowSettings(false)} title="⚙️ 遊戲設定">
-        <div className="space-y-6">
-          <div className="bg-gradient-to-r from-healing-gentle/20 to-healing-soft/20 rounded-xl p-4">
-            <h3 className="font-bold text-gray-800 mb-4">音效設定</h3>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-700">背景音樂</span>
-                <input type="range" min="0" max="100" defaultValue="70" 
-                       className="w-32 accent-healing-gentle" />
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-700">音效音量</span>
-                <input type="range" min="0" max="100" defaultValue="80" 
-                       className="w-32 accent-healing-gentle" />
-              </div>
-            </div>
-          </div>
+// 地圖組件
+const MapModal: React.FC = () => {
+  const { showMap, setShowMap } = useGameStore()
 
-          <div className="bg-gradient-to-r from-healing-soft/20 to-healing-warm/20 rounded-xl p-4">
-            <h3 className="font-bold text-gray-800 mb-4">顯示設定</h3>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-700">畫質</span>
-                <select className="bg-white/50 border border-white/30 rounded-lg px-3 py-1">
-                  <option>高品質</option>
-                  <option>標準</option>
-                  <option>省電模式</option>
-                </select>
-              </div>
-              <div className="flex items-center space-x-3">
-                <input type="checkbox" id="fullscreen" className="accent-healing-gentle" />
-                <label htmlFor="fullscreen" className="text-gray-700">全螢幕模式</label>
-              </div>
-            </div>
-          </div>
+  if (!showMap) return null
 
-          <div className="bg-gradient-to-r from-healing-warm/20 to-healing-gentle/20 rounded-xl p-4">
-            <h3 className="font-bold text-gray-800 mb-4">遊戲資訊</h3>
-            <div className="text-sm text-gray-600 space-y-1">
-              <p>版本: v1.0.0</p>
-              <p>開發者: Heart Whisper Town Team</p>
-              <p>© 2024 心語小鎮 - 用愛與關懷構建的虛擬世界</p>
-            </div>
-          </div>
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 h-96">
+        <h2 className="text-2xl font-bold mb-4 text-gray-800">世界地圖</h2>
+        <div className="w-full h-full bg-gradient-to-br from-green-200 to-blue-200 rounded-lg flex items-center justify-center">
+          <span className="text-gray-600 text-lg">地圖載入中...</span>
         </div>
-      </Modal>
+        <div className="flex justify-end mt-4">
+          <button
+            onClick={() => setShowMap(false)}
+            className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 transition-colors"
+          >
+            關閉
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// 日記組件
+const DiaryModal: React.FC = () => {
+  const { showDiary, setShowDiary } = useGameStore()
+
+  if (!showDiary) return null
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 h-96">
+        <h2 className="text-2xl font-bold mb-4 text-gray-800">冒險日記</h2>
+        <div className="h-full overflow-y-auto text-gray-600">
+          <p className="mb-4">今天是我來到心語小鎮的第一天...</p>
+          <p className="mb-4">遇到了許多有趣的居民，他們都很友善。</p>
+          <p className="mb-4">我決定在這裡安頓下來，開始我的新生活。</p>
+        </div>
+        <div className="flex justify-end mt-4">
+          <button
+            onClick={() => setShowDiary(false)}
+            className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 transition-colors"
+          >
+            關閉
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// 主遊戲選單組件
+const GameMenuModal: React.FC = () => {
+  const { showGameMenu, setShowGameMenu } = useGameStore()
+
+  if (!showGameMenu) return null
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+        <h2 className="text-2xl font-bold mb-4 text-gray-800">遊戲選單</h2>
+        <div className="space-y-2">
+          <button className="w-full py-2 px-4 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors">
+            繼續遊戲
+          </button>
+          <button className="w-full py-2 px-4 bg-green-500 text-white rounded hover:bg-green-600 transition-colors">
+            儲存遊戲
+          </button>
+          <button className="w-full py-2 px-4 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition-colors">
+            載入遊戲
+          </button>
+          <button className="w-full py-2 px-4 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors">
+            回到主選單
+          </button>
+        </div>
+        <div className="flex justify-end mt-6">
+          <button
+            onClick={() => setShowGameMenu(false)}
+            className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 transition-colors"
+          >
+            關閉
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// 主要的GameModals組件
+export const GameModals: React.FC = () => {
+  return (
+    <>
+      <SettingsModal />
+      <InventoryModal />
+      <MapModal />
+      <DiaryModal />
+      <GameMenuModal />
     </>
   )
 }

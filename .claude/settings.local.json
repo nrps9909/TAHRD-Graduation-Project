@@ -39,6 +39,9 @@
       "Bash(sed:*)",
       "Bash(git checkout:*)"
     ],
-    "deny": []
+    "deny": [],
+    "additionalDirectories": [
+      "/Users/huangtzuhsin/Desktop"
+    ]
   }
 }

@@ -1,0 +1,265 @@
+/* Click particle effects */
+.click-particle {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  font-size: 24px;
+  animation: particleFly 1s ease-out forwards;
+  transform: translate(-50%, -50%);
+}
+
+@keyframes particleFly {
+  0% {
+    transform: translate(-50%, -50%) scale(0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(
+      calc(-50% + var(--random-x, 50px)), 
+      calc(-50% + var(--random-y, -100px))
+    ) scale(1.5) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+.click-particle:nth-child(odd) {
+  --random-x: 60px;
+  --random-y: -80px;
+}
+
+.click-particle:nth-child(even) {
+  --random-x: -60px;
+  --random-y: -90px;
+}
+
+.click-particle:nth-child(3n) {
+  --random-x: 0px;
+  --random-y: -100px;
+}
+
+.click-particle:nth-child(4n) {
+  --random-x: 40px;
+  --random-y: -60px;
+}
+
+.click-particle:nth-child(5n) {
+  --random-x: -40px;
+  --random-y: -70px;
+}
+
+/* Ripple effect */
+.click-ripple {
+  position: fixed;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 9998;
+  animation: rippleExpand 0.6s ease-out forwards;
+}
+
+@keyframes rippleExpand {
+  0% {
+    width: 20px;
+    height: 20px;
+    opacity: 1;
+    box-shadow: 
+      0 0 0 0 rgba(255, 215, 0, 0.6),
+      0 0 0 0 rgba(255, 215, 0, 0.4);
+  }
+  100% {
+    width: 200px;
+    height: 200px;
+    opacity: 0;
+    box-shadow: 
+      0 0 20px 40px transparent,
+      0 0 40px 80px transparent;
+  }
+}
+
+/* Enhanced menu interactions */
+.menu-item {
+  transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.menu-item.pressed {
+  animation: pressEffect 0.4s ease-out;
+}
+
+@keyframes pressEffect {
+  0% {
+    transform: scale(1);
+  }
+  30% {
+    transform: scale(0.88) rotateZ(-2deg);
+  }
+  60% {
+    transform: scale(1.05) rotateZ(1deg);
+  }
+  100% {
+    transform: scale(1) rotateZ(0deg);
+  }
+}
+
+/* Glow effect on hover */
+.menu-item.glow {
+  animation: glowPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes glowPulse {
+  0%, 100% {
+    box-shadow: 
+      0 8px 25px rgba(0,0,0,0.08),
+      0 0 20px rgba(255, 215, 0, 0);
+  }
+  50% {
+    box-shadow: 
+      0 8px 25px rgba(0,0,0,0.08),
+      0 0 40px rgba(255, 215, 0, 0.3);
+  }
+}
+
+/* Bubble pop effect */
+.bubble-pop {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9997;
+}
+
+.bubble {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.9), rgba(135, 206, 235, 0.6));
+  animation: bubbleFloat 2s ease-out forwards;
+  box-shadow: 
+    inset -5px -5px 10px rgba(0, 0, 0, 0.1),
+    0 5px 15px rgba(135, 206, 235, 0.3);
+}
+
+@keyframes bubbleFloat {
+  0% {
+    transform: scale(0) translateY(0);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2) translateY(-30px);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(0.8) translateY(-80px);
+    opacity: 0;
+  }
+}
+
+/* Success check animation */
+.success-check {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  font-size: 48px;
+  animation: successPop 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+@keyframes successPop {
+  0% {
+    transform: scale(0) rotate(-180deg);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2) rotate(10deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+/* Confetti animation */
+.confetti-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9996;
+  overflow: hidden;
+}
+
+.confetti {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4, #feca57);
+  background-size: 500% 500%;
+  animation: confettiFall 3s linear forwards, confettiRotate 1s linear infinite;
+}
+
+@keyframes confettiFall {
+  0% {
+    transform: translateY(-100vh) rotateZ(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotateZ(720deg);
+    opacity: 0;
+  }
+}
+
+@keyframes confettiRotate {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Hover shake effect */
+@keyframes microShake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-1px) rotateZ(-0.5deg);
+  }
+  75% {
+    transform: translateX(1px) rotateZ(0.5deg);
+  }
+}
+
+.menu-item:hover .icon {
+  animation: microShake 0.3s ease-in-out;
+}
+
+/* Pulse ring on focus */
+.menu-item.focused::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  border: 3px solid rgba(255, 215, 0, 0.6);
+  border-radius: 20px;
+  transform: translate(-50%, -50%);
+  animation: pulseRing 1.5s ease-out infinite;
+}
+
+@keyframes pulseRing {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.15);
+    opacity: 0;
+  }
+}

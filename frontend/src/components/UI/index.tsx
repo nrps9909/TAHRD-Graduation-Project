@@ -1,24 +1,21 @@
 import { useState, useEffect } from 'react'
 import { DialogueBox } from './DialogueBox'
-import { AnimalCrossingPhone } from './AnimalCrossingPhone'
 import { GameModals } from './GameModals'
+import { Crosshair } from './Crosshair'
 import { PointerLockHint } from './PointerLockHint'
 import { InteractionHint } from './InteractionHint'
 import { HotkeyManager, HotkeyHints } from './HotkeyManager'
 import { PointerLockStatus } from './PointerLockStatus'
-import { WeatherTimeDisplay } from './WeatherTimeDisplay'
-import { DebugPanel } from './DebugPanel'
-import { SkinSelector, SkinSelectorTrigger } from './SkinSelector'
+import { QuickGameMenu, QuickSocialMenu, QuickWorldMenu } from './QuickMenus'
+import { QuickCommandMenu } from './QuickCommandMenu'
+import { QuickGameModeMenu } from './QuickGameModeMenu'
+import { QuickSettingsMenu } from './QuickSettingsMenu'
+import { GameModeIndicator } from './GameModeIndicator'
 import { useGameStore } from '@/stores/gameStore'
-import { useCharacterSkin } from '../CharacterSkinSystem'
 
 export const UI = () => {
-  const { showDialogue } = useGameStore()
+  const { showDialogue, selectedNpc, isLoading } = useGameStore()
   const [showControls, setShowControls] = useState(false)
-  const [showSkinSelector, setShowSkinSelector] = useState(false)
-  
-  // 皮膚系統
-  const { currentSkinId, changeSkin } = useCharacterSkin('player-female-main')
 
   // Show controls hint with keyboard shortcut
   useEffect(() => {
@@ -37,6 +34,9 @@ export const UI = () => {
       {/* PC遊戲：快速鍵管理器 */}
       <HotkeyManager />
       
+      {/* 遊戲模式指示器 - 已移除 */}
+      {/* <GameModeIndicator /> */}
+      
       {/* PC遊戲：準心 - 已移除 */}
       {/* <Crosshair /> */}
       
@@ -46,45 +46,36 @@ export const UI = () => {
       {/* PC遊戲：Pointer Lock 狀態提示 */}
       <PointerLockStatus />
       
-      {/* 天氣和時間顯示 */}
-      <WeatherTimeDisplay />
-      
-      {/* Debug 控制面板 */}
-      <DebugPanel />
-      
-      {/* 互動提示 - 靠近 NPC 時顯示 */}
-      <InteractionHint />
+      {/* 互動提示 - 靠近 NPC 時顯示 - 已關閉 */}
+      {/* <InteractionHint /> */}
       
       {/* PC遊戲：快速鍵提示 */}
       <HotkeyHints visible={showControls} />
       
-      {/* Animal Crossing Style Phone - TAB to open */}
-      <AnimalCrossingPhone showControls={showControls} setShowControls={setShowControls} />
+
+      {/* Quick Command Menu - Q hotkey */}
+      <QuickCommandMenu />
+      
+      {/* Quick Game Mode Menu - G hotkey */}
+      <QuickGameModeMenu />
+      
+      {/* Quick Settings Menu - Z hotkey */}
+      <QuickSettingsMenu />
+      
+      {/* Quick Menus - C, X, Z hotkeys (removed QuickGameMenu) */}
+      {/* <QuickGameMenu /> */}
+      <QuickSocialMenu />
+      <QuickWorldMenu />
 
       {/* All Modal Windows */}
       <GameModals />
 
-      {/* Dialogue Box - PC遊戲標準位置 */}
-      {showDialogue && (
+      {/* Dialogue Box - PC遊戲標準位置 - 已關閉 */}
+      {/* {showDialogue && (
         <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 w-full max-w-3xl px-4 z-50">
           <DialogueBox />
         </div>
-      )}
-      
-      {/* 皮膚選擇器觸發按鈕 */}
-      <SkinSelectorTrigger 
-        onOpen={() => setShowSkinSelector(true)}
-        characterType="player"
-      />
-      
-      {/* 皮膚選擇器 */}
-      <SkinSelector 
-        currentSkinId={currentSkinId}
-        onSkinChange={changeSkin}
-        characterType="player"
-        isOpen={showSkinSelector}
-        onClose={() => setShowSkinSelector(false)}
-      />
+      )} */}
 
     </>
   )
