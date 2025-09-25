@@ -13,9 +13,11 @@ type Props = {
   position: [number, number, number]; // x, y(可給 0), z
   rotY?: number;                       // 朝向
   stickToGround?: boolean;             // 預設 true
+  roofColor?: string;                  // 屋頂顏色覆寫
+  scale?: number;                      // 自定義縮放覆寫
 };
 
-export default function Building({ kind, position, rotY = 0, stickToGround = true }: Props) {
+export default function Building({ kind, position, rotY = 0, stickToGround = true, roofColor, scale }: Props) {
   const def = BUILDINGS[kind];
   const { scene } = useThree();
   const group = useRef<THREE.Group>(null!);
@@ -60,6 +62,19 @@ export default function Building({ kind, position, rotY = 0, stickToGround = tru
                     materials.forEach((material, index) => {
                       if ('wireframe' in material) {
                         (material as any).wireframe = false;
+                      }
+
+                      // 屋頂顏色覆寫邏輯
+                      if (roofColor && child.name && (
+                        child.name.toLowerCase().includes('roof') ||
+                        child.name.toLowerCase().includes('屋頂') ||
+                        child.name.toLowerCase().includes('top')
+                      )) {
+                        if (material && 'color' in material) {
+                          (material as any).color.set(roofColor);
+                          material.needsUpdate = true;
+                          console.log(`🏠 屋頂顏色已覆寫為: ${roofColor} (${child.name})`);
+                        }
                       }
 
                       // 只處理真正有問題的材質：純黑色或極暗材質
@@ -126,12 +141,36 @@ export default function Building({ kind, position, rotY = 0, stickToGround = tru
 
                   // 只在材質真的缺失或是純白色時才添加後備材質
                   if (!child.material || (child.material && child.material.color && child.material.color.getHex() === 0xffffff)) {
-                    const smartColor = '#d8d1be'; // 簡單的後備色
+                    let smartColor = '#d8d1be'; // 簡單的後備色
+
+                    // 屋頂顏色覆寫檢查
+                    if (roofColor && child.name && (
+                      child.name.toLowerCase().includes('roof') ||
+                      child.name.toLowerCase().includes('屋頂') ||
+                      child.name.toLowerCase().includes('top')
+                    )) {
+                      smartColor = roofColor;
+                      console.log(`🏠 屋頂使用指定顏色: ${roofColor} (${child.name})`);
+                    }
+
                     child.material = new THREE.MeshToonMaterial({
                       color: smartColor,
                       wireframe: false
                     });
                     console.log(`🎨 為無材質的mesh ${child.name} 添加後備材質`);
+                  }
+
+                  // 對已有材質的屋頂進行顏色覆寫
+                  if (roofColor && child.material && child.name && (
+                    child.name.toLowerCase().includes('roof') ||
+                    child.name.toLowerCase().includes('屋頂') ||
+                    child.name.toLowerCase().includes('top')
+                  )) {
+                    if ('color' in child.material) {
+                      (child.material as any).color.set(roofColor);
+                      child.material.needsUpdate = true;
+                      console.log(`🏠 屋頂顏色已覆寫為: ${roofColor} (${child.name})`);
+                    }
                   }
                 }
               });
@@ -154,12 +193,36 @@ export default function Building({ kind, position, rotY = 0, stickToGround = tru
 
               // 只在材質真的缺失或是純白色時才添加後備材質
               if (!child.material || (child.material && child.material.color && child.material.color.getHex() === 0xffffff)) {
-                const smartColor = '#d8d1be'; // 簡單的後備色
+                let smartColor = '#d8d1be'; // 簡單的後備色
+
+                // 屋頂顏色覆寫檢查
+                if (roofColor && child.name && (
+                  child.name.toLowerCase().includes('roof') ||
+                  child.name.toLowerCase().includes('屋頂') ||
+                  child.name.toLowerCase().includes('top')
+                )) {
+                  smartColor = roofColor;
+                  console.log(`🏠 屋頂使用指定顏色: ${roofColor} (${child.name})`);
+                }
+
                 child.material = new THREE.MeshToonMaterial({
                   color: smartColor,
                   wireframe: false
                 });
                 console.log(`🎨 為無材質的mesh ${child.name} 添加後備材質`);
+              }
+
+              // 對已有材質的屋頂進行顏色覆寫
+              if (roofColor && child.material && child.name && (
+                child.name.toLowerCase().includes('roof') ||
+                child.name.toLowerCase().includes('屋頂') ||
+                child.name.toLowerCase().includes('top')
+              )) {
+                if ('color' in child.material) {
+                  (child.material as any).color.set(roofColor);
+                  child.material.needsUpdate = true;
+                  console.log(`🏠 屋頂顏色已覆寫為: ${roofColor} (${child.name})`);
+                }
               }
             }
           });
@@ -181,7 +244,7 @@ export default function Building({ kind, position, rotY = 0, stickToGround = tru
 
     g.position.set(position[0], position[1] ?? 0, position[2]);
     g.rotation.set(0, rotY, 0);
-    g.scale.setScalar(def.scale);
+    g.scale.setScalar(scale || def.scale);
 
     // 首次貼地，避免浮空
     if (stickToGround) {
@@ -200,7 +263,7 @@ export default function Building({ kind, position, rotY = 0, stickToGround = tru
       position: new THREE.Vector3(g.position.x, g.position.y, g.position.z),
       radius: radius * 1.3, // 稍微擴大碰撞半徑
       type: 'building',
-      id: `new_building_${kind}`,
+      id: `building_${kind}_${position[0]}_${position[2]}`,
       userData: {
         buildingName: kind,
         buildingType: 'glb_building',
@@ -212,9 +275,9 @@ export default function Building({ kind, position, rotY = 0, stickToGround = tru
 
     // 清理函數
     return () => {
-      collisionSystem.removeCollisionObject(`new_building_${kind}`);
+      collisionSystem.removeCollisionObject(`building_${kind}_${position[0]}_${position[2]}`);
     };
-  }, [loadedObject, position, rotY, def.scale, def.yOffset, stickToGround, kind]);
+  }, [loadedObject, position, rotY, def.scale, def.yOffset, stickToGround, kind, scale]);
 
   // 只要場景中仍有線段遺留，開場清一次
   useEffect(() => {

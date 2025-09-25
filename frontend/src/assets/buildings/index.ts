@@ -1,4 +1,4 @@
-export type BuildingKey = 'house_a' | 'house_b' | 'inn' | 'windmill' | 'barn' | 'house_central' | 'bell_tower_view' | 'blacksmith_large';
+export type BuildingKey = 'house_a' | 'house_b' | 'inn' | 'windmill' | 'barn' | 'house_central' | 'bell_tower_view' | 'blacksmith_large' | 'house_c';
 
 export const BUILDINGS: Record<BuildingKey, {
   url: string;
@@ -61,6 +61,13 @@ export const BUILDINGS: Record<BuildingKey, {
     objUrl: '/building/OBJ/Blacksmith.obj',
     mtlUrl: '/building/OBJ/Blacksmith.mtl',
     scale: 4.5, // 大型建築，比其他建築更大
+    yOffset: 0
+  },
+  house_c: {
+    url: '/models/buildings/house_c.glb',
+    objUrl: '/building/OBJ/House_3.obj',
+    mtlUrl: '/building/OBJ/House_3.mtl',
+    scale: 5.5, // 增加尺寸讓它更醒目
     yOffset: 0
   },
 };

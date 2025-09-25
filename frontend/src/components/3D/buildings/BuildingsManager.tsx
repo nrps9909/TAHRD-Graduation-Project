@@ -71,6 +71,13 @@ export default function BuildingsManager() {
         x: 5,
         z: -25,
         rotY: Math.PI / 6 // 30度角度，面向玩家
+      },
+      // 遠處建築 - 使用現有建築類型測試綠色屋頂
+      {
+        kind: 'house_a',
+        x: 55,
+        z: -50, // 安全距離的位置
+        rotY: -Math.PI / 4 // 朝向玩家
       }
     ];
 
@@ -113,7 +120,7 @@ export default function BuildingsManager() {
       }
 
       // 檢查高度是否合理（避免過高或過低的區域）
-      if (gh > 15 || gh < -2) {
+      if (gh > 25 || gh < -5) { // 放寬高度限制
         console.warn(`⚠️ 建築 ${spawn.kind} 高度不合理 (${gh.toFixed(1)})，跳過`);
         continue;
       }
@@ -135,6 +142,14 @@ export default function BuildingsManager() {
           position={[s.x, 0, s.z]}
           rotY={s.rotY}
           stickToGround
+          roofColor={
+            // 遠處的建築使用綠色屋頂（使用house_a測試）
+            s.x === 55 && s.z === -50 ? '#4ade80' : undefined
+          }
+          scale={
+            // 遠處的建築使用大縮放
+            s.x === 55 && s.z === -50 ? 6.0 : undefined
+          }
         />
       ))}
     </group>

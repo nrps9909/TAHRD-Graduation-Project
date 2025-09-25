@@ -66,6 +66,10 @@ export const NPCCharacter: React.FC<NPCCharacterProps> = ({
   const lastMoveTime = useRef(Date.now())
   const hasInitialized = useRef(false)
 
+  // 方向平滑化
+  const lastDirection = useRef(new THREE.Vector3())
+  const targetChangeTime = useRef(Date.now())
+
   // Debug logging helper
   let __t0 = performance.now();
   const logFew = (...a:any[]) => { if (performance.now() - __t0 < 2000) console.log(`[NPC-${npc.name}]`, ...a); };
@@ -181,17 +185,86 @@ export const NPCCharacter: React.FC<NPCCharacterProps> = ({
   }, [kenneyModel])
 
 
-  // Set new random target
+  // Set new random target with improved variety
   const setNewTarget = useCallback(() => {
     const playerPos = getPlayerPosition()
-    const angle = Math.random() * Math.PI * 2
-    const distance = 3 + Math.random() * 5
-    const baseX = playerPos ? playerPos.x : groupRef.current?.position.x || currentPosition.x
-    const baseZ = playerPos ? playerPos.z : groupRef.current?.position.z || currentPosition.z
+    const currentPos = groupRef.current?.position || currentPosition
 
-    // 計算新目標位置的 x, z
-    const targetX = baseX + Math.cos(angle) * distance
-    const targetZ = baseZ + Math.sin(angle) * distance
+    // 30%機率圍繞玩家移動，70%機率獨立探索
+    const shouldFollowPlayer = Math.random() < 0.3 && playerPos
+
+    let targetX, targetZ
+
+    if (shouldFollowPlayer) {
+      // 圍繞玩家移動，但距離更遠
+      const angle = Math.random() * Math.PI * 2
+      const distance = 5 + Math.random() * 8  // 5-13公尺距離
+      targetX = playerPos.x + Math.cos(angle) * distance
+      targetZ = playerPos.z + Math.sin(angle) * distance
+    } else {
+      // 獨立探索 - 從當前位置往隨機方向移動
+      const angle = Math.random() * Math.PI * 2
+      const distance = 4 + Math.random() * 10  // 4-14公尺距離
+      targetX = currentPos.x + Math.cos(angle) * distance
+      targetZ = currentPos.z + Math.sin(angle) * distance
+
+      // 為每個NPC設置不同的偏好區域
+      const npcPreferences = {
+        'npc-1': { centerX: 10, centerZ: -5, radius: 15 },   // 陸培修偏好東側
+        'npc-2': { centerX: -10, centerZ: 8, radius: 15 },   // 劉宇岑偏好西北側
+        'npc-3': { centerX: 0, centerZ: -12, radius: 15 }    // 陳庭安偏好南側
+      }
+
+      const preference = npcPreferences[npc.id as keyof typeof npcPreferences]
+      if (preference && Math.random() < 0.4) { // 40%機率朝向偏好區域移動
+        const preferenceAngle = Math.atan2(preference.centerZ - currentPos.z, preference.centerX - currentPos.x)
+        const angleVariation = (Math.random() - 0.5) * Math.PI * 0.5 // ±45度變化
+        const finalAngle = preferenceAngle + angleVariation
+        targetX = currentPos.x + Math.cos(finalAngle) * distance
+        targetZ = currentPos.z + Math.sin(finalAngle) * distance
+      }
+    }
+
+    // 檢查目標位置是否與其他NPC的目標位置太近
+    const allNpcs = useGameStore.getState().npcs
+    const otherNpcs = allNpcs.filter(otherNpc => otherNpc.id !== npc.id)
+
+    let validTarget = false
+    let attempts = 0
+
+    while (!validTarget && attempts < 5) {
+      let tooClose = false
+
+      // 檢查是否與其他NPC的當前位置或目標位置太近
+      for (const otherNpc of otherNpcs) {
+        const otherCurrentPos = new THREE.Vector3(
+          otherNpc.position[0],
+          otherNpc.position[1],
+          otherNpc.position[2]
+        )
+
+        const distanceToOtherCurrent = Math.sqrt(
+          Math.pow(targetX - otherCurrentPos.x, 2) +
+          Math.pow(targetZ - otherCurrentPos.z, 2)
+        )
+
+        if (distanceToOtherCurrent < 4.0) { // 目標位置至少距離其他NPC 4公尺
+          tooClose = true
+          break
+        }
+      }
+
+      if (!tooClose) {
+        validTarget = true
+      } else {
+        // 重新計算目標位置
+        const newAngle = Math.random() * Math.PI * 2
+        const newDistance = 6 + Math.random() * 8
+        targetX = currentPos.x + Math.cos(newAngle) * newDistance
+        targetZ = currentPos.z + Math.sin(newAngle) * newDistance
+        attempts++
+      }
+    }
 
     // 獲取該位置的地面高度
     const ground = getGroundSmoothed(targetX, targetZ)
@@ -200,19 +273,20 @@ export const NPCCharacter: React.FC<NPCCharacterProps> = ({
     const newTarget = new THREE.Vector3(targetX, targetY, targetZ)
 
     setTargetPosition(newTarget)
-    console.log(`[NPC ${npc.name}] New target: (${newTarget.x.toFixed(1)}, ${newTarget.y.toFixed(1)}, ${newTarget.z.toFixed(1)})`)
-  }, [getPlayerPosition, npc.name, currentPosition])
+    targetChangeTime.current = Date.now() // 記錄目標變更時間
+    console.log(`[NPC ${npc.name}] New target: (${newTarget.x.toFixed(1)}, ${newTarget.y.toFixed(1)}, ${newTarget.z.toFixed(1)}) ${shouldFollowPlayer ? '[following player]' : '[exploring]'} (attempts: ${attempts})`)
+  }, [getPlayerPosition, npc.name, npc.id, currentPosition])
 
-  // Set new target periodically
+  // Set new target periodically - 降低頻率讓移動更穩定
   useEffect(() => {
     const interval = setInterval(() => {
-      if (Math.random() < 0.3) { // 30% chance every interval
+      if (Math.random() < 0.15) { // 降低到15%機率
         setNewTarget()
       }
-    }, 5000 + Math.random() * 5000) // 5-10 seconds
+    }, 8000 + Math.random() * 10000) // 8-18秒間隔，大幅增加
 
     // Set initial target
-    setTimeout(() => setNewTarget(), 1000)
+    setTimeout(() => setNewTarget(), 2000) // 延遲初始目標設定
 
     return () => clearInterval(interval)
   }, [setNewTarget])
@@ -226,25 +300,80 @@ export const NPCCharacter: React.FC<NPCCharacterProps> = ({
     // 強制同步當前位置（避免狀態不同步導致飄在天上）
     currentPosition.copy(g.position)
 
-    // AI 方向計算
+    // 獲取所有NPC位置進行避障
+    const allNpcs = useGameStore.getState().npcs
+    const otherNpcs = allNpcs.filter(otherNpc => otherNpc.id !== npc.id)
+
+    // AI 方向計算 - 添加方向平滑化
     const distance = g.position.distanceTo(targetPosition)
     let dir = new THREE.Vector3()
 
-    if (distance > 0.3) {
+    if (distance > 0.5) { // 增大目標到達閾值，減少頻繁轉向
       dir.subVectors(targetPosition, g.position)
       dir.y = 0  // 確保方向是水平的
       if (dir.lengthSq() > 0.001) {
         dir.normalize()
+
+        // 方向平滑化 - 與上一個方向混合
+        const timeSinceTargetChange = Date.now() - targetChangeTime.current
+        if (lastDirection.current.lengthSq() > 0.001 && timeSinceTargetChange < 3000) { // 3秒內保持方向穩定
+          const smoothFactor = 0.85 // 85%保持舊方向，15%新方向
+          dir.lerp(lastDirection.current, smoothFactor)
+          dir.normalize()
+        }
+
+        lastDirection.current.copy(dir)
       }
 
-      // Occasionally set new target when moving
-      if (Math.random() < 0.001) setNewTarget()
+      // NPC避障系統 - 檢測附近的其他NPC（降低敏感度）
+      const avoidanceVector = new THREE.Vector3()
+      const separationDistance = 2.0 // 縮小檢測距離
+
+      for (const otherNpc of otherNpcs) {
+        const otherPos = new THREE.Vector3(
+          otherNpc.position[0],
+          otherNpc.position[1],
+          otherNpc.position[2]
+        )
+
+        const distanceToOther = g.position.distanceTo(otherPos)
+
+        if (distanceToOther < separationDistance && distanceToOther > 0.2) {
+          // 計算遠離向量
+          const repelVector = new THREE.Vector3()
+          repelVector.subVectors(g.position, otherPos)
+          repelVector.y = 0 // 只考慮水平面的避障
+
+          if (repelVector.lengthSq() > 0.001) {
+            repelVector.normalize()
+            // 只有在很近時才避障，減少搖擺
+            if (distanceToOther < 1.5) {
+              const repelStrength = (separationDistance - distanceToOther) / separationDistance
+              repelVector.multiplyScalar(repelStrength * 1.0) // 降低推力
+              avoidanceVector.add(repelVector)
+            }
+          }
+        }
+      }
+
+      // 只有在真正需要避障時才調整方向
+      if (avoidanceVector.lengthSq() > 0.01) { // 提高閾值
+        dir.add(avoidanceVector.multiplyScalar(0.3)) // 大幅降低避障權重
+        if (dir.lengthSq() > 0.001) {
+          dir.normalize()
+        }
+      }
+
+      // 不要在移動中隨機改變目標，保持直線移動
     } else {
-      // Near target - set new target
-      if (Math.random() < 0.01) setNewTarget()
+      // Near target - 使用上一個方向避免突然停止，並稍微增加設定新目標的機率
+      if (lastDirection.current.lengthSq() > 0.001) {
+        dir.copy(lastDirection.current)
+      }
+      if (Math.random() < 0.02) setNewTarget()
     }
 
-    const npcSpeed = 4.0  // 大幅增加NPC移動速度到 4.0
+    const npcSpeed = 3.0  // 稍微降低NPC移動速度，讓避障更流暢
 
     // 使用統一的 actor 移動管線 - 這會強制貼地
     tickActorOnGround(g, {dir, speed: npcSpeed}, dt, lastSafe.current)
