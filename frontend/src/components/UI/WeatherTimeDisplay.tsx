@@ -47,7 +47,7 @@ export const WeatherTimeDisplay = () => {
   }
 
   return (
-    <div className="fixed top-4 right-4 z-50 pointer-events-none">
+    <div className="fixed top-4 left-4 z-50 pointer-events-none">
       <div className={`rounded-3xl px-6 py-4 backdrop-blur-sm shadow-2xl ${getBackgroundStyle()} transform transition-all duration-300 hover:scale-105`}>
         {/* 時間顯示 - 可愛風格 */}
         <div className="flex items-center justify-center gap-3 mb-3">

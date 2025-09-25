@@ -1,11 +1,15 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Canvas } from '@react-three/fiber'
+import { Environment } from '@react-three/drei'
 import * as THREE from 'three'
 import { Scene } from './components/Scene'
 import { UI } from './components/UI'
 import { TimeControl } from './components/TimeControl'
 import { PointerLockManager } from './components/3D/PointerLockManager'
 import { FontPreloader } from './components/FontPreloader'
+import { ClickEffects } from './components/ClickEffects'
+import { StartScreen } from './components/StartScreen'
+import { HotkeyGuide } from './components/HotkeyGuide'
 // import { NookPhone } from './components/UI/NookPhone' // 已移除，使用 AnimalCrossingPhone
 import { VisualSoundEffects, BubbleEffect, MusicalNoteRain } from './components/UI/VisualSoundEffects'
 import { NPCConversationBubble } from './components/UI/NPCConversationBubble'
@@ -16,11 +20,60 @@ import './styles/npc-animations.css'
 
 function App() {
   const { initializeGame, isLoading } = useGameStore()
+  const [showStartScreen, setShowStartScreen] = useState(true)
+  const [gameStarting, setGameStarting] = useState(false)
+  const [showHotkeyGuide, setShowHotkeyGuide] = useState(false)
   useSocketConnection()
 
+  const handleStartGame = async () => {
+    setGameStarting(true)
+    // 先初始化遊戲，等待完成後再隱藏開始畫面
+    try {
+      await initializeGame()
+      // 確保有足夠時間顯示載入動畫
+      setTimeout(() => {
+        setShowStartScreen(false)
+        setGameStarting(false)
+        setShowHotkeyGuide(true) // 顯示快捷鍵指南
+      }, 1000)
+    } catch (error) {
+      console.error('遊戲初始化失敗:', error)
+      // 即使失敗也要進入遊戲，使用預設資料
+      setTimeout(() => {
+        setShowStartScreen(false)
+        setGameStarting(false)
+        setShowHotkeyGuide(true) // 顯示快捷鍵指南
+      }, 2000)
+    }
+  }
+
+  const handleCloseHotkeyGuide = () => {
+    setShowHotkeyGuide(false)
+  }
+
+  const handleBackToStart = () => {
+    setShowStartScreen(true)
+    setGameStarting(false)
+    setShowHotkeyGuide(false)
+  }
+
+  // 添加返回開始畫面的熱鍵監聽 - 必須在所有條件返回之前
   useEffect(() => {
-    initializeGame()
-  }, []) // 只在組件掛載時初始化一次
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Home鍵返回開始畫面
+      if (e.key === 'Home' || (e.ctrlKey && e.key === 'h')) {
+        e.preventDefault()
+        setShowStartScreen(true)
+        setGameStarting(false)
+        setShowHotkeyGuide(false)
+      }
+    }
+
+    if (!showStartScreen && !gameStarting) {
+      window.addEventListener('keydown', handleKeyDown)
+      return () => window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [showStartScreen, gameStarting])
 
   // 阻止方向鍵/空白鍵觸發瀏覽器捲動
   useEffect(() => {
@@ -31,6 +84,11 @@ function App() {
     window.addEventListener('keydown', prevent, { passive:false });
     return () => window.removeEventListener('keydown', prevent as any);
   }, []);
+
+  // 如果顯示開始畫面，直接返回開始畫面組件
+  if (showStartScreen) {
+    return <StartScreen onStartGame={handleStartGame} />
+  }
 
   if (isLoading) {
     return (
@@ -91,63 +149,95 @@ function App() {
   }
 
   return (
-    <div className="game-container">
+    <div className="game-container" style={{ width: '100vw', height: '100vh', background: '#87CEEB' }}>
       <FontPreloader />
       <PointerLockManager />
-      
-      <div className="game-scene">
+
+      {/* Click effects for entire app */}
+      <ClickEffects />
+
+      <div className="game-scene" style={{ width: '100%', height: '100%', position: 'relative' }}>
         <Canvas
           camera={{ position: [0, 8, 12], fov: 75 }}
           shadows
-          onCreated={(state) => {
-            // 調整陰影為最柔和的PCF類型
-            if (state.gl.shadowMap) {
-              state.gl.shadowMap.enabled = true
-              state.gl.shadowMap.type = THREE.PCFSoftShadowMap
-            }
-            // 設置背景為天藍色而非純藍色
-            state.gl.setClearColor('#87CEEB', 1)
-          }}
-          style={{ 
+          style={{
             width: '100%',
             height: '100%',
             position: 'absolute',
             top: 0,
-            left: 0
+            left: 0,
+            background: '#87CEEB'
+          }}
+          onCreated={({ gl }) => {
+            console.log('Canvas created successfully')
+            console.log('WebGL context:', gl.getContext())
+            // 調整陰影為最柔和的PCF類型
+            if (gl.shadowMap) {
+              gl.shadowMap.enabled = true
+              gl.shadowMap.type = THREE.PCFSoftShadowMap
+            }
+            // 設置背景為天藍色而非純藍色
+            gl.setClearColor('#87CEEB', 1)
+          }}
+          onError={(error) => {
+            console.error('Canvas error:', error)
           }}
         >
+          <ambientLight intensity={0.4} />
+          <directionalLight
+            position={[10, 10, 5]}
+            intensity={1}
+            castShadow
+            shadow-mapSize-width={2048}
+            shadow-mapSize-height={2048}
+          />
+
+          <Environment preset="sunset" background={true} blur={0} />
+
           <Scene />
         </Canvas>
       </div>
-      
+
       <div className="game-ui">
         <UI />
       </div>
-      
-      {/* 時間控制面板 - 暫時隱藏以避免黑色螢幕問題 */}
-      {/* <TimeControl /> */}
-      
+
+      {/* 時間控制面板 */}
+      <TimeControl />
+
       {/* Animal Crossing Style Phone UI - 已移除，使用 UI 組件中的 AnimalCrossingPhone */}
       {/* <NookPhone /> */}
-      
+
       {/* Visual Effects Layers */}
       <VisualSoundEffects />
       <BubbleEffect />
       <MusicalNoteRain active={false} />
-      
+
       {/* NPC Conversation Bubbles */}
       <NPCConversationBubble />
-      
+
+      {/* Hotkey Guide */}
+      <HotkeyGuide isVisible={showHotkeyGuide} onClose={handleCloseHotkeyGuide} />
+
       {/* Corner decorations */}
       <div className="fixed top-4 left-4 z-20 pointer-events-none">
         <div className="bg-gradient-to-br from-green-400 to-emerald-500 rounded-2xl p-3 shadow-xl border-3 border-white animate-wiggle">
           <span className="text-2xl">🌱</span>
         </div>
       </div>
-      
+
       <div className="fixed top-4 right-4 z-20 pointer-events-none">
         <div className="bg-gradient-to-br from-yellow-400 to-orange-500 rounded-2xl p-3 shadow-xl border-3 border-white animate-pulse">
           <span className="text-2xl">✨</span>
+        </div>
+      </div>
+
+      {/* Hotkey hints */}
+      <div className="fixed bottom-4 left-4 z-20 bg-black/50 text-white px-3 py-2 rounded-lg">
+        <div className="text-sm">
+          <div>G: 遊戲模式</div>
+          <div>C: 社交功能 | X: 探索世界 | Z: 設定</div>
+          <div>Ctrl+H: 返回開始畫面</div>
         </div>
       </div>
     </div>

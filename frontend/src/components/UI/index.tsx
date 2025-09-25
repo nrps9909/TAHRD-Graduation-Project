@@ -11,6 +11,7 @@ import { QuickCommandMenu } from './QuickCommandMenu'
 import { QuickGameModeMenu } from './QuickGameModeMenu'
 import { QuickSettingsMenu } from './QuickSettingsMenu'
 import { GameModeIndicator } from './GameModeIndicator'
+import { WeatherTimeDisplay } from './WeatherTimeDisplay'
 import { useGameStore } from '@/stores/gameStore'
 
 export const UI = () => {
@@ -31,15 +32,18 @@ export const UI = () => {
 
   return (
     <>
+      {/* 時間和天氣顯示 */}
+      <WeatherTimeDisplay />
+
       {/* PC遊戲：快速鍵管理器 */}
       <HotkeyManager />
-      
+
       {/* 遊戲模式指示器 - 已移除 */}
       {/* <GameModeIndicator /> */}
-      
+
       {/* PC遊戲：準心 - 已移除 */}
       {/* <Crosshair /> */}
-      
+
       {/* PC遊戲：Pointer Lock 提示 */}
       <PointerLockHint />
       
