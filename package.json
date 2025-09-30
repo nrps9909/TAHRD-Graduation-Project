@@ -21,7 +21,9 @@
     "lint-staged": "lint-staged",
     "pre-commit": "npm run lint:fix && npm run format",
     "build:analyze": "npm run build && npx vite-bundle-analyzer dist",
-    "prepare": "husky"
+    "prepare": "husky",
+    "cat-animate": "node live2d-converter/cat-animator.cjs",
+    "cat-preview": "node live2d-converter/cat-server.cjs"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
