@@ -1,0 +1,207 @@
+/* 🌸 Heart Whisper Town - Cute Theme Styles 🌸 */
+
+/* 可爱的光标 */
+* {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='10' fill='%23FFB3D9' opacity='0.6'/%3E%3Ccircle cx='16' cy='16' r='6' fill='%23fff'/%3E%3C/svg%3E"), auto;
+}
+
+button, a, [role="button"] {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='12' fill='%23D9B3FF' opacity='0.7'/%3E%3Ctext x='16' y='20' text-anchor='middle' font-size='14'%3E✨%3C/text%3E%3C/svg%3E"), pointer !important;
+}
+
+/* 选择文本时的可爱颜色 */
+::selection {
+  background-color: #FFB3D9;
+  color: white;
+}
+
+::-moz-selection {
+  background-color: #FFB3D9;
+  color: white;
+}
+
+/* 可爱的滚动条 */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: linear-gradient(to bottom, #FFE5D9, #E8F4F8);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #FFB3D9, #D9B3FF);
+  border-radius: 10px;
+  border: 2px solid #fff;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #FF99CC, #CC99FF);
+}
+
+/* 输入框可爱样式 */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+textarea {
+  border: 3px solid transparent;
+  background: linear-gradient(white, white) padding-box,
+              linear-gradient(135deg, #FFB3D9, #D9B3FF) border-box;
+  border-radius: 1.25rem;
+  padding: 0.75rem 1rem;
+  transition: all 0.3s ease;
+  font-family: 'GameFont', 'Inter', 'Noto Sans TC', sans-serif !important;
+}
+
+input:focus,
+textarea:focus {
+  outline: none;
+  box-shadow: 0 0 20px rgba(255, 179, 217, 0.5);
+  transform: scale(1.02);
+}
+
+/* 按钮悬停发光效果 */
+button:hover {
+  filter: drop-shadow(0 0 10px currentColor);
+}
+
+/* 卡片悬停效果 */
+.cute-card {
+  transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.cute-card:hover {
+  transform: translateY(-5px) scale(1.02);
+  box-shadow: 0 12px 40px rgba(255, 179, 217, 0.3);
+}
+
+/* 可爱的加载动画 */
+@keyframes rainbow {
+  0% { color: #FFB3D9; }
+  25% { color: #D9B3FF; }
+  50% { color: #B3D9FF; }
+  75% { color: #B3FFD9; }
+  100% { color: #FFB3D9; }
+}
+
+.rainbow-text {
+  animation: rainbow 3s ease-in-out infinite;
+}
+
+/* 闪烁星星效果 */
+@keyframes twinkle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.3; transform: scale(0.8); }
+}
+
+.twinkle {
+  animation: twinkle 2s ease-in-out infinite;
+}
+
+/* 心跳效果 */
+@keyframes heartbeat-glow {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(255, 179, 217, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(255, 179, 217, 0.8);
+  }
+}
+
+.heartbeat-glow {
+  animation: heartbeat-glow 2s ease-in-out infinite;
+}
+
+/* 柔和的页面过渡 */
+.page-enter {
+  opacity: 0;
+  transform: scale(0.9);
+}
+
+.page-enter-active {
+  opacity: 1;
+  transform: scale(1);
+  transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.page-exit {
+  opacity: 1;
+}
+
+.page-exit-active {
+  opacity: 0;
+  transform: scale(0.9);
+  transition: all 0.3s ease;
+}
+
+/* 可爱的提示框 */
+.tooltip {
+  background: linear-gradient(135deg, #FFE5D9, #E8F4F8);
+  border: 3px solid white;
+  border-radius: 1.25rem;
+  padding: 0.75rem 1.25rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  font-family: 'GameFont', 'Inter', 'Noto Sans TC', sans-serif !important;
+  font-weight: 600;
+  color: #666;
+}
+
+/* 禁用状态也要可爱 */
+button:disabled,
+input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: grayscale(0.3);
+}
+
+/* 加载中的脉冲效果 */
+@keyframes pulse-cute {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.7;
+  }
+}
+
+.loading-pulse {
+  animation: pulse-cute 1.5s ease-in-out infinite;
+}
+
+/* 可爱的边框动画 */
+@keyframes border-dance {
+  0% {
+    border-color: #FFB3D9;
+  }
+  25% {
+    border-color: #D9B3FF;
+  }
+  50% {
+    border-color: #B3D9FF;
+  }
+  75% {
+    border-color: #B3FFD9;
+  }
+  100% {
+    border-color: #FFB3D9;
+  }
+}
+
+.border-dance {
+  animation: border-dance 4s linear infinite;
+}
+
+/* 无障碍：保留系统偏好 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

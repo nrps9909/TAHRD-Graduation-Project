@@ -1,340 +1,279 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// Heart Whisper Town - Personal AI Knowledge Assistant
+// MongoDB Schema for Multi-Agent System
 
 generator client {
   provider = "prisma-client-js"
-  previewFeatures = ["postgresqlExtensions"]
   binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mongodb"
   url      = env("DATABASE_URL")
-  extensions = [vector]
 }
 
+// ============ Core Models ============
+
 model User {
-  id           String   @id @default(uuid())
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
   username     String   @unique
   email        String   @unique
   passwordHash String   @map("password_hash")
+
+  // Profile
+  displayName  String?  @map("display_name")
+  avatarUrl    String?  @map("avatar_url")
+
+  // Status
+  isActive     Boolean  @default(true) @map("is_active")
+  lastLogin    DateTime? @map("last_login")
+
+  // Timestamps
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
-  lastLogin    DateTime? @map("last_login")
-  isActive     Boolean  @default(true) @map("is_active")
 
   // Relations
-  relationships    Relationship[]
-  conversations    Conversation[]
-  memoryFlowers    MemoryFlower[] @relation("UserMemoryFlowers")
-  diaryEntries     DiaryEntry[]
-  wishProgress     UserWishProgress[]
-  sentLetters      Letter[] @relation("SentLetters")
-  receivedLetters  Letter[] @relation("ReceivedLetters")
-  worldState       WorldState?
-
-  // Multi-Agent System
-  memoryEntries    MemoryEntry[]
-  chatMessages     ChatMessage[]
+  memories     Memory[]
+  chatMessages ChatMessage[]
+  settings     UserSettings?
 
   @@map("users")
 }
 
-model NPC {
-  id               String   @id @default(uuid())
-  name             String
-  personality      String
-  backgroundStory  String?  @map("background_story")
-  appearanceConfig Json?    @map("appearance_config")
-  currentMood      String   @default("neutral") @map("current_mood")
-  locationX        Float    @default(0) @map("location_x")
-  locationY        Float    @default(0) @map("location_y")
-  locationZ        Float    @default(0) @map("location_z")
+model UserSettings {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String   @unique @map("user_id") @db.ObjectId
+
+  // Preferences
+  theme             String   @default("light")
+  language          String   @default("zh-TW")
+  defaultView       String   @default("island") @map("default_view") // "island" or "database"
+
+  // Notifications
+  emailNotifications Boolean @default(true) @map("email_notifications")
+
+  // Privacy
+  dataRetentionDays Int     @default(365) @map("data_retention_days")
+
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_settings")
+}
+
+// ============ Assistant Models ============
+
+enum AssistantType {
+  CHIEF      // 總管（智能分配 + 全局摘要）
+  LEARNING   // 學習筆記
+  INSPIRATION // 靈感創意
+  WORK       // 工作事務
+  SOCIAL     // 人際關係
+  LIFE       // 生活記錄
+  GOALS      // 目標規劃
+  RESOURCES  // 資源收藏
+
+  @@map("assistant_type")
+}
+
+model Assistant {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+
+  // Identity
+  type             AssistantType @unique
+  name             String   @unique
+  nameChinese      String   @map("name_chinese")
+  emoji            String
+  color            String   // Hex color code
+
+  // AI Configuration
+  systemPrompt     String   @map("system_prompt") @db.String
+  personality      String   @db.String
+  chatStyle        String   @map("chat_style") @db.String
+
+  // 3D Position (for Island View)
+  positionX        Float    @default(0) @map("position_x")
+  positionY        Float    @default(0) @map("position_y")
+  positionZ        Float    @default(0) @map("position_z")
+
+  // Statistics
+  totalMemories    Int      @default(0) @map("total_memories")
+  totalChats       Int      @default(0) @map("total_chats")
+
+  // Status
+  isActive         Boolean  @default(true) @map("is_active")
+
+  // Timestamps
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
 
   // Relations
-  relationships       Relationship[]
-  conversations       Conversation[]
-  memoryFlowers       MemoryFlower[] @relation("NPCMemoryFlowers")
-  wishes              Wish[]
-  npcRelationships1   NPCRelationship[] @relation("NPC1Relations")
-  npcRelationships2   NPCRelationship[] @relation("NPC2Relations")
-  sentLetters         Letter[] @relation("NPCSentLetters")
-  receivedLetters     Letter[] @relation("NPCReceivedLetters")
+  memories         Memory[]
+  chatMessages     ChatMessage[]
 
-  @@map("npcs")
+  @@map("assistants")
 }
 
-model Conversation {
-  id                String    @id @default(uuid())
-  userId            String    @map("user_id")
-  npcId             String    @map("npc_id")
-  content           String
-  speakerType       SpeakerType @map("speaker_type")
-  emotionTag        String?   @map("emotion_tag")
-  timestamp         DateTime  @default(now())
-  contextEmbedding  Unsupported("vector(1536)")? @map("context_embedding")
+// ============ Memory System ============
 
-  // Long-term Memory AI Filtering Fields
-  isLongTermMemory  Boolean   @default(false) @map("is_long_term_memory")
-  aiImportanceScore Float?    @map("ai_importance_score")
-  aiEmotionalImpact Float?    @map("ai_emotional_impact")
-  aiSummary         String?   @map("ai_summary")
-  aiKeywords        Json?     @map("ai_keywords")
-  memoryType        String?   @default("short_term") @map("memory_type")
-  archivedAt        DateTime? @map("archived_at")
+model Memory {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId           String   @map("user_id") @db.ObjectId
+  assistantId      String   @map("assistant_id") @db.ObjectId
 
-  // Relations
-  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  npc               NPC       @relation(fields: [npcId], references: [id], onDelete: Cascade)
-  memoryFlowers     MemoryFlower[]
+  // Content
+  rawContent       String   @map("raw_content") @db.String
+  summary          String?  @db.String
 
-  @@index([userId, npcId])
-  @@index([timestamp])
-  @@index([isLongTermMemory])
-  @@map("conversations")
-}
+  // AI Processing
+  keyPoints        String[] @map("key_points")
+  aiSentiment      String?  @map("ai_sentiment") // positive, neutral, negative
+  aiImportance     Int      @default(5) @map("ai_importance") // 1-10
 
-enum SpeakerType {
-  user
-  npc
+  // Classification
+  category         AssistantType
+  tags             String[] // 自動生成的標籤
 
-  @@map("speaker_type")
-}
+  // Metadata
+  title            String?  // 自動生成或用戶編輯
+  emoji            String?  // 代表這條記憶的 emoji
 
-model Relationship {
-  id                  String   @id @default(uuid())
-  userId              String   @map("user_id")
-  npcId               String   @map("npc_id")
-  relationshipLevel   Int      @default(1) @map("relationship_level")
-  trustLevel          Float    @default(0.0) @map("trust_level")
-  affectionLevel      Float    @default(0.0) @map("affection_level")
-  lastInteraction     DateTime @default(now()) @map("last_interaction")
-  totalInteractions   Int      @default(0) @map("total_interactions")
-  createdAt           DateTime @default(now()) @map("created_at")
-  updatedAt           DateTime @updatedAt @map("updated_at")
+  // Relations (Memory Links)
+  relatedMemoryIds String[] @map("related_memory_ids") @db.ObjectId
 
-  // Relations
-  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  npc                 NPC      @relation(fields: [npcId], references: [id], onDelete: Cascade)
+  // Status
+  isArchived       Boolean  @default(false) @map("is_archived")
+  isPinned         Boolean  @default(false) @map("is_pinned")
 
-  @@unique([userId, npcId])
-  @@index([userId])
-  @@map("relationships")
-}
-
-model MemoryFlower {
-  id             String   @id @default(uuid())
-  userId         String   @map("user_id")
-  npcId          String   @map("npc_id")
-  conversationId String   @map("conversation_id")
-  flowerType     String   @map("flower_type")
-  emotionColor   String   @map("emotion_color")
-  positionX      Float    @map("position_x")
-  positionY      Float    @map("position_y")
-  positionZ      Float    @map("position_z")
-  growthStage    Int      @default(1) @map("growth_stage")
-  createdAt      DateTime @default(now()) @map("created_at")
-
-  // Relations
-  user           User         @relation("UserMemoryFlowers", fields: [userId], references: [id], onDelete: Cascade)
-  npc            NPC          @relation("NPCMemoryFlowers", fields: [npcId], references: [id], onDelete: Cascade)
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@map("memory_flowers")
-}
-
-model NPCRelationship {
-  id               String   @id @default(uuid())
-  npc1Id           String   @map("npc1_id")
-  npc2Id           String   @map("npc2_id")
-  relationshipType String   @map("relationship_type")
-  strength         Float    @default(0.5)
+  // Timestamps
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
+  archivedAt       DateTime? @map("archived_at")
 
   // Relations
-  npc1             NPC      @relation("NPC1Relations", fields: [npc1Id], references: [id], onDelete: Cascade)
-  npc2             NPC      @relation("NPC2Relations", fields: [npc2Id], references: [id], onDelete: Cascade)
-
-  @@unique([npc1Id, npc2Id])
-  @@map("npc_relationships")
-}
-
-model Wish {
-  id                 String     @id @default(uuid())
-  npcId              String     @map("npc_id")
-  title              String
-  description        String
-  wishType           WishType   @map("wish_type")
-  isFulfilled        Boolean    @default(false) @map("is_fulfilled")
-  fulfillmentMethod  String?    @map("fulfillment_method")
-  priority           Int        @default(1)
-  createdAt          DateTime   @default(now()) @map("created_at")
-  fulfilledAt        DateTime?  @map("fulfilled_at")
-
-  // Relations
-  npc                NPC        @relation(fields: [npcId], references: [id], onDelete: Cascade)
-  userProgress       UserWishProgress[]
-
-  @@map("wishes")
-}
-
-enum WishType {
-  companion
-  reconciliation
-  growth
-  dream
-
-  @@map("wish_type")
-}
-
-model UserWishProgress {
-  id          String   @id @default(uuid())
-  userId      String   @map("user_id")
-  wishId      String   @map("wish_id")
-  progress    Float    @default(0.0)
-  notes       String?
-  lastUpdated DateTime @default(now()) @map("last_updated")
-
-  // Relations
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  wish        Wish     @relation(fields: [wishId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, wishId])
-  @@map("user_wish_progress")
-}
-
-model Letter {
-  id            String      @id @default(uuid())
-  senderType    SpeakerType @map("sender_type")
-  senderId      String      @map("sender_id")
-  recipientType SpeakerType @map("recipient_type")
-  recipientId   String      @map("recipient_id")
-  subject       String?
-  content       String
-  isRead        Boolean     @default(false) @map("is_read")
-  sentAt        DateTime    @default(now()) @map("sent_at")
-  readAt        DateTime?   @map("read_at")
-
-  // Relations (using separate fields for different entity types)
-  senderUser      User? @relation("SentLetters", fields: [senderId], references: [id], onDelete: Cascade, map: "letter_sender_user_fkey")
-  recipientUser   User? @relation("ReceivedLetters", fields: [recipientId], references: [id], onDelete: Cascade, map: "letter_recipient_user_fkey")
-  senderNPC       NPC?  @relation("NPCSentLetters", fields: [senderId], references: [id], onDelete: Cascade, map: "letter_sender_npc_fkey")
-  recipientNPC    NPC?  @relation("NPCReceivedLetters", fields: [recipientId], references: [id], onDelete: Cascade, map: "letter_recipient_npc_fkey")
-
-  @@index([recipientType, recipientId])
-  @@map("letters")
-}
-
-model DiaryEntry {
-  id        String   @id @default(uuid())
-  userId    String   @map("user_id")
-  title     String?
-  content   String
-  mood      String?
-  isPrivate Boolean  @default(true) @map("is_private")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  // Relations
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@map("diary_entries")
-}
-
-model WorldState {
-  id            String   @id @default(uuid())
-  userId        String   @unique @map("user_id")
-  weather       String   @default("sunny")
-  timeOfDay     Int      @default(12) @map("time_of_day")
-  season        String   @default("spring")
-  specialEvents Json     @default("[]") @map("special_events")
-  lastUpdated   DateTime @default(now()) @map("last_updated")
-
-  // Relations
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("world_state")
-}
-
-// ============ Multi-Agent System Models ============
-
-enum Category {
-  GOSSIP         // 八卦
-  FUTURE_IDEAS   // 未來想法
-  DAILY_LIFE     // 私生活
-  STUDY          // 學業
-  FRIENDS        // 朋友
-  RELATIONSHIPS  // 感情
-  OTHER          // 其他
-
-  @@map("category")
-}
-
-model MemoryEntry {
-  id          String   @id @default(uuid())
-  userId      String   @map("user_id")
-
-  // 內容
-  rawContent  String   @db.Text @map("raw_content")
-  summary     String   @db.Text
-  keyPoints   String[] @map("key_points")
-  tags        String[]
-
-  // 分類
-  category    Category @default(OTHER)
-
-  // AI處理
-  processedBy String   @map("processed_by") // agent ID
-  sentiment   String?
-  importance  Int      @default(5)
-
-  // 時間
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  // Relations
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  chatHistory ChatMessage[]
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assistant        Assistant @relation(fields: [assistantId], references: [id], onDelete: Cascade)
+  chatMessages     ChatMessage[]
 
   @@index([userId, category])
   @@index([userId, createdAt])
-  @@map("memory_entries")
+  @@index([userId, assistantId])
+  @@index([tags])
+  @@map("memories")
 }
 
+// ============ Chat System ============
+
 model ChatMessage {
-  id        String   @id @default(uuid())
-  userId    String   @map("user_id")
-  agentId   String   @map("agent_id")
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId           String   @map("user_id") @db.ObjectId
+  assistantId      String   @map("assistant_id") @db.ObjectId
 
-  message   String   @db.Text
-  response  String   @db.Text
+  // Content
+  userMessage      String   @map("user_message") @db.String
+  assistantResponse String  @map("assistant_response") @db.String
 
-  memoryId  String?  @map("memory_id")
-  memory    MemoryEntry? @relation(fields: [memoryId], references: [id], onDelete: SetNull)
+  // Context
+  memoryId         String?  @map("memory_id") @db.ObjectId
+  contextType      ChatContextType @map("context_type")
 
-  createdAt DateTime @default(now()) @map("created_at")
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Metadata
+  tokenCount       Int?     @map("token_count")
+  processingTime   Float?   @map("processing_time") // ms
 
-  @@index([userId, agentId])
+  // Timestamps
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assistant        Assistant @relation(fields: [assistantId], references: [id], onDelete: Cascade)
+  memory           Memory?  @relation(fields: [memoryId], references: [id], onDelete: SetNull)
+
+  @@index([userId, assistantId])
   @@index([userId, createdAt])
   @@map("chat_messages")
 }
 
-model AIAgent {
-  id          String   @id
-  name        String
-  category    Category?
-  personality String   @db.Text
-  emoji       String
-  color       String
-  systemPrompt String  @db.Text @map("system_prompt")
+enum ChatContextType {
+  MEMORY_CREATION  // 創建新記憶
+  MEMORY_QUERY     // 查詢記憶
+  GENERAL_CHAT     // 一般對話
+  SUMMARY_REQUEST  // 請求摘要（Chief Agent）
+  CLASSIFICATION   // 分類請求（Chief Agent）
 
-  messageCount Int    @default(0) @map("message_count")
-  memoryCount  Int    @default(0) @map("memory_count")
+  @@map("chat_context_type")
+}
 
-  @@map("ai_agents")
+// ============ Tag System ============
+
+model Tag {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+
+  // Identity
+  name             String   @unique
+  nameChinese      String?  @map("name_chinese")
+
+  // Statistics
+  usageCount       Int      @default(0) @map("usage_count")
+
+  // Metadata
+  color            String?  // Optional color for tag cloud
+  category         AssistantType? // Which assistant this tag commonly belongs to
+
+  // Timestamps
+  createdAt        DateTime @default(now()) @map("created_at")
+  lastUsed         DateTime @default(now()) @map("last_used")
+
+  @@map("tags")
+}
+
+// ============ Analytics & Statistics ============
+
+model DailySummary {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId           String   @map("user_id") @db.ObjectId
+
+  // Date
+  date             DateTime @unique
+
+  // Statistics
+  memoriesCreated  Int      @default(0) @map("memories_created")
+  chatsCount       Int      @default(0) @map("chats_count")
+  mostUsedAssistant String? @map("most_used_assistant")
+  topTags          String[] @map("top_tags")
+
+  // AI Summary
+  daySummary       String?  @map("day_summary") @db.String
+  mood             String?  // overall mood of the day
+  highlights       String[] // key highlights
+
+  // Timestamps
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@index([userId, date])
+  @@map("daily_summaries")
+}
+
+// ============ Legacy Models (暫時保留，之後可能移除) ============
+
+// 保留舊的 NPC、Conversation 等模型以支援資料遷移
+// 遷移完成後可以刪除這些模型
+
+model LegacyConversation {
+  id                String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String    @map("user_id") @db.ObjectId
+  npcId             String    @map("npc_id") @db.ObjectId
+  content           String    @db.String
+  speakerType       String    @map("speaker_type")
+  timestamp         DateTime  @default(now())
+
+  // AI Fields
+  isLongTermMemory  Boolean   @default(false) @map("is_long_term_memory")
+  aiImportanceScore Float?    @map("ai_importance_score")
+  aiSummary         String?   @map("ai_summary") @db.String
+
+  @@index([userId])
+  @@map("legacy_conversations")
 }

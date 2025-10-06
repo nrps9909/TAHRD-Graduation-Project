@@ -2,40 +2,37 @@ import { Server, Socket } from 'socket.io'
 import { PrismaClient } from '@prisma/client'
 import Redis from 'ioredis'
 import { logger } from './utils/logger'
-import { conversationResolvers } from './resolvers/conversationResolvers'
-import { npcInteractionService } from './services/npcInteractionService'
+// Legacy imports - disabled for new architecture
+// import { conversationResolvers } from './resolvers/conversationResolvers'
+// import { npcInteractionService } from './services/npcInteractionService'
 
 export const socketHandler = (io: Server, prisma: PrismaClient, redis: Redis) => {
-  // 監聽NPC之間的對話事件
-  npcInteractionService.on('npcMessage', (data) => {
-    // 廣播NPC對話給所有客戶端
-    io.emit('npc-conversation', {
-      type: 'message',
-      speakerId: data.speakerId,
-      speakerName: data.speakerName,
-      listenerId: data.listenerId,
-      listenerName: data.listenerName,
-      content: data.content,
-      emotion: data.emotion,
-      topic: data.topic,
-      timestamp: new Date()
-    })
-    
-    logger.info(`NPC Conversation: ${data.speakerName} -> ${data.listenerName}: ${data.content.substring(0, 50)}...`)
-  })
+  // Legacy NPC conversation listeners - disabled for new architecture
+  // npcInteractionService.on('npcMessage', (data) => {
+  //   io.emit('npc-conversation', {
+  //     type: 'message',
+  //     speakerId: data.speakerId,
+  //     speakerName: data.speakerName,
+  //     listenerId: data.listenerId,
+  //     listenerName: data.listenerName,
+  //     content: data.content,
+  //     emotion: data.emotion,
+  //     topic: data.topic,
+  //     timestamp: new Date()
+  //   })
+  //   logger.info(`NPC Conversation: ${data.speakerName} -> ${data.listenerName}: ${data.content.substring(0, 50)}...`)
+  // })
 
-  // 監聽對話結束事件
-  npcInteractionService.on('conversationEnded', (data) => {
-    io.emit('npc-conversation', {
-      type: 'ended',
-      npc1: data.npc1,
-      npc2: data.npc2,
-      topic: data.topic,
-      messageCount: data.messages.length
-    })
-    
-    logger.info(`NPC Conversation ended between ${data.npc1} and ${data.npc2} on topic: ${data.topic}`)
-  })
+  // npcInteractionService.on('conversationEnded', (data) => {
+  //   io.emit('npc-conversation', {
+  //     type: 'ended',
+  //     npc1: data.npc1,
+  //     npc2: data.npc2,
+  //     topic: data.topic,
+  //     messageCount: data.messages.length
+  //   })
+  //   logger.info(`NPC Conversation ended between ${data.npc1} and ${data.npc2} on topic: ${data.topic}`)
+  // })
   io.on('connection', (socket: Socket) => {
     logger.info(`Client connected: ${socket.id}`)
 
@@ -86,14 +83,15 @@ export const socketHandler = (io: Server, prisma: PrismaClient, redis: Redis) =>
           redis
         }
 
-        // 直接調用 sendMessage resolver
-        const result = await conversationResolvers.Mutation.sendMessage(
-          null,
-          { input: { npcId, content } },
-          context
-        )
+        // Legacy: 直接調用 sendMessage resolver - disabled for new architecture
+        // const result = await conversationResolvers.Mutation.sendMessage(
+        //   null,
+        //   { input: { npcId, content } },
+        //   context
+        // )
 
-        logger.info('Message processed successfully', { npcId, userId: guestUser.id })
+        logger.info('Message received (legacy handler disabled)', { npcId, userId: guestUser.id })
+        socket.emit('info', { message: 'Legacy conversation system disabled - use new GraphQL API' })
         
       } catch (error) {
         logger.error('Error handling user message:', error)
@@ -113,29 +111,29 @@ export const socketHandler = (io: Server, prisma: PrismaClient, redis: Redis) =>
       })
     })
 
-    // 手動觸發NPC對話
+    // 手動觸發NPC對話 - disabled for new architecture
     socket.on('trigger-npc-conversation', async ({ npc1Id, npc2Id, topic }) => {
-      try {
-        const result = await npcInteractionService.triggerConversation(npc1Id, npc2Id, topic)
-        if (result.success) {
-          socket.emit('npc-conversation-started', { 
-            npc1Id, 
-            npc2Id, 
-            topic: topic || 'random' 
-          })
-        } else {
-          socket.emit('error', { message: result.message || 'Failed to start conversation' })
-        }
-      } catch (error) {
-        logger.error('Error triggering NPC conversation:', error)
-        socket.emit('error', { message: 'Failed to trigger conversation' })
-      }
+      // Legacy feature disabled
+      socket.emit('info', { message: 'Legacy NPC conversation system disabled' })
+      // try {
+      //   const result = await npcInteractionService.triggerConversation(npc1Id, npc2Id, topic)
+      //   if (result.success) {
+      //     socket.emit('npc-conversation-started', { npc1Id, npc2Id, topic: topic || 'random' })
+      //   } else {
+      //     socket.emit('error', { message: result.message || 'Failed to start conversation' })
+      //   }
+      // } catch (error) {
+      //   logger.error('Error triggering NPC conversation:', error)
+      //   socket.emit('error', { message: 'Failed to trigger conversation' })
+      // }
     })
 
-    // 獲取當前活躍的NPC對話
+    // 獲取當前活躍的NPC對話 - disabled for new architecture
     socket.on('get-active-npc-conversations', () => {
-      const active = npcInteractionService.getActiveConversations()
-      socket.emit('active-npc-conversations', active)
+      // Legacy feature disabled
+      socket.emit('active-npc-conversations', [])
+      // const active = npcInteractionService.getActiveConversations()
+      // socket.emit('active-npc-conversations', active)
     })
 
     // 心跳檢測

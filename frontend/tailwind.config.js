@@ -50,13 +50,35 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // 心語小鎮特有的療癒色彩
+        // 心語小鎮特有的療癒色彩 - Animal Crossing 风格
         healing: {
-          warm: "#F4E4C1",
-          gentle: "#E8F4F8",
-          soft: "#F0E6FF",
-          nature: "#E6F7E6",
-          sunset: "#FFE6E1",
+          warm: "#F4E4C1",      // 温暖米色
+          gentle: "#E8F4F8",    // 柔和天蓝
+          soft: "#F0E6FF",      // 柔软紫
+          nature: "#E6F7E6",    // 自然绿
+          sunset: "#FFE6E1",    // 日落粉
+          peach: "#FFE5D9",     // 蜜桃色
+          mint: "#D4F1F4",      // 薄荷色
+          lavender: "#E8D5F2", // 薰衣草
+          cream: "#FFF8E7",     // 奶油色
+          sky: "#C3E5FF",       // 天空蓝
+        },
+        // 可爱糖果色
+        candy: {
+          pink: "#FFB3D9",
+          blue: "#B3D9FF",
+          yellow: "#FFF9B3",
+          green: "#B3FFD9",
+          purple: "#D9B3FF",
+          orange: "#FFD9B3",
+        },
+        // 柔和自然色
+        pastel: {
+          grass: "#A8E6A3",
+          water: "#A3D5E6",
+          sand: "#F5E6D3",
+          wood: "#D4A574",
+          stone: "#C4C4C4",
         },
         // 動物森友會風格色彩
         brown: {
@@ -75,6 +97,22 @@ export default {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        xl: "1rem",
+        "2xl": "1.5rem",
+        "3xl": "2rem",
+        "4xl": "2.5rem",
+        cute: "1.25rem",      // 可爱圆角
+        bubble: "2rem",       // 气泡圆角
+      },
+      boxShadow: {
+        // 可爱柔和阴影
+        cute: "0 4px 14px 0 rgba(0, 0, 0, 0.08)",
+        "cute-lg": "0 8px 24px 0 rgba(0, 0, 0, 0.12)",
+        "cute-xl": "0 12px 32px 0 rgba(0, 0, 0, 0.15)",
+        glow: "0 0 20px rgba(255, 182, 217, 0.4)",
+        "glow-blue": "0 0 20px rgba(179, 217, 255, 0.4)",
+        "glow-green": "0 0 20px rgba(179, 255, 217, 0.4)",
+        inner: "inset 0 2px 4px 0 rgba(0, 0, 0, 0.06)",
       },
       borderWidth: {
         '3': '3px',
@@ -146,6 +184,34 @@ export default {
           "50%": { transform: "scale(1.05)" },
           "70%": { transform: "scale(0.9)" },
           "100%": { transform: "scale(1)", opacity: 1 },
+        },
+        "pop": {
+          "0%": { transform: "scale(0.8)" },
+          "50%": { transform: "scale(1.1)" },
+          "100%": { transform: "scale(1)" },
+        },
+        "shake": {
+          "0%, 100%": { transform: "translateX(0)" },
+          "10%, 30%, 50%, 70%, 90%": { transform: "translateX(-4px)" },
+          "20%, 40%, 60%, 80%": { transform: "translateX(4px)" },
+        },
+        "heartbeat": {
+          "0%, 100%": { transform: "scale(1)" },
+          "25%": { transform: "scale(1.1)" },
+          "50%": { transform: "scale(1)" },
+        },
+        "sparkle": {
+          "0%, 100%": { opacity: 1, transform: "scale(1)" },
+          "50%": { opacity: 0.7, transform: "scale(0.95)" },
+        },
+        "bounce-gentle": {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-8px)" },
+        },
+        "swing": {
+          "0%, 100%": { transform: "rotate(0deg)" },
+          "25%": { transform: "rotate(5deg)" },
+          "75%": { transform: "rotate(-5deg)" },
         }
       },
       animation: {
@@ -165,6 +231,21 @@ export default {
         "float-delayed": "float-delayed 4s ease-in-out infinite 2s",
         "wiggle": "wiggle 0.5s ease-in-out",
         "bounce-in": "bounce-in 0.6s ease-out",
+        "pop": "pop 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55)",
+        "shake": "shake 0.5s ease-in-out",
+        "heartbeat": "heartbeat 1.5s ease-in-out infinite",
+        "sparkle": "sparkle 2s ease-in-out infinite",
+        "bounce-gentle": "bounce-gentle 2s ease-in-out infinite",
+        "swing": "swing 1s ease-in-out infinite",
+      },
+      // 可爱字体大小
+      fontSize: {
+        'cute-xs': ['0.75rem', { lineHeight: '1.5', letterSpacing: '0.02em' }],
+        'cute-sm': ['0.875rem', { lineHeight: '1.5', letterSpacing: '0.01em' }],
+        'cute-base': ['1rem', { lineHeight: '1.6', letterSpacing: '0.01em' }],
+        'cute-lg': ['1.125rem', { lineHeight: '1.6', letterSpacing: '0.01em' }],
+        'cute-xl': ['1.25rem', { lineHeight: '1.6', letterSpacing: '0' }],
+        'cute-2xl': ['1.5rem', { lineHeight: '1.4', letterSpacing: '0' }],
       },
     },
   },

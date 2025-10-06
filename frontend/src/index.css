@@ -1,5 +1,6 @@
 /* Import modular styles */
 @import './styles/index.css';
+@import './styles/cute-theme.css';
 
 /* Global font override - Apply GameFont to all elements */
 *, *::before, *::after {

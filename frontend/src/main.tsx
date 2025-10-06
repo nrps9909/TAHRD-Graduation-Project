@@ -1,10 +1,11 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { ApolloProvider } from '@apollo/client'
-import { apolloClient } from './utils/apollo-client'
+import { BrowserRouter } from 'react-router-dom'
+import { apolloClient } from './network/apollo'
 import App from './App'
 import './index.css'
-import './styles/fullscreen.css'
+// import './styles/fullscreen.css' // Removed - old game UI
 
 // 配置 Troika 不使用 Web Workers 來避免 CSP 問題
 if (typeof window !== 'undefined') {
@@ -15,7 +16,9 @@ if (typeof window !== 'undefined') {
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ApolloProvider client={apolloClient}>
-      <App />
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
     </ApolloProvider>
   </React.StrictMode>,
 )
