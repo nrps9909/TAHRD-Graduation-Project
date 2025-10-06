@@ -86,6 +86,14 @@ export const typeDefs = gql`
 
   # ============ Memory System ============
 
+  enum ContentType {
+    TEXT
+    IMAGE
+    DOCUMENT
+    LINK
+    MIXED
+  }
+
   type Memory {
     id: ID!
     userId: ID!
@@ -94,11 +102,20 @@ export const typeDefs = gql`
     # Content
     rawContent: String!
     summary: String
+    contentType: ContentType!
+
+    # Multimodal Content
+    fileUrls: [String!]!
+    fileNames: [String!]!
+    fileTypes: [String!]!
+    links: [String!]!
+    linkTitles: [String!]!
 
     # AI Processing
     keyPoints: [String!]!
     aiSentiment: String
     aiImportance: Int!
+    aiAnalysis: String
 
     # Classification
     category: AssistantType!
@@ -111,6 +128,11 @@ export const typeDefs = gql`
     # Relations
     relatedMemoryIds: [ID!]!
     relatedMemories: [Memory!]!
+
+    # Distribution Info
+    distributionId: ID
+    relevanceScore: Float
+    distribution: KnowledgeDistribution
 
     # Status
     isArchived: Boolean!
@@ -176,6 +198,72 @@ export const typeDefs = gql`
     lastUsed: DateTime!
   }
 
+  # ============ Knowledge Distribution System ============
+
+  type KnowledgeDistribution {
+    id: ID!
+    userId: ID!
+
+    # Original Content
+    rawContent: String!
+    contentType: ContentType!
+
+    # Multimodal Content
+    fileUrls: [String!]!
+    fileNames: [String!]!
+    fileTypes: [String!]!
+    links: [String!]!
+    linkTitles: [String!]!
+
+    # Chief Agent Analysis
+    chiefAnalysis: String!
+    chiefSummary: String!
+    identifiedTopics: [String!]!
+    suggestedTags: [String!]!
+
+    # Distribution Results
+    distributedTo: [ID!]!        # Assistant IDs
+    storedBy: [ID!]!             # Assistant IDs that chose to store
+
+    # Processing Info
+    processingTime: Float
+    tokenCount: Int
+
+    # Timestamp
+    createdAt: DateTime!
+
+    # Relations
+    agentDecisions: [AgentDecision!]!
+    memories: [Memory!]!
+  }
+
+  type AgentDecision {
+    id: ID!
+    distributionId: ID!
+    assistantId: ID!
+
+    # Decision
+    relevanceScore: Float!       # 0-1
+    shouldStore: Boolean!
+    reasoning: String!
+    confidence: Float!           # 0-1
+
+    # Classification (if stored)
+    suggestedCategory: AssistantType
+    suggestedTags: [String!]!
+    keyInsights: [String!]!
+
+    # Processing Info
+    processingTime: Float
+
+    # Timestamp
+    createdAt: DateTime!
+
+    # Relations
+    distribution: KnowledgeDistribution!
+    assistant: Assistant
+  }
+
   # ============ Analytics ============
 
   type DailySummary {
@@ -222,6 +310,13 @@ export const typeDefs = gql`
 
   # ============ Response Types ============
 
+  type UploadKnowledgeResponse {
+    distribution: KnowledgeDistribution!
+    agentDecisions: [AgentDecision!]!
+    memoriesCreated: [Memory!]!
+    processingTime: Float!
+  }
+
   type CreateMemoryResponse {
     memory: Memory!
     chat: ChatMessage!
@@ -261,6 +356,25 @@ export const typeDefs = gql`
   input LoginInput {
     email: String!
     password: String!
+  }
+
+  input FileInput {
+    url: String!
+    name: String!
+    type: String!
+    size: Int
+  }
+
+  input LinkInput {
+    url: String!
+    title: String
+  }
+
+  input UploadKnowledgeInput {
+    content: String!
+    files: [FileInput!]
+    links: [LinkInput!]
+    contentType: ContentType
   }
 
   input CreateMemoryInput {
@@ -313,6 +427,11 @@ export const typeDefs = gql`
     relatedMemories(memoryId: ID!, limit: Int = 5): [Memory!]!
     pinnedMemories: [Memory!]!
 
+    # ===== Knowledge Distribution Queries =====
+    knowledgeDistributions(limit: Int = 20, offset: Int = 0): [KnowledgeDistribution!]!
+    knowledgeDistribution(id: ID!): KnowledgeDistribution
+    agentDecisions(distributionId: ID!): [AgentDecision!]!
+
     # ===== Chat Queries =====
     chatHistory(assistantId: ID, limit: Int = 50): [ChatMessage!]!
     chatMessage(id: ID!): ChatMessage
@@ -338,6 +457,9 @@ export const typeDefs = gql`
     register(input: RegisterInput!): AuthPayload!
     login(input: LoginInput!): AuthPayload!
     logout: Boolean!
+
+    # ===== Knowledge Distribution Mutations =====
+    uploadKnowledge(input: UploadKnowledgeInput!): UploadKnowledgeResponse!
 
     # ===== Memory Mutations =====
     createMemory(input: CreateMemoryInput!): CreateMemoryResponse!

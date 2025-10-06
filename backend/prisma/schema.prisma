@@ -117,6 +117,16 @@ model Assistant {
 
 // ============ Memory System ============
 
+enum ContentType {
+  TEXT
+  IMAGE
+  DOCUMENT
+  LINK
+  MIXED
+
+  @@map("content_type")
+}
+
 model Memory {
   id               String   @id @default(auto()) @map("_id") @db.ObjectId
   userId           String   @map("user_id") @db.ObjectId
@@ -125,11 +135,22 @@ model Memory {
   // Content
   rawContent       String   @map("raw_content") @db.String
   summary          String?  @db.String
+  contentType      ContentType @default(TEXT) @map("content_type")
+
+  // Files (images, PDFs, etc.)
+  fileUrls         String[] @default([]) @map("file_urls")
+  fileNames        String[] @default([]) @map("file_names")
+  fileTypes        String[] @default([]) @map("file_types")
+
+  // Links
+  links            String[] @default([]) // URLs
+  linkTitles       String[] @default([]) @map("link_titles") // Titles for each link
 
   // AI Processing
   keyPoints        String[] @map("key_points")
   aiSentiment      String?  @map("ai_sentiment") // positive, neutral, negative
   aiImportance     Int      @default(5) @map("ai_importance") // 1-10
+  aiAnalysis       String?  @map("ai_analysis") @db.String // Gemini's analysis
 
   // Classification
   category         AssistantType
@@ -141,6 +162,10 @@ model Memory {
 
   // Relations (Memory Links)
   relatedMemoryIds String[] @map("related_memory_ids") @db.ObjectId
+
+  // Distribution Info (if from Chief Agent)
+  distributionId   String?  @map("distribution_id") @db.ObjectId
+  relevanceScore   Float?   @map("relevance_score") // 0-1
 
   // Status
   isArchived       Boolean  @default(false) @map("is_archived")
@@ -155,11 +180,13 @@ model Memory {
   user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   assistant        Assistant @relation(fields: [assistantId], references: [id], onDelete: Cascade)
   chatMessages     ChatMessage[]
+  distribution     KnowledgeDistribution? @relation(fields: [distributionId], references: [id])
 
   @@index([userId, category])
   @@index([userId, createdAt])
   @@index([userId, assistantId])
   @@index([tags])
+  @@index([distributionId])
   @@map("memories")
 }
 
@@ -226,6 +253,80 @@ model Tag {
   lastUsed         DateTime @default(now()) @map("last_used")
 
   @@map("tags")
+}
+
+// ============ Knowledge Distribution System ============
+
+model KnowledgeDistribution {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId           String   @map("user_id") @db.ObjectId
+
+  // Original Content
+  rawContent       String   @map("raw_content") @db.String
+  contentType      ContentType @map("content_type")
+
+  // Files
+  fileUrls         String[] @default([]) @map("file_urls")
+  fileNames        String[] @default([]) @map("file_names")
+  fileTypes        String[] @default([]) @map("file_types")
+
+  // Links
+  links            String[] @default([])
+  linkTitles       String[] @default([]) @map("link_titles")
+
+  // Chief Agent Analysis
+  chiefAnalysis    String   @map("chief_analysis") @db.String
+  chiefSummary     String   @map("chief_summary") @db.String
+  identifiedTopics String[] @map("identified_topics")
+  suggestedTags    String[] @map("suggested_tags")
+
+  // Distribution Results
+  distributedTo    String[] @map("distributed_to") // Assistant IDs
+  storedBy         String[] @default([]) @map("stored_by") // Assistant IDs that chose to store
+
+  // Processing Info
+  processingTime   Float?   @map("processing_time") // ms
+  tokenCount       Int?     @map("token_count")
+
+  // Timestamps
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  // Relations
+  agentDecisions   AgentDecision[]
+  memories         Memory[]
+
+  @@index([userId, createdAt])
+  @@map("knowledge_distributions")
+}
+
+model AgentDecision {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  distributionId   String   @map("distribution_id") @db.ObjectId
+  assistantId      String   @map("assistant_id") @db.ObjectId
+
+  // Decision
+  relevanceScore   Float    @map("relevance_score") // 0-1
+  shouldStore      Boolean  @map("should_store")
+  reasoning        String   @db.String
+  confidence       Float    // 0-1
+
+  // Classification (if stored)
+  suggestedCategory AssistantType? @map("suggested_category")
+  suggestedTags    String[] @map("suggested_tags")
+  keyInsights      String[] @map("key_insights")
+
+  // Processing Info
+  processingTime   Float?   @map("processing_time") // ms
+
+  // Timestamp
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  // Relations
+  distribution     KnowledgeDistribution @relation(fields: [distributionId], references: [id], onDelete: Cascade)
+
+  @@index([distributionId])
+  @@index([assistantId])
+  @@map("agent_decisions")
 }
 
 // ============ Analytics & Statistics ============
