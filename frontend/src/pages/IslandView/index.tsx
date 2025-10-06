@@ -1,16 +1,23 @@
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useQuery } from '@apollo/client'
 import { useParams, useNavigate } from 'react-router-dom'
 import { GET_ASSISTANTS } from '../../graphql/assistant'
 import { Assistant } from '../../types/assistant'
+import { Message } from '../../types/message'
 import CuteDecorations from '../../components/CuteDecorations'
+import MessageBubble from '../../components/ChatInterface/MessageBubble'
+import UploadModal from '../../components/ChatInterface/UploadModal'
 
 export default function IslandView() {
   const { assistantId } = useParams<{ assistantId: string }>()
   const navigate = useNavigate()
   const [showChat, setShowChat] = useState(false)
+  const [showUploadModal, setShowUploadModal] = useState(false)
+  const [inputText, setInputText] = useState('')
+  const [messages, setMessages] = useState<Message[]>([])
+  const messagesEndRef = useRef<HTMLDivElement>(null)
   const { data, loading } = useQuery(GET_ASSISTANTS)
 
   // 获取当前assistant
@@ -22,6 +29,78 @@ export default function IslandView() {
       navigate('/')
     }
   }, [loading, assistant, navigate])
+
+  // 初始化欢迎消息
+  useEffect(() => {
+    if (assistant && messages.length === 0) {
+      const welcomeMessage: Message = {
+        id: 'welcome',
+        role: 'assistant',
+        content: `你好！我是 ${assistant.nameChinese}。${assistant.personality}\n\n你可以上傳圖片、文件、鏈接，我都能理解哦！✨`,
+        timestamp: new Date()
+      }
+      setMessages([welcomeMessage])
+    }
+  }, [assistant, messages.length])
+
+  // 自动滚动到底部
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
+
+  // 发送消息
+  const handleSendMessage = async (additionalFiles?: any[], additionalLinks?: any[]) => {
+    if (!inputText.trim() && !additionalFiles?.length && !additionalLinks?.length) return
+
+    // 创建用户消息
+    const userMessage: Message = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: inputText,
+      files: additionalFiles,
+      links: additionalLinks,
+      timestamp: new Date()
+    }
+
+    setMessages(prev => [...prev, userMessage])
+    setInputText('')
+
+    // 创建加载消息
+    const loadingMessage: Message = {
+      id: `loading-${Date.now()}`,
+      role: 'assistant',
+      content: '',
+      isLoading: true,
+      timestamp: new Date()
+    }
+
+    setMessages(prev => [...prev, loadingMessage])
+
+    // 模拟AI回复（后续会连接实际API）
+    setTimeout(() => {
+      const aiResponse: Message = {
+        id: `ai-${Date.now()}`,
+        role: 'assistant',
+        content: `收到你的訊息！\n\n${inputText ? `你說: "${inputText}"\n\n` : ''}${additionalFiles?.length ? `收到 ${additionalFiles.length} 個文件\n` : ''}${additionalLinks?.length ? `收到 ${additionalLinks.length} 個鏈接\n` : ''}\n我會幫你分析這些內容，並決定是否需要存儲到知識庫中。✨`,
+        timestamp: new Date()
+      }
+
+      setMessages(prev => prev.filter(m => m.id !== loadingMessage.id).concat(aiResponse))
+    }, 1500)
+  }
+
+  // 处理上传确认
+  const handleUploadConfirm = (data: { files: any[]; links: any[] }) => {
+    handleSendMessage(data.files, data.links)
+  }
+
+  // 处理键盘发送
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSendMessage()
+    }
+  }
 
   return (
     <div className="fixed inset-0 w-full h-full overflow-hidden bg-gradient-to-b from-healing-sky via-healing-gentle to-healing-cream">
@@ -278,7 +357,10 @@ export default function IslandView() {
                   </div>
                 </div>
                 <div className="flex gap-3">
-                  <button className="px-4 py-2 bg-healing-gentle hover:bg-candy-blue text-gray-700 rounded-cute font-medium shadow-cute hover:shadow-cute-lg transition-all duration-300">
+                  <button
+                    onClick={() => setShowUploadModal(true)}
+                    className="px-4 py-2 bg-healing-gentle hover:bg-candy-blue text-gray-700 rounded-cute font-medium shadow-cute hover:shadow-cute-lg transition-all duration-300 hover:scale-105"
+                  >
                     📎 上傳知識
                   </button>
                 </div>
@@ -288,25 +370,15 @@ export default function IslandView() {
             {/* Chat Messages Area */}
             <div className="flex-1 overflow-y-auto p-6">
               <div className="max-w-4xl mx-auto space-y-4">
-                {/* Welcome Message */}
-                <div className="flex items-start gap-4">
-                  <div
-                    className="w-12 h-12 rounded-full flex items-center justify-center text-2xl flex-shrink-0"
-                    style={{
-                      background: `linear-gradient(135deg, ${assistant.color}, ${assistant.color}dd)`
-                    }}
-                  >
-                    {assistant.emoji}
-                  </div>
-                  <div className="flex-1 bg-white/90 backdrop-blur-sm rounded-cute p-4 shadow-cute">
-                    <p className="text-cute-base text-gray-700">
-                      你好！我是 {assistant.nameChinese}。{assistant.personality}
-                    </p>
-                    <p className="text-cute-sm text-gray-500 mt-2">
-                      你可以上傳圖片、文件、鏈接，我都能理解哦！✨
-                    </p>
-                  </div>
-                </div>
+                {messages.map((message) => (
+                  <MessageBubble
+                    key={message.id}
+                    message={message}
+                    assistantEmoji={assistant.emoji}
+                    assistantColor={assistant.color}
+                  />
+                ))}
+                <div ref={messagesEndRef} />
               </div>
             </div>
 
@@ -314,22 +386,25 @@ export default function IslandView() {
             <div className="bg-white/90 backdrop-blur-md shadow-cute-lg p-6">
               <div className="max-w-4xl mx-auto">
                 <div className="flex gap-3">
-                  <button className="px-4 py-3 bg-healing-gentle hover:bg-candy-pink text-gray-700 rounded-cute shadow-cute transition-all duration-300 hover:scale-105">
+                  <button
+                    onClick={() => setShowUploadModal(true)}
+                    className="px-4 py-3 bg-healing-gentle hover:bg-candy-pink text-gray-700 rounded-cute shadow-cute transition-all duration-300 hover:scale-105 active:scale-95"
+                    title="上傳文件和鏈接"
+                  >
                     📎
-                  </button>
-                  <button className="px-4 py-3 bg-healing-gentle hover:bg-candy-blue text-gray-700 rounded-cute shadow-cute transition-all duration-300 hover:scale-105">
-                    🖼️
-                  </button>
-                  <button className="px-4 py-3 bg-healing-gentle hover:bg-candy-green text-gray-700 rounded-cute shadow-cute transition-all duration-300 hover:scale-105">
-                    📁
                   </button>
                   <input
                     type="text"
-                    placeholder="輸入訊息..."
+                    value={inputText}
+                    onChange={(e) => setInputText(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    placeholder="輸入訊息... (Enter 發送)"
                     className="flex-1 px-6 py-3 bg-white border-3 border-transparent rounded-cute focus:border-candy-pink focus:shadow-glow transition-all duration-300"
                   />
                   <button
-                    className="px-6 py-3 rounded-cute font-bold text-white shadow-cute hover:shadow-cute-lg transition-all duration-300 hover:scale-105 active:scale-95"
+                    onClick={() => handleSendMessage()}
+                    disabled={!inputText.trim()}
+                    className="px-6 py-3 rounded-cute font-bold text-white shadow-cute hover:shadow-cute-lg transition-all duration-300 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                     style={{
                       background: `linear-gradient(135deg, ${assistant.color}, ${assistant.color}dd)`
                     }}
@@ -342,6 +417,13 @@ export default function IslandView() {
           </div>
         </div>
       )}
+
+      {/* Upload Modal */}
+      <UploadModal
+        isOpen={showUploadModal}
+        onClose={() => setShowUploadModal(false)}
+        onConfirm={handleUploadConfirm}
+      />
 
       {/* Loading State - 可爱加载 */}
       {loading && (
