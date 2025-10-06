@@ -7,14 +7,13 @@ const prisma = new PrismaClient()
 export const knowledgeDistributionResolvers = {
   Query: {
     /**
-     * �����h
+     * 获取知识分发列表
      */
     knowledgeDistributions: async (_: any, { limit = 20, offset = 0 }: any, context: any) => {
       try {
         const userId = context.userId
         if (!userId) {
-          throw new Error('*�
-')
+          throw new Error('未认证')
         }
 
         const distributions = await prisma.knowledgeDistribution.findMany({
@@ -36,14 +35,13 @@ export const knowledgeDistributionResolvers = {
     },
 
     /**
-     * ��U*���
+     * 获取单个知识分发记录
      */
     knowledgeDistribution: async (_: any, { id }: any, context: any) => {
       try {
         const userId = context.userId
         if (!userId) {
-          throw new Error('*�
-')
+          throw new Error('未认证')
         }
 
         const distribution = await prisma.knowledgeDistribution.findFirst({
@@ -64,7 +62,7 @@ export const knowledgeDistributionResolvers = {
         })
 
         if (!distribution) {
-          throw new Error('�X|X(')
+          throw new Error('知识分发记录不存在')
         }
 
         return distribution
@@ -75,23 +73,22 @@ export const knowledgeDistributionResolvers = {
     },
 
     /**
-     * ��ф Agent �Vh
+     * 获取 Agent 决策列表
      */
     agentDecisions: async (_: any, { distributionId }: any, context: any) => {
       try {
         const userId = context.userId
         if (!userId) {
-          throw new Error('*�
-')
+          throw new Error('未认证')
         }
 
-        // ��ѰU^�SM(7
+        // 验证分发记录所有权
         const distribution = await prisma.knowledgeDistribution.findFirst({
           where: { id: distributionId, userId },
         })
 
         if (!distribution) {
-          throw new Error('�X|X(')
+          throw new Error('知识分发记录不存在')
         }
 
         const decisions = await prisma.agentDecision.findMany({
@@ -112,31 +109,26 @@ export const knowledgeDistributionResolvers = {
 
   Mutation: {
     /**
-     * 
- ��0���
+     * 上传知识到分发系统
      */
     uploadKnowledge: async (_: any, { input }: any, context: any) => {
       try {
         const userId = context.userId
         if (!userId) {
-          throw new Error('*�
-')
+          throw new Error('未认证')
         }
 
-        logger.info(`[GraphQL] (6 ${userId} 
-��X`)
+        logger.info(`[GraphQL] 用户 ${userId} 上传知识`)
 
-        // ( Chief Agent Service
+        // 调用 Chief Agent Service
         const result = await chiefAgentService.uploadKnowledge(userId, input)
 
-        logger.info(`[GraphQL] �X
-��| ID: ${result.distribution.id}`)
+        logger.info(`[GraphQL] 知识上传成功，分发记录 ID: ${result.distribution.id}`)
 
         return result
       } catch (error) {
         logger.error('Mutation uploadKnowledge error:', error)
-        throw new Error(`
-��X1W: ${error instanceof Error ? error.message : '*�/�'}`)
+        throw new Error(`上传知识失败: ${error instanceof Error ? error.message : '未知错误'}`)
       }
     },
   },

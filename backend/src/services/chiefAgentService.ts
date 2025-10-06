@@ -694,7 +694,7 @@ ${input.content}
     const hasText = input.content && input.content.trim().length > 0
 
     if (hasFiles && hasLinks) return ContentType.MIXED
-    if (hasFiles) {
+    if (hasFiles && input.files) {
       const hasImages = input.files.some(f => f.type.startsWith('image/'))
       const hasDocs = input.files.some(f =>
         f.type.includes('pdf') || f.type.includes('document')
