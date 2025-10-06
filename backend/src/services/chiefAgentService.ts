@@ -3,6 +3,7 @@ import { logger } from '../utils/logger'
 import axios from 'axios'
 import { assistantService } from './assistantService'
 import { memoryService } from './memoryService'
+import { subAgentService } from './subAgentService'
 
 const prisma = new PrismaClient()
 
@@ -618,12 +619,21 @@ ${input.content}
         }
       })
 
-      logger.info(`[Chief Agent] 知識分發完成，ID: ${distribution.id}`)
+      logger.info(`[Chief Agent] 知識分發記錄創建完成，ID: ${distribution.id}`)
+
+      // 5. 触发 Sub-agents 处理
+      const subAgentResult = await subAgentService.processDistribution(
+        userId,
+        distribution.id,
+        assistantIds
+      )
+
+      logger.info(`[Chief Agent] 完整分發流程完成 - 總耗時: ${Date.now() - startTime}ms`)
 
       return {
         distribution,
-        agentDecisions: [],
-        memoriesCreated: [],
+        agentDecisions: subAgentResult.agentDecisions,
+        memoriesCreated: subAgentResult.memoriesCreated,
         processingTime: Date.now() - startTime,
       }
     } catch (error) {
