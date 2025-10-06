@@ -1,4 +1,4 @@
-import { PrismaClient, AssistantType, ChatContextType } from '@prisma/client'
+import { PrismaClient, AssistantType, ChatContextType, ContentType } from '@prisma/client'
 import { logger } from '../utils/logger'
 import axios from 'axios'
 import { assistantService } from './assistantService'
@@ -22,6 +22,34 @@ export interface ProcessingResult {
   sentiment: string
   emoji?: string
   title?: string
+}
+
+export interface FileInput {
+  url: string
+  name: string
+  type: string
+  size?: number
+}
+
+export interface LinkInput {
+  url: string
+  title?: string
+}
+
+export interface UploadKnowledgeInput {
+  content: string
+  files?: FileInput[]
+  links?: LinkInput[]
+  contentType?: ContentType
+}
+
+export interface KnowledgeAnalysis {
+  analysis: string
+  summary: string
+  identifiedTopics: string[]
+  suggestedTags: string[]
+  relevantAssistants: AssistantType[]
+  confidence: number
 }
 
 /**
@@ -459,6 +487,238 @@ ${contextInfo}
         sentiment: 'neutral'
       }
     }
+  }
+
+  /**
+   * 分析知识内容（多模态支持）
+   */
+  async analyzeKnowledge(
+    userId: string,
+    input: UploadKnowledgeInput
+  ): Promise<KnowledgeAnalysis> {
+    try {
+      const chief = await assistantService.getChiefAssistant()
+      if (!chief) {
+        throw new Error('Chief assistant not found')
+      }
+
+      // 构建分析提示词
+      let prompt = `${chief.systemPrompt}
+
+作為知識管理系統的總管，請分析以下內容並提供詳細的分類建議。
+
+**內容:**
+${input.content}
+`
+
+      // 添加文件信息
+      if (input.files && input.files.length > 0) {
+        prompt += `\n**附件文件 (${input.files.length}個):**\n`
+        input.files.forEach(file => {
+          prompt += `- ${file.name} (${file.type})\n`
+        })
+      }
+
+      // 添加链接信息
+      if (input.links && input.links.length > 0) {
+        prompt += `\n**相關連結 (${input.links.length}個):**\n`
+        input.links.forEach(link => {
+          prompt += `- ${link.title || link.url}\n`
+        })
+      }
+
+      prompt += `
+請以 JSON 格式回應，包含以下字段：
+
+{
+  "analysis": "深入分析這段內容的主要含義、價值和重要性",
+  "summary": "一句話摘要（30字以內）",
+  "identifiedTopics": ["主題1", "主題2", "主題3"],
+  "suggestedTags": ["標籤1", "標籤2", "標籤3"],
+  "relevantAssistants": ["LEARNING", "WORK", "INSPIRATION"],
+  "confidence": 0.95
+}
+
+**可用的 Assistant 類型:**
+- LEARNING (學習筆記)
+- INSPIRATION (靈感創意)
+- WORK (工作事務)
+- SOCIAL (人際關係)
+- LIFE (生活記錄)
+- GOALS (目標規劃)
+- RESOURCES (資源收藏)
+
+請根據內容的主題和性質，選擇 1-3 個最相關的 Assistant。`
+
+      const response = await this.callMCP(prompt, chief.id)
+      const parsed = this.parseJSON(response)
+
+      return {
+        analysis: parsed.analysis || '分析內容',
+        summary: parsed.summary || input.content.substring(0, 30),
+        identifiedTopics: Array.isArray(parsed.identifiedTopics) ? parsed.identifiedTopics : [],
+        suggestedTags: Array.isArray(parsed.suggestedTags) ? parsed.suggestedTags : [],
+        relevantAssistants: Array.isArray(parsed.relevantAssistants)
+          ? parsed.relevantAssistants.filter((a: string) => this.isValidAssistantType(a))
+          : [AssistantType.LEARNING],
+        confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0.8,
+      }
+    } catch (error) {
+      logger.error('Analyze knowledge error:', error)
+
+      // 降级方案：使用关键词匹配
+      return this.fallbackAnalysis(input)
+    }
+  }
+
+  /**
+   * 上传知识到分发系统
+   */
+  async uploadKnowledge(
+    userId: string,
+    input: UploadKnowledgeInput
+  ) {
+    const startTime = Date.now()
+
+    try {
+      logger.info(`[Chief Agent] 開始處理知識上傳，用戶: ${userId}`)
+
+      // 1. 分析知识内容
+      const analysis = await this.analyzeKnowledge(userId, input)
+      logger.info(`[Chief Agent] 分析完成，相關助手: ${analysis.relevantAssistants.join(', ')}`)
+
+      // 2. 确定内容类型
+      const contentType = this.determineContentType(input)
+
+      // 3. 获取相关的 Assistant IDs
+      const assistantIds = await this.getAssistantIds(analysis.relevantAssistants)
+
+      // 4. 创建知识分发记录
+      const distribution = await prisma.knowledgeDistribution.create({
+        data: {
+          userId,
+          rawContent: input.content,
+          contentType,
+          fileUrls: input.files?.map(f => f.url) || [],
+          fileNames: input.files?.map(f => f.name) || [],
+          fileTypes: input.files?.map(f => f.type) || [],
+          links: input.links?.map(l => l.url) || [],
+          linkTitles: input.links?.map(l => l.title || l.url) || [],
+          chiefAnalysis: analysis.analysis,
+          chiefSummary: analysis.summary,
+          identifiedTopics: analysis.identifiedTopics,
+          suggestedTags: analysis.suggestedTags,
+          distributedTo: assistantIds,
+          storedBy: [],
+          processingTime: Date.now() - startTime,
+        },
+        include: {
+          agentDecisions: true,
+          memories: true,
+        }
+      })
+
+      logger.info(`[Chief Agent] 知識分發完成，ID: ${distribution.id}`)
+
+      return {
+        distribution,
+        agentDecisions: [],
+        memoriesCreated: [],
+        processingTime: Date.now() - startTime,
+      }
+    } catch (error) {
+      logger.error('[Chief Agent] 上傳知識失敗:', error)
+      throw new Error('處理知識上傳失敗')
+    }
+  }
+
+  /**
+   * 降级方案：基于关键词的简单分类
+   */
+  private fallbackAnalysis(input: UploadKnowledgeInput): KnowledgeAnalysis {
+    const content = input.content.toLowerCase()
+    const relevantAssistants: AssistantType[] = []
+
+    // 简单的关键词匹配
+    const keywords = {
+      LEARNING: ['學習', '筆記', '課程', '教程', '知識', '研究'],
+      WORK: ['工作', '專案', '任務', '會議', '報告', '客戶'],
+      INSPIRATION: ['靈感', '創意', '想法', '點子', '設計'],
+      SOCIAL: ['朋友', '社交', '人際', '關係', '聚會'],
+      LIFE: ['生活', '日常', '心情', '感受', '記錄'],
+      GOALS: ['目標', '計劃', '規劃', '願望', '夢想'],
+      RESOURCES: ['資源', '工具', '連結', '收藏', '參考'],
+    }
+
+    for (const [type, words] of Object.entries(keywords)) {
+      if (words.some(word => content.includes(word))) {
+        relevantAssistants.push(type as AssistantType)
+      }
+    }
+
+    // 如果没有匹配，默认使用 LEARNING
+    if (relevantAssistants.length === 0) {
+      relevantAssistants.push(AssistantType.LEARNING)
+    }
+
+    return {
+      analysis: `這是關於 ${relevantAssistants.join('、')} 的內容。`,
+      summary: input.content.substring(0, 30),
+      identifiedTopics: ['一般知識'],
+      suggestedTags: ['待分類'],
+      relevantAssistants,
+      confidence: 0.3,
+    }
+  }
+
+  /**
+   * 确定内容类型
+   */
+  private determineContentType(input: UploadKnowledgeInput): ContentType {
+    if (input.contentType) {
+      return input.contentType
+    }
+
+    const hasFiles = input.files && input.files.length > 0
+    const hasLinks = input.links && input.links.length > 0
+    const hasText = input.content && input.content.trim().length > 0
+
+    if (hasFiles && hasLinks) return ContentType.MIXED
+    if (hasFiles) {
+      const hasImages = input.files.some(f => f.type.startsWith('image/'))
+      const hasDocs = input.files.some(f =>
+        f.type.includes('pdf') || f.type.includes('document')
+      )
+      if (hasImages && !hasDocs) return ContentType.IMAGE
+      if (hasDocs) return ContentType.DOCUMENT
+      return ContentType.MIXED
+    }
+    if (hasLinks) return ContentType.LINK
+    if (hasText) return ContentType.TEXT
+
+    return ContentType.TEXT
+  }
+
+  /**
+   * 获取 Assistant IDs
+   */
+  private async getAssistantIds(types: AssistantType[]): Promise<string[]> {
+    const assistants = await prisma.assistant.findMany({
+      where: {
+        type: { in: types },
+        isActive: true,
+      },
+      select: { id: true },
+    })
+
+    return assistants.map(a => a.id)
+  }
+
+  /**
+   * 验证 AssistantType 是否有效
+   */
+  private isValidAssistantType(type: string): boolean {
+    return Object.values(AssistantType).includes(type as AssistantType)
   }
 }
 
