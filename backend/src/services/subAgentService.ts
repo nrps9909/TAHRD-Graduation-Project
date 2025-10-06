@@ -70,15 +70,27 @@ export class SubAgentService {
       const response = await this.callMCP(prompt, assistantId)
       const parsed = this.parseJSON(response)
 
+      // === Stage 5: 优化存储决策逻辑 ===
+      const relevanceScore = typeof parsed.relevanceScore === 'number'
+        ? Math.max(0, Math.min(1, parsed.relevanceScore))
+        : 0.5
+
+      const confidence = typeof parsed.confidence === 'number'
+        ? Math.max(0, Math.min(1, parsed.confidence))
+        : 0.5
+
+      // 智能存储决策：综合考虑相关性和置信度
+      const shouldStore = this.shouldStoreKnowledge(
+        relevanceScore,
+        confidence,
+        parsed.shouldStore
+      )
+
       const evaluation: EvaluationResult = {
-        relevanceScore: typeof parsed.relevanceScore === 'number'
-          ? Math.max(0, Math.min(1, parsed.relevanceScore))
-          : 0.5,
-        shouldStore: parsed.shouldStore === true,
+        relevanceScore,
+        shouldStore,
         reasoning: parsed.reasoning || '无评估说明',
-        confidence: typeof parsed.confidence === 'number'
-          ? Math.max(0, Math.min(1, parsed.confidence))
-          : 0.5,
+        confidence,
         suggestedCategory: this.isValidAssistantType(parsed.suggestedCategory)
           ? parsed.suggestedCategory
           : assistant.type,
@@ -411,6 +423,62 @@ ${distribution.suggestedTags.join(', ')}
    */
   private isValidAssistantType(type: any): type is AssistantType {
     return Object.values(AssistantType).includes(type)
+  }
+
+  /**
+   * Stage 5: 智能存储决策
+   *
+   * 综合考虑多个因素决定是否存储知识：
+   * 1. 相关性评分 (relevanceScore)
+   * 2. 置信度 (confidence)
+   * 3. AI 的建议 (shouldStore)
+   *
+   * 决策规则：
+   * - 高相关性 (>0.7) + 高置信度 (>0.7) → 一定存储
+   * - 中相关性 (0.4-0.7) → 参考 AI 建议
+   * - 低相关性 (<0.4) → 一定不存储
+   * - 低置信度 (<0.5) → 更保守，需要更高的相关性
+   */
+  private shouldStoreKnowledge(
+    relevanceScore: number,
+    confidence: number,
+    aiSuggestion: boolean
+  ): boolean {
+    // 规则 1: 高相关性且高置信度 → 强制存储
+    if (relevanceScore >= 0.7 && confidence >= 0.7) {
+      logger.info(`[Storage Decision] 高相关性 (${relevanceScore.toFixed(2)}) + 高置信度 (${confidence.toFixed(2)}) → 存储`)
+      return true
+    }
+
+    // 规则 2: 低相关性 → 强制不存储
+    if (relevanceScore < 0.4) {
+      logger.info(`[Storage Decision] 低相关性 (${relevanceScore.toFixed(2)}) → 不存储`)
+      return false
+    }
+
+    // 规则 3: 中等相关性 → 综合判断
+    if (relevanceScore >= 0.4 && relevanceScore < 0.7) {
+      // 如果置信度也是中等或更高，参考 AI 建议
+      if (confidence >= 0.5) {
+        logger.info(`[Storage Decision] 中相关性 (${relevanceScore.toFixed(2)}) + 中置信度 (${confidence.toFixed(2)}) → 参考 AI: ${aiSuggestion}`)
+        return aiSuggestion
+      }
+
+      // 如果置信度低，需要更高的相关性才存储
+      const threshold = 0.6 // 提高阈值
+      const shouldStore = relevanceScore >= threshold
+      logger.info(`[Storage Decision] 中相关性 (${relevanceScore.toFixed(2)}) + 低置信度 (${confidence.toFixed(2)}) → ${shouldStore ? '存储' : '不存储'}`)
+      return shouldStore
+    }
+
+    // 规则 4: 相关性在阈值边界 → 综合评分
+    // 计算综合评分：相关性权重 0.7，置信度权重 0.3
+    const compositeScore = relevanceScore * 0.7 + confidence * 0.3
+    const shouldStore = compositeScore >= 0.6
+
+    logger.info(`[Storage Decision] 综合评分 (${compositeScore.toFixed(2)}) = 相关性×0.7 + 置信度×0.3 → ${shouldStore ? '存储' : '不存储'}`)
+
+    return shouldStore
   }
 }
 
