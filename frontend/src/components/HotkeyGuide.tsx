@@ -71,9 +71,9 @@ export const HotkeyGuide: React.FC<HotkeyGuideProps> = ({ isVisible, onClose }) 
 
         .guide-container {
           width: 90vw;
-          height: 80vh;
-          max-width: 1200px;
-          max-height: 900px;
+          height: 92vh;
+          max-width: 1400px;
+          max-height: none;
           background: rgba(255, 255, 255, 0.95);
           backdrop-filter: blur(10px);
           border-radius: 20px;
@@ -187,6 +187,26 @@ export const HotkeyGuide: React.FC<HotkeyGuideProps> = ({ isVisible, onClose }) 
           transform: translateX(100%);
           transition: all 0.5s ease;
           overflow-y: auto;
+          scrollbar-width: thin;
+          scrollbar-color: #4CAF50 rgba(76, 175, 80, 0.1);
+        }
+
+        .page::-webkit-scrollbar {
+          width: 10px;
+        }
+
+        .page::-webkit-scrollbar-track {
+          background: rgba(76, 175, 80, 0.1);
+          border-radius: 10px;
+        }
+
+        .page::-webkit-scrollbar-thumb {
+          background: #4CAF50;
+          border-radius: 10px;
+        }
+
+        .page::-webkit-scrollbar-thumb:hover {
+          background: #388E3C;
         }
 
         .page.active {
@@ -210,7 +230,7 @@ export const HotkeyGuide: React.FC<HotkeyGuideProps> = ({ isVisible, onClose }) 
           display: grid;
           grid-template-columns: 1fr 1fr;
           gap: 24px;
-          height: calc(100% - 100px);
+          min-height: calc(100% - 100px);
         }
 
         .function-card {
@@ -291,7 +311,7 @@ export const HotkeyGuide: React.FC<HotkeyGuideProps> = ({ isVisible, onClose }) 
           display: grid;
           grid-template-columns: 1fr 1fr;
           gap: 32px;
-          height: calc(100% - 100px);
+          min-height: calc(100% - 100px);
         }
 
         .movement-section {
@@ -405,8 +425,7 @@ export const HotkeyGuide: React.FC<HotkeyGuideProps> = ({ isVisible, onClose }) 
           display: grid;
           grid-template-columns: 1fr;
           gap: 24px;
-          height: calc(100% - 100px);
-          overflow-y: auto;
+          min-height: calc(100% - 100px);
         }
 
         .tip-category {

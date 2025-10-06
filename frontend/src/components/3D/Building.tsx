@@ -52,37 +52,45 @@ export default function Building({
   // 載入OBJ模型
   useEffect(() => {
     const objLoader = new OBJLoader()
+    let mounted = true
 
     // 如果有MTL材質文件，先載入材質
     if (mtlUrl) {
       const mtlLoader = new MTLLoader()
       mtlLoader.load(mtlUrl, (materials) => {
+        if (!mounted) return
         materials.preload()
         objLoader.setMaterials(materials)
 
         objLoader.load(objUrl, (object) => {
+          if (!mounted) return
           setLoadedObject(object)
-          console.log(`🏠 明亮建築 ${id} 已載入 (含材質)`)
+          // 只在開發環境輸出
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`🏠 建築 ${id} 已載入`)
+          }
         }, undefined, (error) => {
           console.error(`❌ 載入建築 ${id} 失敗:`, error)
         })
       }, undefined, (error) => {
-        console.warn(`⚠️ 載入材質失敗，使用預設材質:`, error)
+        console.warn(`⚠️ 載入材質失敗:`, error)
         // 材質載入失敗時仍然嘗試載入OBJ
         objLoader.load(objUrl, (object) => {
+          if (!mounted) return
           setLoadedObject(object)
-          console.log(`🏠 明亮建築 ${id} 已載入 (預設材質)`)
         })
       })
     } else {
       // 直接載入OBJ
       objLoader.load(objUrl, (object) => {
+        if (!mounted) return
         setLoadedObject(object)
-        console.log(`🏠 明亮建築 ${id} 已載入`)
       }, undefined, (error) => {
         console.error(`❌ 載入建築 ${id} 失敗:`, error)
       })
     }
+
+    return () => { mounted = false }
   }, [objUrl, mtlUrl, id])
 
   // 處理載入的模型 - 修復材質問題
@@ -120,8 +128,6 @@ export default function Building({
               } else {
                 child.material = fallbackMat
               }
-
-              console.log(`🎨 為 ${child.name} 應用後備材質: ${fallbackMat.color.getHexString()}`)
             } else {
               // 3) 調整現有材質避免黑面
               if (material.isMeshStandardMaterial) {
@@ -174,8 +180,6 @@ export default function Building({
     g.rotation.set(0, rotationY, 0)
     g.scale.setScalar(scale)
 
-    console.log(`🏠 明亮建築 ${id} 已放置: 位置 (${x}, ${y.toFixed(2)}, ${z}), 縮放 ${scale}x`)
-
   }, [processedScene, position, rotationY, scale, baseOffset, id])
 
   // 碰撞檢測
@@ -204,8 +208,6 @@ export default function Building({
         buildingScale: scale
       }
     })
-
-    console.log(`🚫 明亮建築 ${id} 碰撞檢測已設置: 半徑 ${(radius * 1.2).toFixed(1)}`)
 
     return () => {
       collisionSystem.removeCollisionObject(`bright_building_${id}`)

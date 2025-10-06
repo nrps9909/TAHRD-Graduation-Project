@@ -1,6 +1,7 @@
 import { useRef, useEffect } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
+import { useGameStore } from '@/stores/gameStore'
 // import { isFiniteVec3 } from '@/game/utils/mathSafe' // Temporarily disabled
 
 interface CameraControllerProps {
@@ -23,6 +24,7 @@ export const CameraController = ({
   onRotationChange
 }: CameraControllerProps) => {
   const { camera, gl } = useThree()
+  const { isAnyUIOpen } = useGameStore()
   const targetRotation = useRef(0)
   const currentRotation = useRef(0)
   const pitch = useRef(-0.2) // 預設稍微向下看的角度
@@ -36,22 +38,53 @@ export const CameraController = ({
   const lastPointerLockExitTime = useRef(0) // 記錄上次退出時間
   const pendingPointerLockRequest = useRef(false) // 防止重複請求
   const cameraDistance = useRef(Math.sqrt(offset.x * offset.x + offset.y * offset.y + offset.z * offset.z)) // 相機距離
+  const originalExitPointerLockRef = useRef<typeof document.exitPointerLock | null>(null)
+
+  // 監聽UI狀態變化，自動釋放/重新獲取 pointer lock
+  useEffect(() => {
+    const uiOpen = isAnyUIOpen()
+
+    if (uiOpen && document.pointerLockElement) {
+      // UI打開時，釋放pointer lock
+      console.log('🔓 UI打開，釋放 Pointer lock')
+      if (originalExitPointerLockRef.current) {
+        originalExitPointerLockRef.current.call(document)
+      }
+    }
+  }, [isAnyUIOpen])
 
   useEffect(() => {
     const canvas = gl.domElement
     let hasInteracted = false
-    
+
     // 覆寫 document.exitPointerLock 來防止退出
     const originalExitPointerLock = document.exitPointerLock
+    originalExitPointerLockRef.current = originalExitPointerLock
+
     if (enablePointerLock) {
       document.exitPointerLock = () => {
-        console.log('exitPointerLock 被阻止')
-        // 不執行原始的 exitPointerLock
+        // 檢查是否有UI打開
+        const uiOpen = useGameStore.getState().isAnyUIOpen()
+        if (uiOpen) {
+          // 如果UI打開，允許退出pointer lock
+          console.log('🔓 UI打開，允許退出 Pointer lock')
+          originalExitPointerLock.call(document)
+        } else {
+          console.log('exitPointerLock 被阻止（無UI）')
+          // 不執行原始的 exitPointerLock
+        }
       }
     }
     
     // 安全進入 pointer lock 的函數
     const safeEnterPointerLock = async (source = 'auto') => {
+      // 檢查是否有UI打開 - 如果有則不鎖定
+      const uiOpen = useGameStore.getState().isAnyUIOpen()
+      if (uiOpen) {
+        console.log('UI打開中，跳過 Pointer lock')
+        return false
+      }
+
       if (!enablePointerLock || document.pointerLockElement || pendingPointerLockRequest.current) {
         return false
       }
@@ -64,13 +97,13 @@ export const CameraController = ({
       }
 
       pendingPointerLockRequest.current = true
-      
+
       try {
         await canvas.requestPointerLock()
         console.log(`${source} 成功進入 Pointer lock`)
         hasInteracted = true
         return true
-      } catch (err) {
+      } catch (err: any) {
         // 只在非用戶手勢錯誤時才記錄
         if (!err.message?.includes('user gesture')) {
           console.log(`${source} 進入 Pointer lock 失敗:`, err.message)
@@ -130,24 +163,39 @@ export const CameraController = ({
     const handlePointerLockChange = () => {
       const wasLocked = isPointerLocked.current
       isPointerLocked.current = !!document.pointerLockElement
-      
+
       if (isPointerLocked.current) {
         document.body.classList.add('game-active')
+        document.body.classList.remove('ui-active')
         canvas.style.cursor = 'none'
         document.body.style.cursor = 'none'
         console.log('✓ 進入 Pointer lock 模式')
       } else {
         document.body.classList.remove('game-active')
-        canvas.style.cursor = 'none'  // 保持隱藏游標
-        document.body.style.cursor = 'none'
-        
+
+        // 檢查UI狀態決定是否顯示游標
+        const uiOpen = useGameStore.getState().isAnyUIOpen()
+        if (uiOpen) {
+          // UI打開：顯示可愛游標
+          document.body.classList.add('ui-active')
+          canvas.style.cursor = ''
+          document.body.style.cursor = ''
+        } else {
+          // 無UI：暫時顯示游標，等待重新鎖定
+          document.body.classList.remove('ui-active')
+          canvas.style.cursor = 'grab'
+          document.body.style.cursor = ''
+        }
+
         // 記錄退出時間，用於冷卻期計算
         if (wasLocked) {
           lastPointerLockExitTime.current = Date.now()
-          console.log('✗ 退出 Pointer lock 模式，嘗試重新進入')
-          // 自動重新進入 pointer lock
+          console.log('✗ 退出 Pointer lock 模式')
+
+          // 只在沒有UI打開時才自動重新進入
           setTimeout(() => {
-            if (!document.pointerLockElement && enablePointerLock) {
+            const uiOpenNow = useGameStore.getState().isAnyUIOpen()
+            if (!document.pointerLockElement && enablePointerLock && !uiOpenNow) {
               safeEnterPointerLock('自動重新鎖定')
             }
           }, 200)
@@ -158,7 +206,13 @@ export const CameraController = ({
     // PC遊戲風格：滑鼠控制相機
     const handleMouseMove = (event: MouseEvent) => {
       if (!enableRotation) return
-      
+
+      // 檢查是否有UI打開 - 如果有則停止視角控制
+      const uiOpen = useGameStore.getState().isAnyUIOpen()
+      if (uiOpen) {
+        return
+      }
+
       if (isPointerLocked.current) {
         // Pointer Lock 模式 - 自由視角
         const sensitivity = 0.002
@@ -265,15 +319,16 @@ export const CameraController = ({
       document.removeEventListener('click', handleAnyClick, true)
       
       // 恢復原始的 exitPointerLock 函數
-      if (enablePointerLock) {
-        document.exitPointerLock = originalExitPointerLock
+      if (enablePointerLock && originalExitPointerLockRef.current) {
+        document.exitPointerLock = originalExitPointerLockRef.current
       }
-      
+
       // 清理時退出 pointer lock 並恢復游標
-      if (document.pointerLockElement) {
-        originalExitPointerLock.call(document)
+      if (document.pointerLockElement && originalExitPointerLockRef.current) {
+        originalExitPointerLockRef.current.call(document)
       }
       document.body.classList.remove('game-active')
+      document.body.classList.remove('ui-active')
       canvas.style.cursor = ''
       document.body.style.cursor = ''
     }

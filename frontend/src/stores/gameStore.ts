@@ -141,7 +141,15 @@ interface GameState {
   showMap: boolean
   showSettings: boolean
   showDiary: boolean
-  
+  showQuickCommandMenu: boolean
+  showQuickGameModeMenu: boolean
+  showQuickSocialMenu: boolean
+  showQuickWorldMenu: boolean
+  showHotkeyGuide: boolean
+
+  // Computed UI state
+  isAnyUIOpen: () => boolean
+
   // Actions
   initializeGame: () => void
   setSelectedNpc: (npcId: string | null) => void
@@ -157,6 +165,11 @@ interface GameState {
   setShowMap: (show: boolean) => void
   setShowSettings: (show: boolean) => void
   setShowDiary: (show: boolean) => void
+  setShowQuickCommandMenu: (show: boolean) => void
+  setShowQuickGameModeMenu: (show: boolean) => void
+  setShowQuickSocialMenu: (show: boolean) => void
+  setShowQuickWorldMenu: (show: boolean) => void
+  setShowHotkeyGuide: (show: boolean) => void
   setPlayerPosition: (position: [number, number, number]) => void
   setPlayerRotation: (rotation: number) => void
   setJoystickInput: (x: number, y: number) => void
@@ -188,6 +201,27 @@ export const useGameStore = create<GameState>()(
       showMap: false,
       showSettings: false,
       showDiary: false,
+      showQuickCommandMenu: false,
+      showQuickGameModeMenu: false,
+      showQuickSocialMenu: false,
+      showQuickWorldMenu: false,
+      showHotkeyGuide: false,
+
+      // Computed state - 檢查是否有任何UI打開
+      isAnyUIOpen: () => {
+        const state = get()
+        return state.showDialogue ||
+               state.isInConversation ||
+               state.showInventory ||
+               state.showMap ||
+               state.showSettings ||
+               state.showDiary ||
+               state.showQuickCommandMenu ||
+               state.showQuickGameModeMenu ||
+               state.showQuickSocialMenu ||
+               state.showQuickWorldMenu ||
+               state.showHotkeyGuide
+      },
 
       // Actions
       initializeGame: async () => {
@@ -200,7 +234,7 @@ export const useGameStore = create<GameState>()(
             name: '陸培修',
             personality: '夢幻的藝術家',
             currentMood: 'cheerful',
-            position: [0, 5, 0] as [number, number, number], // 臨時位置
+            position: [0, 5, 0] as [number, number, number],
             relationshipLevel: 1,
           },
           {
@@ -208,7 +242,7 @@ export const useGameStore = create<GameState>()(
             name: '劉宇岑',
             personality: '充滿活力的朋友',
             currentMood: 'excited',
-            position: [0, 5, 0] as [number, number, number], // 臨時位置
+            position: [0, 5, 0] as [number, number, number],
             relationshipLevel: 1,
           },
           {
@@ -216,7 +250,40 @@ export const useGameStore = create<GameState>()(
             name: '陳庭安',
             personality: '溫柔的靈魂',
             currentMood: 'dreamy',
-            position: [0, 5, 0] as [number, number, number], // 臨時位置
+            position: [0, 5, 0] as [number, number, number],
+            relationshipLevel: 1,
+          },
+          // Multi-Agent System NPCs
+          {
+            id: 'npc-4',
+            name: '小知',
+            personality: '聰明溫暖的管家',
+            currentMood: 'helpful',
+            position: [0, 5, 0] as [number, number, number],
+            relationshipLevel: 1,
+          },
+          {
+            id: 'npc-5',
+            name: '八卦通',
+            personality: '八卦但有趣的閨蜜',
+            currentMood: 'curious',
+            position: [0, 5, 0] as [number, number, number],
+            relationshipLevel: 1,
+          },
+          {
+            id: 'npc-6',
+            name: '生活夥伴',
+            personality: '實在溫暖的夥伴',
+            currentMood: 'caring',
+            position: [0, 5, 0] as [number, number, number],
+            relationshipLevel: 1,
+          },
+          {
+            id: 'npc-7',
+            name: '學習通',
+            personality: '耐心有條理的家教',
+            currentMood: 'focused',
+            position: [0, 5, 0] as [number, number, number],
             relationshipLevel: 1,
           },
         ]
@@ -420,6 +487,11 @@ export const useGameStore = create<GameState>()(
       setShowMap: (show) => set({ showMap: show }),
       setShowSettings: (show) => set({ showSettings: show }),
       setShowDiary: (show) => set({ showDiary: show }),
+      setShowQuickCommandMenu: (show) => set({ showQuickCommandMenu: show }),
+      setShowQuickGameModeMenu: (show) => set({ showQuickGameModeMenu: show }),
+      setShowQuickSocialMenu: (show) => set({ showQuickSocialMenu: show }),
+      setShowQuickWorldMenu: (show) => set({ showQuickWorldMenu: show }),
+      setShowHotkeyGuide: (show) => set({ showHotkeyGuide: show }),
       setPlayerPosition: (position) => set({ playerPosition: position }),
       setPlayerRotation: (rotation) => set({ playerRotation: rotation }),
       setJoystickInput: (x, y) => set({ joystickInput: { x, y } }),

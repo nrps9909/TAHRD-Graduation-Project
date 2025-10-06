@@ -120,42 +120,42 @@ export const StartScreen: React.FC<StartScreenProps> = ({ onStartGame }) => {
         }
 
         .island-base {
-          width: 80px;
-          height: 40px;
+          width: clamp(50px, 8vw, 80px);
+          height: clamp(25px, 4vw, 40px);
           background: linear-gradient(145deg, #8BC34A, #4CAF50);
-          border-radius: 50px 50px 20px 20px;
+          border-radius: clamp(25px, 5vw, 50px) clamp(25px, 5vw, 50px) clamp(10px, 2vw, 20px) clamp(10px, 2vw, 20px);
           position: relative;
         }
 
         .island-base::before {
           content: '';
           position: absolute;
-          bottom: -20px;
-          left: 10px;
-          width: 60px;
-          height: 30px;
+          bottom: clamp(-12px, -2vw, -20px);
+          left: clamp(6px, 1vw, 10px);
+          width: clamp(40px, 6vw, 60px);
+          height: clamp(20px, 3vw, 30px);
           background: linear-gradient(145deg, #795548, #5D4037);
-          border-radius: 0 0 30px 30px;
+          border-radius: 0 0 clamp(18px, 3vw, 30px) clamp(18px, 3vw, 30px);
         }
 
         .mini-tree {
           position: absolute;
-          top: -15px;
+          top: clamp(-10px, -1.5vw, -15px);
           left: 50%;
           transform: translateX(-50%);
-          width: 8px;
-          height: 20px;
+          width: clamp(5px, 0.8vw, 8px);
+          height: clamp(12px, 2vw, 20px);
           background: #5D4037;
-          border-radius: 4px;
+          border-radius: clamp(2px, 0.4vw, 4px);
         }
 
         .mini-tree::before {
           content: '';
           position: absolute;
-          top: -10px;
-          left: -6px;
-          width: 20px;
-          height: 20px;
+          top: clamp(-6px, -1vw, -10px);
+          left: clamp(-4px, -0.6vw, -6px);
+          width: clamp(12px, 2vw, 20px);
+          height: clamp(12px, 2vw, 20px);
           background: #4CAF50;
           border-radius: 50%;
         }
@@ -206,24 +206,24 @@ export const StartScreen: React.FC<StartScreenProps> = ({ onStartGame }) => {
         .bubble {
           position: absolute;
           background: rgba(255, 255, 255, 0.8);
-          border-radius: 20px;
-          padding: 8px 12px;
-          font-size: 12px;
+          border-radius: clamp(10px, 2vw, 20px);
+          padding: clamp(6px, 0.8vw, 8px) clamp(8px, 1.2vw, 12px);
+          font-size: clamp(10px, 1.2vw, 12px);
           color: #666;
           animation: bubble-float 6s ease-in-out infinite;
-          box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+          box-shadow: 0 clamp(2px, 0.4vw, 4px) clamp(6px, 1vw, 10px) rgba(0,0,0,0.1);
         }
 
         .bubble::after {
           content: '';
           position: absolute;
-          bottom: -8px;
-          left: 20px;
+          bottom: clamp(-6px, -0.8vw, -8px);
+          left: clamp(12px, 2vw, 20px);
           width: 0;
           height: 0;
-          border-left: 8px solid transparent;
-          border-right: 8px solid transparent;
-          border-top: 8px solid rgba(255, 255, 255, 0.8);
+          border-left: clamp(6px, 0.8vw, 8px) solid transparent;
+          border-right: clamp(6px, 0.8vw, 8px) solid transparent;
+          border-top: clamp(6px, 0.8vw, 8px) solid rgba(255, 255, 255, 0.8);
         }
 
         .bubble:nth-child(1) {
@@ -269,18 +269,18 @@ export const StartScreen: React.FC<StartScreenProps> = ({ onStartGame }) => {
 
         /* Logo 區域 */
         .logo-section {
-          margin-bottom: 40px;
+          margin-bottom: clamp(15px, 2vh, 25px);
           text-align: center;
           animation: gentle-bounce 3s ease-in-out infinite;
           background: radial-gradient(circle at center, rgba(76, 175, 80, 0.1) 0%, transparent 70%);
           border-radius: 50%;
-          padding: 20px;
+          padding: clamp(8px, 1.5vw, 15px);
         }
 
         .game-logo {
-          width: 400px;
-          height: 400px;
-          margin: 0 auto 40px;
+          width: clamp(150px, 25vw, 280px);
+          height: clamp(150px, 25vw, 280px);
+          margin: 0 auto clamp(15px, 2vh, 25px);
           position: relative;
           display: flex;
           align-items: center;
@@ -288,19 +288,19 @@ export const StartScreen: React.FC<StartScreenProps> = ({ onStartGame }) => {
         }
 
         .logo-image {
-          width: 360px;
-          height: 360px;
+          width: 90%;
+          height: 90%;
           background-image: url('./photo/logo.png');
           background-size: cover;
           background-repeat: no-repeat;
           background-position: center;
-          border-radius: 30px;
+          border-radius: clamp(15px, 2vw, 30px);
           filter: drop-shadow(0 15px 35px rgba(0,0,0,0.25));
           animation: logo-glow 4s ease-in-out infinite;
-          border: 6px solid rgba(76, 175, 80, 0.8);
-          box-shadow: 
-            0 0 0 3px rgba(255, 255, 255, 0.3),
-            0 20px 40px rgba(76, 175, 80, 0.2),
+          border: clamp(3px, 0.5vw, 6px) solid rgba(76, 175, 80, 0.8);
+          box-shadow:
+            0 0 0 clamp(2px, 0.3vw, 3px) rgba(255, 255, 255, 0.3),
+            0 clamp(10px, 2vh, 20px) clamp(20px, 3vh, 40px) rgba(76, 175, 80, 0.2),
             inset 0 2px 0 rgba(255, 255, 255, 0.2);
           transition: all 0.3s ease;
         }
@@ -329,14 +329,15 @@ export const StartScreen: React.FC<StartScreenProps> = ({ onStartGame }) => {
         }
 
         .game-title {
-          font-size: 4.5rem;
+          font-size: clamp(1.8rem, 5vw, 3.2rem);
           font-weight: bold;
           background: linear-gradient(135deg, #4A7C59 0%, #2E7D32 50%, #1B5E20 100%);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
           text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
-          letter-spacing: 3px;
+          letter-spacing: clamp(1px, 0.4vw, 2px);
+          margin: 0;
         }
 
         @keyframes gentle-bounce {
@@ -348,23 +349,23 @@ export const StartScreen: React.FC<StartScreenProps> = ({ onStartGame }) => {
         .menu-buttons {
           display: flex;
           flex-direction: column;
-          gap: 25px;
+          gap: clamp(12px, 2vh, 20px);
           align-items: center;
         }
 
         .menu-btn {
           background: linear-gradient(145deg, #81C784 0%, #66BB6A 50%, #4CAF50 100%);
-          border: 3px solid #2E7D32;
-          border-radius: 60px;
-          padding: 18px 45px;
-          font-size: 1.6rem;
+          border: clamp(2px, 0.3vw, 3px) solid #2E7D32;
+          border-radius: clamp(25px, 4vw, 50px);
+          padding: clamp(10px, 1.5vh, 15px) clamp(25px, 3.5vw, 40px);
+          font-size: clamp(1.1rem, 1.8vw, 1.4rem);
           font-weight: bold;
           color: white;
           cursor: pointer;
           transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          box-shadow: 0 8px 20px rgba(76, 175, 80, 0.3), inset 0 2px 0 rgba(255,255,255,0.2);
+          box-shadow: 0 clamp(3px, 0.8vh, 6px) clamp(8px, 1.5vh, 15px) rgba(76, 175, 80, 0.3), inset 0 2px 0 rgba(255,255,255,0.2);
           font-family: inherit;
-          min-width: 300px;
+          min-width: clamp(180px, 25vw, 260px);
           position: relative;
           overflow: hidden;
           text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
@@ -386,19 +387,19 @@ export const StartScreen: React.FC<StartScreenProps> = ({ onStartGame }) => {
         }
 
         .menu-btn:hover {
-          transform: translateY(-3px) scale(1.03);
-          box-shadow: 0 12px 30px rgba(76, 175, 80, 0.4), inset 0 2px 0 rgba(255,255,255,0.3);
+          transform: translateY(clamp(-2px, -0.4vh, -3px)) scale(1.03);
+          box-shadow: 0 clamp(6px, 1.2vh, 10px) clamp(15px, 2.5vh, 25px) rgba(76, 175, 80, 0.4), inset 0 2px 0 rgba(255,255,255,0.3);
           border-color: #1B5E20;
         }
 
         .menu-btn:active {
-          transform: translateY(-1px) scale(1.01);
-          box-shadow: 0 6px 15px rgba(76, 175, 80, 0.3);
+          transform: translateY(clamp(-1px, -0.2vh, -1px)) scale(1.01);
+          box-shadow: 0 clamp(3px, 0.6vh, 5px) clamp(8px, 1.2vh, 12px) rgba(76, 175, 80, 0.3);
         }
 
         .btn-icon {
-          margin-right: 12px;
-          font-size: 1.2em;
+          margin-right: clamp(6px, 0.8vw, 10px);
+          font-size: clamp(1em, 1.3vw, 1.15em);
           vertical-align: middle;
         }
 
@@ -418,14 +419,14 @@ export const StartScreen: React.FC<StartScreenProps> = ({ onStartGame }) => {
         .modal-content {
           position: relative;
           background: linear-gradient(145deg, #F1F8E9 0%, #E8F5E8 100%);
-          margin: 3% auto;
-          padding: 35px;
-          width: 85%;
-          max-width: 900px;
-          max-height: 90vh;
-          border-radius: 30px;
-          box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
-          border: 4px solid #4CAF50;
+          margin: 2vh auto;
+          padding: clamp(18px, 3vw, 30px);
+          width: 90%;
+          max-width: 800px;
+          max-height: 85vh;
+          border-radius: clamp(12px, 2.5vw, 25px);
+          box-shadow: 0 clamp(12px, 2vh, 20px) clamp(25px, 4vh, 40px) rgba(0, 0, 0, 0.3);
+          border: clamp(2px, 0.3vw, 3px) solid #4CAF50;
           animation: modalSlideIn 0.4s ease;
           overflow-y: auto;
           scrollbar-width: thin;
@@ -457,15 +458,15 @@ export const StartScreen: React.FC<StartScreenProps> = ({ onStartGame }) => {
 
         .close {
           position: absolute;
-          top: 20px;
-          right: 25px;
+          top: clamp(15px, 2vh, 20px);
+          right: clamp(20px, 2.5vw, 25px);
           color: #2E7D32;
-          font-size: 32px;
+          font-size: clamp(24px, 3vw, 32px);
           font-weight: bold;
           cursor: pointer;
           transition: all 0.3s ease;
-          width: 45px;
-          height: 45px;
+          width: clamp(35px, 4.5vw, 45px);
+          height: clamp(35px, 4.5vw, 45px);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -479,29 +480,29 @@ export const StartScreen: React.FC<StartScreenProps> = ({ onStartGame }) => {
 
         .modal h2 {
           color: #2E7D32;
-          margin-bottom: 25px;
-          font-size: 2.2rem;
+          margin-bottom: clamp(12px, 2vh, 20px);
+          font-size: clamp(1.4rem, 2.2vw, 2rem);
           text-align: center;
           text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
         }
 
         .modal p {
           color: #388E3C;
-          line-height: 1.7;
-          margin-bottom: 18px;
-          font-size: 1.1rem;
+          line-height: 1.6;
+          margin-bottom: clamp(10px, 1.5vh, 15px);
+          font-size: clamp(0.85rem, 1.1vw, 1rem);
         }
 
         .modal ul {
           color: #388E3C;
-          margin-left: 25px;
-          margin-bottom: 20px;
+          margin-left: clamp(12px, 2vw, 20px);
+          margin-bottom: clamp(12px, 1.8vh, 18px);
         }
 
         .modal li {
-          margin-bottom: 10px;
-          line-height: 1.6;
-          font-size: 1.05rem;
+          margin-bottom: clamp(6px, 0.8vh, 8px);
+          line-height: 1.5;
+          font-size: clamp(0.8rem, 1vw, 0.95rem);
         }
 
         .modal strong {

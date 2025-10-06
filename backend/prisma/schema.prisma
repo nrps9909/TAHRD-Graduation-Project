@@ -33,6 +33,10 @@ model User {
   receivedLetters  Letter[] @relation("ReceivedLetters")
   worldState       WorldState?
 
+  // Multi-Agent System
+  memoryEntries    MemoryEntry[]
+  chatMessages     ChatMessage[]
+
   @@map("users")
 }
 
@@ -72,6 +76,15 @@ model Conversation {
   timestamp         DateTime  @default(now())
   contextEmbedding  Unsupported("vector(1536)")? @map("context_embedding")
 
+  // Long-term Memory AI Filtering Fields
+  isLongTermMemory  Boolean   @default(false) @map("is_long_term_memory")
+  aiImportanceScore Float?    @map("ai_importance_score")
+  aiEmotionalImpact Float?    @map("ai_emotional_impact")
+  aiSummary         String?   @map("ai_summary")
+  aiKeywords        Json?     @map("ai_keywords")
+  memoryType        String?   @default("short_term") @map("memory_type")
+  archivedAt        DateTime? @map("archived_at")
+
   // Relations
   user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   npc               NPC       @relation(fields: [npcId], references: [id], onDelete: Cascade)
@@ -79,6 +92,7 @@ model Conversation {
 
   @@index([userId, npcId])
   @@index([timestamp])
+  @@index([isLongTermMemory])
   @@map("conversations")
 }
 
@@ -245,4 +259,82 @@ model WorldState {
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("world_state")
+}
+
+// ============ Multi-Agent System Models ============
+
+enum Category {
+  GOSSIP         // 八卦
+  FUTURE_IDEAS   // 未來想法
+  DAILY_LIFE     // 私生活
+  STUDY          // 學業
+  FRIENDS        // 朋友
+  RELATIONSHIPS  // 感情
+  OTHER          // 其他
+
+  @@map("category")
+}
+
+model MemoryEntry {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+
+  // 內容
+  rawContent  String   @db.Text @map("raw_content")
+  summary     String   @db.Text
+  keyPoints   String[] @map("key_points")
+  tags        String[]
+
+  // 分類
+  category    Category @default(OTHER)
+
+  // AI處理
+  processedBy String   @map("processed_by") // agent ID
+  sentiment   String?
+  importance  Int      @default(5)
+
+  // 時間
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chatHistory ChatMessage[]
+
+  @@index([userId, category])
+  @@index([userId, createdAt])
+  @@map("memory_entries")
+}
+
+model ChatMessage {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  agentId   String   @map("agent_id")
+
+  message   String   @db.Text
+  response  String   @db.Text
+
+  memoryId  String?  @map("memory_id")
+  memory    MemoryEntry? @relation(fields: [memoryId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, agentId])
+  @@index([userId, createdAt])
+  @@map("chat_messages")
+}
+
+model AIAgent {
+  id          String   @id
+  name        String
+  category    Category?
+  personality String   @db.Text
+  emoji       String
+  color       String
+  systemPrompt String  @db.Text @map("system_prompt")
+
+  messageCount Int    @default(0) @map("message_count")
+  memoryCount  Int    @default(0) @map("memory_count")
+
+  @@map("ai_agents")
 }

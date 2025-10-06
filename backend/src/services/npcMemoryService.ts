@@ -1,7 +1,12 @@
 import { PrismaClient } from '@prisma/client'
 import { logger } from '../utils/logger'
 import { geminiService } from './geminiServiceMCP'
+import { exec } from 'child_process'
+import { promisify } from 'util'
+import * as path from 'path'
+import * as fs from 'fs/promises'
 
+const execAsync = promisify(exec)
 const prisma = new PrismaClient()
 
 interface Memory {
@@ -346,6 +351,249 @@ class NPCMemoryService {
       return result.count
     } catch (error) {
       logger.error('Failed to cleanup expired memories:', error)
+      throw error
+    }
+  }
+
+  /**
+   * AI 篩選對話記憶 - 整合 test_memory 的功能
+   * 使用 Gemini AI 篩選重要對話進入長期記憶
+   */
+  async filterConversationsWithAI(
+    npcId: string,
+    userId: string,
+    daysToFilter: number = 7
+  ): Promise<number> {
+    try {
+      // 1. 獲取短期記憶（過去 N 天的對話，未標記為長期記憶）
+      const cutoffDate = new Date()
+      cutoffDate.setDate(cutoffDate.getDate() - daysToFilter)
+
+      const shortTermConversations = await prisma.conversation.findMany({
+        where: {
+          npcId,
+          userId,
+          timestamp: { gte: cutoffDate },
+          isLongTermMemory: false
+        },
+        orderBy: { timestamp: 'asc' }
+      })
+
+      if (shortTermConversations.length === 0) {
+        logger.info(`No short-term conversations to filter for NPC ${npcId}`)
+        return 0
+      }
+
+      logger.info(`Found ${shortTermConversations.length} short-term conversations for NPC ${npcId}`)
+
+      // 2. 調用 Python AI 篩選腳本
+      const npcName = await this.getNPCInternalName(npcId)
+      const filteredConversations = await this.callPythonMemoryFilter(npcName, shortTermConversations)
+
+      if (!filteredConversations || filteredConversations.length === 0) {
+        logger.info(`No important conversations filtered for NPC ${npcId}`)
+        return 0
+      }
+
+      // 3. 更新篩選出的對話為長期記憶
+      let updatedCount = 0
+      for (const conv of filteredConversations) {
+        try {
+          await prisma.conversation.update({
+            where: { id: conv.id },
+            data: {
+              isLongTermMemory: true,
+              aiImportanceScore: conv.ai_importance_score,
+              aiEmotionalImpact: conv.ai_emotional_impact,
+              aiSummary: conv.ai_summary,
+              aiKeywords: conv.ai_keywords || [],
+              memoryType: 'long_term',
+              archivedAt: new Date()
+            }
+          })
+          updatedCount++
+        } catch (error) {
+          logger.error(`Failed to update conversation ${conv.id}:`, error)
+        }
+      }
+
+      logger.info(`✅ Filtered ${updatedCount} conversations into long-term memory for NPC ${npcId}`)
+      return updatedCount
+
+    } catch (error) {
+      logger.error('Failed to filter conversations with AI:', error)
+      throw error
+    }
+  }
+
+  /**
+   * 調用 Python memory_filter.py 腳本
+   */
+  private async callPythonMemoryFilter(npcName: string, conversations: any[]): Promise<any[]> {
+    try {
+      // 準備臨時 JSON 文件
+      const tempDir = path.join(__dirname, '../../tmp')
+      await fs.mkdir(tempDir, { recursive: true })
+
+      const tempFile = path.join(tempDir, `conversations_${npcName}_${Date.now()}.json`)
+
+      // 轉換對話格式
+      const conversationsData = conversations.map(conv => ({
+        id: conv.id,
+        timestamp: conv.timestamp,
+        content: conv.content,
+        speakerType: conv.speakerType,
+        emotionTag: conv.emotionTag,
+        createdAt: conv.timestamp
+      }))
+
+      await fs.writeFile(tempFile, JSON.stringify(conversationsData, null, 2))
+
+      // 調用 Python 腳本
+      const pythonScript = path.join(__dirname, '../../memory_filter.py')
+      const command = `python3 ${pythonScript} ${npcName} ${tempFile}`
+
+      logger.info(`Calling Python memory filter: ${command}`)
+
+      const { stdout, stderr } = await execAsync(command, {
+        timeout: 60000, // 60 seconds timeout
+        env: { ...process.env }
+      })
+
+      if (stderr) {
+        logger.warn(`Python filter stderr: ${stderr}`)
+      }
+
+      // 解析結果
+      const result = JSON.parse(stdout)
+
+      // 清理臨時文件
+      await fs.unlink(tempFile).catch(() => {})
+
+      return result
+
+    } catch (error) {
+      logger.error('Failed to call Python memory filter:', error)
+      throw error
+    }
+  }
+
+  /**
+   * 獲取 NPC 的內部名稱 (用於 Python 腳本)
+   */
+  private async getNPCInternalName(npcId: string): Promise<string> {
+    const npc = await prisma.nPC.findUnique({
+      where: { id: npcId },
+      select: { name: true }
+    })
+
+    const nameMapping: Record<string, string> = {
+      '陸培修': 'lupeixiu',
+      '劉宇岑': 'liuyucen',
+      '陳庭安': 'chentingan'
+    }
+
+    return nameMapping[npc?.name || ''] || 'unknown'
+  }
+
+  /**
+   * 獲取 NPC 的長期記憶
+   */
+  async getLongTermMemories(
+    npcId: string,
+    userId: string,
+    limit: number = 20
+  ): Promise<any[]> {
+    try {
+      const memories = await prisma.conversation.findMany({
+        where: {
+          npcId,
+          userId,
+          isLongTermMemory: true
+        },
+        orderBy: [
+          { aiImportanceScore: 'desc' },
+          { timestamp: 'desc' }
+        ],
+        take: limit
+      })
+
+      return memories
+    } catch (error) {
+      logger.error('Failed to get long-term memories:', error)
+      throw error
+    }
+  }
+
+  /**
+   * 獲取 NPC 的短期記憶（最近的對話）
+   */
+  async getShortTermMemories(
+    npcId: string,
+    userId: string,
+    days: number = 7,
+    limit: number = 50
+  ): Promise<any[]> {
+    try {
+      const cutoffDate = new Date()
+      cutoffDate.setDate(cutoffDate.getDate() - days)
+
+      const memories = await prisma.conversation.findMany({
+        where: {
+          npcId,
+          userId,
+          timestamp: { gte: cutoffDate },
+          isLongTermMemory: false
+        },
+        orderBy: { timestamp: 'desc' },
+        take: limit
+      })
+
+      return memories
+    } catch (error) {
+      logger.error('Failed to get short-term memories:', error)
+      throw error
+    }
+  }
+
+  /**
+   * 定期歸檔任務：篩選所有 NPC 的短期記憶
+   */
+  async archiveAllNPCMemories(daysToFilter: number = 7): Promise<void> {
+    try {
+      logger.info('Starting memory archival task...')
+
+      // 獲取所有 NPC
+      const npcs = await prisma.nPC.findMany({
+        select: { id: true, name: true }
+      })
+
+      // 獲取所有有對話的用戶-NPC 組合
+      const userNpcPairs = await prisma.conversation.groupBy({
+        by: ['userId', 'npcId'],
+        where: {
+          isLongTermMemory: false
+        }
+      })
+
+      let totalFiltered = 0
+
+      for (const pair of userNpcPairs) {
+        try {
+          const filtered = await this.filterConversationsWithAI(
+            pair.npcId,
+            pair.userId,
+            daysToFilter
+          )
+          totalFiltered += filtered
+        } catch (error) {
+          logger.error(`Failed to filter for NPC ${pair.npcId}, User ${pair.userId}:`, error)
+        }
+      }
+
+      logger.info(`✅ Memory archival completed. Filtered ${totalFiltered} conversations.`)
+    } catch (error) {
+      logger.error('Failed to archive NPC memories:', error)
       throw error
     }
   }

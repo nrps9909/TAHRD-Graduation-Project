@@ -2,16 +2,21 @@ import { useEffect, useRef } from 'react'
 import { io, Socket } from 'socket.io-client'
 import { useGameStore } from '@/stores/gameStore'
 
-export const useSocketConnection = () => {
+export const useSocketConnection = (enabled: boolean = true) => {
   const socketRef = useRef<Socket | null>(null)
   const { addMessage, setTyping, updateNpcMood, updateNpcConversation } = useGameStore()
 
   useEffect(() => {
+    // 如果未啟用，不建立連接
+    if (!enabled) {
+      return
+    }
+
     // Use separate WebSocket URL from environment variable
-    const socketUrl = import.meta.env.VITE_WS_URL?.replace('ws://', 'http://') || 
-                      import.meta.env.VITE_API_URL || 
+    const socketUrl = import.meta.env.VITE_WS_URL?.replace('ws://', 'http://') ||
+                      import.meta.env.VITE_API_URL ||
                       'http://localhost:4000'
-    
+
     socketRef.current = io(socketUrl, {
       transports: ['websocket', 'polling'], // Prefer websocket first
       reconnection: true,
@@ -77,7 +82,7 @@ export const useSocketConnection = () => {
     return () => {
       socket.disconnect()
     }
-  }, [addMessage, setTyping, updateNpcMood, updateNpcConversation])
+  }, [enabled, addMessage, setTyping, updateNpcMood, updateNpcConversation])
 
   const sendMessage = (npcId: string, content: string) => {
     if (socketRef.current) {
@@ -108,8 +113,8 @@ export const useSocketConnection = () => {
 
   return {
     socket: socketRef.current,
-    sendMessage,
-    joinRoom,
-    leaveRoom,
+    sendMessage: enabled ? sendMessage : () => {},
+    joinRoom: enabled ? joinRoom : () => {},
+    leaveRoom: enabled ? leaveRoom : () => {},
   }
 }

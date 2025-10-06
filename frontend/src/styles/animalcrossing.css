@@ -1,5 +1,29 @@
 /* Animal Crossing Style Animations and Theme */
 
+/* 可愛的游標樣式 */
+.cute-cursor {
+  cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="%23FFE5B4" stroke="%23FF9B9B" stroke-width="2"/><circle cx="11" cy="13" r="3" fill="%23333"/><circle cx="21" cy="13" r="3" fill="%23333"/><path d="M 10 20 Q 16 24 22 20" stroke="%23FF9B9B" stroke-width="2" fill="none" stroke-linecap="round"/></svg>'), auto !important;
+}
+
+.cute-cursor-pointer {
+  cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="%23FFD700" stroke="%23FFA500" stroke-width="2"/><circle cx="11" cy="13" r="3" fill="%23333"/><circle cx="21" cy="13" r="3" fill="%23333"/><path d="M 10 20 Q 16 24 22 20" stroke="%23FFA500" stroke-width="2" fill="none" stroke-linecap="round"/><circle cx="16" cy="16" r="16" fill="none" stroke="%23FFA500" stroke-width="1" opacity="0.3"/></svg>'), pointer !important;
+}
+
+/* UI打開時的游標 */
+.ui-active {
+  cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="%23FFE5B4" stroke="%23FF9B9B" stroke-width="2"/><circle cx="11" cy="13" r="3" fill="%23333"/><circle cx="21" cy="13" r="3" fill="%23333"/><path d="M 10 20 Q 16 24 22 20" stroke="%23FF9B9B" stroke-width="2" fill="none" stroke-linecap="round"/></svg>'), auto !important;
+}
+
+.ui-active * {
+  cursor: inherit !important;
+}
+
+.ui-active button,
+.ui-active a,
+.ui-active .clickable {
+  cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="%23FFD700" stroke="%23FFA500" stroke-width="2"/><circle cx="11" cy="13" r="3" fill="%23333"/><circle cx="21" cy="13" r="3" fill="%23333"/><path d="M 10 20 Q 16 24 22 20" stroke="%23FFA500" stroke-width="2" fill="none" stroke-linecap="round"/></svg>'), pointer !important;
+}
+
 @keyframes bounce-slow {
   0%, 100% {
     transform: translateY(0);

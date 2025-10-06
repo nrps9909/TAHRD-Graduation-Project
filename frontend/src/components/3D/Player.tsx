@@ -45,20 +45,17 @@ const PlayerComponent = (props: PlayerProps, ref: React.Ref<PlayerRef>) => {
   const modelRef = useRef<THREE.Group>(null!)  // 模型容器：負責抬腳
   const feetPivotRef = useRef<THREE.Group>(null)
   const playerRef = useRef<THREE.Group>(null) // 保留為相容性
-  const { setPlayerPosition, setPlayerRotation, npcs, startConversation } = useGameStore()
+  const { setPlayerPosition, setPlayerRotation, npcs, startConversation, isAnyUIOpen } = useGameStore()
   const isMounted = useRef(true)
   const interactionDistance = 5 // 互動距離（單位） - 增加到5單位
 
   // 使用與 NPC 相同的 Kenney Assets 載入邏輯
   const fullModelPath = `${modelPath}${modelFile}`
-  console.log('📁 Loading Player model from:', fullModelPath)
-  console.log('🎮 Player組件已渲染，位置:', position)
 
   // 使用useLoader載入GLB模型 - 與NPC相同的方式
   const kenneyModel = useLoader(GLTFLoader, fullModelPath, (loader) => {
     const basePath = fullModelPath.substring(0, fullModelPath.lastIndexOf('/') + 1)
     loader.setResourcePath(basePath)
-    console.log(`📁 設定Player資源路徑: ${basePath}`)
   })
 
   // 克隆場景避免多個實例間的衝突
@@ -93,24 +90,18 @@ const PlayerComponent = (props: PlayerProps, ref: React.Ref<PlayerRef>) => {
   const isMoving = useRef(false)
   const walkCycle = useRef(0)
 
-  // Debug logging helper
-  let __t0 = performance.now();
-  const logFew = (...a:any[]) => { if (performance.now() - __t0 < 2000) console.log(...a); };
+  // Debug logging helper - disabled for performance
+  // let __t0 = performance.now();
+  // const logFew = (...a:any[]) => { if (performance.now() - __t0 < 2000) console.log(...a); };
 
   // 處理模型載入完成 - 統一管線
   useEffect(() => {
     (async () => {
-      console.log('[Player] Model loading effect, kenneyModel:', !!kenneyModel?.scene);
-
-      if (!kenneyModel?.scene) {
-        console.warn('[Player] No kenney model scene');
-        return;
-      }
+      if (!kenneyModel?.scene) return;
 
       await waitForGroundReady() // 先等地形ready
 
       if (kenneyModel?.scene && modelRef.current && groupRef.current) {
-        console.log('[Player] Starting model mount...');
         // 先將模型掛載
         mountModelAndLiftFeet(modelRef.current, kenneyModel.scene);
 
@@ -120,17 +111,19 @@ const PlayerComponent = (props: PlayerProps, ref: React.Ref<PlayerRef>) => {
         const gx = position[0];
         const gz = position[2];
 
-        // 獲取地面高度
+        // 獲取地面高度，添加安全偏移確保角色在地面上
         const g = getGroundSmoothed(gx, gz);
         if (g.ok) {
-          p.set(gx, g.y, gz);
-          lastSafe.current.set(gx, g.y, gz);
-          console.log('[SPAWN] player snapped to ground y=', g.y.toFixed(2), 'at', gx.toFixed(1), gz.toFixed(1));
+          // 添加額外的高度偏移確保角色完全在地面上
+          const safeY = g.y + 0.5; // 增加0.5單位確保不會陷入地面
+          p.set(gx, safeY, gz);
+          lastSafe.current.set(gx, safeY, gz);
+          console.log(`✅ Player spawn at (${gx.toFixed(1)}, ${safeY.toFixed(2)}, ${gz.toFixed(1)}) - ground: ${g.y.toFixed(2)}`);
         } else {
           // 如果找不到地面，使用安全預設值
           p.set(gx, 5, gz);
           lastSafe.current.set(gx, 5, gz);
-          console.warn('[SPAWN] player fallback position at y=5');
+          console.warn(`⚠️ Player spawn fallback at (${gx.toFixed(1)}, 5, ${gz.toFixed(1)}) - no ground detected`);
         }
 
       kenneyModel.scene.traverse((child: any) => {
@@ -168,10 +161,9 @@ const PlayerComponent = (props: PlayerProps, ref: React.Ref<PlayerRef>) => {
 
         kenneyModel.scene.visible = true
         kenneyModel.scene.frustumCulled = false
-        console.log('[Player] Model loaded successfully:', kenneyModel.scene)
       }
     })()
-  }, [kenneyModel, fullModelPath])
+  }, [kenneyModel])
 
   // 處理動畫 - 與 NPC 相同邏輯
   useEffect(() => {
@@ -240,10 +232,10 @@ const PlayerComponent = (props: PlayerProps, ref: React.Ref<PlayerRef>) => {
       const k = e.key
       if (k.startsWith('Arrow')) e.preventDefault()
 
-      // Debug: 顯示按鍵輸入
-      if (['w','a','s','d','W','A','S','D','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(k)) {
-        console.log('[INPUT]', k, v ? 'DOWN' : 'UP')
-      }
+      // Debug: 顯示按鍵輸入 - disabled for performance
+      // if (['w','a','s','d','W','A','S','D','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(k)) {
+      //   console.log('[INPUT]', k, v ? 'DOWN' : 'UP')
+      // }
 
       if (k === 'w' || k === 'W') keys.current.w = v
       if (k === 'a' || k === 'A') keys.current.a = v
@@ -255,7 +247,11 @@ const PlayerComponent = (props: PlayerProps, ref: React.Ref<PlayerRef>) => {
       if (k === 'ArrowRight') keys.current.right = v
       if (k === 'Shift') keys.current.shift = v
       if (k === 'F' || k === 'f') {
-        if (v) handleInteraction() // Only on keydown
+        if (v) {
+          e.preventDefault() // 防止 'f' 輸入到對話框
+          e.stopPropagation() // 防止事件冒泡
+          handleInteraction() // Only on keydown
+        }
       }
     }
     const kd = (e: KeyboardEvent) => on(e, true)
@@ -274,6 +270,13 @@ const PlayerComponent = (props: PlayerProps, ref: React.Ref<PlayerRef>) => {
     const g = groupRef.current
     if (!g) return
 
+    // 檢查是否有UI打開 - 如果有則停止移動
+    const uiOpen = isAnyUIOpen()
+    if (uiOpen) {
+      // UI打開時不處理移動
+      return
+    }
+
     // 取玩家輸入方向
     const fwd = new THREE.Vector3()
     camera.getWorldDirection(fwd)
@@ -290,10 +293,10 @@ const PlayerComponent = (props: PlayerProps, ref: React.Ref<PlayerRef>) => {
       if (dir.lengthSq() > 0) dir.normalize()
     }
 
-    // Debug: 每幾幀印一次移動狀態
-    if (Math.random() < 0.01 && (forw || r)) {
-      console.log('[Player] Keys:', {w:k.w, a:k.a, s:k.s, d:k.d}, 'forw:', forw, 'r:', r, 'dir:', dir.toArray())
-    }
+    // Debug: 每幾幀印一次移動狀態 - disabled for performance
+    // if (Math.random() < 0.01 && (forw || r)) {
+    //   console.log('[Player] Keys:', {w:k.w, a:k.a, s:k.s, d:k.d}, 'forw:', forw, 'r:', r, 'dir:', dir.toArray())
+    // }
 
     const speed = k.shift ? SPRINT : BASE
 

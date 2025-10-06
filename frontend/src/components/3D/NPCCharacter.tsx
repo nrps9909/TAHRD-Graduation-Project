@@ -34,9 +34,12 @@ export const NPCCharacter: React.FC<NPCCharacterProps> = ({
   const meshRef = useRef<THREE.Group>(null!) // 保留為相容性
   const { scene } = useThree()
   const [hovered, setHovered] = useState(false)
-  // 初始位置不設定 y，完全依賴地面檢測
-  const [currentPosition, setCurrentPosition] = useState(new THREE.Vector3(npc.position[0], 5, npc.position[2]))
-  const [targetPosition, setTargetPosition] = useState(new THREE.Vector3(npc.position[0], 5, npc.position[2]))
+  // 使用 ref 存儲位置，避免不必要的重渲染
+  const currentPositionRef = useRef(new THREE.Vector3(npc.position[0], 5, npc.position[2]))
+  const targetPositionRef = useRef(new THREE.Vector3(npc.position[0], 5, npc.position[2]))
+  // 保留變數名稱作為別名，方便後續代碼使用
+  const currentPosition = currentPositionRef.current
+  const targetPosition = targetPositionRef.current
 
   const { updateNpcPosition, getPlayerPosition } = useGameStore()
 
@@ -47,7 +50,8 @@ export const NPCCharacter: React.FC<NPCCharacterProps> = ({
     'npc-3': { path: '/characters/CHAR-M-D', file: '/CHAR-M-D.glb' }
   }
 
-  console.log(`🎮 NPCCharacter: Rendering ${npc.name} (${npc.id}) at position:`, npc.position)
+  // Performance: Removed console.log that runs on every render
+  // console.log(`🎮 NPCCharacter: Rendering ${npc.name} (${npc.id}) at position:`, npc.position)
 
   const config = modelConfigs[npc.id as keyof typeof modelConfigs] ||
                   { path: npc.modelPath || '/characters/CHAR-M-A', file: npc.modelFile || '/CHAR-M-A.glb' }
@@ -70,24 +74,24 @@ export const NPCCharacter: React.FC<NPCCharacterProps> = ({
   const lastDirection = useRef(new THREE.Vector3())
   const targetChangeTime = useRef(Date.now())
 
-  // Debug logging helper
-  let __t0 = performance.now();
-  const logFew = (...a:any[]) => { if (performance.now() - __t0 < 2000) console.log(`[NPC-${npc.name}]`, ...a); };
+  // Debug logging helper - disabled for performance
+  // let __t0 = performance.now();
+  // const logFew = (...a:any[]) => { if (performance.now() - __t0 < 2000) console.log(`[NPC-${npc.name}]`, ...a); };
 
   // 處理模型載入完成 - 統一管線
   useEffect(() => {
     (async () => {
-      console.log(`[NPC ${npc.name}] Model loading effect, kenneyModel:`, !!kenneyModel?.scene);
+      // console.log(`[NPC ${npc.name}] Model loading effect, kenneyModel:`, !!kenneyModel?.scene);
 
       if (!kenneyModel?.scene) {
-        console.warn(`[NPC ${npc.name}] No kenney model scene`);
+        // console.warn(`[NPC ${npc.name}] No kenney model scene`);
         return;
       }
 
       await waitForGroundReady() // 先等地形ready
 
       if (kenneyModel?.scene && modelRef.current && groupRef.current) {
-        console.log(`[NPC ${npc.name}] Starting model mount...`);
+        // console.log(`[NPC ${npc.name}] Starting model mount...`);
         // 先將模型掛載
         mountModelAndLiftFeet(modelRef.current, kenneyModel.scene);
 
@@ -102,22 +106,18 @@ export const NPCCharacter: React.FC<NPCCharacterProps> = ({
         if (g.ok) {
           p.set(gx, g.y, gz);
           lastSafe.current.set(gx, g.y, gz);
-          currentPosition.set(gx, g.y, gz);
-          setCurrentPosition(new THREE.Vector3(gx, g.y, gz));
-          console.log(`[SPAWN] NPC ${npc.name} snapped to ground y=`, g.y.toFixed(2), 'at', gx.toFixed(1), gz.toFixed(1));
+          currentPositionRef.current.set(gx, g.y, gz);
+          // console.log(`[SPAWN] NPC ${npc.name} snapped to ground y=`, g.y.toFixed(2), 'at', gx.toFixed(1), gz.toFixed(1));
           // 確保 targetPosition 也在地面上
-          targetPosition.set(gx, g.y, gz);
-          setTargetPosition(new THREE.Vector3(gx, g.y, gz));
+          targetPositionRef.current.set(gx, g.y, gz);
         } else {
           // 如果找不到地面，使用安全預設值
           p.set(gx, 5, gz);
           lastSafe.current.set(gx, 5, gz);
-          currentPosition.set(gx, 5, gz);
-          setCurrentPosition(new THREE.Vector3(gx, 5, gz));
-          console.warn(`[SPAWN] NPC ${npc.name} fallback position at y=5`);
+          currentPositionRef.current.set(gx, 5, gz);
+          // console.warn(`[SPAWN] NPC ${npc.name} fallback position at y=5`);
           // 確保 targetPosition 也使用安全值
-          targetPosition.set(gx, 5, gz);
-          setTargetPosition(new THREE.Vector3(gx, 5, gz));
+          targetPositionRef.current.set(gx, 5, gz);
         }
 
       kenneyModel.scene.traverse((child: any) => {
@@ -155,7 +155,7 @@ export const NPCCharacter: React.FC<NPCCharacterProps> = ({
 
         kenneyModel.scene.visible = true
         kenneyModel.scene.frustumCulled = false
-        console.log(`[NPC ${npc.name}] Model loaded successfully:`, kenneyModel.scene)
+        // console.log(`[NPC ${npc.name}] Model loaded successfully:`, kenneyModel.scene)
       }
     })()
   }, [kenneyModel])
@@ -270,12 +270,10 @@ export const NPCCharacter: React.FC<NPCCharacterProps> = ({
     const ground = getGroundSmoothed(targetX, targetZ)
     const targetY = ground.ok ? ground.y : currentPosition.y
 
-    const newTarget = new THREE.Vector3(targetX, targetY, targetZ)
-
-    setTargetPosition(newTarget)
+    targetPositionRef.current.set(targetX, targetY, targetZ)
     targetChangeTime.current = Date.now() // 記錄目標變更時間
-    console.log(`[NPC ${npc.name}] New target: (${newTarget.x.toFixed(1)}, ${newTarget.y.toFixed(1)}, ${newTarget.z.toFixed(1)}) ${shouldFollowPlayer ? '[following player]' : '[exploring]'} (attempts: ${attempts})`)
-  }, [getPlayerPosition, npc.name, npc.id, currentPosition])
+    // console.log(`[NPC ${npc.name}] New target: (${targetX.toFixed(1)}, ${targetY.toFixed(1)}, ${targetZ.toFixed(1)}) ${shouldFollowPlayer ? '[following player]' : '[exploring]'} (attempts: ${attempts})`)
+  }, [getPlayerPosition, npc.name, npc.id])
 
   // Set new target periodically - 降低頻率讓移動更穩定
   useEffect(() => {
@@ -298,18 +296,18 @@ export const NPCCharacter: React.FC<NPCCharacterProps> = ({
     if (!g) return
 
     // 強制同步當前位置（避免狀態不同步導致飄在天上）
-    currentPosition.copy(g.position)
+    currentPositionRef.current.copy(g.position)
 
     // 獲取所有NPC位置進行避障
     const allNpcs = useGameStore.getState().npcs
     const otherNpcs = allNpcs.filter(otherNpc => otherNpc.id !== npc.id)
 
     // AI 方向計算 - 添加方向平滑化
-    const distance = g.position.distanceTo(targetPosition)
+    const distance = g.position.distanceTo(targetPositionRef.current)
     let dir = new THREE.Vector3()
 
     if (distance > 0.5) { // 增大目標到達閾值，減少頻繁轉向
-      dir.subVectors(targetPosition, g.position)
+      dir.subVectors(targetPositionRef.current, g.position)
       dir.y = 0  // 確保方向是水平的
       if (dir.lengthSq() > 0.001) {
         dir.normalize()
@@ -378,9 +376,8 @@ export const NPCCharacter: React.FC<NPCCharacterProps> = ({
     // 使用統一的 actor 移動管線 - 這會強制貼地
     tickActorOnGround(g, {dir, speed: npcSpeed}, dt, lastSafe.current)
 
-    // 更新狀態（同步位置）
-    currentPosition.copy(g.position)
-    setCurrentPosition(currentPosition.clone())
+    // 更新位置引用（同步位置）- 不觸發重渲染
+    currentPositionRef.current.copy(g.position)
 
     // Apply hover effects (after ground positioning)
     if (hovered) {
@@ -389,7 +386,7 @@ export const NPCCharacter: React.FC<NPCCharacterProps> = ({
 
     // Update store position occasionally
     if (Math.random() < 0.02) {
-      updateNpcPosition(npc.id, [currentPosition.x, currentPosition.y, currentPosition.z])
+      updateNpcPosition(npc.id, [currentPositionRef.current.x, currentPositionRef.current.y, currentPositionRef.current.z])
     }
 
     // Update animation mixer

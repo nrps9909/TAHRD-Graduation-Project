@@ -19,11 +19,13 @@ import './styles/animalcrossing.css'
 import './styles/npc-animations.css'
 
 function App() {
-  const { initializeGame, isLoading } = useGameStore()
+  const { initializeGame, isLoading, showHotkeyGuide, setShowHotkeyGuide } = useGameStore()
   const [showStartScreen, setShowStartScreen] = useState(true)
   const [gameStarting, setGameStarting] = useState(false)
-  const [showHotkeyGuide, setShowHotkeyGuide] = useState(false)
-  useSocketConnection()
+
+  // 只在遊戲開始後才連接 WebSocket
+  const socketEnabled = !showStartScreen
+  useSocketConnection(socketEnabled)
 
   const handleStartGame = async () => {
     setGameStarting(true)
@@ -65,6 +67,7 @@ function App() {
         e.preventDefault()
         setShowStartScreen(true)
         setGameStarting(false)
+        const { setShowHotkeyGuide } = useGameStore.getState()
         setShowHotkeyGuide(false)
       }
     }

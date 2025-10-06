@@ -230,9 +230,80 @@ export const typeDefs = gql`
     
     # Diary queries
     diaryEntries: [DiaryEntry!]!
-    
+
     # World state
     worldState: WorldState
+
+    # Multi-Agent queries
+    agents: [AIAgent!]!
+    agent(id: ID!): AIAgent
+    memories(category: Category, limit: Int = 50): [MemoryEntry!]!
+    memory(id: ID!): MemoryEntry
+    searchMemories(query: String!): [MemoryEntry!]!
+    chatHistory(agentId: ID, limit: Int = 20): [ChatMessage!]!
+  }
+
+  # Multi-Agent System Types
+  enum Category {
+    GOSSIP
+    FUTURE_IDEAS
+    DAILY_LIFE
+    STUDY
+    FRIENDS
+    RELATIONSHIPS
+    OTHER
+  }
+
+  type MemoryEntry {
+    id: ID!
+    rawContent: String!
+    summary: String!
+    keyPoints: [String!]!
+    tags: [String!]!
+    category: Category!
+    processedBy: String!
+    importance: Int!
+    sentiment: String
+    createdAt: DateTime!
+    chatHistory: [ChatMessage!]!
+  }
+
+  type ChatMessage {
+    id: ID!
+    agentId: String!
+    message: String!
+    response: String!
+    createdAt: DateTime!
+    memory: MemoryEntry
+  }
+
+  type AIAgent {
+    id: ID!
+    name: String!
+    emoji: String!
+    color: String!
+    personality: String!
+    category: Category
+    messageCount: Int!
+    memoryCount: Int!
+  }
+
+  type SubmitResponse {
+    routing: RoutingResult!
+    processing: ProcessingResult!
+  }
+
+  type RoutingResult {
+    category: Category!
+    greeting: String!
+    reason: String!
+    confidence: Float!
+  }
+
+  type ProcessingResult {
+    agent: AIAgent!
+    memory: MemoryEntry!
+    response: String!
   }
 
   # Mutations
@@ -241,21 +312,25 @@ export const typeDefs = gql`
     register(input: RegisterInput!): AuthPayload!
     login(input: LoginInput!): AuthPayload!
     logout: Boolean!
-    
+
     # Conversation mutations
     sendMessage(input: ConversationInput!): AIResponse!
-    
+
+    # Multi-Agent mutations
+    submitMemory(content: String!): SubmitResponse!
+    chatWithAgent(agentId: ID!, message: String!): ChatMessage!
+
     # Diary mutations
     createDiaryEntry(input: DiaryEntryInput!): DiaryEntry!
     updateDiaryEntry(id: ID!, input: DiaryEntryInput!): DiaryEntry!
     deleteDiaryEntry(id: ID!): Boolean!
-    
+
     # Letter mutations
     markLetterAsRead(id: ID!): Letter!
-    
+
     # World state mutations
     updateWorldState(input: UpdateWorldStateInput!): WorldState!
-    
+
     # Wish mutations
     updateWishProgress(wishId: ID!, progress: Float!, notes: String): UserWishProgress!
   }
