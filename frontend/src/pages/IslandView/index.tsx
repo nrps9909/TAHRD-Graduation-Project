@@ -1,14 +1,27 @@
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery } from '@apollo/client'
+import { useParams, useNavigate } from 'react-router-dom'
 import { GET_ASSISTANTS } from '../../graphql/assistant'
 import { Assistant } from '../../types/assistant'
 import CuteDecorations from '../../components/CuteDecorations'
 
 export default function IslandView() {
-  const [selectedAssistant, setSelectedAssistant] = useState<Assistant | null>(null)
+  const { assistantId } = useParams<{ assistantId: string }>()
+  const navigate = useNavigate()
+  const [showChat, setShowChat] = useState(false)
   const { data, loading } = useQuery(GET_ASSISTANTS)
+
+  // 获取当前assistant
+  const assistant = data?.assistants.find((a: Assistant) => a.id === assistantId)
+
+  // 如果找不到assistant，返回主页
+  useEffect(() => {
+    if (!loading && !assistant) {
+      navigate('/')
+    }
+  }, [loading, assistant, navigate])
 
   return (
     <div className="fixed inset-0 w-full h-full overflow-hidden bg-gradient-to-b from-healing-sky via-healing-gentle to-healing-cream">
@@ -147,19 +160,13 @@ export default function IslandView() {
           )
         })}
 
-        {/* NPC Houses - 可爱的圆形排列 */}
-        {!loading && data?.assistants && data.assistants.map((assistant: Assistant, index: number) => {
-          const angle = (index / data.assistants.length) * Math.PI * 2
-          const radius = 8
-          const x = Math.cos(angle) * radius
-          const z = Math.sin(angle) * radius
-
-          return (
-            <group key={assistant.id} position={[x, 0.2, z]}>
-              {/* 可爱的房子底座 - 圆润造型 */}
-              <mesh
-                position={[0, 1.2, 0]}
-                onClick={() => setSelectedAssistant(assistant)}
+        {/* NPC House - 中央单个房屋 */}
+        {!loading && assistant && (
+          <group position={[0, 0.2, 0]}>
+            {/* 可爱的房子底座 - 圆润造型 */}
+            <mesh
+              position={[0, 1.2, 0]}
+              onClick={() => setShowChat(true)}
                 onPointerOver={(e) => {
                   e.stopPropagation()
                   document.body.style.cursor = 'pointer'
@@ -208,75 +215,128 @@ export default function IslandView() {
               </mesh>
             </group>
           )
-        })}
+        }
       </Canvas>
 
       {/* Top Navigation Bar - 可爱风格 */}
-      <div className="absolute top-0 left-0 right-0 p-4 z-10">
-        <div className="max-w-7xl mx-auto bg-white/90 backdrop-blur-md rounded-bubble shadow-cute-lg px-6 py-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-cute-2xl font-bold bg-gradient-to-r from-candy-pink via-candy-purple to-candy-blue bg-clip-text text-transparent animate-sparkle">
-              🏝️ 心語小鎮
-            </h1>
-            <nav className="flex gap-3">
-              <button className="px-5 py-2.5 bg-gradient-to-r from-candy-pink to-candy-purple text-white rounded-cute font-medium shadow-cute hover:shadow-cute-lg transition-all duration-300 hover:scale-105 active:scale-95">
-                🏝️ 島嶼視圖
-              </button>
+      {!showChat && (
+        <div className="absolute top-0 left-0 right-0 p-4 z-10">
+          <div className="max-w-7xl mx-auto bg-white/90 backdrop-blur-md rounded-bubble shadow-cute-lg px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => navigate('/')}
+                  className="text-2xl hover:scale-110 transition-transform"
+                >
+                  ←
+                </button>
+                <div className="flex items-center gap-3">
+                  {assistant && (
+                    <>
+                      <span className="text-4xl">{assistant.emoji}</span>
+                      <div>
+                        <h1 className="text-cute-xl font-bold bg-gradient-to-r from-candy-pink via-candy-purple to-candy-blue bg-clip-text text-transparent">
+                          {assistant.nameChinese}的島嶼
+                        </h1>
+                        <p className="text-cute-sm text-gray-500">{assistant.name}</p>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
               <button
-                onClick={() => window.location.href = '/database'}
+                onClick={() => navigate('/database')}
                 className="px-5 py-2.5 bg-healing-gentle hover:bg-candy-blue text-gray-700 rounded-cute font-medium shadow-cute hover:shadow-cute-lg transition-all duration-300 hover:scale-105 active:scale-95"
               >
                 📊 資料庫
               </button>
-            </nav>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Assistant Dialog - 可爱对话框 */}
-      {selectedAssistant && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
-          <div className="bg-gradient-to-br from-white to-healing-cream rounded-bubble p-8 max-w-md w-full m-4 shadow-cute-xl border-4 border-white animate-bounce-in">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-4">
-                <span className="text-6xl animate-bounce-gentle">{selectedAssistant.emoji}</span>
-                <div>
-                  <h2 className="text-cute-2xl font-bold bg-gradient-to-r from-candy-pink to-candy-purple bg-clip-text text-transparent">
-                    {selectedAssistant.nameChinese}
-                  </h2>
-                  <p className="text-cute-sm text-gray-500 mt-1">{selectedAssistant.name}</p>
+      {/* Chat Interface - 直接显示聊天界面 */}
+      {showChat && assistant && (
+        <div className="fixed inset-0 bg-gradient-to-br from-healing-sky to-healing-cream z-50 animate-fade-in">
+          <div className="h-full flex flex-col">
+            {/* Chat Header */}
+            <div className="bg-white/90 backdrop-blur-md shadow-cute-lg px-6 py-4">
+              <div className="flex items-center justify-between max-w-7xl mx-auto">
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={() => setShowChat(false)}
+                    className="text-2xl hover:scale-110 transition-transform"
+                  >
+                    ←
+                  </button>
+                  <span className="text-4xl animate-bounce-gentle">{assistant.emoji}</span>
+                  <div>
+                    <h2 className="text-cute-xl font-bold bg-gradient-to-r from-candy-pink to-candy-purple bg-clip-text text-transparent">
+                      {assistant.nameChinese}
+                    </h2>
+                    <p className="text-cute-sm text-gray-500">{assistant.name}</p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <button className="px-4 py-2 bg-healing-gentle hover:bg-candy-blue text-gray-700 rounded-cute font-medium shadow-cute hover:shadow-cute-lg transition-all duration-300">
+                    📎 上傳知識
+                  </button>
                 </div>
               </div>
-              <button
-                onClick={() => setSelectedAssistant(null)}
-                className="w-10 h-10 rounded-full bg-healing-sunset hover:bg-candy-pink text-white text-2xl font-bold transition-all duration-300 hover:rotate-90 hover:scale-110 shadow-cute"
-              >
-                ×
-              </button>
             </div>
 
-            <div className="space-y-5">
-              <div className="bg-white/60 backdrop-blur-sm rounded-cute p-4 shadow-inner">
-                <p className="text-cute-base text-gray-700 leading-relaxed">
-                  {selectedAssistant.personality}
-                </p>
+            {/* Chat Messages Area */}
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="max-w-4xl mx-auto space-y-4">
+                {/* Welcome Message */}
+                <div className="flex items-start gap-4">
+                  <div
+                    className="w-12 h-12 rounded-full flex items-center justify-center text-2xl flex-shrink-0"
+                    style={{
+                      background: `linear-gradient(135deg, ${assistant.color}, ${assistant.color}dd)`
+                    }}
+                  >
+                    {assistant.emoji}
+                  </div>
+                  <div className="flex-1 bg-white/90 backdrop-blur-sm rounded-cute p-4 shadow-cute">
+                    <p className="text-cute-base text-gray-700">
+                      你好！我是 {assistant.nameChinese}。{assistant.personality}
+                    </p>
+                    <p className="text-cute-sm text-gray-500 mt-2">
+                      你可以上傳圖片、文件、鏈接，我都能理解哦！✨
+                    </p>
+                  </div>
+                </div>
               </div>
+            </div>
 
-              <div className="flex gap-3">
-                <button
-                  className="flex-1 px-6 py-3 rounded-cute font-bold text-white shadow-cute hover:shadow-cute-lg transition-all duration-300 hover:scale-105 active:scale-95 animate-pop"
-                  style={{
-                    background: `linear-gradient(135deg, ${selectedAssistant.color}, ${selectedAssistant.color}dd)`
-                  }}
-                >
-                  💬 開始對話
-                </button>
-                <button
-                  onClick={() => setSelectedAssistant(null)}
-                  className="px-6 py-3 bg-healing-gentle hover:bg-candy-blue text-gray-700 font-bold rounded-cute shadow-cute hover:shadow-cute-lg transition-all duration-300 hover:scale-105 active:scale-95"
-                >
-                  👋 關閉
-                </button>
+            {/* Chat Input Area */}
+            <div className="bg-white/90 backdrop-blur-md shadow-cute-lg p-6">
+              <div className="max-w-4xl mx-auto">
+                <div className="flex gap-3">
+                  <button className="px-4 py-3 bg-healing-gentle hover:bg-candy-pink text-gray-700 rounded-cute shadow-cute transition-all duration-300 hover:scale-105">
+                    📎
+                  </button>
+                  <button className="px-4 py-3 bg-healing-gentle hover:bg-candy-blue text-gray-700 rounded-cute shadow-cute transition-all duration-300 hover:scale-105">
+                    🖼️
+                  </button>
+                  <button className="px-4 py-3 bg-healing-gentle hover:bg-candy-green text-gray-700 rounded-cute shadow-cute transition-all duration-300 hover:scale-105">
+                    📁
+                  </button>
+                  <input
+                    type="text"
+                    placeholder="輸入訊息..."
+                    className="flex-1 px-6 py-3 bg-white border-3 border-transparent rounded-cute focus:border-candy-pink focus:shadow-glow transition-all duration-300"
+                  />
+                  <button
+                    className="px-6 py-3 rounded-cute font-bold text-white shadow-cute hover:shadow-cute-lg transition-all duration-300 hover:scale-105 active:scale-95"
+                    style={{
+                      background: `linear-gradient(135deg, ${assistant.color}, ${assistant.color}dd)`
+                    }}
+                  >
+                    發送 💬
+                  </button>
+                </div>
               </div>
             </div>
           </div>
