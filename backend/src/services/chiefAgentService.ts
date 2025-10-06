@@ -4,6 +4,7 @@ import axios from 'axios'
 import { assistantService } from './assistantService'
 import { memoryService } from './memoryService'
 import { subAgentService } from './subAgentService'
+import { multimodalProcessor } from './multimodalProcessor'
 
 const prisma = new PrismaClient()
 
@@ -503,28 +504,79 @@ ${contextInfo}
         throw new Error('Chief assistant not found')
       }
 
-      // 构建分析提示词
+      logger.info(`[Chief Agent] 開始多模態內容分析`)
+
+      // === Stage 4: 深度多模态处理 ===
+      const imageAnalyses: any[] = []
+      const pdfAnalyses: any[] = []
+      const linkAnalyses: any[] = []
+
+      // 1. 处理图片文件
+      if (input.files && input.files.length > 0) {
+        const imageFiles = input.files.filter(f => f.type.startsWith('image/'))
+        for (const file of imageFiles) {
+          logger.info(`[Chief Agent] 分析圖片: ${file.name}`)
+          const analysis = await multimodalProcessor.processImage(file.url, input.content)
+          imageAnalyses.push({ file: file.name, ...analysis })
+        }
+
+        // 2. 处理 PDF 文件
+        const pdfFiles = input.files.filter(f => f.type.includes('pdf'))
+        for (const file of pdfFiles) {
+          logger.info(`[Chief Agent] 分析 PDF: ${file.name}`)
+          const analysis = await multimodalProcessor.processPDF(file.url, input.content)
+          pdfAnalyses.push({ file: file.name, ...analysis })
+        }
+      }
+
+      // 3. 处理链接
+      if (input.links && input.links.length > 0) {
+        for (const link of input.links) {
+          logger.info(`[Chief Agent] 分析連結: ${link.url}`)
+          const analysis = await multimodalProcessor.processLink(link.url, input.content)
+          linkAnalyses.push(analysis)
+        }
+      }
+
+      // 构建增强的分析提示词
       let prompt = `${chief.systemPrompt}
 
 作為知識管理系統的總管，請分析以下內容並提供詳細的分類建議。
 
-**內容:**
+**主要內容:**
 ${input.content}
 `
 
-      // 添加文件信息
-      if (input.files && input.files.length > 0) {
-        prompt += `\n**附件文件 (${input.files.length}個):**\n`
-        input.files.forEach(file => {
-          prompt += `- ${file.name} (${file.type})\n`
+      // 添加图片分析结果
+      if (imageAnalyses.length > 0) {
+        prompt += `\n**圖片分析結果 (${imageAnalyses.length}張):**\n`
+        imageAnalyses.forEach((analysis, i) => {
+          prompt += `${i + 1}. ${analysis.file}\n`
+          prompt += `   - 描述: ${analysis.description}\n`
+          prompt += `   - 標籤: ${analysis.tags.join(', ')}\n`
+          prompt += `   - 關鍵洞察: ${analysis.keyInsights.join('; ')}\n`
         })
       }
 
-      // 添加链接信息
-      if (input.links && input.links.length > 0) {
-        prompt += `\n**相關連結 (${input.links.length}個):**\n`
-        input.links.forEach(link => {
-          prompt += `- ${link.title || link.url}\n`
+      // 添加 PDF 分析结果
+      if (pdfAnalyses.length > 0) {
+        prompt += `\n**PDF 文檔分析 (${pdfAnalyses.length}份):**\n`
+        pdfAnalyses.forEach((analysis, i) => {
+          prompt += `${i + 1}. ${analysis.file}\n`
+          prompt += `   - 摘要: ${analysis.summary}\n`
+          prompt += `   - 關鍵要點: ${analysis.keyPoints.join('; ')}\n`
+          prompt += `   - 主題: ${analysis.topics.join(', ')}\n`
+        })
+      }
+
+      // 添加链接分析结果
+      if (linkAnalyses.length > 0) {
+        prompt += `\n**鏈接內容分析 (${linkAnalyses.length}個):**\n`
+        linkAnalyses.forEach((analysis, i) => {
+          prompt += `${i + 1}. ${analysis.title}\n`
+          prompt += `   - 摘要: ${analysis.summary}\n`
+          prompt += `   - 標籤: ${analysis.tags.join(', ')}\n`
+          prompt += `   - URL: ${analysis.url}\n`
         })
       }
 
