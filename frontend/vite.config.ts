@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 import path from 'path'
 
 export default defineConfig({
+  envDir: '../', // 從根目錄載入 .env
   plugins: [react()],
   resolve: {
     alias: {

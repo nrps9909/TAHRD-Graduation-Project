@@ -36,6 +36,8 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: heart-whisper-backend
+    env_file:
+      - .env
     ports:
       - "4000:4000"
     environment:
@@ -61,6 +63,8 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.dev
     container_name: heart-whisper-frontend
+    env_file:
+      - .env
     ports:
       - "3000:3000"
     environment:

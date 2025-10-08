@@ -1,5 +1,9 @@
-import 'dotenv/config'
+import dotenv from 'dotenv'
+import path from 'path'
 import express from 'express'
+
+// 從根目錄載入 .env
+dotenv.config({ path: path.join(__dirname, '../../.env') })
 
 // 調試環境變數
 console.log('[DEBUG] Backend 啟動時的環境變數:')
