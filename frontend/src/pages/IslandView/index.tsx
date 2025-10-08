@@ -6,7 +6,6 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { GET_ASSISTANTS } from '../../graphql/assistant'
 import { Assistant } from '../../types/assistant'
 import { Message } from '../../types/message'
-import CuteDecorations from '../../components/CuteDecorations'
 import MessageBubble from '../../components/ChatInterface/MessageBubble'
 import UploadModal from '../../components/ChatInterface/UploadModal'
 
@@ -103,27 +102,26 @@ export default function IslandView() {
   }
 
   return (
-    <div className="fixed inset-0 w-full h-full overflow-hidden bg-gradient-to-b from-healing-sky via-healing-gentle to-healing-cream">
-      {/* 可爱装饰背景 */}
-      <CuteDecorations />
-
+    <div className="fixed inset-0 w-full h-full overflow-hidden" style={{
+      background: 'linear-gradient(135deg, #FFF5E1 0%, #FFE5F0 50%, #FFFACD 100%)'
+    }}>
       {/* 3D Island Scene */}
       <Canvas
         camera={{ position: [0, 20, 20], fov: 50 }}
         className="absolute inset-0 w-full h-full"
       >
-        {/* 柔和的光照 - Animal Crossing 风格 */}
-        <ambientLight intensity={0.7} color="#FFF8E7" />
+        {/* 柔和的光照 - 寶寶粉和鵝黃色溫暖光線 */}
+        <ambientLight intensity={0.9} color="#FFF8E7" />
         <directionalLight
           position={[10, 15, 5]}
-          intensity={0.8}
-          color="#FFE5B4"
+          intensity={1.0}
+          color="#FFFACD"
           castShadow
         />
         <hemisphereLight
-          intensity={0.5}
-          color="#87CEEB"
-          groundColor="#90EE90"
+          intensity={0.6}
+          color="#FFFACD"
+          groundColor="#FFE5F0"
         />
         <OrbitControls
           enablePan={true}
@@ -300,12 +298,16 @@ export default function IslandView() {
       {/* Top Navigation Bar - 可爱风格 */}
       {!showChat && (
         <div className="absolute top-0 left-0 right-0 p-4 z-10">
-          <div className="max-w-7xl mx-auto bg-white/90 backdrop-blur-md rounded-bubble shadow-cute-lg px-6 py-4">
+          <div className="max-w-7xl mx-auto bg-white/90 backdrop-blur-md rounded-bubble px-6 py-4" style={{
+            border: '3px solid #FFE5F0',
+            boxShadow: '0 8px 25px rgba(255, 179, 217, 0.15)'
+          }}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <button
                   onClick={() => navigate('/')}
                   className="text-2xl hover:scale-110 transition-transform"
+                  style={{ color: '#FF8FB3' }}
                 >
                   ←
                 </button>
@@ -314,10 +316,15 @@ export default function IslandView() {
                     <>
                       <span className="text-4xl">{assistant.emoji}</span>
                       <div>
-                        <h1 className="text-cute-xl font-bold bg-gradient-to-r from-candy-pink via-candy-purple to-candy-blue bg-clip-text text-transparent">
+                        <h1 className="text-cute-xl font-bold" style={{
+                          background: 'linear-gradient(135deg, #FF8FB3 0%, #FFFACD 50%, #FFB3D9 100%)',
+                          WebkitBackgroundClip: 'text',
+                          WebkitTextFillColor: 'transparent',
+                          backgroundClip: 'text'
+                        }}>
                           {assistant.nameChinese}的島嶼
                         </h1>
-                        <p className="text-cute-sm text-gray-500">{assistant.name}</p>
+                        <p className="text-cute-sm" style={{ color: '#FFB3D9' }}>{assistant.name}</p>
                       </div>
                     </>
                   )}
@@ -325,9 +332,15 @@ export default function IslandView() {
               </div>
               <button
                 onClick={() => navigate('/database')}
-                className="px-5 py-2.5 bg-healing-gentle hover:bg-candy-blue text-gray-700 rounded-cute font-medium shadow-cute hover:shadow-cute-lg transition-all duration-300 hover:scale-105 active:scale-95"
+                className="px-5 py-2.5 rounded-2xl font-medium transition-all duration-300 hover:scale-105 active:scale-95"
+                style={{
+                  background: 'linear-gradient(135deg, #FFF5E1, #FFFACD)',
+                  color: '#FF8FB3',
+                  border: '2px solid #FFE5F0',
+                  boxShadow: '0 4px 15px rgba(255, 245, 225, 0.5)'
+                }}
               >
-                📊 資料庫
+                🐾 資料庫
               </button>
             </div>
           </div>
@@ -336,30 +349,47 @@ export default function IslandView() {
 
       {/* Chat Interface - 直接显示聊天界面 */}
       {showChat && assistant && (
-        <div className="fixed inset-0 bg-gradient-to-br from-healing-sky to-healing-cream z-50 animate-fade-in">
+        <div className="fixed inset-0 z-50 animate-fade-in" style={{
+          background: 'linear-gradient(135deg, #FFF5E1 0%, #FFE5F0 50%, #FFFACD 100%)'
+        }}>
           <div className="h-full flex flex-col">
             {/* Chat Header */}
-            <div className="bg-white/90 backdrop-blur-md shadow-cute-lg px-6 py-4">
+            <div className="bg-white/90 backdrop-blur-md px-6 py-4" style={{
+              border: '3px solid #FFE5F0',
+              boxShadow: '0 8px 25px rgba(255, 179, 217, 0.15)'
+            }}>
               <div className="flex items-center justify-between max-w-7xl mx-auto">
                 <div className="flex items-center gap-4">
                   <button
                     onClick={() => setShowChat(false)}
                     className="text-2xl hover:scale-110 transition-transform"
+                    style={{ color: '#FF8FB3' }}
                   >
                     ←
                   </button>
                   <span className="text-4xl animate-bounce-gentle">{assistant.emoji}</span>
                   <div>
-                    <h2 className="text-cute-xl font-bold bg-gradient-to-r from-candy-pink to-candy-purple bg-clip-text text-transparent">
+                    <h2 className="text-cute-xl font-bold" style={{
+                      background: 'linear-gradient(135deg, #FF8FB3, #FFB3D9)',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      backgroundClip: 'text'
+                    }}>
                       {assistant.nameChinese}
                     </h2>
-                    <p className="text-cute-sm text-gray-500">{assistant.name}</p>
+                    <p className="text-cute-sm" style={{ color: '#FFB3D9' }}>{assistant.name}</p>
                   </div>
                 </div>
                 <div className="flex gap-3">
                   <button
                     onClick={() => setShowUploadModal(true)}
-                    className="px-4 py-2 bg-healing-gentle hover:bg-candy-blue text-gray-700 rounded-cute font-medium shadow-cute hover:shadow-cute-lg transition-all duration-300 hover:scale-105"
+                    className="px-4 py-2 rounded-2xl font-medium transition-all duration-300 hover:scale-105"
+                    style={{
+                      background: 'linear-gradient(135deg, #FFF5E1, #FFFACD)',
+                      color: '#FF8FB3',
+                      border: '2px solid #FFE5F0',
+                      boxShadow: '0 4px 15px rgba(255, 245, 225, 0.5)'
+                    }}
                   >
                     📎 上傳知識
                   </button>
@@ -383,13 +413,22 @@ export default function IslandView() {
             </div>
 
             {/* Chat Input Area */}
-            <div className="bg-white/90 backdrop-blur-md shadow-cute-lg p-6">
+            <div className="bg-white/90 backdrop-blur-md p-6" style={{
+              border: '3px solid #FFE5F0',
+              boxShadow: '0 8px 25px rgba(255, 179, 217, 0.15)'
+            }}>
               <div className="max-w-4xl mx-auto">
                 <div className="flex gap-3">
                   <button
                     onClick={() => setShowUploadModal(true)}
-                    className="px-4 py-3 bg-healing-gentle hover:bg-candy-pink text-gray-700 rounded-cute shadow-cute transition-all duration-300 hover:scale-105 active:scale-95"
+                    className="px-4 py-3 rounded-2xl font-medium transition-all duration-300 hover:scale-105 active:scale-95"
                     title="上傳文件和鏈接"
+                    style={{
+                      background: 'linear-gradient(135deg, #FFF5E1, #FFFACD)',
+                      color: '#FF8FB3',
+                      border: '2px solid #FFE5F0',
+                      boxShadow: '0 4px 15px rgba(255, 245, 225, 0.5)'
+                    }}
                   >
                     📎
                   </button>
@@ -398,15 +437,29 @@ export default function IslandView() {
                     value={inputText}
                     onChange={(e) => setInputText(e.target.value)}
                     onKeyPress={handleKeyPress}
-                    placeholder="輸入訊息... (Enter 發送)"
-                    className="flex-1 px-6 py-3 bg-white border-3 border-transparent rounded-cute focus:border-candy-pink focus:shadow-glow transition-all duration-300"
+                    placeholder="✨ 輸入訊息... (Enter 發送)"
+                    className="flex-1 px-6 py-3 bg-white rounded-2xl font-medium focus:outline-none transition-all focus:scale-105"
+                    style={{
+                      border: '3px solid #FFE5F0',
+                      color: '#666'
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = '#FFB3D9'
+                      e.target.style.boxShadow = '0 0 20px rgba(255, 179, 217, 0.3)'
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = '#FFE5F0'
+                      e.target.style.boxShadow = 'none'
+                    }}
                   />
                   <button
                     onClick={() => handleSendMessage()}
                     disabled={!inputText.trim()}
-                    className="px-6 py-3 rounded-cute font-bold text-white shadow-cute hover:shadow-cute-lg transition-all duration-300 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-6 py-3 rounded-2xl font-bold text-white transition-all duration-300 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                     style={{
-                      background: `linear-gradient(135deg, ${assistant.color}, ${assistant.color}dd)`
+                      background: 'linear-gradient(135deg, #FFB3D9, #FF8FB3)',
+                      border: '2px solid #FFE5F0',
+                      boxShadow: '0 4px 15px rgba(255, 179, 217, 0.4)'
                     }}
                   >
                     發送 💬
@@ -427,16 +480,26 @@ export default function IslandView() {
 
       {/* Loading State - 可爱加载 */}
       {loading && (
-        <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-healing-sky to-healing-cream z-50">
-          <div className="text-center bg-white/90 backdrop-blur-md rounded-bubble p-12 shadow-cute-xl animate-bounce-in">
-            <div className="text-8xl mb-6 animate-bounce-gentle">🏝️</div>
-            <p className="text-cute-xl font-bold bg-gradient-to-r from-candy-pink via-candy-purple to-candy-blue bg-clip-text text-transparent animate-sparkle">
+        <div className="fixed inset-0 flex items-center justify-center z-50" style={{
+          background: 'linear-gradient(135deg, #FFF5E1 0%, #FFE5F0 50%, #FFFACD 100%)'
+        }}>
+          <div className="text-center bg-white/90 backdrop-blur-md rounded-bubble p-12 animate-bounce-in" style={{
+            border: '3px solid #FFE5F0',
+            boxShadow: '0 12px 40px rgba(255, 179, 217, 0.25)'
+          }}>
+            <div className="text-8xl mb-6 animate-bounce-gentle">🐱</div>
+            <p className="text-cute-xl font-bold animate-sparkle" style={{
+              background: 'linear-gradient(135deg, #FF8FB3 0%, #FFFACD 50%, #FFB3D9 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text'
+            }}>
               載入心語小鎮中...
             </p>
             <div className="mt-6 flex gap-2 justify-center">
-              <div className="w-3 h-3 rounded-full bg-candy-pink animate-bounce" style={{ animationDelay: '0s' }}></div>
-              <div className="w-3 h-3 rounded-full bg-candy-purple animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-              <div className="w-3 h-3 rounded-full bg-candy-blue animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+              <div className="w-3 h-3 rounded-full animate-bounce" style={{ background: '#FFB3D9', animationDelay: '0s' }}></div>
+              <div className="w-3 h-3 rounded-full animate-bounce" style={{ background: '#FFFACD', animationDelay: '0.2s' }}></div>
+              <div className="w-3 h-3 rounded-full animate-bounce" style={{ background: '#FF8FB3', animationDelay: '0.4s' }}></div>
             </div>
           </div>
         </div>

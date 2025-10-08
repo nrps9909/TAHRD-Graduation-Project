@@ -72,6 +72,15 @@ export default {
           purple: "#D9B3FF",
           orange: "#FFD9B3",
         },
+        // 白噗噗專屬療癒色系 - 寶寶粉 & 鵝黃色
+        baby: {
+          pink: "#FFD4E5",      // 寶寶粉
+          yellow: "#FFF4D4",    // 鵝黃色
+          peach: "#FFE5DB",     // 柔和蜜桃
+          cream: "#FFF9E6",     // 奶油黃
+          blush: "#FFE0EC",     // 腮紅粉
+          butter: "#FFECB3",    // 奶油黃
+        },
         // 柔和自然色
         pastel: {
           grass: "#A8E6A3",
@@ -212,6 +221,10 @@ export default {
           "0%, 100%": { transform: "rotate(0deg)" },
           "25%": { transform: "rotate(5deg)" },
           "75%": { transform: "rotate(-5deg)" },
+        },
+        "pulse-gentle": {
+          "0%, 100%": { opacity: 1 },
+          "50%": { opacity: 0.7 },
         }
       },
       animation: {
@@ -237,6 +250,7 @@ export default {
         "sparkle": "sparkle 2s ease-in-out infinite",
         "bounce-gentle": "bounce-gentle 2s ease-in-out infinite",
         "swing": "swing 1s ease-in-out infinite",
+        "pulse-gentle": "pulse-gentle 3s ease-in-out infinite",
       },
       // 可爱字体大小
       fontSize: {

@@ -1,0 +1,277 @@
+/**
+ * TororoService - 知識園丁服務
+ * 負責創建和種植記憶花
+ */
+
+import { PrismaClient, AssistantType } from '@prisma/client'
+import { logger } from '../utils/logger'
+import { chiefAgentService } from './chiefAgentService'
+import { assistantService } from './assistantService'
+import { TORORO_SYSTEM_PROMPT } from '../agents/tororo/systemPrompt'
+
+const prisma = new PrismaClient()
+
+export interface TororoCreateInput {
+  userId: string
+  content: string
+  files?: Array<{
+    url: string
+    name: string
+    type: string
+  }>
+  links?: Array<{
+    url: string
+    title?: string
+  }>
+}
+
+export interface TororoResponse {
+  success: boolean
+  memory?: {
+    id: string
+    title: string
+    emoji: string
+    category: string
+    importance: number
+    summary: string
+  }
+  greeting: string
+  suggestion: string
+  encouragement: string
+  flower?: {
+    id: string
+    type: string
+    size: number
+    position: {
+      x: number
+      y: number
+      z: number
+    }
+  }
+  error?: string
+}
+
+/**
+ * Tororo 知識園丁服務
+ */
+class TororoService {
+  private mcpUrl: string
+
+  constructor() {
+    this.mcpUrl = process.env.MCP_SERVICE_URL || 'http://localhost:8765'
+  }
+
+  /**
+   * 使用 Tororo 創建記憶
+   * 整合現有的 chief-subagent 架構
+   */
+  async createMemoryWithTororo(input: TororoCreateInput): Promise<TororoResponse> {
+    try {
+      logger.info(`Tororo creating memory for user ${input.userId}`)
+
+      // 1. 使用 Tororo 的系統提示詞調用 Gemini
+      const tororoPrompt = this.buildTororoPrompt(input.content)
+      const tororoAnalysis = await this.callGemini(tororoPrompt)
+
+      // 2. 使用 chief-subagent 的分類功能
+      const classification = await chiefAgentService.classifyContent(input.content)
+
+      // 3. 獲取對應的助手
+      const assistant = await assistantService.getAssistantByType(classification.suggestedCategory)
+
+      if (!assistant) {
+        throw new Error('無法找到對應的助手')
+      }
+
+      // 4. 使用現有的 processAndCreateMemory 創建記憶
+      const result = await chiefAgentService.processAndCreateMemory(
+        input.userId,
+        assistant.id,
+        input.content,
+        classification.suggestedCategory
+      )
+
+      // 5. 生成記憶花資訊
+      const flower = this.generateFlowerInfo(result.memory)
+
+      // 6. 組合 Tororo 風格的回應
+      return {
+        success: true,
+        memory: {
+          id: result.memory.id,
+          title: result.memory.title || tororoAnalysis.analysis.title,
+          emoji: result.memory.emoji || tororoAnalysis.analysis.emoji,
+          category: result.memory.category,
+          importance: result.memory.aiImportance,
+          summary: result.memory.summary || ''
+        },
+        greeting: tororoAnalysis.greeting || '喵～收到你的想法了！',
+        suggestion: tororoAnalysis.suggestion || `我覺得可以種在「${this.getCategoryName(classification.suggestedCategory)}」那裡～`,
+        encouragement: tororoAnalysis.encouragement || '每一個想法都值得被珍惜呢～',
+        flower
+      }
+    } catch (error) {
+      logger.error('Tororo failed to create memory:', error)
+      return {
+        success: false,
+        greeting: '喵...',
+        suggestion: '',
+        encouragement: '抱歉，種花的時候遇到了一點問題...',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }
+    }
+  }
+
+  /**
+   * 建立 Tororo 的 prompt
+   */
+  private buildTororoPrompt(content: string): string {
+    return `${TORORO_SYSTEM_PROMPT}
+
+用戶分享了以下內容：
+"${content}"
+
+請分析並回應（以 JSON 格式）。`
+  }
+
+  /**
+   * 調用 Gemini API
+   */
+  private async callGemini(prompt: string): Promise<any> {
+    try {
+      const response = await fetch(`${this.mcpUrl}/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt,
+          model: 'gemini-2.5-pro',
+          temperature: 0.8
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error(`MCP service error: ${response.statusText}`)
+      }
+
+      const data = await response.json() as any
+      return this.parseJSON(data.response || data.text || '{}')
+    } catch (error) {
+      logger.error('Gemini API call failed:', error)
+      // 返回默認回應
+      return {
+        greeting: '喵～',
+        analysis: {
+          category: 'LIFE',
+          importance: 5,
+          tags: [],
+          title: '記憶',
+          emoji: '🌸',
+          summary: '一個特別的記憶',
+          keyPoints: [],
+          sentiment: 'neutral'
+        },
+        suggestion: '讓我幫你記下這個想法～',
+        encouragement: '每個想法都很珍貴！'
+      }
+    }
+  }
+
+  /**
+   * 解析 JSON
+   */
+  private parseJSON(text: string): any {
+    try {
+      // 移除 markdown code block
+      let cleaned = text.trim()
+      if (cleaned.startsWith('```json')) {
+        cleaned = cleaned.replace(/```json\n?/g, '').replace(/```\n?/g, '')
+      } else if (cleaned.startsWith('```')) {
+        cleaned = cleaned.replace(/```\n?/g, '')
+      }
+
+      return JSON.parse(cleaned)
+    } catch (error) {
+      logger.error('JSON parse error:', error)
+      return {}
+    }
+  }
+
+  /**
+   * 生成記憶花資訊
+   */
+  private generateFlowerInfo(memory: any) {
+    const region = this.getRegionPosition(memory.category)
+
+    // 根據重要度計算大小
+    const baseSize = 1.0
+    let sizeMultiplier = 1.0
+    if (memory.aiImportance <= 3) sizeMultiplier = 0.6
+    else if (memory.aiImportance <= 6) sizeMultiplier = 1.0
+    else if (memory.aiImportance <= 9) sizeMultiplier = 1.5
+    else sizeMultiplier = 2.0
+
+    return {
+      id: `flower_${memory.id}`,
+      type: this.getFlowerType(memory.category),
+      size: baseSize * sizeMultiplier,
+      position: {
+        x: region.x + (Math.random() - 0.5) * 10,
+        y: region.y,
+        z: region.z + (Math.random() - 0.5) * 10
+      }
+    }
+  }
+
+  /**
+   * 獲取區域位置
+   */
+  private getRegionPosition(category: AssistantType) {
+    const positions: Record<AssistantType, { x: number; y: number; z: number }> = {
+      LEARNING: { x: 0, y: 5, z: -20 },
+      INSPIRATION: { x: -15, y: 2, z: -10 },
+      GOALS: { x: 15, y: 6, z: -10 },
+      WORK: { x: 18, y: 0, z: 5 },
+      SOCIAL: { x: -18, y: 0, z: 5 },
+      LIFE: { x: 0, y: 1, z: 15 },
+      RESOURCES: { x: -10, y: 1, z: 12 },
+      CHIEF: { x: 0, y: 2, z: 0 }
+    }
+    return positions[category] || positions.LIFE
+  }
+
+  /**
+   * 獲取花朵類型
+   */
+  private getFlowerType(category: AssistantType): string {
+    const types: Record<AssistantType, string> = {
+      LEARNING: '櫻花',
+      INSPIRATION: '星光花',
+      GOALS: '火焰花',
+      WORK: '齒輪花',
+      SOCIAL: '熱帶花',
+      LIFE: '向日葵',
+      RESOURCES: '水晶花',
+      CHIEF: '皇冠花'
+    }
+    return types[category] || '花朵'
+  }
+
+  /**
+   * 獲取分類名稱
+   */
+  private getCategoryName(category: AssistantType): string {
+    const names: Record<AssistantType, string> = {
+      LEARNING: '學習高地',
+      INSPIRATION: '靈感森林',
+      GOALS: '目標峰頂',
+      WORK: '工作碼頭',
+      SOCIAL: '社交海灘',
+      LIFE: '生活花園',
+      RESOURCES: '資源倉庫',
+      CHIEF: '中央廣場'
+    }
+    return names[category] || '知識島'
+  }
+}
+
+export const tororoService = new TororoService()

@@ -44,6 +44,7 @@ export const typeDefs = gql`
     LIFE        # 生活記錄
     GOALS       # 目標規劃
     RESOURCES   # 資源收藏
+    MISC        # 雜項（不屬於其他類別的知識）
   }
 
   type Assistant {
@@ -159,10 +160,39 @@ export const typeDefs = gql`
     CLASSIFICATION   # 分類請求（Chief Agent）
   }
 
+  type ChatSession {
+    id: ID!
+    userId: ID!
+    assistantId: ID!
+
+    # Session Info
+    title: String!
+
+    # Metadata
+    messageCount: Int!
+    totalTokens: Int!
+
+    # Status
+    isArchived: Boolean!
+    isPinned: Boolean!
+
+    # Timestamps
+    createdAt: DateTime!
+    updatedAt: DateTime!
+    lastMessageAt: DateTime!
+    archivedAt: DateTime
+
+    # Relations
+    user: User!
+    assistant: Assistant!
+    messages: [ChatMessage!]!
+  }
+
   type ChatMessage {
     id: ID!
     userId: ID!
     assistantId: ID!
+    sessionId: ID!
 
     # Content
     userMessage: String!
@@ -182,6 +212,7 @@ export const typeDefs = gql`
     # Relations
     user: User!
     assistant: Assistant!
+    session: ChatSession!
     memory: Memory
   }
 
@@ -403,9 +434,114 @@ export const typeDefs = gql`
 
   input ChatWithAssistantInput {
     assistantId: ID!
+    sessionId: ID  # 如果為空，自動創建新會話
     message: String!
     contextType: ChatContextType = GENERAL_CHAT
     memoryId: ID
+  }
+
+  input CreateChatSessionInput {
+    assistantId: ID!
+    title: String
+  }
+
+  input UpdateChatSessionInput {
+    title: String
+    isPinned: Boolean
+    isArchived: Boolean
+  }
+
+  # ============ Cat Agent System (Tororo & Hijiki) ============
+
+  type TororoResponse {
+    success: Boolean!
+    memory: TororoMemoryInfo
+    greeting: String!
+    suggestion: String!
+    encouragement: String!
+    flower: FlowerInfo
+    error: String
+  }
+
+  type TororoMemoryInfo {
+    id: ID!
+    title: String!
+    emoji: String!
+    category: String!
+    importance: Int!
+    summary: String!
+  }
+
+  type FlowerInfo {
+    id: ID!
+    type: String!
+    size: Float!
+    position: Position3D!
+  }
+
+  type Position3D {
+    x: Float!
+    y: Float!
+    z: Float!
+  }
+
+  type HijikiSearchResponse {
+    success: Boolean!
+    summary: String!
+    results: [HijikiSearchResult!]!
+    resultCount: Int!
+    insights: [String!]
+    suggestions: [String!]
+    error: String
+  }
+
+  type HijikiSearchResult {
+    id: ID!
+    title: String!
+    emoji: String!
+    category: String!
+    importance: Int!
+    date: String!
+    summary: String!
+    tags: [String!]!
+  }
+
+  type HijikiStatisticsResponse {
+    success: Boolean!
+    summary: String!
+    statistics: StatisticsData!
+    insights: [String!]!
+    suggestions: [String!]!
+  }
+
+  type StatisticsData {
+    total: Int!
+    change: String!
+    distribution: JSON!
+    averageImportance: Float!
+    topTags: [String!]!
+  }
+
+  input TororoFileInput {
+    url: String!
+    name: String!
+    type: String!
+  }
+
+  input TororoLinkInput {
+    url: String!
+    title: String
+  }
+
+  input HijikiFilterInput {
+    categories: [AssistantType!]
+    tags: [String!]
+    dateRange: DateRangeInput
+  }
+
+  input DateRangeInput {
+    start: DateTime!
+    end: DateTime!
   }
 
   # ============ Queries ============
@@ -433,6 +569,8 @@ export const typeDefs = gql`
     agentDecisions(distributionId: ID!): [AgentDecision!]!
 
     # ===== Chat Queries =====
+    chatSessions(assistantId: ID, includeArchived: Boolean = false, limit: Int = 50): [ChatSession!]!
+    chatSession(id: ID!): ChatSession
     chatHistory(assistantId: ID, limit: Int = 50): [ChatMessage!]!
     chatMessage(id: ID!): ChatMessage
 
@@ -448,6 +586,10 @@ export const typeDefs = gql`
     # ===== Chief Agent Special Queries =====
     chiefSummary(days: Int = 7): ChiefSummaryResponse!
     classifyContent(content: String!): ClassificationResult!
+
+    # ===== Cat Agent Queries (Hijiki) =====
+    searchMemoriesWithHijiki(query: String!, type: String, filters: HijikiFilterInput): HijikiSearchResponse!
+    getStatisticsWithHijiki(period: String = "month"): HijikiStatisticsResponse!
   }
 
   # ============ Mutations ============
@@ -472,6 +614,11 @@ export const typeDefs = gql`
     linkMemories(memoryId: ID!, relatedIds: [ID!]!): Memory!
 
     # ===== Chat Mutations =====
+    createChatSession(input: CreateChatSessionInput!): ChatSession!
+    updateChatSession(id: ID!, input: UpdateChatSessionInput!): ChatSession!
+    deleteChatSession(id: ID!): Boolean!
+    archiveChatSession(id: ID!): ChatSession!
+    unarchiveChatSession(id: ID!): ChatSession!
     chatWithAssistant(input: ChatWithAssistantInput!): ChatMessage!
 
     # ===== Chief Agent Special Mutations =====
@@ -480,6 +627,9 @@ export const typeDefs = gql`
 
     # ===== Settings Mutations =====
     updateUserSettings(theme: String, language: String, defaultView: String): UserSettings!
+
+    # ===== Cat Agent Mutations (Tororo) =====
+    createMemoryWithTororo(content: String!, files: [TororoFileInput!], links: [TororoLinkInput!]): TororoResponse!
   }
 
   # ============ Subscriptions ============

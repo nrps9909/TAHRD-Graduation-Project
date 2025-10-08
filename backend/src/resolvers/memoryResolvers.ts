@@ -2,6 +2,7 @@ import { GraphQLError } from 'graphql'
 import { Context } from '../context'
 import { memoryService } from '../services/memoryService'
 import { chiefAgentService } from '../services/chiefAgentService'
+import { chatSessionService } from '../services/chatSessionService'
 import { AssistantType, ChatContextType } from '@prisma/client'
 
 export const memoryResolvers = {
@@ -347,7 +348,7 @@ export const memoryResolvers = {
      */
     chatWithAssistant: async (
       _: any,
-      { input }: { input: { assistantId: string; message: string; contextType?: ChatContextType; memoryId?: string } },
+      { input }: { input: { assistantId: string; sessionId?: string; message: string; contextType?: ChatContextType; memoryId?: string } },
       { userId, prisma }: Context
     ) => {
       if (!userId) {
@@ -365,6 +366,18 @@ export const memoryResolvers = {
           throw new GraphQLError('Assistant not found')
         }
 
+        // 獲取或創建會話
+        let session
+        if (input.sessionId) {
+          session = await chatSessionService.getSession(input.sessionId, userId)
+        } else {
+          session = await chatSessionService.getOrCreateSession(
+            userId,
+            input.assistantId,
+            input.contextType || ChatContextType.GENERAL_CHAT
+          )
+        }
+
         // 如果是 Chief，使用特殊處理
         if (assistant.type === AssistantType.CHIEF) {
           return await chiefAgentService.chatWithChief(userId, input.message)
@@ -375,6 +388,7 @@ export const memoryResolvers = {
           data: {
             userId,
             assistantId: input.assistantId,
+            sessionId: session.id,
             userMessage: input.message,
             assistantResponse: '此功能即將推出', // TODO: 實作 sub-agent 對話
             contextType: input.contextType || ChatContextType.GENERAL_CHAT,
@@ -382,9 +396,14 @@ export const memoryResolvers = {
           },
           include: {
             assistant: true,
+            session: true,
             memory: true
           }
         })
+
+        // 更新會話統計
+        await chatSessionService.incrementMessageCount(session.id)
+        await chatSessionService.updateLastMessageAt(session.id)
 
         return chatMessage
       } catch (error) {

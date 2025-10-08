@@ -1,62 +1,36 @@
-import { useEffect, useState } from 'react'
-
-interface Particle {
-  id: number
-  x: number
-  y: number
-  delay: number
-  duration: number
-  emoji: string
-}
-
 export default function CuteDecorations() {
-  const [particles, setParticles] = useState<Particle[]>([])
-
-  useEffect(() => {
-    // 创建可爱的漂浮粒子
-    const emojis = ['✨', '🌸', '🌼', '🦋', '🌈', '💫', '⭐', '🌺']
-    const newParticles: Particle[] = Array.from({ length: 15 }, (_, i) => ({
-      id: i,
-      x: Math.random() * 100,
-      y: Math.random() * 100,
-      delay: Math.random() * 5,
-      duration: 10 + Math.random() * 10,
-      emoji: emojis[Math.floor(Math.random() * emojis.length)]
-    }))
-    setParticles(newParticles)
-  }, [])
-
   return (
-    <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-      {/* 漂浮的装饰 */}
-      {particles.map((particle) => (
-        <div
-          key={particle.id}
-          className="absolute text-2xl opacity-40 animate-float"
-          style={{
-            left: `${particle.x}%`,
-            top: `${particle.y}%`,
-            animationDelay: `${particle.delay}s`,
-            animationDuration: `${particle.duration}s`
-          }}
-        >
-          {particle.emoji}
-        </div>
-      ))}
-
-      {/* 角落装饰 */}
-      <div className="absolute top-4 left-4 text-6xl opacity-20 animate-swing">
-        🌸
+    <div className="fixed inset-0 pointer-events-none overflow-hidden">
+      {/* 飄浮的貓咪表情 */}
+      <div className="absolute top-20 left-10 text-4xl animate-float opacity-40">
+        🐱
       </div>
-      <div className="absolute top-4 right-4 text-6xl opacity-20 animate-swing" style={{ animationDelay: '1s' }}>
-        🦋
+      <div className="absolute top-40 right-20 text-3xl animate-float-delayed opacity-30">
+        😺
       </div>
-      <div className="absolute bottom-4 left-4 text-6xl opacity-20 animate-bounce-gentle" style={{ animationDelay: '0.5s' }}>
-        🌼
+      <div className="absolute bottom-32 left-1/4 text-3xl animate-gentle-float opacity-35">
+        🐾
       </div>
-      <div className="absolute bottom-4 right-4 text-6xl opacity-20 animate-bounce-gentle" style={{ animationDelay: '1.5s' }}>
+      <div className="absolute top-1/3 right-10 text-2xl animate-float opacity-25">
+        💕
+      </div>
+      <div className="absolute bottom-40 right-1/3 text-3xl animate-float-delayed opacity-30">
         ✨
       </div>
+
+      {/* 角落裝飾 - 寶寶粉和鵝黃色 */}
+      <div className="absolute top-0 left-0 w-32 h-32 rounded-full blur-3xl opacity-20" style={{
+        background: 'radial-gradient(circle, #FFB3D9 0%, transparent 70%)'
+      }} />
+      <div className="absolute top-0 right-0 w-40 h-40 rounded-full blur-3xl opacity-20" style={{
+        background: 'radial-gradient(circle, #FFFACD 0%, transparent 70%)'
+      }} />
+      <div className="absolute bottom-0 left-0 w-36 h-36 rounded-full blur-3xl opacity-20" style={{
+        background: 'radial-gradient(circle, #FFE5F0 0%, transparent 70%)'
+      }} />
+      <div className="absolute bottom-0 right-0 w-32 h-32 rounded-full blur-3xl opacity-20" style={{
+        background: 'radial-gradient(circle, #FFF5E1 0%, transparent 70%)'
+      }} />
     </div>
   )
 }

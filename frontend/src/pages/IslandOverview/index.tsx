@@ -1,154 +1,178 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery } from '@apollo/client'
-import { GET_ASSISTANTS } from '../../graphql/assistant'
-import { Assistant } from '../../types/assistant'
-import { useNavigate } from 'react-router-dom'
-import CuteDecorations from '../../components/CuteDecorations'
+import { GET_ALL_MEMORIES } from '../../graphql/islandData'
+import { IslandScene } from '../../components/3D/IslandScene'
+import Live2DCat from '../../components/Live2DCat'
+import TororoKnowledgeAssistant from '../../components/TororoKnowledgeAssistant'
+import { MiniMap } from '../../components/MiniMap'
+import SettingsMenu from '../../components/SettingsMenu'
+import { useIslandStore } from '../../stores/islandStore'
+import { assignMemoriesToIslands, loadUserIslands } from '../../utils/islandDataConverter'
+import { Memory } from '../../types/memory'
+import { useSound } from '../../hooks/useSound'
+import { motion } from 'framer-motion'
 
 export default function IslandOverview() {
-  const { data, loading } = useQuery(GET_ASSISTANTS)
-  const navigate = useNavigate()
-  const [hoveredIsland, setHoveredIsland] = useState<string | null>(null)
+  const { data: memoryData, loading: memoriesLoading } = useQuery(GET_ALL_MEMORIES)
+  const [showLive2D, setShowLive2D] = useState(false)
+  const [currentLive2DModel, setCurrentLive2DModel] = useState<string>('')
+  const [audioInitialized, setAudioInitialized] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
 
-  const handleIslandClick = (assistantId: string) => {
-    navigate(`/island/${assistantId}`)
+  // Island store
+  const { islands, loadIslands, setLoading, switchIsland, resetToOverview } = useIslandStore()
+
+  // 音频系统
+  const sound = useSound()
+
+  // 初始化音频（在用户首次交互后）
+  useEffect(() => {
+    if (!audioInitialized) {
+      const initAudio = () => {
+        sound.init()
+        setAudioInitialized(true)
+        document.removeEventListener('click', initAudio)
+      }
+      document.addEventListener('click', initAudio, { once: true })
+      return () => document.removeEventListener('click', initAudio)
+    }
+  }, [audioInitialized, sound])
+
+  // 首次進入自動打開白噗噗對話
+  useEffect(() => {
+    const hasShownWelcome = sessionStorage.getItem('tororo_welcome_shown')
+    if (!hasShownWelcome && !memoriesLoading) {
+      // 延遲 1 秒後自動打開白噗噗
+      const timer = setTimeout(() => {
+        handleTororoClick()
+        sessionStorage.setItem('tororo_welcome_shown', 'true')
+      }, 1000)
+      return () => clearTimeout(timer)
+    }
+  }, [memoriesLoading])
+
+  // 載入島嶼和記憶數據
+  useEffect(() => {
+    if (memoriesLoading) {
+      setLoading(true)
+      return
+    }
+
+    try {
+      // 1. 載入用戶的島嶼配置（從 localStorage 或使用預設）
+      const userIslands = loadUserIslands()
+
+      // 2. 獲取所有記憶
+      const allMemories: Memory[] = memoryData?.memories || []
+
+      // 3. 將記憶分配到島嶼
+      const islandsWithMemories = assignMemoriesToIslands(userIslands, allMemories)
+
+      // 4. 載入到 store
+      loadIslands(islandsWithMemories)
+
+      console.log('✅ 島嶼數據已載入:', {
+        島嶼數量: islandsWithMemories.length,
+        總記憶數: allMemories.length,
+        各島記憶: islandsWithMemories.map(i => `${i.name}: ${i.memoryCount}`)
+      })
+    } catch (error) {
+      console.error('❌ 載入島嶼數據失敗:', error)
+      setLoading(false)
+    }
+  }, [memoryData, memoriesLoading, loadIslands, setLoading])
+
+  const handleTororoClick = () => {
+    // Tororo (小白) - 知識園丁，使用 Tororo 白色模型
+    setCurrentLive2DModel('/models/tororo_white/tororo.model3.json')
+    setShowLive2D(true)
   }
 
+  const handleHijikiClick = () => {
+    // Hijiki (小黑) - 知識管理員，使用 Hijiki 黑色模型
+    setCurrentLive2DModel('/models/hijiki/hijiki.model3.json')
+    setShowLive2D(true)
+  }
+
+  const handleCloseLive2D = () => {
+    setShowLive2D(false)
+    setCurrentLive2DModel('')
+  }
+
+  // 處理小地圖島嶼點擊 - 切換島嶼並移動相機視角
+  const handleMiniMapIslandClick = (islandId: string) => {
+    // 特殊處理：點擊中央房子回到總覽
+    if (islandId === 'overview') {
+      resetToOverview()
+    } else {
+      // 更新 store 中的當前島嶼
+      switchIsland(islandId)
+    }
+
+    // 播放點擊音效
+    if (audioInitialized) {
+      sound.sfx.click()
+    }
+  }
+
+
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-healing-sky via-healing-gentle to-healing-cream overflow-hidden">
-      <CuteDecorations />
+    <div className="fixed inset-0 overflow-hidden">
+      {/* 3D Island Scene - 環形群島視圖 */}
+      <IslandScene
+        onTororoClick={handleTororoClick}
+        onHijikiClick={handleHijikiClick}
+        hideLabels={showLive2D}
+      />
 
-      {/* 导航栏 */}
-      <div className="absolute top-0 left-0 right-0 p-4 z-10">
-        <div className="max-w-7xl mx-auto bg-white/90 backdrop-blur-md rounded-bubble shadow-cute-lg px-6 py-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-cute-2xl font-bold bg-gradient-to-r from-candy-pink via-candy-purple to-candy-blue bg-clip-text text-transparent animate-sparkle">
-              🏝️ 心語小鎮 - 島嶼世界
-            </h1>
-            <button
-              onClick={() => navigate('/database')}
-              className="px-5 py-2.5 bg-healing-gentle hover:bg-candy-blue text-gray-700 rounded-cute font-medium shadow-cute hover:shadow-cute-lg transition-all duration-300 hover:scale-105 active:scale-95"
-            >
-              📊 資料庫
-            </button>
-          </div>
-        </div>
-      </div>
+      {/* 設定按鈕 - 左上角 - 沉浸式設計 */}
+      {!showLive2D && (
+        <motion.button
+          initial={{ x: -100, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          transition={{ delay: 0.5, type: 'spring', stiffness: 200 }}
+          onClick={() => setShowSettings(true)}
+          whileHover={{ scale: 1.05, opacity: 1 }}
+          className="fixed top-6 left-6 z-40 group"
+          title="遊戲設定"
+        >
+          {/* 玻璃擬態背景 */}
+          <div className="relative w-12 h-12 rounded-2xl backdrop-blur-md bg-white/10 border border-white/20 shadow-lg transition-all group-hover:bg-white/20 group-hover:border-white/30">
+            {/* 漸層光暈 */}
+            <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-pink-300/20 to-yellow-300/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
-      {/* 加载状态 */}
-      {loading && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="text-center bg-white/90 backdrop-blur-md rounded-bubble p-12 shadow-cute-xl animate-bounce-in">
-            <div className="text-8xl mb-6 animate-bounce-gentle">🏝️</div>
-            <p className="text-cute-xl font-bold bg-gradient-to-r from-candy-pink via-candy-purple to-candy-blue bg-clip-text text-transparent animate-sparkle">
-              載入島嶼世界中...
-            </p>
+            {/* 齒輪圖標 */}
+            <div className="absolute inset-0 flex items-center justify-center text-white/70 group-hover:text-white text-xl transition-all group-hover:rotate-90 duration-500">
+              ⚙️
+            </div>
           </div>
-        </div>
+        </motion.button>
       )}
 
-      {/* 岛屿网格 */}
-      {!loading && data?.assistants && (
-        <div className="absolute inset-0 flex items-center justify-center p-8 pt-32">
-          <div className="max-w-6xl w-full">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {data.assistants.map((assistant: Assistant) => (
-                <div
-                  key={assistant.id}
-                  className="relative group cursor-pointer"
-                  onClick={() => handleIslandClick(assistant.id)}
-                  onMouseEnter={() => setHoveredIsland(assistant.id)}
-                  onMouseLeave={() => setHoveredIsland(null)}
-                >
-                  {/* 岛屿卡片 */}
-                  <div
-                    className={`
-                      bg-white/90 backdrop-blur-md rounded-bubble p-8
-                      shadow-cute hover:shadow-cute-xl
-                      transition-all duration-500
-                      ${hoveredIsland === assistant.id ? 'transform -translate-y-4 scale-105' : ''}
-                    `}
-                    style={{
-                      background: `linear-gradient(135deg, ${assistant.color}22, white)`
-                    }}
-                  >
-                    {/* NPC 头像 */}
-                    <div className="flex flex-col items-center mb-6">
-                      <div
-                        className={`
-                          w-24 h-24 rounded-full flex items-center justify-center text-6xl
-                          shadow-cute-lg mb-4
-                          ${hoveredIsland === assistant.id ? 'animate-bounce-gentle' : ''}
-                        `}
-                        style={{
-                          background: `linear-gradient(135deg, ${assistant.color}, ${assistant.color}dd)`
-                        }}
-                      >
-                        {assistant.emoji}
-                      </div>
+      {/* 設定選單 */}
+      <SettingsMenu isOpen={showSettings} onClose={() => setShowSettings(false)} />
 
-                      <h2 className="text-cute-2xl font-bold text-gray-800 mb-2">
-                        {assistant.nameChinese}
-                      </h2>
-                      <p className="text-cute-sm text-gray-500">{assistant.name}</p>
-                    </div>
 
-                    {/* 岛屿描述 */}
-                    <div className="bg-white/60 backdrop-blur-sm rounded-cute p-4 mb-6 shadow-inner">
-                      <p className="text-cute-sm text-gray-700 leading-relaxed line-clamp-3">
-                        {assistant.personality}
-                      </p>
-                    </div>
+      {/* 小地圖 - 右下角 */}
+      {!showLive2D && (
+        <MiniMap onIslandClick={handleMiniMapIslandClick} />
+      )}
 
-                    {/* 进入按钮 */}
-                    <button
-                      className={`
-                        w-full px-6 py-3 rounded-cute font-bold text-white
-                        shadow-cute hover:shadow-cute-lg
-                        transition-all duration-300
-                        ${hoveredIsland === assistant.id ? 'animate-pop' : ''}
-                      `}
-                      style={{
-                        background: `linear-gradient(135deg, ${assistant.color}, ${assistant.color}dd)`
-                      }}
-                    >
-                      🏝️ 進入島嶼
-                    </button>
-
-                    {/* 悬浮装饰 */}
-                    {hoveredIsland === assistant.id && (
-                      <div className="absolute -top-2 -right-2 text-4xl animate-bounce">
-                        ✨
-                      </div>
-                    )}
-                  </div>
-
-                  {/* 岛屿阴影 */}
-                  <div
-                    className="absolute inset-0 rounded-bubble -z-10"
-                    style={{
-                      background: `${assistant.color}33`,
-                      filter: 'blur(20px)',
-                      transform: hoveredIsland === assistant.id ? 'scale(1.1)' : 'scale(0.9)',
-                      opacity: hoveredIsland === assistant.id ? 0.6 : 0.3,
-                      transition: 'all 0.5s ease'
-                    }}
-                  />
-                </div>
-              ))}
-            </div>
-
-            {/* 底部提示 */}
-            <div className="mt-12 text-center">
-              <p className="text-cute-base text-gray-600 mb-2">
-                點擊任意島嶼開始與 NPC 對話 💬
-              </p>
-              <p className="text-cute-sm text-gray-400">
-                每個 NPC 都擁有獨立的島嶼世界
-              </p>
-            </div>
-          </div>
-        </div>
+      {/* Live2D Cat Modal - 沉浸式全屏對話界面 */}
+      {showLive2D && currentLive2DModel && (
+        <>
+          {currentLive2DModel.includes('tororo') ? (
+            <TororoKnowledgeAssistant
+              modelPath={currentLive2DModel}
+              onClose={handleCloseLive2D}
+            />
+          ) : (
+            <Live2DCat
+              modelPath={currentLive2DModel}
+              onClose={handleCloseLive2D}
+            />
+          )}
+        </>
       )}
     </div>
   )

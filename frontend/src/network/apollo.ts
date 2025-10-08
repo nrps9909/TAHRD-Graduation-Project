@@ -44,8 +44,8 @@ export const apolloClient = new ApolloClient({
           // 記憶列表的分頁策略
           memories: {
             keyArgs: ['filter'],
-            merge(existing = [], incoming) {
-              return [...existing, ...incoming]
+            merge(_existing = [], incoming) {
+              return [..._existing, ...incoming]
             },
           },
         },
@@ -54,7 +54,7 @@ export const apolloClient = new ApolloClient({
         fields: {
           // 關聯記憶的合併策略
           relatedMemories: {
-            merge(existing, incoming) {
+            merge(_existing, incoming) {
               return incoming
             },
           },

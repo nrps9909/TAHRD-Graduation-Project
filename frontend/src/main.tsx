@@ -13,6 +13,14 @@ if (typeof window !== 'undefined') {
   (window as any).__troika_text_no_workers__ = true
 }
 
+// 🚀 全局启用 BVH 加速 - 大幅提升射线检测性能（点击、hover等）
+import * as THREE from 'three'
+import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh'
+
+THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree
+THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree
+THREE.Mesh.prototype.raycast = acceleratedRaycast
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ApolloProvider client={apolloClient}>

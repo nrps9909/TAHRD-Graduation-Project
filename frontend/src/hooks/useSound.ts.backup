@@ -1,0 +1,53 @@
+import { useCallback, useState } from 'react'
+import soundManager, { SoundType } from '../utils/soundManager'
+
+/**
+ * React Hook for using sound system
+ */
+export const useSound = () => {
+  const [enabled, setEnabled] = useState(soundManager.isEnabled())
+  const [volume, setVolumeState] = useState(soundManager.getVolume())
+
+  const play = useCallback((type: SoundType) => {
+    soundManager.play(type)
+  }, [])
+
+  const stop = useCallback((type: SoundType) => {
+    soundManager.stop(type)
+  }, [])
+
+  const stopAll = useCallback(() => {
+    soundManager.stopAll()
+  }, [])
+
+  const playRandomMeow = useCallback(() => {
+    soundManager.playRandomMeow()
+  }, [])
+
+  const playTypingSequence = useCallback((duration?: number) => {
+    soundManager.playTypingSequence(duration)
+  }, [])
+
+  const toggleSound = useCallback(() => {
+    const newEnabled = !enabled
+    soundManager.setEnabled(newEnabled)
+    setEnabled(newEnabled)
+  }, [enabled])
+
+  const setVolume = useCallback((vol: number) => {
+    soundManager.setVolume(vol)
+    setVolumeState(vol)
+  }, [])
+
+  return {
+    play,
+    stop,
+    stopAll,
+    playRandomMeow,
+    playTypingSequence,
+    enabled,
+    volume,
+    toggleSound,
+    setVolume,
+  }
+}

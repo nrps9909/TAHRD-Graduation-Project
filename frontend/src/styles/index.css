@@ -3,6 +3,7 @@
 /* Import all style modules */
 @import './fonts.css';
 @import './base.css';
+@import './cursor.css';
 @import './z-index.css';
 @import './layout.css';
 @import './components.css';

@@ -1,10 +1,15 @@
 import { PrismaClient, AssistantType, ChatContextType, ContentType } from '@prisma/client'
 import { logger } from '../utils/logger'
 import axios from 'axios'
+import { exec } from 'child_process'
+import { promisify } from 'util'
 import { assistantService } from './assistantService'
 import { memoryService } from './memoryService'
 import { subAgentService } from './subAgentService'
 import { multimodalProcessor } from './multimodalProcessor'
+import { chatSessionService } from './chatSessionService'
+
+const execAsync = promisify(exec)
 
 const prisma = new PrismaClient()
 
@@ -59,9 +64,20 @@ export interface KnowledgeAnalysis {
  */
 export class ChiefAgentService {
   private mcpUrl: string
+  private useGeminiCLI: boolean = true
+  private geminiModel: string = 'gemini-2.5-flash'
 
   constructor() {
     this.mcpUrl = process.env.MCP_SERVICE_URL || 'http://localhost:8765'
+    this.useGeminiCLI = process.env.USE_GEMINI_CLI !== 'false'
+
+    // 检查 Gemini API Key
+    const apiKey = process.env.GEMINI_API_KEY
+    if (apiKey) {
+      logger.info('Gemini CLI initialized successfully')
+    } else {
+      logger.warn('GEMINI_API_KEY not found, AI features will be limited')
+    }
   }
 
   /**
@@ -82,7 +98,7 @@ export class ChiefAgentService {
 
 請以 JSON 格式回覆（只回覆 JSON，不要其他文字）：
 {
-  "suggestedCategory": "LEARNING|INSPIRATION|WORK|SOCIAL|LIFE|GOALS|RESOURCES",
+  "suggestedCategory": "LEARNING|INSPIRATION|WORK|SOCIAL|LIFE|GOALS|RESOURCES|MISC",
   "confidence": 0.0-1.0,
   "reason": "為什麼選擇這個分類？（簡短說明）",
   "alternativeCategories": ["其他可能的分類1", "其他可能的分類2"]
@@ -95,7 +111,8 @@ export class ChiefAgentService {
 - SOCIAL: 朋友、人際、八卦、社交
 - LIFE: 日常生活、心情、經驗、反思
 - GOALS: 目標、夢想、計劃、里程碑
-- RESOURCES: 文章、連結、影片、參考資料`
+- RESOURCES: 文章、連結、影片、參考資料
+- MISC: 雜項、不屬於其他類別的知識、待整理的內容`
 
       const response = await this.callMCP(prompt, chief.id)
       const result = this.parseJSON(response)
@@ -194,17 +211,29 @@ ${contextInfo}
         emoji: parsed.emoji
       })
 
+      // 獲取或創建會話
+      const session = await chatSessionService.getOrCreateSession(
+        userId,
+        assistantId,
+        contextType
+      )
+
       // 創建對話記錄
       const chatMessage = await prisma.chatMessage.create({
         data: {
           userId,
           assistantId,
+          sessionId: session.id,
           userMessage: content,
           assistantResponse: parsed.response || '我已經幫你記下了！',
           memoryId: memory.id,
           contextType
         }
       })
+
+      // 更新會話統計
+      await chatSessionService.incrementMessageCount(session.id)
+      await chatSessionService.updateLastMessageAt(session.id)
 
       // 更新助手統計
       await assistantService.incrementAssistantStats(assistantId, 'memory')
@@ -409,16 +438,28 @@ ${contextInfo}
 
       const response = await this.callMCP(prompt, chief.id)
 
+      // 獲取或創建會話
+      const session = await chatSessionService.getOrCreateSession(
+        userId,
+        chief.id,
+        ChatContextType.GENERAL_CHAT
+      )
+
       // 記錄對話
       const chatMessage = await prisma.chatMessage.create({
         data: {
           userId,
           assistantId: chief.id,
+          sessionId: session.id,
           userMessage: message,
           assistantResponse: response,
           contextType: ChatContextType.GENERAL_CHAT
         }
       })
+
+      // 更新會話統計
+      await chatSessionService.incrementMessageCount(session.id)
+      await chatSessionService.updateLastMessageAt(session.id)
 
       await assistantService.incrementAssistantStats(chief.id, 'chat')
 
@@ -430,9 +471,47 @@ ${contextInfo}
   }
 
   /**
-   * 調用 MCP 服務
+   * 調用 AI 服務（使用 Gemini CLI）
    */
   private async callMCP(prompt: string, assistantId: string): Promise<string> {
+    // 優先使用 Gemini CLI
+    if (this.useGeminiCLI) {
+      try {
+        logger.info(`[Chief Agent] Calling Gemini CLI`)
+
+        // 转义 prompt 中的特殊字符
+        const escapedPrompt = prompt
+          .replace(/\\/g, '\\\\')
+          .replace(/"/g, '\\"')
+          .replace(/\$/g, '\\$')
+          .replace(/`/g, '\\`')
+
+        // 使用 Gemini CLI 调用
+        const command = `gemini -m ${this.geminiModel} -p "${escapedPrompt}"`
+        const { stdout, stderr } = await execAsync(command, {
+          maxBuffer: 10 * 1024 * 1024, // 10MB buffer
+          timeout: 60000, // 60 seconds timeout
+          env: {
+            ...process.env,
+            GEMINI_API_KEY: process.env.GEMINI_API_KEY
+          }
+        })
+
+        if (stderr && stderr.includes('Error')) {
+          logger.error('[Chief Agent] Gemini CLI stderr:', stderr)
+        }
+
+        const response = stdout.trim()
+        logger.info(`[Chief Agent] Gemini CLI response received (${response.length} chars)`)
+        return response
+      } catch (error: any) {
+        logger.error('[Chief Agent] Gemini CLI error:', error.message)
+        logger.error('[Chief Agent] Error details:', error)
+        throw new Error('AI 服務暫時無法使用')
+      }
+    }
+
+    // Fallback: 使用 MCP Server
     try {
       const response = await axios.post(
         `${this.mcpUrl}/generate`,
@@ -600,6 +679,7 @@ ${input.content}
 - LIFE (生活記錄)
 - GOALS (目標規劃)
 - RESOURCES (資源收藏)
+- MISC (雜項、不屬於其他類別的知識)
 
 請根據內容的主題和性質，選擇 1-3 個最相關的 Assistant。`
 
@@ -710,6 +790,7 @@ ${input.content}
       LIFE: ['生活', '日常', '心情', '感受', '記錄'],
       GOALS: ['目標', '計劃', '規劃', '願望', '夢想'],
       RESOURCES: ['資源', '工具', '連結', '收藏', '參考'],
+      MISC: ['雜項', '其他', '待整理', '未分類', '隨記'],
     }
 
     for (const [type, words] of Object.entries(keywords)) {

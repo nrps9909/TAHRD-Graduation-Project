@@ -1,5 +1,8 @@
 import { gql } from '@apollo/client'
 
+// Re-export types for convenience
+export type { Memory, MemoryCategory, RelatedMemoryPreview, ChatMessage, CreateMemoryInput, UpdateMemoryInput } from '../types/memory'
+
 // ============ Fragments ============
 
 export const MEMORY_FRAGMENT = gql`

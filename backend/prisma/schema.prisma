@@ -34,6 +34,7 @@ model User {
   // Relations
   memories     Memory[]
   chatMessages ChatMessage[]
+  chatSessions ChatSession[]
   settings     UserSettings?
 
   @@map("users")
@@ -111,6 +112,7 @@ model Assistant {
   // Relations
   memories         Memory[]
   chatMessages     ChatMessage[]
+  chatSessions     ChatSession[]
 
   @@map("assistants")
 }
@@ -192,10 +194,45 @@ model Memory {
 
 // ============ Chat System ============
 
+// Chat Session - 類似 ChatGPT 的會話管理
+model ChatSession {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId           String   @map("user_id") @db.ObjectId
+  assistantId      String   @map("assistant_id") @db.ObjectId
+
+  // Session Info
+  title            String   @default("新對話") // 自動生成或用戶編輯
+
+  // Metadata
+  messageCount     Int      @default(0) @map("message_count")
+  totalTokens      Int      @default(0) @map("total_tokens")
+
+  // Status
+  isArchived       Boolean  @default(false) @map("is_archived")
+  isPinned         Boolean  @default(false) @map("is_pinned")
+
+  // Timestamps
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+  lastMessageAt    DateTime @default(now()) @map("last_message_at")
+  archivedAt       DateTime? @map("archived_at")
+
+  // Relations
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assistant        Assistant @relation(fields: [assistantId], references: [id], onDelete: Cascade)
+  messages         ChatMessage[]
+
+  @@index([userId, updatedAt(sort: Desc)])
+  @@index([userId, assistantId])
+  @@index([userId, isPinned, updatedAt(sort: Desc)])
+  @@map("chat_sessions")
+}
+
 model ChatMessage {
   id               String   @id @default(auto()) @map("_id") @db.ObjectId
   userId           String   @map("user_id") @db.ObjectId
   assistantId      String   @map("assistant_id") @db.ObjectId
+  sessionId        String   @map("session_id") @db.ObjectId // 關聯到會話
 
   // Content
   userMessage      String   @map("user_message") @db.String
@@ -215,8 +252,10 @@ model ChatMessage {
   // Relations
   user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   assistant        Assistant @relation(fields: [assistantId], references: [id], onDelete: Cascade)
+  session          ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   memory           Memory?  @relation(fields: [memoryId], references: [id], onDelete: SetNull)
 
+  @@index([sessionId, createdAt])
   @@index([userId, assistantId])
   @@index([userId, createdAt])
   @@map("chat_messages")
