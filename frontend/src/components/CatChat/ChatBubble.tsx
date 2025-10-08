@@ -28,7 +28,7 @@ export interface ChatSession {
 }
 
 interface ChatBubbleProps {
-  currentCat: CatAgent | null
+  currentCat?: CatAgent // 改為可選，會使用預設值 TORORO
   onSendMessage: (message: string, catAgent: CatAgent) => void
   onSwitchCat: (catAgent: CatAgent) => void
   messages: ChatMessage[]
@@ -40,7 +40,7 @@ interface ChatBubbleProps {
 }
 
 export default function ChatBubble({
-  currentCat,
+  currentCat = CatAgent.TORORO, // 設定預設值為白噗噗
   onSendMessage,
   onSwitchCat,
   messages,
@@ -61,7 +61,7 @@ export default function ChatBubble({
   }, [messages])
 
   const handleSend = () => {
-    if (!inputMessage.trim() || !currentCat) return
+    if (!inputMessage.trim()) return
 
     onSendMessage(inputMessage.trim(), currentCat)
     setInputMessage('')
@@ -77,7 +77,7 @@ export default function ChatBubble({
   // 貓咪配置
   const catConfig = {
     tororo: {
-      name: '小白',
+      name: '白噗噗',
       emoji: '☁️',
       color: '#FFFFFF',
       gradient: 'linear-gradient(135deg, #FFFFFF, #FFF8F0)',
@@ -92,7 +92,7 @@ export default function ChatBubble({
     }
   }
 
-  const activeCat = currentCat ? catConfig[currentCat] : null
+  const activeCat = catConfig[currentCat]
 
   return (
     <div className="fixed bottom-6 right-6 z-50">
@@ -110,11 +110,11 @@ export default function ChatBubble({
             style={{
               width: '70px',
               height: '70px',
-              background: activeCat?.gradient || 'linear-gradient(135deg, #FFB3D9, #FF8FB3)',
+              background: activeCat.gradient,
               border: '4px solid white'
             }}
           >
-            <div className="text-4xl">{activeCat?.emoji || '💬'}</div>
+            <div className="text-4xl">{activeCat.emoji}</div>
             {messages.length > 0 && (
               <div
                 className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center"
@@ -140,17 +140,23 @@ export default function ChatBubble({
             <div
               className="px-6 py-4 flex items-center justify-between"
               style={{
-                background: activeCat?.gradient || 'linear-gradient(135deg, #FFB3D9, #FF8FB3)'
+                background: activeCat.gradient
               }}
             >
               <div className="flex items-center gap-3">
-                <div className="text-3xl">{activeCat?.emoji}</div>
+                <div className="text-3xl">{activeCat.emoji}</div>
                 <div>
-                  <div className="font-bold text-white text-lg">
-                    {activeCat?.name || '貓咪管家'}
+                  <div
+                    className="font-bold text-lg"
+                    style={{ color: currentCat === CatAgent.TORORO ? '#333333' : '#FFFFFF' }}
+                  >
+                    {activeCat.name}
                   </div>
-                  <div className="text-xs text-white opacity-90">
-                    {activeCat?.description || '在線'}
+                  <div
+                    className="text-xs opacity-90"
+                    style={{ color: currentCat === CatAgent.TORORO ? '#666666' : '#FFFFFF' }}
+                  >
+                    {activeCat.description}
                   </div>
                 </div>
               </div>
@@ -174,7 +180,7 @@ export default function ChatBubble({
                 <button
                   onClick={() => onSwitchCat(currentCat === CatAgent.TORORO ? CatAgent.HIJIKI : CatAgent.TORORO)}
                   className="p-2 rounded-full hover:bg-white/20 transition-colors"
-                  title={`切換到 ${currentCat === CatAgent.TORORO ? '小黑' : '小白'}`}
+                  title={`切換到 ${currentCat === CatAgent.TORORO ? '小黑' : '白噗噗'}`}
                 >
                   <span className="text-xl">
                     {currentCat === CatAgent.TORORO ? '🌙' : '☁️'}
@@ -184,7 +190,8 @@ export default function ChatBubble({
                 {/* 關閉按鈕 */}
                 <button
                   onClick={() => setIsExpanded(false)}
-                  className="p-2 rounded-full hover:bg-white/20 transition-colors text-white"
+                  className="p-2 rounded-full hover:bg-white/20 transition-colors"
+                  style={{ color: currentCat === CatAgent.TORORO ? '#333333' : '#FFFFFF' }}
                 >
                   ✕
                 </button>
@@ -210,7 +217,7 @@ export default function ChatBubble({
                 <>
                   {messages.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full text-center">
-                      <div className="text-6xl mb-4">{activeCat?.emoji}</div>
+                      <div className="text-6xl mb-4">{activeCat.emoji}</div>
                       <p className="font-medium" style={{ color: '#FF8FB3' }}>
                         {currentCat === CatAgent.TORORO
                           ? '喵～今天想種下什麼新想法呢？'
@@ -278,7 +285,7 @@ export default function ChatBubble({
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  placeholder={`跟 ${activeCat?.name} 說話...`}
+                  placeholder={`跟 ${activeCat.name} 說話...`}
                   className="flex-1 px-4 py-3 rounded-2xl border-3 focus:outline-none transition-all"
                   style={{
                     border: '3px solid #FFE5F0',

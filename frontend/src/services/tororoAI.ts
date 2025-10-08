@@ -3,6 +3,73 @@
  * 使用 Gemini 2.5 Flash 為白噗噗生成獨特的對話回應
  */
 
+// API 速率限制管理
+class RateLimiter {
+  private queue: Array<() => Promise<any>> = []
+  private isProcessing = false
+  private lastCallTime = 0
+  private minInterval = 1000 // 最小間隔 1 秒
+  private retryDelays = [2000, 5000, 10000] // 重試延遲：2s, 5s, 10s
+
+  async enqueue<T>(fn: () => Promise<T>): Promise<T> {
+    return new Promise((resolve, reject) => {
+      this.queue.push(async () => {
+        try {
+          const result = await fn()
+          resolve(result)
+        } catch (error) {
+          reject(error)
+        }
+      })
+      this.processQueue()
+    })
+  }
+
+  private async processQueue() {
+    if (this.isProcessing || this.queue.length === 0) return
+
+    this.isProcessing = true
+
+    while (this.queue.length > 0) {
+      const now = Date.now()
+      const timeSinceLastCall = now - this.lastCallTime
+
+      if (timeSinceLastCall < this.minInterval) {
+        await new Promise(resolve => setTimeout(resolve, this.minInterval - timeSinceLastCall))
+      }
+
+      const task = this.queue.shift()
+      if (task) {
+        this.lastCallTime = Date.now()
+        await task()
+      }
+    }
+
+    this.isProcessing = false
+  }
+
+  async retryWithBackoff<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        return await this.enqueue(fn)
+      } catch (error: any) {
+        const isRateLimitError = error.message?.includes('429') || error.message?.includes('速率')
+
+        if (!isRateLimitError || attempt === maxRetries - 1) {
+          throw error
+        }
+
+        const delay = this.retryDelays[attempt] || 10000
+        console.log(`速率限制，${delay/1000}秒後重試...`)
+        await new Promise(resolve => setTimeout(resolve, delay))
+      }
+    }
+    throw new Error('達到最大重試次數')
+  }
+}
+
+const rateLimiter = new RateLimiter()
+
 // 白噗噗的核心人格設定
 const TORORO_PERSONALITY = `
 你是「白噗噗」(Tororo)，一隻溫柔、貼心、充滿智慧的白色小貓知識助手。
@@ -58,78 +125,85 @@ interface ConversationContext {
 }
 
 /**
- * 呼叫 Gemini 2.5 Flash 生成白噗噗的回應
+ * 呼叫後端 GraphQL API 生成白噗噗的回應
+ * 後端會使用 Gemini CLI 調用 Gemini 2.5 Flash
+ *
+ * 注意：某些簡單互動直接使用預設回應，不調用 API
  */
 export async function generateTororoResponse(context: ConversationContext): Promise<string> {
-  try {
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY
+  // 不需要 AI 生成的簡單互動，直接使用預設回應
+  const usePresetActions: UserAction[] = [
+    'open_panel',      // 打開面板 - 用預設問候語
+    'view_history',    // 查看歷史 - 用預設回應
+    'load_history',    // 載入歷史 - 用預設回應
+    'delete_history',  // 刪除歷史 - 用預設回應
+    'upload_file',     // 上傳檔案 - 用預設回應
+    'take_photo',      // 拍照 - 用預設回應
+    'voice_record',    // 語音錄製 - 用預設回應
+    'processing',      // 處理中 - 用預設回應
+    'success',         // 成功 - 用預設回應
+    'error'            // 錯誤 - 用預設回應
+  ]
 
-    if (!apiKey) {
-      console.error('VITE_GEMINI_API_KEY 未設定')
-      return getFallbackResponse(context.action)
-    }
+  // 如果是簡單互動，直接返回預設回應
+  if (usePresetActions.includes(context.action)) {
+    console.log(`[Tororo] 使用預設回應: ${context.action}`)
+    return getFallbackResponse(context.action)
+  }
+
+  // 需要 AI 生成的互動（如 typing, has_input, voice_dialog）
+  try {
+    console.log(`[Tororo] 調用 AI 生成回應: ${context.action}`)
 
     // 構建提示詞
     const prompt = buildPrompt(context)
 
-    // 呼叫 Gemini API
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`,
-      {
+    // 呼叫後端 GraphQL API（後端使用 Gemini CLI）
+    const generatedText = await rateLimiter.retryWithBackoff(async () => {
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000'
+
+      const response = await fetch(`${backendUrl}/graphql`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: prompt
-            }]
-          }],
-          generationConfig: {
-            temperature: 0.9,  // 較高的創意度
-            topK: 40,
-            topP: 0.95,
-            maxOutputTokens: 100,  // 限制長度保持簡潔
-          },
-          safetySettings: [
-            {
-              category: 'HARM_CATEGORY_HARASSMENT',
-              threshold: 'BLOCK_NONE'
-            },
-            {
-              category: 'HARM_CATEGORY_HATE_SPEECH',
-              threshold: 'BLOCK_NONE'
-            },
-            {
-              category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-              threshold: 'BLOCK_NONE'
-            },
-            {
-              category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
-              threshold: 'BLOCK_NONE'
+          query: `
+            mutation GenerateTororoResponse($prompt: String!) {
+              generateTororoResponse(prompt: $prompt) {
+                response
+                success
+              }
             }
-          ]
+          `,
+          variables: {
+            prompt
+          }
         })
+      })
+
+      if (!response.ok) {
+        throw new Error(`後端 API 錯誤: ${response.status}`)
       }
-    )
 
-    if (!response.ok) {
-      throw new Error(`Gemini API 錯誤: ${response.status}`)
-    }
+      const data = await response.json()
 
-    const data = await response.json()
-    const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text
+      if (data.errors) {
+        throw new Error(data.errors[0]?.message || '生成回應失敗')
+      }
+
+      return data.data?.generateTororoResponse?.response
+    }, 3) // 最多重試 3 次
 
     if (generatedText) {
       return generatedText.trim()
     } else {
-      console.warn('Gemini 沒有返回文字，使用備用回應')
+      console.warn('後端沒有返回文字，使用備用回應')
       return getFallbackResponse(context.action)
     }
 
   } catch (error) {
-    console.error('Gemini AI 錯誤:', error)
+    console.error('白噗噗 AI 錯誤:', error)
     return getFallbackResponse(context.action)
   }
 }

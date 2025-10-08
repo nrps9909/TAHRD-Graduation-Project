@@ -123,7 +123,12 @@ export const knowledgeDistributionResolvers = {
         // 调用 Chief Agent Service
         const result = await chiefAgentService.uploadKnowledge(userId, input)
 
-        logger.info(`[GraphQL] 知识上传成功，分发记录 ID: ${result.distribution.id}`)
+        // 檢查是否為簡單互動（不創建分發記錄）
+        if (result.skipRecording) {
+          logger.info(`[GraphQL] 簡單互動，不創建分發記錄`)
+        } else {
+          logger.info(`[GraphQL] 知识上传成功，分发记录 ID: ${result.distribution?.id}`)
+        }
 
         return result
       } catch (error) {

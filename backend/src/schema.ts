@@ -297,6 +297,11 @@ export const typeDefs = gql`
 
   # ============ Analytics ============
 
+  type TororoResponsePayload {
+    response: String!
+    success: Boolean!
+  }
+
   type DailySummary {
     id: ID!
     userId: ID!
@@ -343,9 +348,18 @@ export const typeDefs = gql`
 
   type UploadKnowledgeResponse {
     distribution: KnowledgeDistribution!
+    tororoResponse: TororoResponse!  # 白噗噗的即時回應
     agentDecisions: [AgentDecision!]!
     memoriesCreated: [Memory!]!
     processingTime: Float!
+    backgroundProcessing: Boolean!  # 標記是否正在後台處理
+  }
+
+  type TororoResponse {
+    warmMessage: String!     # 白噗噗的溫暖回應訊息
+    category: AssistantType! # 分類結果
+    quickSummary: String!    # 一句話摘要
+    confidence: Float!       # 信心分數
   }
 
   type CreateMemoryResponse {
@@ -449,6 +463,80 @@ export const typeDefs = gql`
     title: String
     isPinned: Boolean
     isArchived: Boolean
+  }
+
+  # ============ RAG System Types (小黑知識庫) ============
+
+  type HijikiChatResponse {
+    answer: String!
+    sources: [MemorySource!]!
+    conversationHistory: [ConversationMessage!]!
+  }
+
+  type MemorySource {
+    memoryId: ID!
+    title: String!
+    relevance: Float!
+  }
+
+  type ConversationMessage {
+    role: String!
+    content: String!
+    timestamp: DateTime!
+  }
+
+  type SemanticSearchResponse {
+    results: [SemanticSearchResult!]!
+    totalCount: Int!
+  }
+
+  type SemanticSearchResult {
+    memoryId: ID!
+    title: String!
+    content: String!
+    tags: [String!]!
+    similarity: Float!
+  }
+
+  type KnowledgeAnalyticsResponse {
+    total: Int!
+    byCategory: JSON!
+    byMonth: [MonthlyData!]!
+    averageImportance: Float!
+    topTags: [TagCount!]!
+    recentGrowth: GrowthData!
+  }
+
+  type MonthlyData {
+    month: String!
+    count: Int!
+  }
+
+  type TagCount {
+    tag: String!
+    count: Int!
+  }
+
+  type GrowthData {
+    thisWeek: Int!
+    lastWeek: Int!
+    growthRate: Float!
+  }
+
+  type HijikiSessionInfo {
+    id: ID!
+    sessionId: String!
+    title: String!
+    mode: String!
+    totalQueries: Int!
+    lastActiveAt: DateTime!
+    isActive: Boolean!
+  }
+
+  type BatchEmbeddingResponse {
+    success: Boolean!
+    count: Int!
+    message: String!
   }
 
   # ============ Cat Agent System (Tororo & Hijiki) ============
@@ -590,6 +678,12 @@ export const typeDefs = gql`
     # ===== Cat Agent Queries (Hijiki) =====
     searchMemoriesWithHijiki(query: String!, type: String, filters: HijikiFilterInput): HijikiSearchResponse!
     getStatisticsWithHijiki(period: String = "month"): HijikiStatisticsResponse!
+
+    # ===== RAG Queries (小黑知識庫) =====
+    chatWithHijiki(sessionId: String!, query: String!, maxContext: Int): HijikiChatResponse!
+    semanticSearch(query: String!, limit: Int, minSimilarity: Float): SemanticSearchResponse!
+    getKnowledgeAnalytics(period: String): KnowledgeAnalyticsResponse!
+    getHijikiSessions: [HijikiSessionInfo!]!
   }
 
   # ============ Mutations ============
@@ -625,11 +719,18 @@ export const typeDefs = gql`
     classifyAndCreate(content: String!): CreateMemoryResponse!
     generateDailySummary(date: DateTime!): DailySummary!
 
+    # ===== Tororo (白噗噗) AI Mutations =====
+    generateTororoResponse(prompt: String!): TororoResponsePayload!
+
     # ===== Settings Mutations =====
     updateUserSettings(theme: String, language: String, defaultView: String): UserSettings!
 
     # ===== Cat Agent Mutations (Tororo) =====
     createMemoryWithTororo(content: String!, files: [TororoFileInput!], links: [TororoLinkInput!]): TororoResponse!
+
+    # ===== RAG Mutations (小黑知識庫) =====
+    generateEmbeddings(limit: Int): BatchEmbeddingResponse!
+    clearHijikiSession(sessionId: String!): Boolean!
   }
 
   # ============ Subscriptions ============

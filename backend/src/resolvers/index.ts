@@ -11,6 +11,8 @@ import { assistantResolvers } from './assistantResolvers'
 import { memoryResolvers } from './memoryResolvers'
 import { knowledgeDistributionResolvers } from './knowledgeDistributionResolvers'
 import { catAgentResolvers } from './catAgentResolvers'
+import { tororoResolvers } from './tororoResolvers'
+import { hijikiRagResolvers } from './hijikiRagResolvers'
 
 export const resolvers = {
   ...scalarResolvers,
@@ -23,6 +25,8 @@ export const resolvers = {
     ...knowledgeDistributionResolvers.Query,
     // Cat Agent System (Tororo & Hijiki)
     ...catAgentResolvers.Query,
+    // Hijiki RAG System (小黑知識庫)
+    ...hijikiRagResolvers.Query,
   },
 
   Mutation: {
@@ -35,6 +39,10 @@ export const resolvers = {
     ...knowledgeDistributionResolvers.Mutation,
     // Cat Agent System (Tororo & Hijiki)
     ...catAgentResolvers.Mutation,
+    // Tororo AI System (白噗噗 AI 回應)
+    ...tororoResolvers.Mutation,
+    // Hijiki RAG System (小黑知識庫)
+    ...hijikiRagResolvers.Mutation,
   },
 
   // Type resolvers - New Architecture

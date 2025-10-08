@@ -398,6 +398,92 @@ model DailySummary {
 
 // ============ Legacy Models (暫時保留，之後可能移除) ============
 
+// ============ RAG System (Hijiki 小黑知識管理員) ============
+
+// 向量嵌入存儲 - 用於語義搜尋
+model MemoryEmbedding {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  memoryId         String   @map("memory_id") @db.ObjectId
+  userId           String   @map("user_id") @db.ObjectId
+
+  // 向量數據 (Gemini Embeddings - 768 dimensions)
+  embedding        Float[]  // MongoDB 支持數組存儲
+  embeddingModel   String   @default("text-embedding-004") @map("embedding_model")
+
+  // 文本內容（用於生成向量）
+  textContent      String   @map("text_content") @db.String
+
+  // Metadata
+  dimension        Int      @default(768)
+
+  // Timestamps
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@index([userId, memoryId])
+  @@index([userId])
+  @@map("memory_embeddings")
+}
+
+// Hijiki 對話會話 - RAG 增強的對話
+model HijikiSession {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId           String   @map("user_id") @db.ObjectId
+  sessionId        String   @map("session_id") // 前端生成的 session ID
+
+  // Session Metadata
+  title            String   @default("與小黑的對話")
+  mode             String   @default("search") // search, analyze, chat
+
+  // Conversation History (for context)
+  messages         Json[]   @default([]) // [{role, content, timestamp}]
+
+  // RAG Context
+  usedMemoryIds    String[] @map("used_memory_ids") @db.ObjectId // 使用過的記憶 IDs
+  totalQueries     Int      @default(0) @map("total_queries")
+
+  // Status
+  isActive         Boolean  @default(true) @map("is_active")
+
+  // Timestamps
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+  lastActiveAt     DateTime @default(now()) @map("last_active_at")
+
+  @@index([userId, lastActiveAt(sort: Desc)])
+  @@index([userId, sessionId])
+  @@map("hijiki_sessions")
+}
+
+// 知識主題聚類 - 自動發現的知識主題
+model KnowledgeCluster {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId           String   @map("user_id") @db.ObjectId
+
+  // Cluster Info
+  name             String   // AI 生成的主題名稱
+  description      String?  @db.String
+  emoji            String   @default("📚")
+
+  // Cluster Metadata
+  memoryIds        String[] @map("memory_ids") @db.ObjectId
+  memoryCount      Int      @default(0) @map("memory_count")
+
+  // Cluster Statistics
+  averageImportance Float   @default(5) @map("average_importance")
+  dateRange        Json     @map("date_range") // {start, end}
+
+  // Status
+  isArchived       Boolean  @default(false) @map("is_archived")
+
+  // Timestamps
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@index([userId, createdAt])
+  @@map("knowledge_clusters")
+}
+
 // 保留舊的 NPC、Conversation 等模型以支援資料遷移
 // 遷移完成後可以刪除這些模型
 

@@ -24,7 +24,7 @@ interface ChatSession {
 const STORAGE_KEY = 'cat_chat_history'
 
 export function useCatChat(options: UseCatChatOptions = {}) {
-  const [currentCat, setCurrentCat] = useState<CatAgent | null>(options.initialCat || CatAgent.TORORO)
+  const [currentCat, setCurrentCat] = useState<CatAgent>(options.initialCat || CatAgent.TORORO)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [chatHistory, setChatHistory] = useState<ChatSession[]>([])
@@ -62,7 +62,7 @@ export function useCatChat(options: UseCatChatOptions = {}) {
 
     const session: ChatSession = {
       id: currentSessionId,
-      catAgent: currentCat || CatAgent.TORORO,
+      catAgent: currentCat,
       messages: messages,
       startTime: messages[0]?.timestamp || new Date(),
       endTime: new Date()

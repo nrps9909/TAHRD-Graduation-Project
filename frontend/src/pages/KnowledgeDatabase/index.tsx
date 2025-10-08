@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { useQuery } from '@apollo/client'
 import { GET_MEMORIES, GET_PINNED_MEMORIES } from '../../graphql/memory'
 import { GET_ASSISTANTS } from '../../graphql/knowledge'
@@ -13,11 +13,22 @@ type ViewMode = 'grid' | 'list'
 export default function KnowledgeDatabase() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('') // 延遲搜尋
   const [sortBy, setSortBy] = useState<SortOption>('recent')
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
   const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null)
   const [showArchived, setShowArchived] = useState(false)
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false) // 進階篩選折疊狀態
+
+  // 搜尋防抖處理
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery)
+    }, 500) // 500ms 延遲
+
+    return () => clearTimeout(timer)
+  }, [searchQuery])
 
   // Fetch assistants for category filter
   const { data: assistantsData } = useQuery(GET_ASSISTANTS)
@@ -25,85 +36,88 @@ export default function KnowledgeDatabase() {
   // Fetch pinned memories
   const { data: pinnedData } = useQuery(GET_PINNED_MEMORIES)
 
-  // Fetch all memories
+  // Fetch all memories (使用延遲後的搜尋查詢)
   const { data: memoriesData, loading, refetch } = useQuery(GET_MEMORIES, {
     variables: {
       filter: {
         category: selectedCategory === 'all' ? undefined : selectedCategory,
-        search: searchQuery || undefined,
+        search: debouncedSearchQuery || undefined, // 使用延遲搜尋
         isArchived: showArchived,
       },
       limit: 100,
       offset: 0,
     },
+    fetchPolicy: 'cache-and-network', // 確保資料正確更新
+    notifyOnNetworkStatusChange: true, // 網路狀態改變時通知
   })
 
+  // 直接從 query 結果取得資料，避免引用問題
   const memories: Memory[] = memoriesData?.memories || []
   const pinnedMemories: Memory[] = pinnedData?.pinnedMemories || []
   const assistants = assistantsData?.assistants || []
 
-  // Sort memories
-  const sortedMemories = [...memories].sort((a, b) => {
-    switch (sortBy) {
-      case 'importance':
-        return b.aiImportance - a.aiImportance
-      case 'alphabetical':
-        return (a.title || a.summary || '').localeCompare(b.title || b.summary || '')
-      case 'recent':
-      default:
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    }
-  })
+  // Sort memories - 使用 useMemo 避免重複排序和引用問題
+  // 同時排除已釘選的記憶，避免重複顯示
+  const sortedMemories = React.useMemo(() => {
+    // 建立釘選記憶的 ID Set 用於快速查找
+    const pinnedIds = new Set(pinnedMemories.map(m => m.id))
+
+    // 過濾掉已釘選的記憶，然後排序
+    return memories
+      .filter(memory => !pinnedIds.has(memory.id)) // 排除已釘選的
+      .sort((a, b) => {
+        switch (sortBy) {
+          case 'importance':
+            return b.aiImportance - a.aiImportance
+          case 'alphabetical':
+            return (a.title || a.summary || '').localeCompare(b.title || b.summary || '')
+          case 'recent':
+          default:
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        }
+      })
+  }, [memories, pinnedMemories, sortBy]) // 依賴 memories、pinnedMemories 和 sortBy
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-baby-cream via-baby-yellow/30 to-baby-pink/30">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white/80 backdrop-blur-sm border-b-4 border-baby-blush/30 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-6 py-6">
-          <div className="flex items-center justify-between mb-6">
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+        <div className="max-w-6xl mx-auto px-6 py-5">
+          <div className="flex items-center justify-between mb-5">
             <div>
-              <h1 className="text-7xl font-black bg-gradient-to-r from-pink-400 via-purple-400 to-yellow-400 bg-clip-text text-transparent mb-3 tracking-wide">
+              <h1 className="text-3xl font-bold text-gray-800 mb-1">
                 💝 知識寶庫
               </h1>
-              <p className="text-lg text-gray-600 font-medium">
-                你的療癒記憶空間 · 共 {memories.length} 條記憶
+              <p className="text-sm text-gray-500">
+                {pinnedMemories.length + sortedMemories.length} 條記憶
               </p>
             </div>
 
             {/* Actions */}
-            <div className="flex items-center gap-3">
-              {/* New Memory Button */}
-              <button
-                onClick={() => setShowCreateModal(true)}
-                className="px-4 py-2 bg-gradient-to-br from-baby-pink to-baby-blush hover:from-pink-400 hover:to-pink-500 text-white rounded-xl font-bold transition-all hover:scale-105 shadow-cute flex items-center gap-2"
-              >
-                <span>✨</span>
-                <span>新增</span>
-              </button>
-
+            <div className="flex items-center gap-2">
               {/* View Mode Toggle */}
-              <div className="flex gap-2">
+              <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
               <button
                 onClick={() => setViewMode('grid')}
-                className={`p-2 rounded-lg transition-all ${
+                className={`p-1.5 rounded transition-colors ${
                   viewMode === 'grid'
-                    ? 'bg-gradient-to-br from-baby-pink to-baby-blush text-white'
-                    : 'bg-white text-gray-600 hover:bg-gray-100'
+                    ? 'bg-white text-pink-500 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
                 </svg>
               </button>
               <button
                 onClick={() => setViewMode('list')}
-                className={`p-2 rounded-lg transition-all ${
+                className={`p-1.5 rounded transition-colors ${
                   viewMode === 'list'
-                    ? 'bg-gradient-to-br from-baby-pink to-baby-blush text-white'
-                    : 'bg-white text-gray-600 hover:bg-gray-100'
+                    ? 'bg-white text-pink-500 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
               </button>
@@ -117,93 +131,102 @@ export default function KnowledgeDatabase() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="搜尋你的記憶... 💭"
-              className="w-full px-4 py-3 pl-12 bg-white/90 border-2 border-baby-blush/50 rounded-xl focus:outline-none focus:border-baby-pink focus:ring-2 focus:ring-baby-pink/20 text-gray-800 placeholder-gray-400"
+              placeholder="搜尋記憶..."
+              className="w-full px-4 py-2.5 pl-10 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500 text-gray-700 placeholder-gray-400 text-sm"
             />
-            <svg className="w-5 h-5 text-gray-400 absolute left-4 top-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 text-gray-400 absolute left-3 top-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
           </div>
 
           {/* Filters */}
-          <div className="flex flex-wrap gap-4">
+          <div className="space-y-3">
             {/* Category Filter */}
-            <div className="flex gap-3 flex-wrap">
+            <div className="flex gap-2 flex-wrap">
               <button
-                onClick={() => setSelectedCategory('all')}
-                className={`px-8 py-4 rounded-2xl font-black text-xl transition-all duration-100 transform hover:scale-105 active:scale-95 ${
-                  selectedCategory === 'all'
-                    ? 'bg-gradient-to-br from-baby-pink to-baby-blush text-white shadow-2xl'
-                    : 'bg-white/90 text-gray-700 hover:bg-white hover:shadow-lg border-4 border-transparent hover:border-baby-pink/30'
-                }`}
-                style={{
-                  boxShadow: selectedCategory === 'all'
-                    ? '0 20px 40px rgba(255, 182, 193, 0.4), 0 0 30px rgba(255, 182, 193, 0.3)'
-                    : undefined,
-                  willChange: 'transform'
+                onClick={() => {
+                  setSelectedCategory('all')
+                  refetch()
                 }}
+                className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                  selectedCategory === 'all'
+                    ? 'bg-pink-500 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
               >
-                <span className="text-3xl mr-2">🌈</span>
+                <span className="mr-1.5">🌈</span>
                 全部
               </button>
               {assistants.filter((a: any) => a.type !== 'CHIEF').map((assistant: any) => (
                 <button
                   key={assistant.id}
-                  onClick={() => setSelectedCategory(assistant.type)}
-                  className={`px-8 py-4 rounded-2xl font-black text-xl transition-all duration-100 transform hover:scale-105 active:scale-95 ${
-                    selectedCategory === assistant.type
-                      ? 'bg-gradient-to-br from-baby-pink to-baby-blush text-white shadow-2xl'
-                      : 'bg-white/90 text-gray-700 hover:bg-white hover:shadow-lg border-4 border-transparent hover:border-baby-pink/30'
-                  }`}
-                  style={{
-                    boxShadow: selectedCategory === assistant.type
-                      ? '0 20px 40px rgba(255, 182, 193, 0.4), 0 0 30px rgba(255, 182, 193, 0.3)'
-                      : undefined,
-                    willChange: 'transform'
+                  onClick={() => {
+                    setSelectedCategory(assistant.type)
+                    refetch()
                   }}
+                  className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                    selectedCategory === assistant.type
+                      ? 'bg-pink-500 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
                 >
-                  <span className="text-3xl mr-2">{assistant.emoji}</span>
+                  <span className="mr-1.5">{assistant.emoji}</span>
                   {assistant.nameChinese}
                 </button>
               ))}
             </div>
 
-            {/* Sort Options */}
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as SortOption)}
-              className="px-6 py-4 bg-white/90 border-4 border-baby-blush/50 rounded-2xl focus:outline-none focus:border-baby-pink text-gray-700 font-bold text-lg hover:shadow-lg transition-all duration-100 cursor-pointer"
-              style={{ willChange: 'box-shadow' }}
-            >
-              <option value="recent">⏰ 最新優先</option>
-              <option value="importance">⭐ 重要優先</option>
-              <option value="alphabetical">🔤 字母排序</option>
-            </select>
+            {/* Advanced Filters Toggle */}
+            <div className="space-y-2">
+              <button
+                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                className="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg hover:border-gray-300 text-gray-600 text-sm transition-colors flex items-center gap-1.5"
+              >
+                <span>🔧</span>
+                <span>進階篩選</span>
+                <span className={`transition-transform ${showAdvancedFilters ? 'rotate-180' : ''}`}>▼</span>
+              </button>
 
-            {/* Show Archived Toggle */}
-            <button
-              onClick={() => setShowArchived(!showArchived)}
-              className={`px-6 py-4 rounded-2xl font-bold text-lg transition-all duration-100 transform hover:scale-105 active:scale-95 ${
-                showArchived
-                  ? 'bg-gradient-to-br from-gray-400 to-gray-500 text-white shadow-lg'
-                  : 'bg-white/90 text-gray-600 hover:bg-white hover:shadow-lg border-4 border-transparent hover:border-gray-300'
-              }`}
-              style={{ willChange: 'transform' }}
-            >
-              <span className="text-2xl mr-2">📦</span>
-              {showArchived ? '隱藏已封存' : '顯示已封存'}
-            </button>
+              {/* Advanced Filters Content */}
+              {showAdvancedFilters && (
+                <div className="flex gap-2 flex-wrap items-center animate-slide-down">
+                  {/* Sort Options */}
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as SortOption)}
+                    className="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500 text-gray-700 text-sm hover:border-gray-300 transition-colors cursor-pointer"
+                  >
+                    <option value="recent">⏰ 最新</option>
+                    <option value="importance">⭐ 重要</option>
+                    <option value="alphabetical">🔤 A-Z</option>
+                  </select>
+
+                  {/* Show Archived Toggle */}
+                  <button
+                    onClick={() => setShowArchived(!showArchived)}
+                    className={`px-3 py-1.5 rounded-lg font-medium text-sm transition-colors ${
+                      showArchived
+                        ? 'bg-gray-700 text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    <span className="mr-1">📦</span>
+                    {showArchived ? '隱藏封存' : '顯示封存'}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-6 py-6">
+      <div className="max-w-6xl mx-auto px-6 py-6">
         {/* Pinned Memories */}
         {pinnedMemories.length > 0 && !showArchived && (
-          <div className="mb-8">
-            <h2 className="text-xl font-bold text-gray-700 mb-4 flex items-center gap-2">
-              📌 釘選的記憶
+          <div className="mb-6">
+            <h2 className="text-base font-semibold text-gray-700 mb-3 flex items-center gap-1.5">
+              📌 釘選
             </h2>
             <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4' : 'space-y-3'}>
               {pinnedMemories.map((memory) => (
@@ -234,7 +257,7 @@ export default function KnowledgeDatabase() {
         ) : (
           <>
             {pinnedMemories.length > 0 && !showArchived && (
-              <h2 className="text-xl font-bold text-gray-700 mb-4 flex items-center gap-2">
+              <h2 className="text-base font-semibold text-gray-700 mb-3 flex items-center gap-1.5">
                 📚 所有記憶
               </h2>
             )}
@@ -256,10 +279,10 @@ export default function KnowledgeDatabase() {
       {/* Floating Action Button */}
       <button
         onClick={() => setShowCreateModal(true)}
-        className="fixed bottom-8 right-8 w-16 h-16 bg-gradient-to-br from-baby-pink to-baby-blush hover:from-pink-400 hover:to-pink-500 text-white rounded-full shadow-cute-xl hover:shadow-2xl transition-all hover:scale-110 active:scale-95 flex items-center justify-center z-20 animate-bounce-gentle"
+        className="fixed bottom-6 right-6 w-14 h-14 bg-pink-500 hover:bg-pink-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center z-20"
         title="新增知識"
       >
-        <span className="text-3xl">✨</span>
+        <span className="text-2xl">✨</span>
       </button>
 
       {/* Create Memory Modal */}

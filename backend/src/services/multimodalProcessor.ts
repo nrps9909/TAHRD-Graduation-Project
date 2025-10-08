@@ -153,6 +153,11 @@ ${context ? `\n上下文信息: ${context}` : ''}`
     try {
       logger.info(`[MultimodalProcessor] 开始抓取链接: ${url}`)
 
+      // 检查是否为 YouTube 链接
+      if (this.isYouTubeUrl(url)) {
+        return await this.processYouTubeLink(url, context)
+      }
+
       // 抓取网页内容
       const response = await axios.get(url, {
         timeout: 10000,
@@ -203,6 +208,98 @@ ${context ? `\n上下文信息: ${context}` : ''}`
         url
       }
     }
+  }
+
+  /**
+   * 检查是否为 YouTube URL
+   */
+  private isYouTubeUrl(url: string): boolean {
+    return url.includes('youtube.com') || url.includes('youtu.be')
+  }
+
+  /**
+   * 处理 YouTube 链接
+   */
+  private async processYouTubeLink(url: string, context?: string): Promise<LinkAnalysis> {
+    try {
+      logger.info(`[MultimodalProcessor] 处理 YouTube 链接: ${url}`)
+
+      // 提取视频 ID
+      const videoId = this.extractYouTubeVideoId(url)
+      if (!videoId) {
+        throw new Error('无法提取 YouTube 视频 ID')
+      }
+
+      // 获取视频元数据 (使用 oEmbed API - 无需 API Key)
+      const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`
+      const response = await axios.get(oembedUrl, { timeout: 10000 })
+      const metadata = response.data
+
+      const title = metadata.title || 'YouTube 视频'
+      const author = metadata.author_name || '未知作者'
+
+      logger.info(`[MultimodalProcessor] YouTube 元数据获取成功: ${title}`)
+
+      // 使用 Gemini 生成视频相关分析
+      const analysisPrompt = `分析这个 YouTube 视频的相关信息（以 JSON 格式回应）：
+
+视频标题: ${title}
+作者: ${author}
+${context ? `\n用户备注: ${context}` : ''}
+
+{
+  "summary": "根据标题和作者生成一句话概述",
+  "tags": ["标签1", "标签2", "标签3"]
+}
+`
+
+      const result = await this.textModel.generateContent(analysisPrompt)
+      const analysisResponse = await result.response
+      const analysisText = analysisResponse.text()
+      const analysis = this.parseJSON(analysisText)
+
+      return {
+        title,
+        description: `作者: ${author}`,
+        summary: analysis.summary || `${author} 的 YouTube 视频`,
+        mainContent: `YouTube 视频: ${title}\n作者: ${author}\n链接: ${url}`,
+        tags: ['YouTube', 'video', ...(analysis.tags || [])],
+        readingTime: 0, // 视频没有阅读时间
+        url
+      }
+    } catch (error) {
+      logger.error('[MultimodalProcessor] YouTube 处理失败:', error)
+      return {
+        title: 'YouTube 视频',
+        description: '无法获取视频信息',
+        summary: '已保存 YouTube 视频链接',
+        mainContent: `YouTube 链接: ${url}`,
+        tags: ['YouTube', 'video'],
+        readingTime: 0,
+        url
+      }
+    }
+  }
+
+  /**
+   * 从 YouTube URL 中提取视频 ID
+   */
+  private extractYouTubeVideoId(url: string): string | null {
+    // 支持多种 YouTube URL 格式
+    const patterns = [
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/,
+      /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
+      /youtube\.com\/v\/([a-zA-Z0-9_-]{11})/
+    ]
+
+    for (const pattern of patterns) {
+      const match = url.match(pattern)
+      if (match && match[1]) {
+        return match[1]
+      }
+    }
+
+    return null
   }
 
   /**

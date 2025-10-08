@@ -376,29 +376,62 @@ export default function TororoKnowledgeAssistant({
     generateAndDisplayResponse('processing')
 
     try {
+      // 檢查輸入文字中是否包含 URL（YouTube, 文章連結等）
+      const urlRegex = /(https?:\/\/[^\s]+)/g
+      const foundUrls = inputText.match(urlRegex) || []
+
+      // 分離 URL 和純文字
+      const textWithoutUrls = inputText.replace(urlRegex, '').trim()
+      const links = foundUrls.map(url => ({
+        url: url,
+        title: url.includes('youtube.com') || url.includes('youtu.be') ? 'YouTube 影片' : '連結'
+      }))
+
       const input: UploadKnowledgeInput = {
-        content: inputText || '快速記錄',
+        content: textWithoutUrls || (links.length > 0 ? '分享連結' : '快速記錄'),
         files: uploadedFiles.map(file => ({
           url: URL.createObjectURL(file),
           name: file.name,
           type: file.type.startsWith('image/') ? 'image' : 'file',
         })),
-        contentType: uploadedFiles.some(f => f.type.startsWith('image/')) ? 'IMAGE' : uploadedFiles.length > 0 ? 'DOCUMENT' : 'TEXT',
+        links: links.length > 0 ? links : undefined,
+        contentType: uploadedFiles.some(f => f.type.startsWith('image/')) ? 'IMAGE' : uploadedFiles.length > 0 ? 'DOCUMENT' : links.length > 0 ? 'LINK' : 'TEXT',
       }
 
       const { data } = await uploadKnowledge({ variables: { input } })
 
       if (data?.uploadKnowledge) {
-        setProcessingResult(data.uploadKnowledge)
-        saveToHistory(inputText, uploadedFiles, data.uploadKnowledge) // 儲存到歷史
+        const result = data.uploadKnowledge
+        const tororoResponse = result.tororoResponse
+
+        // === 檢查是否為簡單互動（不記錄）===
+        if (result.skipRecording || tororoResponse?.shouldRecord === false) {
+          // 不儲存歷史，只顯示白噗噗的友善回應
+          setDisplayedText(tororoResponse?.warmMessage || '收到了～ ☁️')
+          setIsTyping(false)
+
+          // 回到主畫面，不顯示成功頁面
+          setViewMode('main')
+          setInputText('') // 清空輸入
+          setUploadedFiles([]) // 清空檔案
+          play('notification') // 使用通知音效而非成功音效
+          return
+        }
+
+        // === 正常記錄流程 ===
+        setProcessingResult(result)
+        saveToHistory(inputText, uploadedFiles, result) // 儲存到歷史
+
+        // 立即顯示白噗噗的溫暖回應（只顯示溫馨訊息，不顯示技術性分類）
+        if (tororoResponse) {
+          // 只顯示白噗噗的溫暖回應，不顯示分類和摘要
+          setDisplayedText(tororoResponse.warmMessage)
+          setIsTyping(false)
+        }
+
         setViewMode('success')
         play('upload_success')
         playRandomMeow()
-
-        // 生成成功的 AI 回應
-        generateAndDisplayResponse('success', {
-          recentRecords: history.length + 1
-        })
       }
     } catch (error) {
       console.error('上傳失敗:', error)
@@ -635,14 +668,25 @@ export default function TororoKnowledgeAssistant({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-baby-pink/40 via-baby-yellow/40 to-baby-cream/40 backdrop-blur-md animate-fadeIn">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-pink-100/60 via-yellow-50/60 to-pink-50/60 backdrop-blur-md animate-fadeIn">
       {/* Main Container */}
       <motion.div
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: 'spring', stiffness: 200, damping: 20 }}
-        className="relative w-[95vw] h-[95vh] max-w-7xl bg-white/95 backdrop-blur-xl rounded-[3rem] shadow-2xl overflow-hidden"
+        className="relative w-[95vw] h-[95vh] max-w-7xl bg-gradient-to-br from-pink-50/95 via-yellow-50/95 to-white/95 backdrop-blur-xl rounded-[3rem] shadow-2xl overflow-hidden"
       >
+        {/* 頂部標題區 - 白噗噗名稱 */}
+        <div className="absolute top-8 left-8 z-50">
+          <div className="flex items-center gap-3">
+            <div className="text-4xl">☁️</div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-800">白噗噗</h1>
+              <p className="text-sm text-gray-500">甚麼都可以跟我說!</p>
+            </div>
+          </div>
+        </div>
+
         {/* Top Right Buttons */}
         <div className="absolute top-8 right-8 z-50 flex items-center gap-2">
           {/* History Button */}
@@ -657,12 +701,12 @@ export default function TororoKnowledgeAssistant({
                 generateAndDisplayResponse('open_panel')
               }
             }}
-            className="relative w-10 h-10 bg-gray-100 hover:bg-pink-100 text-gray-600 hover:text-pink-500 rounded-lg shadow-sm flex items-center justify-center transition-all duration-200 hover:shadow-md active:scale-95 text-xl"
+            className="relative w-10 h-10 bg-pink-100/80 hover:bg-pink-200 text-pink-600 hover:text-pink-700 rounded-lg shadow-sm flex items-center justify-center transition-all duration-200 hover:shadow-md active:scale-95 text-xl"
             title="查看歷史紀錄"
           >
             📜
             {history.length > 0 && (
-              <span className="absolute -top-1 -right-1 bg-pink-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+              <span className="absolute -top-1 -right-1 bg-pink-400 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
                 {history.length}
               </span>
             )}
@@ -674,7 +718,7 @@ export default function TororoKnowledgeAssistant({
               play('button_click')
               onClose?.()
             }}
-            className="w-10 h-10 bg-gray-100 hover:bg-red-100 text-gray-600 hover:text-red-500 rounded-lg shadow-sm flex items-center justify-center transition-all duration-200 hover:shadow-md active:scale-95 text-xl"
+            className="w-10 h-10 bg-yellow-100/80 hover:bg-yellow-200 text-yellow-700 hover:text-yellow-800 rounded-lg shadow-sm flex items-center justify-center transition-all duration-200 hover:shadow-md active:scale-95 text-xl"
           >
             ✕
           </button>
@@ -689,7 +733,7 @@ export default function TororoKnowledgeAssistant({
           />
 
           {/* Tororo Speech Bubble - 在貓咪頭上 */}
-          <div className="absolute -top-20 left-1/2 -translate-x-1/2 max-w-xs pointer-events-none">
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[400px] pointer-events-none">
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -697,8 +741,8 @@ export default function TororoKnowledgeAssistant({
               className="relative"
             >
               {/* 對話框主體 - 動態大小 */}
-              <div className="bg-white/95 backdrop-blur-md rounded-2xl px-4 py-3 shadow-xl border border-gray-100 inline-block min-w-[120px]">
-                <p className="text-sm text-gray-700 leading-relaxed">
+              <div className="bg-gradient-to-br from-pink-50/95 to-yellow-50/95 backdrop-blur-md rounded-2xl px-5 py-4 shadow-xl border-2 border-pink-200/50 w-full">
+                <p className="text-sm text-gray-800 leading-relaxed break-words">
                   {displayedText}
                   {isTyping && <span className="inline-block w-0.5 h-4 bg-gray-400 ml-0.5 animate-pulse"></span>}
                 </p>
@@ -715,7 +759,7 @@ export default function TororoKnowledgeAssistant({
               </div>
 
               {/* 對話框尾巴 */}
-              <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-t-[10px] border-t-white/95"></div>
+              <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-t-[10px] border-t-pink-50/95"></div>
             </motion.div>
           </div>
         </div>
@@ -736,7 +780,7 @@ export default function TororoKnowledgeAssistant({
                 {/* 輸入框主體 */}
                 <div className="relative">
                   {/* 文字輸入區 */}
-                  <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden transition-all duration-200 focus-within:border-pink-300 focus-within:shadow-xl">
+                  <div className="bg-gradient-to-br from-pink-50/50 to-yellow-50/50 rounded-2xl shadow-lg border-2 border-pink-200/60 overflow-hidden transition-all duration-200 focus-within:border-pink-300 focus-within:shadow-xl">
                     <textarea
                       value={inputText}
                       onChange={(e) => setInputText(e.target.value)}
@@ -747,7 +791,7 @@ export default function TororoKnowledgeAssistant({
                         }
                       }}
                       placeholder="想記錄什麼呢？💭"
-                      className="w-full px-6 py-4 bg-transparent border-none focus:outline-none text-base resize-none placeholder-gray-400"
+                      className="w-full px-6 py-4 bg-transparent border-none focus:outline-none text-base resize-none placeholder-pink-300"
                       style={{
                         minHeight: '100px',
                         maxHeight: '300px',
@@ -783,7 +827,7 @@ export default function TororoKnowledgeAssistant({
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => fileInputRef.current?.click()}
-                          className="p-2 text-gray-500 hover:text-pink-500 hover:bg-pink-50 rounded-lg transition-all"
+                          className="p-2 text-pink-400 hover:text-pink-600 hover:bg-pink-100 rounded-lg transition-all"
                           title="上傳檔案"
                         >
                           <span className="text-lg">📎</span>
@@ -794,7 +838,7 @@ export default function TororoKnowledgeAssistant({
                           className={`p-2 rounded-lg transition-all ${
                             isRecordingTranscribe
                               ? 'text-red-500 bg-red-50 animate-pulse'
-                              : 'text-gray-500 hover:text-purple-500 hover:bg-purple-50'
+                              : 'text-pink-400 hover:text-pink-600 hover:bg-pink-100'
                           }`}
                           title={isRecordingTranscribe ? '停止錄音' : '語音轉文字'}
                         >
@@ -806,7 +850,7 @@ export default function TororoKnowledgeAssistant({
                           className={`p-2 rounded-lg transition-all ${
                             isRecordingDialog
                               ? 'text-green-500 bg-green-50 animate-pulse'
-                              : 'text-gray-500 hover:text-teal-500 hover:bg-teal-50'
+                              : 'text-pink-400 hover:text-pink-600 hover:bg-pink-100'
                           }`}
                           title={isRecordingDialog ? '停止對話' : '語音對話'}
                         >
@@ -815,7 +859,7 @@ export default function TororoKnowledgeAssistant({
 
                         <button
                           onClick={takePhoto}
-                          className="p-2 text-gray-500 hover:text-yellow-500 hover:bg-yellow-50 rounded-lg transition-all"
+                          className="p-2 text-yellow-500 hover:text-yellow-600 hover:bg-yellow-100 rounded-lg transition-all"
                           title="拍照"
                         >
                           <span className="text-lg">📷</span>
@@ -826,7 +870,7 @@ export default function TororoKnowledgeAssistant({
                       <button
                         onClick={handleSubmit}
                         disabled={!inputText.trim() && uploadedFiles.length === 0}
-                        className="px-6 py-2 bg-pink-500 hover:bg-pink-600 disabled:bg-gray-100 text-white disabled:text-gray-400 rounded-lg font-medium transition-all duration-200 active:scale-95 disabled:cursor-not-allowed"
+                        className="px-6 py-2 bg-gradient-to-r from-pink-400 to-pink-500 hover:from-pink-500 hover:to-pink-600 disabled:bg-gray-100 text-white disabled:text-gray-400 rounded-lg font-medium transition-all duration-200 active:scale-95 disabled:cursor-not-allowed shadow-md"
                       >
                         記錄 ✨
                       </button>
@@ -1021,8 +1065,9 @@ export default function TororoKnowledgeAssistant({
 
                 {/* Result Cards */}
                 <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-sm mb-6">
+                  {/* 顯示白噗噗的溫馨回應，而不是技術性摘要 */}
                   <p className="text-lg text-gray-700 mb-4 leading-relaxed">
-                    {processingResult.distribution.chiefSummary}
+                    {processingResult.tororoResponse?.warmMessage || '已成功記錄！✨'}
                   </p>
 
                   {processingResult.memoriesCreated.length > 0 && (

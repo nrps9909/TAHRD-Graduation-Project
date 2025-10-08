@@ -128,4 +128,18 @@ coverage.xml
 .hypothesis
 /venv/bin
 /venv
+
+# Project specific
 frontend/src/components/3D/Player.tsx
+backend/memories/
+backend/logs/
+.backend.pid
+.frontend.pid
+*.pid
+
+# Gemini CLI
+.gemini_cli_history
+backend/logs/gemini-tracking/
+
+# Test files
+ccadventure/

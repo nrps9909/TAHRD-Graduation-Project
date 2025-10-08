@@ -6,6 +6,9 @@
 import { PrismaClient, AssistantType } from '@prisma/client'
 import { logger } from '../utils/logger'
 import { memoryService } from './memoryService'
+import { vectorService } from './vectorService'
+import { analyticsEngine } from './analyticsEngine'
+import { ragConversation } from './ragConversation'
 import { HIJIKI_SYSTEM_PROMPT, HIJIKI_ANALYTICS } from '../agents/hijiki/systemPrompt'
 
 const prisma = new PrismaClient()
@@ -66,7 +69,17 @@ class HijikiService {
    */
   async searchWithHijiki(input: HijikiQueryInput): Promise<HijikiSearchResponse> {
     try {
-      logger.info(`Hijiki searching memories for user ${input.userId}`)
+      logger.info(`[Hijiki RAG] Searching memories for user ${input.userId}`)
+
+      // === 使用 RAG：語義搜尋 + 關鍵字搜尋 ===
+      const semanticResults = await vectorService.semanticSearch(
+        input.userId,
+        input.query,
+        10,
+        0.6 // 60% 相似度閾值
+      )
+
+      logger.info(`[Hijiki RAG] Found ${semanticResults.length} semantic matches`)
 
       // 構建查詢條件
       const where: any = {

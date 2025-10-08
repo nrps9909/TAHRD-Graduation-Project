@@ -1,7 +1,7 @@
 import { useMutation } from '@apollo/client'
 import { PIN_MEMORY, UNPIN_MEMORY, ARCHIVE_MEMORY, DELETE_MEMORY } from '../../graphql/memory'
 import type { Memory } from '../../graphql/memory'
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 interface MemoryCardProps {
   memory: Memory
@@ -12,10 +12,28 @@ interface MemoryCardProps {
 
 export default function MemoryCard({ memory, viewMode, onClick, onUpdate }: MemoryCardProps) {
   const [showMenu, setShowMenu] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
   const [pinMemory] = useMutation(PIN_MEMORY)
   const [unpinMemory] = useMutation(UNPIN_MEMORY)
   const [archiveMemory] = useMutation(ARCHIVE_MEMORY)
   const [deleteMemory] = useMutation(DELETE_MEMORY)
+
+  // 點擊外部關閉選單
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowMenu(false)
+      }
+    }
+
+    if (showMenu) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showMenu])
 
   const handlePin = async (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -138,7 +156,7 @@ export default function MemoryCard({ memory, viewMode, onClick, onUpdate }: Memo
           </div>
 
           {/* Actions Menu */}
-          <div className="relative flex-shrink-0">
+          <div className="relative flex-shrink-0" ref={menuRef}>
             <button
               onClick={(e) => {
                 e.stopPropagation()
@@ -154,7 +172,7 @@ export default function MemoryCard({ memory, viewMode, onClick, onUpdate }: Memo
                   📦 封存
                 </button>
                 <button onClick={handleDelete} className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm text-red-600">
-                  🗑️ 刪除
+                  🗑️刪除
                 </button>
               </div>
             )}
@@ -207,14 +225,14 @@ export default function MemoryCard({ memory, viewMode, onClick, onUpdate }: Memo
         </div>
       )}
 
-      {/* Importance Stars */}
-      <div className="flex justify-center gap-1 mb-3">
-        {[...Array(10)].map((_, i) => (
-          <span key={i} className={i < memory.aiImportance ? 'text-yellow-400' : 'text-gray-300'}>
-            ⭐
+      {/* Importance Badge - 只顯示重要的記憶 */}
+      {memory.aiImportance >= 7 && (
+        <div className="flex justify-center mb-3">
+          <span className={`text-xs px-3 py-1 rounded-full text-white bg-gradient-to-r ${importanceColor(memory.aiImportance)}`}>
+            ⭐ 重要
           </span>
-        ))}
-      </div>
+        </div>
+      )}
 
       {/* Tags */}
       {memory.tags.length > 0 && (

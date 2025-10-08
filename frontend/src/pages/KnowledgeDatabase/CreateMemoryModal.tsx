@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useMutation, useQuery } from '@apollo/client'
 import { CREATE_MEMORY } from '../../graphql/memory'
 import { UPLOAD_KNOWLEDGE, GET_ASSISTANTS } from '../../graphql/knowledge'
@@ -20,6 +20,7 @@ export default function CreateMemoryModal({ onClose, onSuccess }: CreateMemoryMo
   const [newTag, setNewTag] = useState('')
   const [files, setFiles] = useState<File[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [objectUrls, setObjectUrls] = useState<string[]>([]) // 追蹤創建的 URL
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -28,6 +29,13 @@ export default function CreateMemoryModal({ onClose, onSuccess }: CreateMemoryMo
   const [uploadKnowledge] = useMutation(UPLOAD_KNOWLEDGE)
 
   const assistants = assistantsData?.assistants?.filter((a: any) => a.type !== 'CHIEF') || []
+
+  // 清理 object URLs 避免記憶體洩漏
+  useEffect(() => {
+    return () => {
+      objectUrls.forEach(url => URL.revokeObjectURL(url))
+    }
+  }, [objectUrls])
 
   const handleAddTag = () => {
     if (newTag.trim() && !tags.includes(newTag.trim())) {
@@ -71,14 +79,20 @@ export default function CreateMemoryModal({ onClose, onSuccess }: CreateMemoryMo
     try {
       if (mode === 'ai') {
         // 使用 Chief Agent 自動分配
+        const urls: string[] = []
         const fileInputs = await Promise.all(
-          files.map(async (file) => ({
-            url: URL.createObjectURL(file),
-            name: file.name,
-            type: file.type,
-            size: file.size,
-          }))
+          files.map(async (file) => {
+            const url = URL.createObjectURL(file)
+            urls.push(url) // 追蹤創建的 URL
+            return {
+              url,
+              name: file.name,
+              type: file.type,
+              size: file.size,
+            }
+          })
         )
+        setObjectUrls(urls) // 保存 URLs 以便稍後清理
 
         const input: UploadKnowledgeInput = {
           content: title ? `${title}\n\n${content}` : content,

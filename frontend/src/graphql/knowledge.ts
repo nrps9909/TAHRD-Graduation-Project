@@ -19,6 +19,12 @@ export const UPLOAD_KNOWLEDGE = gql`
         processingTime
         createdAt
       }
+      tororoResponse {
+        warmMessage
+        category
+        quickSummary
+        confidence
+      }
       agentDecisions {
         id
         assistantId
@@ -55,6 +61,7 @@ export const UPLOAD_KNOWLEDGE = gql`
         }
       }
       processingTime
+      backgroundProcessing
     }
   }
 `

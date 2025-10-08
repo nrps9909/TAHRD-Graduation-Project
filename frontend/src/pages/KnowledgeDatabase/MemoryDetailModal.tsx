@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useMutation } from '@apollo/client'
 import { UPDATE_MEMORY, DELETE_MEMORY, ARCHIVE_MEMORY, PIN_MEMORY, UNPIN_MEMORY } from '../../graphql/memory'
 import type { Memory } from '../../graphql/memory'
@@ -18,6 +18,7 @@ export default function MemoryDetailModal({ memory, onClose, onUpdate }: MemoryD
   const [newTag, setNewTag] = useState('')
   const [selectedEmoji, setSelectedEmoji] = useState(memory.emoji || memory.assistant?.emoji || '📝')
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const emojiPickerRef = useRef<HTMLDivElement>(null)
 
   const [updateMemory] = useMutation(UPDATE_MEMORY)
   const [deleteMemory] = useMutation(DELETE_MEMORY)
@@ -33,6 +34,23 @@ export default function MemoryDetailModal({ memory, onClose, onUpdate }: MemoryD
     }
   }, [])
 
+  // 點擊外部關閉 emoji picker
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target as Node)) {
+        setShowEmojiPicker(false)
+      }
+    }
+
+    if (showEmojiPicker) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showEmojiPicker])
+
   const handleSave = async () => {
     try {
       await updateMemory({
@@ -41,6 +59,7 @@ export default function MemoryDetailModal({ memory, onClose, onUpdate }: MemoryD
           input: {
             title: editedTitle,
             tags: editedTags,
+            emoji: selectedEmoji, // 保存 emoji
           },
         },
       })
@@ -117,7 +136,7 @@ export default function MemoryDetailModal({ memory, onClose, onUpdate }: MemoryD
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
               {/* Emoji Picker */}
-              <div className="relative inline-block mb-3">
+              <div className="relative inline-block mb-3" ref={emojiPickerRef}>
                 <button
                   onClick={() => setShowEmojiPicker(!showEmojiPicker)}
                   className="text-6xl hover:scale-110 transition-transform cursor-pointer"
@@ -227,97 +246,88 @@ export default function MemoryDetailModal({ memory, onClose, onUpdate }: MemoryD
 
         {/* Content */}
         <div className="overflow-y-auto max-h-[calc(90vh-200px)] px-8 py-6">
-          {/* Tags Section */}
-          <div className="mb-6">
-            <h3 className="text-sm font-bold text-gray-600 mb-3">🏷️ 標籤</h3>
-            <div className="flex flex-wrap gap-2">
-              {editedTags.map((tag) => (
-                <span
-                  key={tag}
-                  className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-br from-baby-pink/20 to-baby-yellow/20 text-gray-700"
-                >
-                  #{tag}
-                  {isEditing && (
-                    <button
-                      onClick={() => handleRemoveTag(tag)}
-                      className="text-red-500 hover:text-red-700"
-                    >
-                      ✕
-                    </button>
-                  )}
-                </span>
-              ))}
-              {isEditing && (
-                <div className="inline-flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={newTag}
-                    onChange={(e) => setNewTag(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleAddTag()}
-                    placeholder="新增標籤..."
-                    className="px-3 py-1 border-2 border-baby-blush/50 rounded-full focus:outline-none focus:border-baby-pink text-sm"
-                  />
-                  <button
-                    onClick={handleAddTag}
-                    className="px-3 py-1 bg-gradient-to-br from-baby-pink to-baby-blush text-white rounded-full text-sm hover:scale-105 transition-all"
+          {/* Tags Section - 只有在有標籤時才顯示 */}
+          {(editedTags.length > 0 || isEditing) && (
+            <div className="mb-6">
+              <h3 className="text-sm font-bold text-gray-600 mb-3">🏷️ 標籤</h3>
+              <div className="flex flex-wrap gap-2">
+                {editedTags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-br from-baby-pink/20 to-baby-yellow/20 text-gray-700"
                   >
-                    +
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Summary */}
-          {memory.summary && memory.summary !== memory.rawContent && (
-            <div className="mb-6 p-4 bg-gradient-to-br from-baby-pink/10 to-baby-yellow/10 rounded-xl select-text">
-              <h3 className="text-sm font-bold text-gray-600 mb-2">📝 摘要</h3>
-              <p className="text-gray-700 leading-relaxed select-text">{memory.summary}</p>
+                    #{tag}
+                    {isEditing && (
+                      <button
+                        onClick={() => handleRemoveTag(tag)}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </span>
+                ))}
+                {isEditing && (
+                  <div className="inline-flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={newTag}
+                      onChange={(e) => setNewTag(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && handleAddTag()}
+                      placeholder="新增標籤..."
+                      className="px-3 py-1 border-2 border-baby-blush/50 rounded-full focus:outline-none focus:border-baby-pink text-sm"
+                    />
+                    <button
+                      onClick={handleAddTag}
+                      className="px-3 py-1 bg-gradient-to-br from-baby-pink to-baby-blush text-white rounded-full text-sm hover:scale-105 transition-all"
+                    >
+                      +
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
-          {/* Raw Content */}
+          {/* Content - 合併摘要和內容 */}
           <div className="mb-6 select-text">
-            <h3 className="text-sm font-bold text-gray-600 mb-3">💭 完整內容</h3>
+            <h3 className="text-sm font-bold text-gray-600 mb-3">💭 內容</h3>
             <div className="prose prose-sm max-w-none select-text">
               <p className="text-gray-700 leading-relaxed whitespace-pre-wrap select-text">
-                {memory.rawContent}
+                {memory.summary || memory.rawContent}
               </p>
             </div>
           </div>
 
-          {/* Key Points */}
+          {/* Key Points - 只有在有重點時才顯示 */}
           {memory.keyPoints && memory.keyPoints.length > 0 && (
-            <div className="mb-6 select-text">
-              <h3 className="text-sm font-bold text-gray-600 mb-3">✨ 重點摘錄</h3>
-              <ul className="space-y-2 select-text">
+            <div className="mb-4">
+              <h3 className="text-sm font-bold text-gray-600 mb-2">✨ 重點</h3>
+              <ul className="space-y-1">
                 {memory.keyPoints.map((point: string, i: number) => (
-                  <li key={i} className="flex items-start gap-2 select-text">
-                    <span className="text-baby-pink mt-1">•</span>
-                    <span className="text-gray-700 select-text">{point}</span>
-                  </li>
+                  <li key={i} className="text-sm text-gray-700">• {point}</li>
                 ))}
               </ul>
             </div>
           )}
 
-          {/* Files */}
+          {/* Files - 只有在有附件時才顯示 */}
           {(memory as any).fileUrls && (memory as any).fileUrls.length > 0 && (
-            <div className="mb-6">
-              <h3 className="text-sm font-bold text-gray-600 mb-3">📎 附件</h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <div className="mb-4">
+              <h3 className="text-sm font-bold text-gray-600 mb-2">📎 附件</h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                 {(memory as any).fileUrls.map((url: string, i: number) => (
                   <a
                     key={i}
                     href={url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-2 p-3 bg-white rounded-xl hover:shadow-cute transition-all"
+                    className="flex items-center gap-2 p-2 bg-white rounded-lg hover:shadow-sm transition-all text-sm"
                   >
-                    <span className="text-2xl">
+                    <span className="text-lg">
                       {(memory as any).fileTypes?.[i]?.startsWith('image/') ? '🖼️' : '📄'}
                     </span>
-                    <span className="text-sm text-gray-600 truncate">
+                    <span className="text-gray-600 truncate">
                       {(memory as any).fileNames?.[i] || 'File'}
                     </span>
                   </a>
@@ -326,21 +336,21 @@ export default function MemoryDetailModal({ memory, onClose, onUpdate }: MemoryD
             </div>
           )}
 
-          {/* Links */}
+          {/* Links - 只有在有連結時才顯示 */}
           {(memory as any).links && (memory as any).links.length > 0 && (
-            <div className="mb-6">
-              <h3 className="text-sm font-bold text-gray-600 mb-3">🔗 相關連結</h3>
-              <div className="space-y-2">
+            <div className="mb-4">
+              <h3 className="text-sm font-bold text-gray-600 mb-2">🔗 相關連結</h3>
+              <div className="space-y-1">
                 {(memory as any).links.map((link: string, i: number) => (
                   <a
                     key={i}
                     href={link}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-2 p-3 bg-white rounded-xl hover:shadow-cute transition-all"
+                    className="flex items-center gap-2 p-2 bg-white rounded-lg hover:shadow-sm transition-all text-sm"
                   >
-                    <span className="text-2xl">🔗</span>
-                    <span className="text-sm text-blue-600 hover:underline truncate">
+                    <span className="text-lg">🔗</span>
+                    <span className="text-blue-600 hover:underline truncate">
                       {(memory as any).linkTitles?.[i] || link}
                     </span>
                   </a>
@@ -349,28 +359,28 @@ export default function MemoryDetailModal({ memory, onClose, onUpdate }: MemoryD
             </div>
           )}
 
-          {/* AI Analysis */}
+          {/* AI Analysis - 只有在有 AI 分析時才顯示 */}
           {(memory as any).aiAnalysis && (
-            <div className="mb-6 p-4 bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl">
-              <h3 className="text-sm font-bold text-gray-600 mb-2">🤖 AI 分析</h3>
+            <div className="mb-4 p-3 bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg">
+              <h3 className="text-sm font-bold text-gray-600 mb-1">🤖 AI 分析</h3>
               <p className="text-gray-700 text-sm leading-relaxed">{(memory as any).aiAnalysis}</p>
             </div>
           )}
 
-          {/* Related Memories */}
+          {/* Related Memories - 只有在有相關記憶時才顯示 */}
           {memory.relatedMemories && memory.relatedMemories.length > 0 && (
-            <div className="mb-6">
-              <h3 className="text-sm font-bold text-gray-600 mb-3">🔗 相關記憶</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="mb-4">
+              <h3 className="text-sm font-bold text-gray-600 mb-2">🔗 相關記憶</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {memory.relatedMemories.map((related: any) => (
                   <div
                     key={related.id}
-                    className="p-3 bg-white rounded-xl hover:shadow-cute transition-all cursor-pointer"
+                    className="p-2 bg-white rounded-lg hover:shadow-sm transition-all cursor-pointer"
                   >
                     <div className="flex items-start gap-2">
-                      <span className="text-2xl">{related.emoji}</span>
+                      <span className="text-xl">{related.emoji}</span>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-800 truncate">
+                        <p className="font-medium text-gray-800 truncate text-sm">
                           {related.title || related.summary}
                         </p>
                         <p className="text-xs text-gray-500">
