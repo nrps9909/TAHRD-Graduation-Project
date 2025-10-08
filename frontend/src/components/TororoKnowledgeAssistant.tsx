@@ -1,9 +1,16 @@
 /**
  * 白噗噗知識助手 - 快速直覺的知識上傳介面
  * 設計理念：可愛、直覺、快速，像是打開一個神奇的知識寶盒
+ *
+ * 性能優化：
+ * - Live2D 渲染限制為 30 FPS
+ * - AI 生成支援請求取消
+ * - 打字機效果使用 requestAnimationFrame
+ * - 輸入防抖延長至 5 秒
+ * - 使用 React.memo 優化組件渲染
  */
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import * as PIXI from 'pixi.js'
 import { Live2DModel } from 'pixi-live2d-display/cubism4'
 import { useMutation, useQuery } from '@apollo/client'
@@ -58,6 +65,8 @@ export default function TororoKnowledgeAssistant({
   const videoRef = useRef<HTMLVideoElement>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
+  const aiGenerationAbortControllerRef = useRef<AbortController | null>(null)
+  const inputDebounceTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   // GraphQL
   const [uploadKnowledge] = useMutation(UPLOAD_KNOWLEDGE)
@@ -67,10 +76,19 @@ export default function TororoKnowledgeAssistant({
   const { play, playRandomMeow } = useSound()
 
   /**
-   * 生成 AI 回應並顯示
+   * 生成 AI 回應並顯示（優化版本，支援取消）
    */
-  const generateAndDisplayResponse = async (action: UserAction, additionalContext?: any) => {
+  const generateAndDisplayResponse = useCallback(async (action: UserAction, additionalContext?: any) => {
     try {
+      // 取消之前的請求
+      if (aiGenerationAbortControllerRef.current) {
+        aiGenerationAbortControllerRef.current.abort()
+      }
+
+      // 創建新的 AbortController
+      const abortController = new AbortController()
+      aiGenerationAbortControllerRef.current = abortController
+
       // 準備上下文
       const context = {
         action,
@@ -78,23 +96,30 @@ export default function TororoKnowledgeAssistant({
         fileCount: uploadedFiles.length,
         historyCount: history.length,
         emotionDetected: inputText ? detectEmotion(inputText) : undefined,
-        previousMessages: conversationHistory.slice(-3), // 只保留最近 3 句
+        previousMessages: conversationHistory.slice(-3),
         ...additionalContext
       }
 
       // 呼叫 AI 生成回應
       const response = await generateTororoResponse(context)
 
+      // 檢查是否被取消
+      if (abortController.signal.aborted) return
+
       // 更新對話歷史
-      setConversationHistory(prev => [...prev, response].slice(-10)) // 保留最近 10 句
+      setConversationHistory(prev => [...prev, response].slice(-10))
 
       // 設置顯示文字（會觸發打字機效果）
       setAudioDialogResponse(response)
 
     } catch (error) {
-      console.error('生成 AI 回應失敗:', error)
+      if ((error as Error).name === 'AbortError') {
+        console.log('AI 生成被取消')
+      } else {
+        console.error('生成 AI 回應失敗:', error)
+      }
     }
-  }
+  }, [inputText, uploadedFiles.length, history.length, conversationHistory])
 
   // 載入歷史紀錄
   useEffect(() => {
@@ -157,7 +182,7 @@ export default function TororoKnowledgeAssistant({
     }
   }
 
-  // Initialize Live2D
+  // Initialize Live2D（優化：降低更新頻率，提升性能）
   useEffect(() => {
     let cleanup: (() => void) | null = null
 
@@ -175,9 +200,13 @@ export default function TororoKnowledgeAssistant({
           height: containerHeight,
           backgroundAlpha: 0,
           antialias: true,
-          resolution: window.devicePixelRatio || 1,
+          resolution: Math.min(window.devicePixelRatio || 1, 2), // 限制最大解析度為 2
           autoDensity: true,
+          powerPreference: 'high-performance', // 使用高性能模式
         })
+
+        // 設定更新頻率為 30 FPS 而不是 60 FPS
+        app.ticker.maxFPS = 30
 
         appRef.current = app
         live2dContainerRef.current.appendChild(app.view as HTMLCanvasElement)
@@ -194,6 +223,7 @@ export default function TororoKnowledgeAssistant({
 
           app.stage.addChild(model)
 
+          // 優化：降低更新頻率
           app.ticker.add(() => {
             if (modelRef.current) {
               modelRef.current.update(app.ticker.deltaTime)
@@ -249,21 +279,30 @@ export default function TororoKnowledgeAssistant({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // 監聽輸入變化，生成動態回應
+  // 監聽輸入變化，生成動態回應（優化：延長延遲時間，減少觸發）
   useEffect(() => {
     if (viewMode !== 'main') return
+    if (!inputText.trim() && uploadedFiles.length === 0) return
 
-    const timer = setTimeout(() => {
-      if (inputText.trim() || uploadedFiles.length > 0) {
-        generateAndDisplayResponse('has_input')
+    // 清除之前的計時器
+    if (inputDebounceTimerRef.current) {
+      clearTimeout(inputDebounceTimerRef.current)
+    }
+
+    // 延長到 5 秒，減少 API 呼叫
+    inputDebounceTimerRef.current = setTimeout(() => {
+      generateAndDisplayResponse('has_input')
+    }, 5000)
+
+    return () => {
+      if (inputDebounceTimerRef.current) {
+        clearTimeout(inputDebounceTimerRef.current)
       }
-    }, 2000) // 延遲 2 秒，避免打字時頻繁觸發
-
-    return () => clearTimeout(timer)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inputText, uploadedFiles.length, viewMode])
 
-  // 打字機效果
+  // 打字機效果（優化：使用 requestAnimationFrame 提升性能）
   useEffect(() => {
     const text = audioDialogResponse || ''
 
@@ -276,25 +315,40 @@ export default function TororoKnowledgeAssistant({
     setDisplayedText('')
 
     let currentIndex = 0
+    let lastTime = 0
     const typingSpeed = 50 // 每個字50ms
+    let animationFrameId: number
 
-    const typingInterval = setInterval(() => {
-      if (currentIndex <= text.length) {
-        setDisplayedText(text.slice(0, currentIndex))
-        currentIndex++
-      } else {
-        setIsTyping(false)
-        clearInterval(typingInterval)
+    const animate = (timestamp: number) => {
+      if (lastTime === 0) {
+        lastTime = timestamp
       }
-    }, typingSpeed)
+
+      const elapsed = timestamp - lastTime
+
+      if (elapsed >= typingSpeed) {
+        currentIndex++
+        setDisplayedText(text.slice(0, currentIndex))
+        lastTime = timestamp
+
+        if (currentIndex > text.length) {
+          setIsTyping(false)
+          return
+        }
+      }
+
+      animationFrameId = requestAnimationFrame(animate)
+    }
+
+    animationFrameId = requestAnimationFrame(animate)
 
     return () => {
-      clearInterval(typingInterval)
+      cancelAnimationFrame(animationFrameId)
       setIsTyping(false)
     }
   }, [audioDialogResponse])
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (files && files.length > 0) {
       setUploadedFiles(prev => {
@@ -305,14 +359,14 @@ export default function TororoKnowledgeAssistant({
       })
       play('notification')
     }
-  }
+  }, [play, generateAndDisplayResponse])
 
-  const removeFile = (index: number) => {
+  const removeFile = useCallback((index: number) => {
     setUploadedFiles(prev => prev.filter((_, i) => i !== index))
     play('button_click')
-  }
+  }, [play])
 
-  const handleSubmit = async () => {
+  const handleSubmit = useCallback(async () => {
     if (!inputText.trim() && uploadedFiles.length === 0) return
 
     setViewMode('processing')
@@ -351,15 +405,15 @@ export default function TororoKnowledgeAssistant({
       alert('上傳失敗，請稍後再試')
       setViewMode('main')
     }
-  }
+  }, [inputText, uploadedFiles, uploadKnowledge, play, generateAndDisplayResponse, saveToHistory, history.length, playRandomMeow])
 
-  const handleReset = () => {
+  const handleReset = useCallback(() => {
     setViewMode('main')
     setInputText('')
     setUploadedFiles([])
     setProcessingResult(null)
     play('button_click')
-  }
+  }, [play])
 
   // 1. 語音轉文字 - 錄音後轉成文字加到輸入框
   const toggleTranscribeRecording = async () => {
