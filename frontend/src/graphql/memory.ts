@@ -16,7 +16,12 @@ export const MEMORY_FRAGMENT = gql`
     tags
     keyPoints
     aiSentiment
-    aiImportance
+    rawData
+    fileUrls
+    fileNames
+    fileTypes
+    links
+    linkTitles
     isPinned
     isArchived
     createdAt
@@ -133,6 +138,15 @@ export const CREATE_MEMORY = gql`
         title
         emoji
       }
+    }
+  }
+`
+
+export const CREATE_MEMORY_DIRECT = gql`
+  ${MEMORY_FRAGMENT}
+  mutation CreateMemoryDirect($input: CreateMemoryDirectInput!) {
+    createMemoryDirect(input: $input) {
+      ...MemoryFields
     }
   }
 `

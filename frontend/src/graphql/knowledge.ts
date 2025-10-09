@@ -51,7 +51,6 @@ export const UPLOAD_KNOWLEDGE = gql`
         category
         tags
         emoji
-        aiImportance
         createdAt
         assistant {
           id
@@ -213,7 +212,6 @@ export const GET_KNOWLEDGE_DISTRIBUTION = gql`
         category
         tags
         emoji
-        aiImportance
         createdAt
         assistant {
           id

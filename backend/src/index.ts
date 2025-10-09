@@ -23,6 +23,7 @@ import { logger } from './utils/logger'
 // import trackingRoutes from './routes/trackingRoutes' // Removed - old tracking system
 import { connectRedis } from './utils/redis'
 import { PrismaClient } from '@prisma/client'
+import { taskQueueService } from './services/taskQueueService'
 
 const PORT = process.env.PORT || 4000
 
@@ -69,6 +70,9 @@ async function startServer() {
     
     // Socket.IO 事件處理
     socketHandler(io, prisma, redis)
+
+    // 設置任務隊列的 Socket.IO 實例
+    taskQueueService.setIO(io)
     
     // 初始化 Apollo Server
     const server = new ApolloServer({
@@ -148,11 +152,12 @@ async function startServer() {
     // 優雅關閉處理
     const shutdown = async (signal: string) => {
       logger.info(`Received ${signal}, shutting down gracefully...`)
-      
+
       httpServer.close(async () => {
         await server.stop()
         await prisma.$disconnect()
         redis.disconnect()
+        taskQueueService.cleanup() // 清理任務隊列
         process.exit(0)
       })
     }

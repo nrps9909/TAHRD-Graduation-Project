@@ -1,37 +1,45 @@
 /**
- * IslandArchipelago - 環形群島系統
- * 將所有知識庫以環形排列的島嶼形式展示
+ * IslandArchipelago - 猫咪脚掌群岛系统
+ * 每个岛屿都是一个完整的猫咪脚掌形状陆地
  */
 
 import { useState } from 'react'
 import { useIslandStore } from '../../stores/islandStore'
+import { Memory } from '../../types/island'
 import { IslandLabel } from './IslandLabel'
 import { IslandBeacon } from './IslandBeacon'
-import { SimpleIsland } from './SimpleIsland'
+import { PawIsland } from './PawIsland'
 
 interface IslandArchipelagoProps {
   onIslandClick?: (islandId: string) => void
+  onMemoryClick?: (memory: Memory) => void
   hideLabels?: boolean
 }
 
 /**
- * 計算環形布局位置
- * @param index 島嶼索引
- * @param total 總島嶼數
- * @param radius 環形半徑
+ * 计算脚掌岛屿的圆形布局位置
+ * 多个脚掌岛屿呈圆形排列
  */
-function getCircularPosition(
+function getIslandPosition(
   index: number,
-  total: number,
-  radius: number = 45
+  total: number
 ): [number, number, number] {
-  const angle = (index / total) * Math.PI * 2 - Math.PI / 2 // 從頂部開始
+  if (total === 1) {
+    return [0, 0, 0]
+  }
+
+  // 圆形排列，半径足够大让脚掌岛屿不会重叠
+  const radius = 80
+  const angleStep = (Math.PI * 2) / total
+  const angle = angleStep * index - Math.PI / 2 // 从顶部开始
+
   const x = Math.cos(angle) * radius
   const z = Math.sin(angle) * radius
+
   return [x, 0, z]
 }
 
-export function IslandArchipelago({ onIslandClick, hideLabels = false }: IslandArchipelagoProps) {
+export function IslandArchipelago({ onIslandClick, onMemoryClick, hideLabels = false }: IslandArchipelagoProps) {
   const { islands, getCurrentIsland } = useIslandStore()
   const [hoveredIslandId, setHoveredIslandId] = useState<string | null>(null)
   const currentIsland = getCurrentIsland()
@@ -39,21 +47,25 @@ export function IslandArchipelago({ onIslandClick, hideLabels = false }: IslandA
   return (
     <group>
       {islands.map((island, index) => {
-        const position = getCircularPosition(index, islands.length)
+        const position = getIslandPosition(index, islands.length)
         const isHovered = hoveredIslandId === island.id
-        // 只有當 currentIsland 存在且 ID 匹配時才標記為 current（排除 'overview' 狀態）
         const isCurrent = currentIsland?.id === island.id && currentIsland?.id !== 'overview'
+
+        // 所有島嶼使用相同大小，選中時稍微放大
+        const baseScale = 1.8
+        const finalScale = isCurrent ? baseScale * 1.15 : baseScale
 
         return (
           <group key={island.id}>
-            {/* 島嶼地形 - 使用 SimpleIsland 組件 */}
-            <SimpleIsland
+            {/* 脚掌岛屿 - 每个岛屿都是完整的猫咪脚掌形状 */}
+            <PawIsland
               position={position}
               color={island.color}
-              scale={isCurrent ? 1.1 : 1.0}
+              scale={finalScale}
               isActive={isCurrent}
               memories={island.memories}
               islandId={island.id}
+              onMemoryClick={onMemoryClick}
             />
 
             {/* 識別光柱 */}
@@ -68,34 +80,10 @@ export function IslandArchipelago({ onIslandClick, hideLabels = false }: IslandA
             {!hideLabels && (
               <IslandLabel
                 island={island}
-                position={position}
+                position={[position[0], position[1] + 2, position[2]]}
                 onClick={() => onIslandClick?.(island.id)}
                 onHover={(hovered) => setHoveredIslandId(hovered ? island.id : null)}
               />
-            )}
-
-            {/* 當前島嶼的特殊標記 */}
-            {isCurrent && (
-              <group position={position}>
-                {/* 底部發光圓環 */}
-                <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, 0.2, 0]}>
-                  <ringGeometry args={[8, 9, 64]} />
-                  <meshBasicMaterial
-                    color={island.color}
-                    transparent
-                    opacity={0.4}
-                    depthWrite={false}
-                  />
-                </mesh>
-
-                {/* 環境光 */}
-                <pointLight
-                  color={island.color}
-                  intensity={1.5}
-                  distance={20}
-                  position={[0, 5, 0]}
-                />
-              </group>
             )}
           </group>
         )

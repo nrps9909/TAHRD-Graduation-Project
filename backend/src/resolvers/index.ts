@@ -13,6 +13,7 @@ import { knowledgeDistributionResolvers } from './knowledgeDistributionResolvers
 import { catAgentResolvers } from './catAgentResolvers'
 import { tororoResolvers } from './tororoResolvers'
 import { hijikiRagResolvers } from './hijikiRagResolvers'
+import { categoryResolvers } from './categoryResolvers'
 
 export const resolvers = {
   ...scalarResolvers,
@@ -27,6 +28,8 @@ export const resolvers = {
     ...catAgentResolvers.Query,
     // Hijiki RAG System (小黑知識庫)
     ...hijikiRagResolvers.Query,
+    // Category System (自訂分類系統)
+    ...categoryResolvers.Query,
   },
 
   Mutation: {
@@ -43,6 +46,8 @@ export const resolvers = {
     ...tororoResolvers.Mutation,
     // Hijiki RAG System (小黑知識庫)
     ...hijikiRagResolvers.Mutation,
+    // Category System (自訂分類系統)
+    ...categoryResolvers.Mutation,
   },
 
   // Type resolvers - New Architecture
@@ -52,4 +57,8 @@ export const resolvers = {
   ChatSession: chatSessionResolvers.ChatSession,
   KnowledgeDistribution: knowledgeDistributionResolvers.KnowledgeDistribution,
   AgentDecision: knowledgeDistributionResolvers.AgentDecision,
+
+  // Type resolvers - Category System
+  Island: categoryResolvers.Island,
+  Subcategory: categoryResolvers.Subcategory,
 }

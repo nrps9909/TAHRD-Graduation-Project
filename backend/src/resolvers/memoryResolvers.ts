@@ -217,6 +217,64 @@ export const memoryResolvers = {
     },
 
     /**
+     * 直接創建記憶（不經過 AI 處理）
+     */
+    createMemoryDirect: async (
+      _: any,
+      { input }: { input: { title?: string; content: string; tags?: string[]; category?: AssistantType; emoji?: string } },
+      { userId, prisma }: Context
+    ) => {
+      if (!userId) {
+        throw new GraphQLError('Must be authenticated', {
+          extensions: { code: 'UNAUTHENTICATED' }
+        })
+      }
+
+      try {
+        // 獲取 LIFE 助手作為預設助手（雜項記錄）
+        const defaultAssistant = await prisma.assistant.findFirst({
+          where: { type: input.category || AssistantType.LIFE }
+        })
+
+        if (!defaultAssistant) {
+          throw new GraphQLError('Default assistant not found')
+        }
+
+        // 直接創建記憶到資料庫，不經過 AI 處理
+        const memory = await prisma.memory.create({
+          data: {
+            userId,
+            assistantId: defaultAssistant.id,
+            title: input.title || null,
+            rawContent: input.content,
+            summary: input.title || input.content.substring(0, 100),
+            contentType: 'TEXT',
+            category: input.category || AssistantType.LIFE,
+            tags: input.tags || [],
+            emoji: input.emoji || '📝',
+            keyPoints: [],
+            fileUrls: [],
+            fileNames: [],
+            fileTypes: [],
+            links: [],
+            linkTitles: [],
+            relatedMemoryIds: [],
+            isArchived: false,
+            isPinned: false
+          },
+          include: {
+            assistant: true,
+            user: true
+          }
+        })
+
+        return memory
+      } catch (error) {
+        throw new GraphQLError('Failed to create memory directly: ' + (error as Error).message)
+      }
+    },
+
+    /**
      * 更新記憶
      */
     updateMemory: async (

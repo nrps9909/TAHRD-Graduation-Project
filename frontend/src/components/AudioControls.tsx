@@ -5,13 +5,14 @@
 
 import { useState } from 'react'
 import { useSound } from '../hooks/useSound'
+import { Z_INDEX_CLASSES } from '../constants/zIndex'
 
 export function AudioControls() {
   const sound = useSound()
   const [isOpen, setIsOpen] = useState(false)
 
   return (
-    <div className="fixed bottom-4 right-4 z-50">
+    <div className={`fixed bottom-4 right-4 ${Z_INDEX_CLASSES.FLOATING_TOOLS}`}>
       {/* 控制按钮 */}
       <button
         onClick={() => setIsOpen(!isOpen)}

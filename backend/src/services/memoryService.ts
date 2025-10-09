@@ -26,7 +26,6 @@ export interface CreateMemoryInput {
   keyPoints?: string[]
   tags?: string[]
   aiSentiment?: string
-  aiImportance?: number
   title?: string
   emoji?: string
 }
@@ -50,7 +49,6 @@ export class MemoryService {
           tags: input.tags || [],
           category: input.category,
           aiSentiment: input.aiSentiment || 'neutral',
-          aiImportance: input.aiImportance || 5,
           title: input.title,
           emoji: input.emoji,
           relatedMemoryIds: [],
@@ -184,7 +182,14 @@ export class MemoryService {
     userId: string,
     updates: {
       title?: string
+      rawContent?: string
+      emoji?: string
       tags?: string[]
+      fileUrls?: string[]
+      fileNames?: string[]
+      fileTypes?: string[]
+      links?: string[]
+      linkTitles?: string[]
       isPinned?: boolean
       isArchived?: boolean
     }
@@ -319,7 +324,10 @@ export class MemoryService {
             id: { not: memoryId },
             tags: { hasSome: memory.tags }
           },
-          orderBy: { aiImportance: 'desc' },
+          orderBy: [
+            { isPinned: 'desc' },
+            { createdAt: 'desc' }
+          ],
           take: limit,
           include: { assistant: true }
         })

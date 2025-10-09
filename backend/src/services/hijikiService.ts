@@ -129,7 +129,7 @@ class HijikiService {
         title: memory.title || '無標題',
         emoji: memory.emoji || '📝',
         category: memory.category,
-        importance: memory.aiImportance,
+        importance: memory.isPinned ? 8 : 5,
         date: memory.createdAt.toISOString(),
         summary: memory.summary || memory.rawContent.substring(0, 100),
         tags: memory.tags
@@ -190,10 +190,10 @@ class HijikiService {
       // 計算分布
       const distribution = this.calculateDistribution(memories)
 
-      // 計算平均重要度
+      // 計算平均重要度 (基於 isPinned 判斷：釘選=8，未釘選=5)
       const avgImportance = memories.length > 0
-        ? memories.reduce((sum, m) => sum + m.aiImportance, 0) / memories.length
-        : 0
+        ? memories.reduce((sum, m) => sum + (m.isPinned ? 8 : 5), 0) / memories.length
+        : 5
 
       // 獲取熱門標籤
       const topTags = this.getTopTags(memories, 5)
@@ -326,14 +326,15 @@ class HijikiService {
       insights.push('記憶數量豐富，知識庫很充實')
     }
 
+    const pinnedCount = memories.filter(m => m.isPinned).length
     const avgImportance = memories.length > 0
-      ? memories.reduce((sum, m) => sum + m.aiImportance, 0) / memories.length
-      : 0
+      ? memories.reduce((sum, m) => sum + (m.isPinned ? 8 : 5), 0) / memories.length
+      : 5
 
-    if (avgImportance >= 7) {
+    if (pinnedCount > memories.length * 0.3) {
       insights.push('這些記憶重要度很高，屬於核心知識')
-    } else if (avgImportance < 5) {
-      insights.push('記憶重要度偏低，可以增加更多核心知識記錄')
+    } else if (pinnedCount === 0 && memories.length > 5) {
+      insights.push('可以考慮釘選一些重要的核心知識')
     }
 
     return insights

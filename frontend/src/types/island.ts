@@ -69,7 +69,7 @@ export const DEFAULT_ISLANDS: Island[] = [
     id: 'work-island',
     name: '工作島',
     emoji: '💼',
-    color: '#7B68EE',
+    color: '#8B9DC3', // 柔和藍灰色
     description: '工作專案、會議記錄和目標追蹤',
     categories: ['WORK', 'GOALS'],
     memories: [],
@@ -91,7 +91,7 @@ export const DEFAULT_ISLANDS: Island[] = [
     id: 'learning-island',
     name: '學習島',
     emoji: '📚',
-    color: '#4A90E2',
+    color: '#A8D5BA', // 清新薄荷綠
     description: '知識學習、課程筆記和技能提升',
     categories: ['LEARNING', 'RESOURCES'],
     memories: [],
@@ -113,7 +113,7 @@ export const DEFAULT_ISLANDS: Island[] = [
     id: 'life-island',
     name: '生活島',
     emoji: '🌸',
-    color: '#FF6B9D',
+    color: '#F4B5C4', // 溫柔粉色
     description: '日常生活、人際關係和個人成長',
     categories: ['LIFE', 'SOCIAL'],
     memories: [],
@@ -135,7 +135,7 @@ export const DEFAULT_ISLANDS: Island[] = [
     id: 'inspiration-island',
     name: '靈感島',
     emoji: '💡',
-    color: '#F5A623',
+    color: '#FFD7A8', // 柔和奶油黃
     description: '創意想法、設計靈感和未來構想',
     categories: ['INSPIRATION'],
     memories: [],
@@ -157,7 +157,7 @@ export const DEFAULT_ISLANDS: Island[] = [
     id: 'misc-island',
     name: '太平洋垃圾帶',
     emoji: '🌊',
-    color: '#6C8EAD',
+    color: '#B8C5D6', // 淡雅霧藍
     description: '雜項記憶、待整理的想法和其他未分類知識',
     categories: ['MISC'], // MISC 類別 - 不屬於其他類別的正常知識
     memories: [],

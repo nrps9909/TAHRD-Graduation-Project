@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom'
 import { useIslandStore } from '../stores/islandStore'
 import { useAuthStore } from '../stores/authStore'
 import { Island } from '../types/island'
+import { Z_INDEX_CLASSES } from '../constants/zIndex'
 
 export function IslandNavigator() {
   const navigate = useNavigate()
@@ -51,7 +52,7 @@ export function IslandNavigator() {
 
   return (
     <>
-      <div className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-b from-white/95 to-white/80 backdrop-blur-md shadow-lg">
+      <div className={`fixed top-0 left-0 right-0 ${Z_INDEX_CLASSES.NAVIGATION} bg-gradient-to-b from-white/95 to-white/80 backdrop-blur-md shadow-lg`}>
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center gap-4">
             {/* Logo */}
@@ -100,7 +101,7 @@ export function IslandNavigator() {
 
               {/* 下拉選單 */}
               {showUserMenu && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border-2 border-pink-200 overflow-hidden z-50">
+                <div className={`absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border-2 border-pink-200 overflow-hidden ${Z_INDEX_CLASSES.SIDEBAR}`}>
                   <div className="p-3 bg-gradient-to-r from-pink-50 to-yellow-50 border-b border-pink-200">
                     <p className="font-bold text-gray-800">{user?.displayName || user?.username}</p>
                     <p className="text-xs text-gray-600 truncate">{user?.email}</p>
@@ -129,7 +130,7 @@ export function IslandNavigator() {
 
       {/* 創建島嶼對話框 */}
       {showCreateDialog && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div className={`fixed inset-0 ${Z_INDEX_CLASSES.MODAL} flex items-center justify-center bg-black/50 backdrop-blur-sm`}>
           <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full mx-4 transform transition-all">
             <h3 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">
               <span className="text-3xl">{newIslandEmoji}</span>

@@ -1,8 +1,9 @@
-import { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { useMutation, useQuery } from '@apollo/client'
-import { CREATE_MEMORY } from '../../graphql/memory'
+import { CREATE_MEMORY_DIRECT, UPDATE_MEMORY, GET_MEMORIES } from '../../graphql/memory'
 import { UPLOAD_KNOWLEDGE, GET_ASSISTANTS } from '../../graphql/knowledge'
 import type { UploadKnowledgeInput } from '../../graphql/knowledge'
+import type { Memory } from '../../graphql/memory'
 
 interface CreateMemoryModalProps {
   onClose: () => void
@@ -23,12 +24,46 @@ export default function CreateMemoryModal({ onClose, onSuccess }: CreateMemoryMo
   const [objectUrls, setObjectUrls] = useState<string[]>([]) // 追蹤創建的 URL
 
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const tagInputRef = useRef<HTMLDivElement>(null)
 
   const { data: assistantsData } = useQuery(GET_ASSISTANTS)
-  const [createMemory] = useMutation(CREATE_MEMORY)
+  const { data: memoriesData } = useQuery(GET_MEMORIES, {
+    variables: { limit: 1000 }
+  })
+  const [createMemoryDirect] = useMutation(CREATE_MEMORY_DIRECT)
   const [uploadKnowledge] = useMutation(UPLOAD_KNOWLEDGE)
+  const [updateMemory] = useMutation(UPDATE_MEMORY)
 
   const assistants = assistantsData?.assistants?.filter((a: any) => a.type !== 'CHIEF') || []
+
+  // 提取所有現有標籤和熱門標籤
+  const { allExistingTags, popularTags } = React.useMemo(() => {
+    const tagMap = new Map<string, number>()
+    memoriesData?.memories?.forEach((memory: Memory) => {
+      memory.tags.forEach((tag: string) => {
+        tagMap.set(tag, (tagMap.get(tag) || 0) + 1)
+      })
+    })
+
+    const allTags = Array.from(tagMap.keys()).sort()
+    const popular = Array.from(tagMap.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([tag]) => tag)
+
+    return { allExistingTags: allTags, popularTags: popular }
+  }, [memoriesData])
+
+  // 標籤建議
+  const suggestedTags = React.useMemo(() => {
+    if (!newTag.trim()) return []
+    return allExistingTags
+      .filter(tag =>
+        tag.toLowerCase().includes(newTag.toLowerCase()) &&
+        !tags.includes(tag)
+      )
+      .slice(0, 5)
+  }, [newTag, allExistingTags, tags])
 
   // 清理 object URLs 避免記憶體洩漏
   useEffect(() => {
@@ -37,11 +72,43 @@ export default function CreateMemoryModal({ onClose, onSuccess }: CreateMemoryMo
     }
   }, [objectUrls])
 
-  const handleAddTag = () => {
-    if (newTag.trim() && !tags.includes(newTag.trim())) {
-      setTags([...tags, newTag.trim()])
-      setNewTag('')
+  // 點擊外部關閉自動補全
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (tagInputRef.current && !tagInputRef.current.contains(event.target as Node)) {
+        setNewTag('')
+      }
     }
+
+    if (newTag.trim() && suggestedTags.length > 0) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [newTag, suggestedTags])
+
+  const handleAddTag = () => {
+    const trimmedTag = newTag.trim()
+
+    // 驗證標籤
+    if (!trimmedTag) return
+    if (tags.includes(trimmedTag)) {
+      alert('此標籤已存在！')
+      return
+    }
+    if (tags.length >= 10) {
+      alert('最多只能添加 10 個標籤！')
+      return
+    }
+    if (trimmedTag.length > 50) {
+      alert('標籤長度不能超過 50 個字元！')
+      return
+    }
+
+    setTags([...tags, trimmedTag])
+    setNewTag('')
   }
 
   const handleRemoveTag = (tag: string) => {
@@ -100,15 +167,31 @@ export default function CreateMemoryModal({ onClose, onSuccess }: CreateMemoryMo
           contentType: files.length > 0 ? 'MIXED' : 'TEXT',
         }
 
-        await uploadKnowledge({ variables: { input } })
+        const result = await uploadKnowledge({ variables: { input } })
+
+        // 如果有標籤，為每個建立的記憶更新標籤
+        if (tags.length > 0 && result.data?.uploadKnowledge?.memoriesCreated) {
+          const memories = result.data.uploadKnowledge.memoriesCreated
+          await Promise.all(
+            memories.map((memory: Memory) =>
+              updateMemory({
+                variables: {
+                  id: memory.id,
+                  input: { tags }
+                }
+              })
+            )
+          )
+        }
       } else {
-        // 手動指定知識庫
-        await createMemory({
+        // 手動指定知識庫 - 使用 createMemoryDirect 支援標籤
+        await createMemoryDirect({
           variables: {
             input: {
-              assistantId: selectedAssistant,
-              content: title ? `${title}\n\n${content}` : content,
-              contextType: 'MEMORY_CREATION',
+              title: title || undefined,
+              content,
+              tags: tags.length > 0 ? tags : undefined,
+              category: assistants.find((a: any) => a.id === selectedAssistant)?.type,
             },
           },
         })
@@ -248,6 +331,37 @@ export default function CreateMemoryModal({ onClose, onSuccess }: CreateMemoryMo
             <label className="block text-sm font-bold text-gray-600 mb-3">
               🏷️ 標籤（選填）
             </label>
+
+            {/* 熱門標籤快捷按鈕 */}
+            {popularTags.length > 0 && tags.length < 10 && (
+              <div className="mb-3">
+                <label className="block text-xs font-medium text-gray-500 mb-2">
+                  🔥 熱門標籤
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {popularTags
+                    .filter(tag => !tags.includes(tag))
+                    .slice(0, 8)
+                    .map((tag) => (
+                      <button
+                        key={tag}
+                        onClick={() => {
+                          if (tags.length >= 10) {
+                            alert('最多只能添加 10 個標籤！')
+                            return
+                          }
+                          setTags([...tags, tag])
+                        }}
+                        className="px-3 py-1 text-xs rounded-full bg-gradient-to-br from-baby-pink/10 to-baby-yellow/10 text-gray-600 hover:from-baby-pink/20 hover:to-baby-yellow/20 transition-all hover:scale-105"
+                      >
+                        + {tag}
+                      </button>
+                    ))}
+                </div>
+              </div>
+            )}
+
+            {/* 已添加的標籤 */}
             <div className="flex flex-wrap gap-2 mb-3">
               {tags.map((tag) => (
                 <span
@@ -264,21 +378,53 @@ export default function CreateMemoryModal({ onClose, onSuccess }: CreateMemoryMo
                 </span>
               ))}
             </div>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={newTag}
-                onChange={(e) => setNewTag(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleAddTag()}
-                placeholder="添加標籤..."
-                className="flex-1 px-4 py-2 bg-white border-2 border-baby-blush/50 rounded-xl focus:outline-none focus:border-baby-pink text-sm"
-              />
-              <button
-                onClick={handleAddTag}
-                className="px-4 py-2 bg-gradient-to-br from-baby-pink to-baby-blush text-white rounded-xl hover:scale-105 transition-all"
-              >
-                +
-              </button>
+
+            {/* 標籤輸入框 + 自動補全 */}
+            <div className="relative" ref={tagInputRef}>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newTag}
+                  onChange={(e) => setNewTag(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      handleAddTag()
+                    }
+                  }}
+                  placeholder="添加標籤..."
+                  className="flex-1 px-4 py-2 bg-white border-2 border-baby-blush/50 rounded-xl focus:outline-none focus:border-baby-pink text-sm"
+                />
+                <button
+                  onClick={handleAddTag}
+                  className="px-4 py-2 bg-gradient-to-br from-baby-pink to-baby-blush text-white rounded-xl hover:scale-105 transition-all"
+                >
+                  +
+                </button>
+              </div>
+
+              {/* 自動補全下拉選單 */}
+              {newTag.trim() && suggestedTags.length > 0 && (
+                <div className="absolute top-full left-0 right-14 mt-1 bg-white border-2 border-baby-blush/50 rounded-xl shadow-lg z-10 max-h-48 overflow-y-auto">
+                  {suggestedTags.map((tag) => (
+                    <button
+                      key={tag}
+                      onClick={() => {
+                        if (tags.length >= 10) {
+                          alert('最多只能添加 10 個標籤！')
+                          return
+                        }
+                        setTags([...tags, tag])
+                        setNewTag('')
+                      }}
+                      className="w-full text-left px-4 py-2 hover:bg-baby-cream/50 text-sm transition-colors flex items-center gap-2"
+                    >
+                      <span className="text-baby-pink">🏷️</span>
+                      <span>#{tag}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 

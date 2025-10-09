@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { Z_INDEX_CLASSES } from '../constants/zIndex'
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning'
 
@@ -51,7 +52,7 @@ export default function Toast({ message, type, duration = 3000, onClose }: Toast
 
   return (
     <div
-      className="fixed top-20 right-4 sm:right-6 z-50 animate-slide-in-right"
+      className={`fixed top-20 right-4 sm:right-6 ${Z_INDEX_CLASSES.TOAST} animate-slide-in-right`}
       style={{
         animation: 'slideInRight 0.3s ease-out',
       }}

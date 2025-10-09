@@ -16,6 +16,7 @@ import { exec } from 'child_process'
 import { promisify } from 'util'
 import { assistantService } from './assistantService'
 import { multimodalProcessor } from './multimodalProcessor'
+import { dynamicSubAgentService, DynamicSubAgent } from './dynamicSubAgentService'
 
 const execAsync = promisify(exec)
 const prisma = new PrismaClient()
@@ -245,7 +246,6 @@ export class SubAgentService {
           linkTitles: distribution.linkTitles,
           keyPoints: evaluation.keyInsights,
           aiSentiment: sentiment, // 使用情感分析結果
-          aiImportance: importanceScore, // 使用重要性評分
           aiAnalysis: evaluation.reasoning, // 使用 Sub-Agent 的詳細分析
           category: evaluation.suggestedCategory || assistant.type,
           tags: [...new Set([...distribution.suggestedTags, ...evaluation.suggestedTags])], // 合併並去重標籤
@@ -566,6 +566,329 @@ ${distribution.chiefSummary}
     logger.info(`[Storage Decision] 綜合評分 (${compositeScore.toFixed(2)}) = 相關性×0.7 + 置信度×0.3 → ${shouldStore ? '儲存' : '不儲存'}`)
 
     return shouldStore
+  }
+
+  /**
+   * 處理知識分發（使用動態 SubAgent）
+   * 與 processDistribution 類似，但使用 Subcategory 配置
+   */
+  async processDistributionWithDynamicSubAgents(
+    userId: string,
+    distributionId: string,
+    subcategoryIds: string[]
+  ) {
+    try {
+      // 獲取分發記錄
+      const distribution = await prisma.knowledgeDistribution.findUnique({
+        where: { id: distributionId },
+      })
+
+      if (!distribution) {
+        throw new Error(`Distribution not found: ${distributionId}`)
+      }
+
+      logger.info(`[Dynamic Sub-Agents] 開始處理分發記錄 ${distributionId}，相關 SubAgent 數量: ${subcategoryIds.length}`)
+
+      const agentDecisions: any[] = []
+      const memoriesCreated: any[] = []
+
+      // 並發評估所有相關 SubAgent
+      const evaluations = await Promise.all(
+        subcategoryIds.map(async (subcategoryId) => {
+          try {
+            // 載入 SubAgent 配置
+            const subAgent = await dynamicSubAgentService.getSubAgentById(subcategoryId)
+            if (!subAgent) {
+              logger.error(`[Dynamic Sub-Agent] SubAgent not found: ${subcategoryId}`)
+              return null
+            }
+
+            // 評估相關性（使用動態配置）
+            const evaluation = await this.evaluateKnowledgeWithDynamicSubAgent(
+              subAgent,
+              distribution
+            )
+
+            // 創建決策記錄（注意：不使用 assistantId）
+            const decision = await prisma.agentDecision.create({
+              data: {
+                distributionId,
+                assistantId: '', // 動態 SubAgent 不使用 Assistant ID
+                relevanceScore: evaluation.relevanceScore,
+                shouldStore: evaluation.shouldStore,
+                reasoning: evaluation.reasoning,
+                confidence: evaluation.confidence,
+                suggestedCategory: evaluation.suggestedCategory,
+                suggestedTags: evaluation.suggestedTags,
+                keyInsights: evaluation.keyInsights,
+              },
+            })
+
+            agentDecisions.push(decision)
+
+            // 如果決定儲存，創建記憶（使用 subcategoryId）
+            if (evaluation.shouldStore) {
+              const memory = await this.createMemoryWithDynamicSubAgent(
+                userId,
+                subcategoryId,
+                distribution,
+                evaluation,
+                distributionId,
+                subAgent
+              )
+              memoriesCreated.push(memory)
+
+              // 更新 SubAgent 統計
+              await dynamicSubAgentService.incrementStats(subcategoryId, 'memory')
+            }
+
+            return { subcategoryId, decision, memory: evaluation.shouldStore }
+          } catch (error) {
+            logger.error(`[Dynamic Sub-Agent] 處理 SubAgent ${subcategoryId} 失敗:`, error)
+            return null
+          }
+        })
+      )
+
+      // 更新分發記錄的 storedBy 列表
+      const storedByIds = evaluations
+        .filter(e => e && e.memory)
+        .map(e => e!.subcategoryId)
+
+      await prisma.knowledgeDistribution.update({
+        where: { id: distributionId },
+        data: { storedBy: storedByIds },
+      })
+
+      logger.info(`[Dynamic Sub-Agents] 分發處理完成 - 決策數: ${agentDecisions.length}, 創建記憶數: ${memoriesCreated.length}`)
+
+      return {
+        agentDecisions,
+        memoriesCreated,
+        storedByCount: storedByIds.length,
+      }
+    } catch (error) {
+      logger.error('[Dynamic Sub-Agents] 處理知識分發失敗:', error)
+      throw new Error('處理知識分發失敗')
+    }
+  }
+
+  /**
+   * 評估知識相關性（使用動態 SubAgent 配置）
+   */
+  private async evaluateKnowledgeWithDynamicSubAgent(
+    subAgent: DynamicSubAgent,
+    distributionInput: DistributionInput
+  ): Promise<EvaluationResult> {
+    try {
+      logger.info(`[${subAgent.nameChinese}] 開始評估知識相關性`)
+
+      // 構建動態評估提示詞
+      const prompt = this.buildDynamicEvaluationPrompt(subAgent, distributionInput)
+
+      // 調用 MCP 服務進行評估（使用 subAgent.id）
+      const response = await this.callMCP(prompt, subAgent.id)
+      const parsed = this.parseJSON(response)
+
+      const relevanceScore = typeof parsed.relevanceScore === 'number'
+        ? Math.max(0, Math.min(1, parsed.relevanceScore))
+        : 0.5
+
+      const confidence = typeof parsed.confidence === 'number'
+        ? Math.max(0, Math.min(1, parsed.confidence))
+        : 0.5
+
+      // 智能儲存決策
+      const shouldStore = this.shouldStoreKnowledge(
+        relevanceScore,
+        confidence,
+        parsed.shouldStore
+      )
+
+      const evaluation: EvaluationResult = {
+        relevanceScore,
+        shouldStore,
+        reasoning: parsed.reasoning || '無評估說明',
+        confidence,
+        suggestedCategory: AssistantType.RESOURCES, // 動態 SubAgent 使用 RESOURCES 作為預設
+        suggestedTags: Array.isArray(parsed.suggestedTags) ? parsed.suggestedTags : [],
+        keyInsights: Array.isArray(parsed.keyInsights) ? parsed.keyInsights : [],
+      }
+
+      logger.info(`[${subAgent.nameChinese}] 評估完成 - 相關性: ${evaluation.relevanceScore.toFixed(2)}, 是否儲存: ${evaluation.shouldStore}`)
+
+      return evaluation
+    } catch (error) {
+      logger.error(`[Dynamic Sub-Agent] 評估失敗:`, error)
+
+      // 降級方案：使用關鍵字匹配
+      return this.fallbackDynamicEvaluation(subAgent, distributionInput)
+    }
+  }
+
+  /**
+   * 構建動態評估提示詞（使用 Subcategory 的 systemPrompt）
+   */
+  private buildDynamicEvaluationPrompt(
+    subAgent: DynamicSubAgent,
+    distribution: DistributionInput
+  ): string {
+    return `${subAgent.systemPrompt}
+
+你是 ${subAgent.nameChinese} (${subAgent.name})，專注於 ${subAgent.island?.nameChinese || '知識管理'} 領域。
+
+**你的個性：**
+${subAgent.personality}
+
+**你的對話風格：**
+${subAgent.chatStyle}
+
+**你的專業關鍵字：**
+${subAgent.keywords.join('、')}
+
+**你的任務：**
+作為 Gemini 2.5 Pro，你需要對以下知識進行深度分析和整理，決定是否存儲並生成完整的知識結構。
+
+**用戶的原始內容:**
+${distribution.rawContent}
+
+${distribution.fileUrls.length > 0 ? `\n**附加文件 (${distribution.fileUrls.length}個):**\n${distribution.fileNames.map((name, i) => `- ${name} (${distribution.fileTypes[i]})`).join('\n')}` : ''}
+
+${distribution.links.length > 0 ? `\n**相關連結 (${distribution.links.length}個):**\n${distribution.linkTitles.map((title, i) => `- ${title || distribution.links[i]}`).join('\n')}` : ''}
+
+**白噗噗的初步分類:**
+${distribution.chiefSummary}
+
+**你需要提供深度分析，包括：**
+1. **相關性評估** - 這個知識與你的專長領域的關聯程度
+2. **詳細摘要** - 用 2-3 句話總結核心內容和價值
+3. **關鍵洞察** - 提取 3-5 個重要的知識點或洞察
+4. **精準標籤** - 產生 3-5 個描述性標籤
+5. **標題建議** - 為這個記憶創建一個清晰的標題（10字以內）
+6. **情感分析** - 判斷內容的情感傾向
+7. **重要性評分** - 1-10分，評估這個知識的重要程度
+8. **行動建議** - 如果適用，提供後續行動建議
+
+請以 JSON 格式返回完整分析（只返回 JSON，不要其他文字）：
+{
+  "relevanceScore": 0.95,
+  "shouldStore": true,
+  "reasoning": "這是一個關於XXX的重要知識，因為...，對用戶的XXX方面有幫助",
+  "confidence": 0.9,
+  "suggestedTags": ["標籤1", "標籤2", "標籤3"],
+  "keyInsights": [
+    "關鍵洞察1：...",
+    "關鍵洞察2：...",
+    "關鍵洞察3：..."
+  ],
+  "detailedSummary": "這個知識主要討論...",
+  "suggestedTitle": "XXX學習筆記",
+  "sentiment": "positive|neutral|negative",
+  "importanceScore": 8,
+  "actionableAdvice": "建議用戶可以..."
+}
+
+**評估準則：**
+- **高度相關 (>0.7)**: 核心內容完全匹配你的專長領域，具有長期價值
+- **中度相關 (0.4-0.7)**: 部分內容與領域相關，有參考價值
+- **低相關 (<0.4)**: 與領域關聯較弱，不建議存儲
+
+**深度分析要求：**
+- 仔細理解用戶的真實意圖和需求
+- 識別隱含的知識價值和長期意義
+- 考慮這個知識在未來可能的應用場景
+- 根據你的個性和對話風格提供有洞察力和可執行的建議
+`
+  }
+
+  /**
+   * 創建記憶（使用動態 SubAgent 配置）
+   */
+  private async createMemoryWithDynamicSubAgent(
+    userId: string,
+    subcategoryId: string,
+    distribution: any,
+    evaluation: EvaluationResult,
+    distributionId: string,
+    subAgent: DynamicSubAgent
+  ) {
+    try {
+      // 解析深度分析結果
+      const detailedSummary = (evaluation as any).detailedSummary || distribution.chiefSummary
+      const suggestedTitle = (evaluation as any).suggestedTitle || `${subAgent.nameChinese}的記憶`
+      const sentiment = (evaluation as any).sentiment || 'neutral'
+      const importanceScore = (evaluation as any).importanceScore || Math.round(evaluation.relevanceScore * 10)
+      const actionableAdvice = (evaluation as any).actionableAdvice
+
+      // 創建完整的記憶記錄（使用 subcategoryId）
+      const memory = await prisma.memory.create({
+        data: {
+          userId,
+          subcategoryId, // 使用 subcategoryId 而非 assistantId
+          rawContent: distribution.rawContent,
+          title: suggestedTitle,
+          summary: detailedSummary,
+          contentType: distribution.contentType,
+          fileUrls: distribution.fileUrls,
+          fileNames: distribution.fileNames,
+          fileTypes: distribution.fileTypes,
+          links: distribution.links,
+          linkTitles: distribution.linkTitles,
+          keyPoints: evaluation.keyInsights,
+          aiSentiment: sentiment,
+          aiAnalysis: evaluation.reasoning,
+          category: AssistantType.RESOURCES, // 動態 SubAgent 使用 RESOURCES 作為預設
+          tags: [...new Set([...distribution.suggestedTags, ...evaluation.suggestedTags, ...subAgent.keywords])],
+          distributionId,
+          relevanceScore: evaluation.relevanceScore,
+          ...(actionableAdvice && {
+            metadata: {
+              actionableAdvice,
+              subAgentName: subAgent.nameChinese,
+              islandName: subAgent.island?.nameChinese
+            }
+          })
+        },
+      })
+
+      logger.info(`[${subAgent.nameChinese}] 創建深度分析記憶: ${memory.id}`)
+      logger.info(`  - 標題: ${suggestedTitle}`)
+      logger.info(`  - 重要性: ${importanceScore}/10`)
+      logger.info(`  - 情感: ${sentiment}`)
+      logger.info(`  - 標籤: ${memory.tags.join(', ')}`)
+
+      return memory
+    } catch (error) {
+      logger.error('[Dynamic Sub-Agent] 創建記憶失敗:', error)
+      throw error
+    }
+  }
+
+  /**
+   * 降級方案：基於關鍵字的動態 SubAgent 評估
+   */
+  private fallbackDynamicEvaluation(
+    subAgent: DynamicSubAgent,
+    distribution: DistributionInput
+  ): EvaluationResult {
+    const content = distribution.rawContent.toLowerCase()
+    const keywords = subAgent.keywords
+
+    // 計算關鍵字匹配度
+    const matchCount = keywords.filter(kw => content.includes(kw.toLowerCase())).length
+    const relevanceScore = Math.min(matchCount / Math.max(keywords.length, 1), 1)
+    const shouldStore = relevanceScore > 0.4
+
+    return {
+      relevanceScore,
+      shouldStore,
+      reasoning: shouldStore
+        ? `基於關鍵字匹配，此內容與 ${subAgent.nameChinese} 的領域相關`
+        : `基於關鍵字匹配，此內容與 ${subAgent.nameChinese} 的領域相關性較低`,
+      confidence: 0.3,
+      suggestedTags: distribution.suggestedTags.slice(0, 3),
+      keyInsights: [`關鍵字匹配數: ${matchCount}/${keywords.length}`],
+    }
   }
 }
 

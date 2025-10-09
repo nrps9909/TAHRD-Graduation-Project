@@ -9,6 +9,9 @@ import { useMutation, useQuery } from '@apollo/client'
 import { UPLOAD_KNOWLEDGE, CHAT_WITH_CHIEF, GET_CHIEF_ASSISTANT } from '../graphql/knowledge'
 import type { UploadKnowledgeInput, ChatWithAssistantInput } from '../graphql/knowledge'
 import { useSound } from '../hooks/useSound'
+import { Z_INDEX_CLASSES } from '../constants/zIndex'
+import { useCatChat } from '../hooks/useCatChat'
+import type { ChatMessage } from '../stores/chatStore'
 
 // Register PIXI globally for Live2D
 ;(window as any).PIXI = PIXI
@@ -16,20 +19,6 @@ import { useSound } from '../hooks/useSound'
 interface Live2DCatProps {
   modelPath: string
   onClose?: () => void
-}
-
-type CatState = 'idle' | 'thinking' | 'listening' | 'talking'
-
-interface Message {
-  id: string
-  type: 'user' | 'assistant'
-  content: string
-  timestamp: Date
-  attachments?: {
-    type: 'image' | 'file' | 'audio'
-    name: string
-    url: string
-  }[]
 }
 
 export default function Live2DCat({
@@ -42,27 +31,25 @@ export default function Live2DCat({
   const catEmoji = isBlackCat ? '🐈‍⬛' : '🐱'
   const catDescription = isBlackCat ? '你的神秘小夥伴 🌙' : '你的療癒小夥伴 💕'
 
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      type: 'assistant',
-      content: isBlackCat
-        ? '喵~ 你好呀！我是黑噗噗 🌙 很高興見到你！我會幫你管理和整理知識，有什麼需要幫忙的嗎？'
-        : '喵~ 早安！我是白噗噗 💕\n\n今天有什麼想法、靈感或心情想記錄嗎？\n隨時跟我說，我會幫你記住的！✨\n\n💡 也可以上傳圖片、文件或語音哦~',
-      timestamp: new Date(),
-    }
-  ])
-  const [inputText, setInputText] = useState('')
-  const [isRecording, setIsRecording] = useState(false)
+  // === 使用優化的 Hook 管理對話狀態 ===
+  const {
+    messages,
+    inputText,
+    catState,
+    isProcessing,
+    isRecording,
+    pendingAttachments,
+    addMessage,
+    setInputText,
+    setCatState,
+    setIsProcessing,
+    setIsRecording,
+    setPendingAttachments,
+    addPendingAttachment,
+    removePendingAttachment,
+  } = useCatChat(isBlackCat ? 'hijiki' : 'tororo')
+
   const [triggerMotion, setTriggerMotion] = useState(false)
-  const [catState, setCatState] = useState<CatState>('idle')
-  const [pendingAttachments, setPendingAttachments] = useState<{
-    type: 'image' | 'file' | 'audio'
-    name: string
-    url: string
-    file: File
-  }[]>([])
-  const [isProcessing, setIsProcessing] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const imageInputRef = useRef<HTMLInputElement>(null)
@@ -199,7 +186,7 @@ export default function Live2DCat({
   }, [modelPath])
 
   // Helper function to play motion based on state
-  const playMotionForState = (state: CatState) => {
+  const playMotionForState = (state: typeof catState) => {
     if (!modelRef.current) return
 
     try {
@@ -207,7 +194,7 @@ export default function Live2DCat({
       if (!internalModel?.motionManager) return
 
       // Map states to motion groups
-      const motionMap: Record<CatState, string> = {
+      const motionMap: Record<typeof catState, string> = {
         idle: 'idle',        // 00_idle
         thinking: 'TapBody', // 思考動作
         listening: 'Shake',  // 聆聽/注意動作
@@ -246,7 +233,7 @@ export default function Live2DCat({
     play('message_sent')
 
     // Add user message to UI
-    const newMessage: Message = {
+    const newMessage: ChatMessage = {
       id: Date.now().toString(),
       type: 'user',
       content: userContent,
@@ -258,7 +245,7 @@ export default function Live2DCat({
       })) : undefined,
     }
 
-    setMessages(prev => [...prev, newMessage])
+    addMessage(newMessage)
     setInputText('')
     const attachments = [...pendingAttachments]
     setPendingAttachments([])
@@ -272,7 +259,7 @@ export default function Live2DCat({
     setTimeout(() => {
       setCatState('thinking')
       play('meow_thinking') // Cat starts thinking
-      playTypingSequence(2000) // Simulate AI processing with typing sound
+      playTypingSequence() // Simulate AI processing with typing sound
     }, 500)
 
     try {
@@ -311,7 +298,7 @@ export default function Live2DCat({
             responseContent += `\n🏷️ **主題:** ${result.distribution.identifiedTopics.join('、')}`
           }
 
-          const assistantMessage: Message = {
+          const assistantMessage: ChatMessage = {
             id: (Date.now() + 1).toString(),
             type: 'assistant',
             content: responseContent,
@@ -325,7 +312,7 @@ export default function Live2DCat({
             playRandomMeow() // Happy meow after successful response
           }, 300)
 
-          setMessages(prev => [...prev, assistantMessage])
+          addMessage(assistantMessage)
         }
       } else {
         // === 对话模式 ===
@@ -348,7 +335,7 @@ export default function Live2DCat({
         if (data?.chatWithAssistant) {
           const result = data.chatWithAssistant
 
-          const assistantMessage: Message = {
+          const assistantMessage: ChatMessage = {
             id: (Date.now() + 1).toString(),
             type: 'assistant',
             content: result.assistantResponse,
@@ -361,20 +348,20 @@ export default function Live2DCat({
             playRandomMeow() // Happy meow after successful response
           }, 300)
 
-          setMessages(prev => [...prev, assistantMessage])
+          addMessage(assistantMessage)
         }
       }
     } catch (error) {
       console.error('處理失敗:', error)
 
       // Error message
-      const errorMessage: Message = {
+      const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         type: 'assistant',
         content: '喵嗚~ 處理失敗了... 請確認後端服務是否正常運行 😿',
         timestamp: new Date(),
       }
-      setMessages(prev => [...prev, errorMessage])
+      addMessage(errorMessage)
     } finally {
       setIsProcessing(false)
 
@@ -425,7 +412,7 @@ export default function Live2DCat({
       file: file,
     }))
 
-    setPendingAttachments(prev => [...prev, ...newAttachments])
+    newAttachments.forEach(att => addPendingAttachment(att))
 
     // Play notification sound for successful upload
     play('notification')
@@ -435,13 +422,9 @@ export default function Live2DCat({
   }
 
   const removeAttachment = (index: number) => {
-    setPendingAttachments(prev => {
-      const newAttachments = [...prev]
-      // Revoke the object URL to free memory
-      URL.revokeObjectURL(newAttachments[index].url)
-      newAttachments.splice(index, 1)
-      return newAttachments
-    })
+    // Revoke the object URL to free memory
+    URL.revokeObjectURL(pendingAttachments[index].url)
+    removePendingAttachment(index)
   }
 
   const toggleRecording = () => {
@@ -456,13 +439,14 @@ export default function Live2DCat({
       // Create a mock audio file
       const audioBlob = new Blob([], { type: 'audio/mp3' })
       const audioUrl = URL.createObjectURL(audioBlob)
+      const audioFileName = `語音訊息_${Date.now()}.mp3`
 
-      setPendingAttachments(prev => [...prev, {
+      addPendingAttachment({
         type: 'audio',
-        name: `語音訊息_${Date.now()}.mp3`,
+        name: audioFileName,
         url: audioUrl,
-        file: new File([audioBlob], `語音訊息_${Date.now()}.mp3`, { type: 'audio/mp3' })
-      }])
+        file: new File([audioBlob], audioFileName, { type: 'audio/mp3' })
+      })
     } else {
       // Check if we can add more attachments
       if (pendingAttachments.length >= 10) {
@@ -501,21 +485,32 @@ export default function Live2DCat({
   }
 
   return (
-    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br ${theme.bgGradient} backdrop-blur-sm animate-fadeIn`}>
+    <div className={`fixed inset-0 ${Z_INDEX_CLASSES.FULLSCREEN_CHAT} flex items-center justify-center bg-gradient-to-br ${theme.bgGradient} backdrop-blur-sm animate-fadeIn`}>
       <div className={`relative w-full h-full max-w-7xl max-h-[90vh] mx-4 bg-gradient-to-br ${theme.cardGradient} backdrop-blur-md rounded-3xl shadow-cute-xl overflow-hidden animate-scale-in`}>
 
         {/* Header */}
-        <div className={`relative bg-white/80 backdrop-blur-sm border-b-4 ${theme.headerBorder} px-6 py-4`}>
+        <div
+          className={`relative backdrop-blur-sm border-b-4 ${theme.headerBorder} px-6 py-4`}
+          style={{
+            background: isBlackCat ? 'rgba(26, 26, 36, 0.95)' : 'rgba(255, 255, 255, 0.8)'
+          }}
+        >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className={`w-14 h-14 bg-gradient-to-br ${theme.avatarGradient} rounded-full flex items-center justify-center shadow-cute animate-bounce-gentle`}>
                 <span className="text-3xl">{catEmoji}</span>
               </div>
               <div>
-                <h2 className={`text-2xl font-bold bg-gradient-to-r ${theme.titleGradient} bg-clip-text text-transparent`}>
+                <h2
+                  className={`text-2xl font-bold ${isBlackCat ? '' : 'bg-gradient-to-r bg-clip-text text-transparent'}`}
+                  style={{
+                    color: isBlackCat ? '#e8e8f0' : undefined,
+                    backgroundImage: isBlackCat ? undefined : `linear-gradient(to right, ${theme.titleGradient})`
+                  }}
+                >
                   {catName}
                 </h2>
-                <p className="text-sm text-gray-500">{catDescription}</p>
+                <p className="text-sm" style={{ color: isBlackCat ? '#a8a8b8' : '#6b7280' }}>{catDescription}</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -701,7 +696,7 @@ export default function Live2DCat({
                     onKeyPress={(e) => e.key === 'Enter' && !isProcessing && handleSendMessage()}
                     disabled={isProcessing}
                     placeholder={`跟${catName}說些什麼吧... ${isBlackCat ? '🌙' : '💕'}`}
-                    className={`flex-1 px-4 py-3 ${isBlackCat ? 'bg-[#40414f] text-white placeholder-gray-500 border-gray-600/50 focus:border-gray-500 focus:ring-gray-500/20' : 'bg-white/90 text-gray-800 placeholder-gray-400 border-baby-blush/50 focus:border-baby-pink focus:ring-baby-pink/20'} border-2 rounded-xl focus:outline-none focus:ring-2`}
+                    className={`flex-1 px-4 py-3 ${isBlackCat ? 'bg-white/95 text-gray-900 placeholder-gray-400 border-gray-300 focus:border-gray-500 focus:ring-gray-400/20' : 'bg-white/90 text-gray-800 placeholder-gray-400 border-baby-blush/50 focus:border-baby-pink focus:ring-baby-pink/20'} border-2 rounded-xl focus:outline-none focus:ring-2`}
                   />
                   <button
                     onClick={handleSendMessage}

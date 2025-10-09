@@ -4,16 +4,19 @@ import IslandView from './pages/IslandView'
 import CuteDatabaseView from './pages/DatabaseView/CuteDatabaseView'
 import KnowledgeDatabase from './pages/KnowledgeDatabase'
 import TororoTest from './pages/TororoTest'
+import IslandCreator from './pages/IslandCreator'
 import { AuthPage } from './pages/Auth'
 import ProtectedRoute from './components/ProtectedRoute'
 import { useAuthStore } from './stores/authStore'
+import { ProcessingQueuePanel } from './components/ProcessingQueuePanel'
 import './styles/cursor.css'
 
 function App() {
   const { isAuthenticated } = useAuthStore()
 
   return (
-    <Routes>
+    <>
+      <Routes>
       {/* Public Routes - 統一使用 AuthPage 組件 */}
       <Route
         path="/login"
@@ -65,6 +68,14 @@ function App() {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/island-creator"
+        element={
+          <ProtectedRoute>
+            <IslandCreator />
+          </ProtectedRoute>
+        }
+      />
 
       {/* Fallback - 未登入時重定向到登入頁，已登入則到首頁 */}
       <Route
@@ -72,6 +83,10 @@ function App() {
         element={<Navigate to={isAuthenticated ? "/" : "/login"} replace />}
       />
     </Routes>
+
+    {/* 全局處理隊列面板 - 僅在已登入時顯示 */}
+    {isAuthenticated && <ProcessingQueuePanel />}
+    </>
   )
 }
 

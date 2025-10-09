@@ -8,12 +8,16 @@ import { Assistant } from '../../types/assistant'
 import { Message } from '../../types/message'
 import MessageBubble from '../../components/ChatInterface/MessageBubble'
 import UploadModal from '../../components/ChatInterface/UploadModal'
+import { IslandStatusCard } from '../../components/IslandStatusCard'
+import { IslandEditorModal } from '../../components/IslandEditorModal'
+import { motion } from 'framer-motion'
 
 export default function IslandView() {
   const { assistantId } = useParams<{ assistantId: string }>()
   const navigate = useNavigate()
   const [showChat, setShowChat] = useState(false)
   const [showUploadModal, setShowUploadModal] = useState(false)
+  const [showIslandEditor, setShowIslandEditor] = useState(false)
   const [inputText, setInputText] = useState('')
   const [messages, setMessages] = useState<Message[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -295,54 +299,90 @@ export default function IslandView() {
         }
       </Canvas>
 
-      {/* Top Navigation Bar - 可爱风格 */}
+      {/* 島嶼狀態卡片 - 左上角 */}
+      {!showChat && !loading && assistant && (
+        <motion.div
+          initial={{ x: -100, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          transition={{ type: 'spring', stiffness: 200, damping: 25 }}
+        >
+          <IslandStatusCard
+            name={`${assistant.nameChinese}的島嶼`}
+            emoji={assistant.emoji}
+            color={assistant.color}
+            description={assistant.personality}
+            memoryCount={assistant.totalMemories}
+            categories={[assistant.type]}
+            updatedAt={new Date(assistant.updatedAt)}
+          />
+        </motion.div>
+      )}
+
+      {/* Top Navigation Bar - 動森玻璃風格 - 右上角 */}
       {!showChat && (
-        <div className="absolute top-0 left-0 right-0 p-4 z-10">
-          <div className="max-w-7xl mx-auto bg-white/90 backdrop-blur-md rounded-bubble px-6 py-4" style={{
-            border: '3px solid #FFE5F0',
-            boxShadow: '0 8px 25px rgba(255, 179, 217, 0.15)'
-          }}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={() => navigate('/')}
-                  className="text-2xl hover:scale-110 transition-transform"
-                  style={{ color: '#FF8FB3' }}
-                >
-                  ←
-                </button>
-                <div className="flex items-center gap-3">
-                  {assistant && (
-                    <>
-                      <span className="text-4xl">{assistant.emoji}</span>
-                      <div>
-                        <h1 className="text-cute-xl font-bold" style={{
-                          background: 'linear-gradient(135deg, #FF8FB3 0%, #FFFACD 50%, #FFB3D9 100%)',
-                          WebkitBackgroundClip: 'text',
-                          WebkitTextFillColor: 'transparent',
-                          backgroundClip: 'text'
-                        }}>
-                          {assistant.nameChinese}的島嶼
-                        </h1>
-                        <p className="text-cute-sm" style={{ color: '#FFB3D9' }}>{assistant.name}</p>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-              <button
-                onClick={() => navigate('/database')}
-                className="px-5 py-2.5 rounded-2xl font-medium transition-all duration-300 hover:scale-105 active:scale-95"
+        <div className="absolute top-4 right-4 p-0 z-10">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/')}
+              className="group/btn relative px-5 py-2.5 rounded-[18px] font-bold transition-all duration-300 hover:scale-105 active:scale-95"
+              style={{
+                background: 'linear-gradient(145deg, rgba(255, 250, 240, 0.75) 0%, rgba(255, 245, 230, 0.65) 100%)',
+                backdropFilter: 'blur(16px) saturate(180%)',
+                WebkitBackdropFilter: 'blur(16px) saturate(180%)',
+                border: '2px solid rgba(255, 255, 255, 0.6)',
+                boxShadow: '0 8px 24px rgba(139, 92, 46, 0.2), inset 0 1px 2px rgba(255, 255, 255, 0.8)',
+                color: '#8B5C2E'
+              }}
+            >
+              <span className="relative z-10">← 返回</span>
+              <div
+                className="absolute inset-0 rounded-[18px] opacity-0 group-hover/btn:opacity-100 transition-opacity"
                 style={{
-                  background: 'linear-gradient(135deg, #FFF5E1, #FFFACD)',
-                  color: '#FF8FB3',
-                  border: '2px solid #FFE5F0',
-                  boxShadow: '0 4px 15px rgba(255, 245, 225, 0.5)'
+                  background: 'radial-gradient(circle at center, rgba(251, 191, 36, 0.3), transparent 70%)',
                 }}
-              >
-                🐾 資料庫
-              </button>
-            </div>
+              />
+            </button>
+            <button
+              onClick={() => setShowIslandEditor(true)}
+              className="group/btn relative px-5 py-2.5 rounded-[18px] font-bold transition-all duration-300 hover:scale-105 active:scale-95"
+              style={{
+                background: 'linear-gradient(145deg, rgba(168, 230, 207, 0.75) 0%, rgba(144, 198, 149, 0.65) 100%)',
+                backdropFilter: 'blur(16px) saturate(180%)',
+                WebkitBackdropFilter: 'blur(16px) saturate(180%)',
+                border: '2px solid rgba(255, 255, 255, 0.6)',
+                boxShadow: '0 8px 24px rgba(52, 152, 219, 0.2), inset 0 1px 2px rgba(255, 255, 255, 0.8)',
+                color: '#2D5016'
+              }}
+              title="編輯島嶼外觀"
+            >
+              <span className="relative z-10">🎨 編輯島嶼</span>
+              <div
+                className="absolute inset-0 rounded-[18px] opacity-0 group-hover/btn:opacity-100 transition-opacity"
+                style={{
+                  background: 'radial-gradient(circle at center, rgba(52, 152, 219, 0.3), transparent 70%)',
+                }}
+              />
+            </button>
+            <button
+              onClick={() => navigate('/database')}
+              className="group/btn relative px-5 py-2.5 rounded-[18px] font-bold transition-all duration-300 hover:scale-105 active:scale-95"
+              style={{
+                background: 'linear-gradient(145deg, rgba(255, 250, 240, 0.75) 0%, rgba(255, 245, 230, 0.65) 100%)',
+                backdropFilter: 'blur(16px) saturate(180%)',
+                WebkitBackdropFilter: 'blur(16px) saturate(180%)',
+                border: '2px solid rgba(255, 255, 255, 0.6)',
+                boxShadow: '0 8px 24px rgba(139, 92, 46, 0.2), inset 0 1px 2px rgba(255, 255, 255, 0.8)',
+                color: '#8B5C2E'
+              }}
+            >
+              <span className="relative z-10">🐾 資料庫</span>
+              <div
+                className="absolute inset-0 rounded-[18px] opacity-0 group-hover/btn:opacity-100 transition-opacity"
+                style={{
+                  background: 'radial-gradient(circle at center, rgba(251, 191, 36, 0.3), transparent 70%)',
+                }}
+              />
+            </button>
           </div>
         </div>
       )}
@@ -477,6 +517,17 @@ export default function IslandView() {
         onClose={() => setShowUploadModal(false)}
         onConfirm={handleUploadConfirm}
       />
+
+      {/* Island Editor Modal */}
+      {!loading && assistant && (
+        <IslandEditorModal
+          isOpen={showIslandEditor}
+          onClose={() => setShowIslandEditor(false)}
+          islandId={assistantId || ''}
+          islandName={`${assistant.nameChinese}的島嶼`}
+          currentColor={assistant.color}
+        />
+      )}
 
       {/* Loading State - 可爱加载 */}
       {loading && (

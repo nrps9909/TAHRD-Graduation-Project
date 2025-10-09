@@ -13,6 +13,7 @@
 import { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import TororoLive2D, { TororoLive2DRef } from './TororoLive2D'
+import { Z_INDEX_CLASSES } from '../constants/zIndex'
 
 // ============ 類型定義 ============
 
@@ -123,7 +124,7 @@ export default function TororoKnowledgePanel({
   const currentCategory = CATEGORIES.find(c => c.type === selectedCategory)!
 
   return (
-    <div className={`fixed bottom-6 right-6 z-50 ${className}`}>
+    <div className={`fixed bottom-6 right-6 ${Z_INDEX_CLASSES.PANEL_MODAL} ${className}`}>
       <AnimatePresence>
         {!isOpen ? (
           // ============ 浮動按鈕 ============

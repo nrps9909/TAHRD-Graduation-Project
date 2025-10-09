@@ -213,7 +213,7 @@ function AnimatedCatModel({
 
       {/* 永久顯示的名稱標籤（可通過 hideLabel 隱藏，可點擊觸發對話） */}
       {!hideLabel && (
-        <Html position={[0, 0.67, 0]} center>
+        <Html position={[0, 0.67, 0]} center zIndexRange={[10, 0]}>
           <div
             className="px-4 py-2 rounded-2xl text-white font-bold shadow-lg whitespace-nowrap transition-all cursor-pointer"
             style={{

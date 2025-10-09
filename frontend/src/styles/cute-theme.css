@@ -1,48 +1,48 @@
-/* 🌸 Heart Whisper Town - Cute Theme Styles 🌸 */
+/* 🌙 Heart Whisper Town - 夜間模式主題樣式 🌙 */
 
 /* 光标已由 cursor.css 统一管理，此处不再重复定义 */
 
-/* 选择文本时的可爱颜色 */
+/* 選擇文本時的夜間配色 */
 ::selection {
-  background-color: #FFB3D9;
-  color: white;
+  background-color: #7c5cff;
+  color: #e8e8f0;
 }
 
 ::-moz-selection {
-  background-color: #FFB3D9;
-  color: white;
+  background-color: #7c5cff;
+  color: #e8e8f0;
 }
 
-/* 可爱的滚动条 */
+/* 高級夜間模式滾動條 */
 ::-webkit-scrollbar {
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
-  background: linear-gradient(to bottom, #FFE5D9, #E8F4F8);
+  background: #1a1a24;
   border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(135deg, #FFB3D9, #D9B3FF);
+  background: linear-gradient(135deg, #7c5cff, #ff6eb4);
   border-radius: 10px;
-  border: 2px solid #fff;
+  border: 2px solid #1a1a24;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(135deg, #FF99CC, #CC99FF);
+  background: linear-gradient(135deg, #9575ff, #ff8bc9);
 }
 
-/* 输入框可爱样式 */
+/* 輸入框夜間模式樣式 */
 input[type="text"],
 input[type="email"],
 input[type="password"],
 textarea {
-  border: 3px solid transparent;
-  background: linear-gradient(white, white) padding-box,
-              linear-gradient(135deg, #FFB3D9, #D9B3FF) border-box;
-  border-radius: 1.25rem;
+  border: 2px solid #35354a;
+  background: #1a1a24;
+  color: #e8e8f0;
+  border-radius: 0.75rem;
   padding: 0.75rem 1rem;
   transition: all 0.3s ease;
   font-family: 'GameFont', 'Inter', 'Noto Sans TC', sans-serif !important;
@@ -51,32 +51,38 @@ textarea {
 input:focus,
 textarea:focus {
   outline: none;
-  box-shadow: 0 0 20px rgba(255, 179, 217, 0.5);
-  transform: scale(1.02);
+  border-color: #7c5cff;
+  box-shadow: 0 0 20px rgba(124, 92, 255, 0.3);
+  background: #25252f;
 }
 
-/* 按钮悬停发光效果 */
+input::placeholder,
+textarea::placeholder {
+  color: #78788a;
+}
+
+/* 按鈕懸停夜間發光效果 */
 button:hover {
-  filter: drop-shadow(0 0 10px currentColor);
+  filter: drop-shadow(0 0 12px currentColor);
 }
 
-/* 卡片悬停效果 */
+/* 卡片夜間懸停效果 */
 .cute-card {
   transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
 
 .cute-card:hover {
   transform: translateY(-5px) scale(1.02);
-  box-shadow: 0 12px 40px rgba(255, 179, 217, 0.3);
+  box-shadow: 0 12px 40px rgba(124, 92, 255, 0.25);
 }
 
-/* 可爱的加载动画 */
+/* 夜間模式漸變動畫 */
 @keyframes rainbow {
-  0% { color: #FFB3D9; }
-  25% { color: #D9B3FF; }
-  50% { color: #B3D9FF; }
-  75% { color: #B3FFD9; }
-  100% { color: #FFB3D9; }
+  0% { color: #7c5cff; }
+  25% { color: #ff6eb4; }
+  50% { color: #00d4ff; }
+  75% { color: #5cff7c; }
+  100% { color: #7c5cff; }
 }
 
 .rainbow-text {
@@ -93,13 +99,13 @@ button:hover {
   animation: twinkle 2s ease-in-out infinite;
 }
 
-/* 心跳效果 */
+/* 夜間心跳發光效果 */
 @keyframes heartbeat-glow {
   0%, 100% {
-    box-shadow: 0 0 10px rgba(255, 179, 217, 0.5);
+    box-shadow: 0 0 15px rgba(124, 92, 255, 0.4);
   }
   50% {
-    box-shadow: 0 0 30px rgba(255, 179, 217, 0.8);
+    box-shadow: 0 0 35px rgba(124, 92, 255, 0.7);
   }
 }
 
@@ -129,24 +135,24 @@ button:hover {
   transition: all 0.3s ease;
 }
 
-/* 可爱的提示框 */
+/* 夜間模式提示框 */
 .tooltip {
-  background: linear-gradient(135deg, #FFE5D9, #E8F4F8);
-  border: 3px solid white;
-  border-radius: 1.25rem;
+  background: linear-gradient(135deg, #25252f, #2d2d3a);
+  border: 2px solid #45455a;
+  border-radius: 0.75rem;
   padding: 0.75rem 1.25rem;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   font-family: 'GameFont', 'Inter', 'Noto Sans TC', sans-serif !important;
   font-weight: 600;
-  color: #666;
+  color: #e8e8f0;
 }
 
-/* 禁用状态也要可爱 */
+/* 禁用狀態的夜間樣式 */
 button:disabled,
 input:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   /* cursor 由 cursor.css 统一管理 */
-  filter: grayscale(0.3);
+  filter: grayscale(0.5);
 }
 
 /* 加载中的脉冲效果 */
@@ -165,22 +171,22 @@ input:disabled {
   animation: pulse-cute 1.5s ease-in-out infinite;
 }
 
-/* 可爱的边框动画 */
+/* 夜間邊框動畫 */
 @keyframes border-dance {
   0% {
-    border-color: #FFB3D9;
+    border-color: #7c5cff;
   }
   25% {
-    border-color: #D9B3FF;
+    border-color: #ff6eb4;
   }
   50% {
-    border-color: #B3D9FF;
+    border-color: #00d4ff;
   }
   75% {
-    border-color: #B3FFD9;
+    border-color: #5cff7c;
   }
   100% {
-    border-color: #FFB3D9;
+    border-color: #7c5cff;
   }
 }
 

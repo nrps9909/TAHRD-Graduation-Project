@@ -433,7 +433,8 @@ export const HIJIKI_ANALYTICS = {
         case 'time':
           return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         case 'importance':
-          return b.aiImportance - a.aiImportance
+          // Use relevanceScore instead of aiImportance (which doesn't exist in schema)
+          return (b.relevanceScore || 0) - (a.relevanceScore || 0)
         case 'relevance':
           return (b.relevance || 0) - (a.relevance || 0)
         default:

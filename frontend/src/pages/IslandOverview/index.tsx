@@ -1,18 +1,22 @@
 import { useState, useEffect } from 'react'
 import { useQuery } from '@apollo/client'
+import { useNavigate } from 'react-router-dom'
 import { GET_ALL_MEMORIES } from '../../graphql/islandData'
 import { IslandScene } from '../../components/3D/IslandScene'
 import Live2DCat from '../../components/Live2DCat'
 import TororoKnowledgeAssistant from '../../components/TororoKnowledgeAssistant'
 import { MiniMap } from '../../components/MiniMap'
 import SettingsMenu from '../../components/SettingsMenu'
+import { IslandStatusCard } from '../../components/IslandStatusCard'
 import { useIslandStore } from '../../stores/islandStore'
 import { assignMemoriesToIslands, loadUserIslands } from '../../utils/islandDataConverter'
 import { Memory } from '../../types/memory'
 import { useSound } from '../../hooks/useSound'
 import { motion } from 'framer-motion'
+import { Z_INDEX_CLASSES } from '../../constants/zIndex'
 
 export default function IslandOverview() {
+  const navigate = useNavigate()
   const { data: memoryData, loading: memoriesLoading } = useQuery(GET_ALL_MEMORIES)
   const [showLive2D, setShowLive2D] = useState(false)
   const [currentLive2DModel, setCurrentLive2DModel] = useState<string>('')
@@ -20,7 +24,7 @@ export default function IslandOverview() {
   const [showSettings, setShowSettings] = useState(false)
 
   // Island store
-  const { islands, loadIslands, setLoading, switchIsland, resetToOverview } = useIslandStore()
+  const { loadIslands, setLoading, switchIsland, resetToOverview, getCurrentIsland, currentIslandId } = useIslandStore()
 
   // 音频系统
   const sound = useSound()
@@ -125,33 +129,70 @@ export default function IslandOverview() {
         hideLabels={showLive2D}
       />
 
-      {/* 設定按鈕 - 左上角 - 沉浸式設計 */}
+      {/* 左上角按鈕組 */}
       {!showLive2D && (
-        <motion.button
-          initial={{ x: -100, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          transition={{ delay: 0.5, type: 'spring', stiffness: 200 }}
-          onClick={() => setShowSettings(true)}
-          whileHover={{ scale: 1.05, opacity: 1 }}
-          className="fixed top-6 left-6 z-40 group"
-          title="遊戲設定"
-        >
-          {/* 玻璃擬態背景 */}
-          <div className="relative w-12 h-12 rounded-2xl backdrop-blur-md bg-white/10 border border-white/20 shadow-lg transition-all group-hover:bg-white/20 group-hover:border-white/30">
-            {/* 漸層光暈 */}
-            <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-pink-300/20 to-yellow-300/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-
-            {/* 齒輪圖標 */}
-            <div className="absolute inset-0 flex items-center justify-center text-white/70 group-hover:text-white text-xl transition-all group-hover:rotate-90 duration-500">
-              ⚙️
+        <div className="fixed top-6 left-6 flex gap-3">
+          {/* 設定按鈕 */}
+          <motion.button
+            initial={{ x: -100, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ delay: 0.5, type: 'spring', stiffness: 200 }}
+            onClick={() => setShowSettings(true)}
+            whileHover={{ scale: 1.05, opacity: 1 }}
+            className={`${Z_INDEX_CLASSES.FIXED_PANEL} group`}
+            title="遊戲設定"
+          >
+            <div className="relative w-12 h-12 rounded-2xl backdrop-blur-md bg-white/10 border border-white/20 shadow-lg transition-all group-hover:bg-white/20 group-hover:border-white/30">
+              <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-pink-300/20 to-yellow-300/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <div className="absolute inset-0 flex items-center justify-center text-white/70 group-hover:text-white text-xl transition-all group-hover:rotate-90 duration-500">
+                ⚙️
+              </div>
             </div>
-          </div>
-        </motion.button>
+          </motion.button>
+
+          {/* 島嶼創建器入口 */}
+          <motion.button
+            initial={{ x: -100, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ delay: 0.6, type: 'spring', stiffness: 200 }}
+            onClick={() => navigate('/island-creator')}
+            whileHover={{ scale: 1.05, opacity: 1 }}
+            className={`${Z_INDEX_CLASSES.FIXED_PANEL} group`}
+            title="島嶼創建器 - 繪製你的專屬島嶼"
+          >
+            <div className="relative w-12 h-12 rounded-2xl backdrop-blur-md bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-white/20 shadow-lg transition-all group-hover:from-blue-500/30 group-hover:to-purple-500/30 group-hover:border-white/30">
+              <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-blue-300/30 to-purple-300/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <div className="absolute inset-0 flex items-center justify-center text-white/90 group-hover:text-white text-2xl transition-all group-hover:scale-110 duration-300">
+                🎨
+              </div>
+            </div>
+          </motion.button>
+        </div>
       )}
 
       {/* 設定選單 */}
       <SettingsMenu isOpen={showSettings} onClose={() => setShowSettings(false)} />
 
+      {/* 島嶼狀態卡片 - 左上角 - 當聚焦到某個島嶼時顯示 */}
+      {!showLive2D && currentIslandId !== 'overview' && getCurrentIsland() && (
+        <motion.div
+          initial={{ x: -100, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          exit={{ x: -100, opacity: 0 }}
+          transition={{ type: 'spring', stiffness: 200, damping: 25 }}
+        >
+          <IslandStatusCard
+            name={getCurrentIsland()!.name}
+            emoji={getCurrentIsland()!.emoji}
+            color={getCurrentIsland()!.color}
+            description={getCurrentIsland()!.description}
+            memoryCount={getCurrentIsland()!.memoryCount}
+            categories={getCurrentIsland()!.categories}
+            updatedAt={getCurrentIsland()!.updatedAt}
+            regionDistribution={getCurrentIsland()!.regionDistribution}
+          />
+        </motion.div>
+      )}
 
       {/* 小地圖 - 右下角 */}
       {!showLive2D && (

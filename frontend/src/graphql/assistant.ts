@@ -158,7 +158,6 @@ export const CLASSIFY_AND_CREATE = gql`
         emoji
         category
         tags
-        aiImportance
         aiSentiment
         createdAt
       }

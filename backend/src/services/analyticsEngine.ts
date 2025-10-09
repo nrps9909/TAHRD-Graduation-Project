@@ -60,17 +60,8 @@ export class AnalyticsEngine {
       // 3. 按月份統計
       const byMonth = await this.getMonthlyDistribution(userId, period)
 
-      // 4. 平均重要性
-      const avgImportanceResult = await prisma.memory.aggregate({
-        where: {
-          userId,
-          isArchived: false,
-          createdAt: dateRange ? { gte: dateRange.start, lte: dateRange.end } : undefined,
-        },
-        _avg: {
-          aiImportance: true,
-        },
-      })
+      // 4. 平均重要性 (使用預設值 5)
+      const avgImportance = 5
 
       // 5. 熱門標籤
       const topTags = await this.getTopTags(userId, dateRange)
@@ -82,7 +73,7 @@ export class AnalyticsEngine {
         total,
         byCategory,
         byMonth,
-        averageImportance: avgImportanceResult._avg.aiImportance || 5,
+        averageImportance: avgImportance,
         topTags,
         recentGrowth,
       }
@@ -112,7 +103,7 @@ export class AnalyticsEngine {
         select: {
           tags: true,
           category: true,
-          aiImportance: true,
+          isPinned: true,
           createdAt: true,
         },
         orderBy: {
@@ -448,10 +439,13 @@ export class AnalyticsEngine {
       insights.push(`你最關注 ${topCategory[0]} 領域，佔了 ${((topCategory[1] as number / memories.length) * 100).toFixed(1)}%`)
     }
 
-    // 3. 重要性分析
-    const avgImportance = memories.reduce((sum, m) => sum + (m.aiImportance || 5), 0) / memories.length
-    if (avgImportance > 7) {
-      insights.push(`你記錄的內容平均重要性很高（${avgImportance.toFixed(1)}/10），這些都是很有價值的知識`)
+    // 3. 重要性分析 (基於 isPinned 判斷)
+    const pinnedCount = memories.filter(m => m.isPinned).length
+    const avgImportance = memories.length > 0
+      ? memories.reduce((sum, m) => sum + (m.isPinned ? 8 : 5), 0) / memories.length
+      : 5
+    if (pinnedCount > memories.length * 0.3) {
+      insights.push(`你有很多釘選的重要記憶，這些都是很有價值的知識`)
     }
 
     return insights

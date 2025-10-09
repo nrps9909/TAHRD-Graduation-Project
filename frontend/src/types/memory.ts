@@ -10,14 +10,14 @@ export type MemoryCategory =
 export interface Memory {
   id: string
   rawContent: string
-  summary?: string
+  summary?: string  // 標題
   title: string
   emoji: string
-  category: MemoryCategory
-  tags: string[]
-  keyPoints?: string[]
+  category: MemoryCategory  // 類別
+  tags: string[]  // Hashtags
+  keyPoints?: string[]  // 重點分析
   aiSentiment?: string
-  aiImportance: number
+  rawData?: string  // 原始對話記錄
   isPinned: boolean
   isArchived: boolean
   createdAt: string

@@ -87,91 +87,116 @@ export default function MemoryCard({ memory, viewMode, onClick, onUpdate }: Memo
     return d.toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' })
   }
 
-  const importanceColor = (importance: number) => {
-    if (importance >= 8) return 'from-red-400 to-pink-400'
-    if (importance >= 6) return 'from-yellow-400 to-orange-400'
-    if (importance >= 4) return 'from-blue-400 to-cyan-400'
-    return 'from-gray-400 to-gray-500'
-  }
-
   if (viewMode === 'list') {
     return (
       <div
         onClick={onClick}
-        className="relative group bg-white/90 backdrop-blur-sm rounded-xl p-4 shadow-cute hover:shadow-cute-lg transition-all cursor-pointer hover:scale-[1.01] animate-slide-up"
+        className="relative group backdrop-blur-sm border rounded-xl p-4 shadow-lg transition-all cursor-pointer hover:scale-[1.01] animate-slide-up"
+        style={{
+          background: 'rgba(26, 26, 36, 0.9)',
+          borderColor: '#2a2a38'
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.borderColor = '#7c5cff'
+          e.currentTarget.style.boxShadow = '0 20px 50px rgba(124, 92, 255, 0.3)'
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.borderColor = '#2a2a38'
+          e.currentTarget.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.5)'
+        }}
       >
         <div className="flex items-start gap-4">
-          {/* Emoji/Icon */}
-          <div className="text-4xl flex-shrink-0">
+          {/* Emoji/Icon - 固定寬度 */}
+          <div className="text-4xl flex-shrink-0 w-14 text-center">
             {memory.emoji || memory.assistant?.emoji}
           </div>
 
           {/* Content */}
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2 mb-2">
-              <h3 className="font-bold text-gray-800 text-lg truncate">
+              <h3 className="font-bold text-lg truncate" style={{ color: '#e8e8f0' }}>
                 {memory.title || memory.summary || '無標題記憶'}
               </h3>
               <button
                 onClick={handlePin}
-                className={`flex-shrink-0 p-1 rounded-lg transition-all ${
-                  memory.isPinned
-                    ? 'text-baby-pink'
-                    : 'text-gray-400 opacity-0 group-hover:opacity-100'
-                }`}
+                className="flex-shrink-0 p-1 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                style={{ color: memory.isPinned ? '#ff6eb4' : '#78788a' }}
               >
                 📌
               </button>
             </div>
 
-            <p className="text-gray-600 text-sm line-clamp-2 mb-3">
+            <p className="text-sm line-clamp-2 mb-3" style={{ color: '#a8a8b8' }}>
               {memory.summary || memory.rawContent}
             </p>
 
-            <div className="flex items-center gap-3 flex-wrap">
-              {/* Assistant */}
-              {memory.assistant && (
-                <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-lg bg-gradient-to-br from-baby-pink/20 to-baby-yellow/20">
-                  {memory.assistant.emoji} {memory.assistant.nameChinese}
-                </span>
-              )}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 flex-wrap flex-1">
+                {/* Assistant */}
+                {memory.assistant && (
+                  <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-lg border" style={{
+                    background: 'linear-gradient(135deg, rgba(124, 92, 255, 0.2), rgba(255, 110, 180, 0.2))',
+                    color: '#e8e8f0',
+                    borderColor: '#2a2a38'
+                  }}>
+                    {memory.assistant.emoji} {memory.assistant.nameChinese}
+                  </span>
+                )}
 
-              {/* Importance */}
-              <span className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-lg bg-gradient-to-br ${importanceColor(memory.aiImportance)} text-white`}>
-                ⭐ {memory.aiImportance}/10
-              </span>
+                {/* Tags */}
+                {memory.tags.slice(0, 3).map((tag: string, i: number) => (
+                  <span key={i} className="text-xs px-2 py-1 rounded-lg border" style={{
+                    background: '#2d2d3a',
+                    color: '#a8a8b8',
+                    borderColor: '#2a2a38'
+                  }}>
+                    #{tag}
+                  </span>
+                ))}
+              </div>
 
-              {/* Tags */}
-              {memory.tags.slice(0, 3).map((tag: string, i: number) => (
-                <span key={i} className="text-xs px-2 py-1 rounded-lg bg-baby-cream text-gray-600">
-                  #{tag}
-                </span>
-              ))}
-
-              {/* Date */}
-              <span className="text-xs text-gray-400 ml-auto">
+              {/* Date - 固定寬度 */}
+              <span className="text-xs flex-shrink-0 w-24 text-right" style={{ color: '#78788a' }}>
                 {formatDate(memory.createdAt)}
               </span>
             </div>
           </div>
 
-          {/* Actions Menu */}
-          <div className="relative flex-shrink-0" ref={menuRef}>
+          {/* Actions Menu - 固定寬度 */}
+          <div className="relative flex-shrink-0 w-8" ref={menuRef}>
             <button
               onClick={(e) => {
                 e.stopPropagation()
                 setShowMenu(!showMenu)
               }}
-              className="p-2 text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-all"
+              className="p-2 opacity-0 group-hover:opacity-100 transition-all"
+              style={{ color: '#78788a' }}
+              onMouseEnter={(e) => e.currentTarget.style.color = '#e8e8f0'}
+              onMouseLeave={(e) => e.currentTarget.style.color = '#78788a'}
             >
               ⋮
             </button>
             {showMenu && (
-              <div className="absolute right-0 top-10 bg-white rounded-xl shadow-lg py-2 z-10 min-w-[120px]">
-                <button onClick={handleArchive} className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm">
+              <div className="absolute right-0 top-10 rounded-xl shadow-2xl border py-2 z-10 min-w-[120px]" style={{
+                background: '#2d2d3a',
+                borderColor: '#35354a'
+              }}>
+                <button
+                  onClick={handleArchive}
+                  className="w-full text-left px-4 py-2 text-sm transition-colors"
+                  style={{ color: '#e8e8f0' }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#35354a'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                >
                   📦 封存
                 </button>
-                <button onClick={handleDelete} className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm text-red-600">
+                <button
+                  onClick={handleDelete}
+                  className="w-full text-left px-4 py-2 text-sm transition-colors"
+                  style={{ color: '#ff5c5c' }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#35354a'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                >
                   🗑️刪除
                 </button>
               </div>
@@ -186,17 +211,26 @@ export default function MemoryCard({ memory, viewMode, onClick, onUpdate }: Memo
   return (
     <div
       onClick={onClick}
-      className="relative group bg-white/90 backdrop-blur-sm rounded-xl p-5 shadow-cute hover:shadow-cute-lg transition-all cursor-pointer hover:scale-105 animate-scale-in"
-      style={{ animationDelay: `${Math.random() * 0.3}s` }}
+      className="relative group backdrop-blur-sm border rounded-xl p-5 shadow-lg transition-all cursor-pointer hover:scale-105 animate-scale-in"
+      style={{
+        background: 'rgba(26, 26, 36, 0.9)',
+        borderColor: '#2a2a38',
+        animationDelay: `${Math.random() * 0.3}s`
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.borderColor = '#7c5cff'
+        e.currentTarget.style.boxShadow = '0 20px 50px rgba(124, 92, 255, 0.3)'
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.borderColor = '#2a2a38'
+        e.currentTarget.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.5)'
+      }}
     >
       {/* Pin Button */}
       <button
         onClick={handlePin}
-        className={`absolute top-3 right-3 p-1 rounded-lg transition-all z-10 ${
-          memory.isPinned
-            ? 'text-baby-pink'
-            : 'text-gray-400 opacity-0 group-hover:opacity-100'
-        }`}
+        className="absolute top-3 right-3 p-1 rounded-lg transition-all z-10 opacity-0 group-hover:opacity-100"
+        style={{ color: memory.isPinned ? '#ff6eb4' : '#78788a' }}
       >
         📌
       </button>
@@ -207,29 +241,24 @@ export default function MemoryCard({ memory, viewMode, onClick, onUpdate }: Memo
       </div>
 
       {/* Title */}
-      <h3 className="font-bold text-gray-800 text-center mb-2 line-clamp-2 min-h-[3rem]">
+      <h3 className="font-bold text-center mb-2 line-clamp-2 min-h-[3rem]" style={{ color: '#e8e8f0' }}>
         {memory.title || memory.summary || '無標題記憶'}
       </h3>
 
       {/* Content Preview */}
-      <p className="text-gray-600 text-sm text-center line-clamp-3 mb-4">
+      <p className="text-sm text-center line-clamp-3 mb-4" style={{ color: '#a8a8b8' }}>
         {memory.summary || memory.rawContent}
       </p>
 
       {/* Assistant Badge */}
       {memory.assistant && (
         <div className="flex justify-center mb-3">
-          <span className="inline-flex items-center gap-1 text-xs px-3 py-1 rounded-full bg-gradient-to-br from-baby-pink/20 to-baby-yellow/20">
+          <span className="inline-flex items-center gap-1 text-xs px-3 py-1 rounded-full border" style={{
+            background: 'linear-gradient(135deg, rgba(124, 92, 255, 0.2), rgba(255, 110, 180, 0.2))',
+            color: '#e8e8f0',
+            borderColor: '#2a2a38'
+          }}>
             {memory.assistant.emoji} {memory.assistant.nameChinese}
-          </span>
-        </div>
-      )}
-
-      {/* Importance Badge - 只顯示重要的記憶 */}
-      {memory.aiImportance >= 7 && (
-        <div className="flex justify-center mb-3">
-          <span className={`text-xs px-3 py-1 rounded-full text-white bg-gradient-to-r ${importanceColor(memory.aiImportance)}`}>
-            ⭐ 重要
           </span>
         </div>
       )}
@@ -238,12 +267,20 @@ export default function MemoryCard({ memory, viewMode, onClick, onUpdate }: Memo
       {memory.tags.length > 0 && (
         <div className="flex flex-wrap gap-2 justify-center mb-3">
           {memory.tags.slice(0, 3).map((tag: string, i: number) => (
-            <span key={i} className="text-xs px-2 py-1 rounded-lg bg-baby-cream text-gray-600">
+            <span key={i} className="text-xs px-2 py-1 rounded-lg border" style={{
+              background: '#2d2d3a',
+              color: '#a8a8b8',
+              borderColor: '#2a2a38'
+            }}>
               #{tag}
             </span>
           ))}
           {memory.tags.length > 3 && (
-            <span className="text-xs px-2 py-1 rounded-lg bg-gray-200 text-gray-500">
+            <span className="text-xs px-2 py-1 rounded-lg border" style={{
+              background: '#2d2d3a',
+              color: '#78788a',
+              borderColor: '#2a2a38'
+            }}>
               +{memory.tags.length - 3}
             </span>
           )}
@@ -251,19 +288,28 @@ export default function MemoryCard({ memory, viewMode, onClick, onUpdate }: Memo
       )}
 
       {/* Footer */}
-      <div className="flex items-center justify-between text-xs text-gray-400 pt-3 border-t border-gray-200">
+      <div className="flex items-center justify-between text-xs pt-3 border-t" style={{
+        color: '#78788a',
+        borderColor: '#35354a'
+      }}>
         <span>{formatDate(memory.createdAt)}</span>
         <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all">
           <button
             onClick={handleArchive}
-            className="p-1 hover:text-gray-600"
+            className="p-1 transition-colors"
+            style={{ color: '#78788a' }}
+            onMouseEnter={(e) => e.currentTarget.style.color = '#e8e8f0'}
+            onMouseLeave={(e) => e.currentTarget.style.color = '#78788a'}
             title="封存"
           >
             📦
           </button>
           <button
             onClick={handleDelete}
-            className="p-1 hover:text-red-600"
+            className="p-1 transition-colors"
+            style={{ color: '#78788a' }}
+            onMouseEnter={(e) => e.currentTarget.style.color = '#ff5c5c'}
+            onMouseLeave={(e) => e.currentTarget.style.color = '#78788a'}
             title="刪除"
           >
             🗑️

@@ -12,9 +12,34 @@
   font-display: swap;
 }
 
-/* CSS Variables for theming */
+/* CSS Variables for theming - 專業夜間模式主題 */
 @layer base {
   :root {
+    /* 夜間模式為主要主題 */
+    --background: 232 35% 6%;           /* #0f0f14 深藍灰背景 */
+    --foreground: 240 10% 92%;          /* #e8e8f0 主要文字 */
+    --card: 232 25% 12%;                /* #1a1a24 卡片背景 */
+    --card-foreground: 240 10% 92%;     /* #e8e8f0 卡片文字 */
+    --popover: 232 25% 15%;             /* #25252f 彈出背景 */
+    --popover-foreground: 240 10% 92%;  /* #e8e8f0 彈出文字 */
+    --primary: 255 70% 68%;             /* #7c5cff 主要紫色 */
+    --primary-foreground: 240 10% 92%;  /* #e8e8f0 主要文字 */
+    --secondary: 330 100% 70%;          /* #ff6eb4 次要粉色 */
+    --secondary-foreground: 240 10% 92%; /* #e8e8f0 次要文字 */
+    --muted: 232 25% 18%;               /* #2d2d3a 靜音背景 */
+    --muted-foreground: 240 10% 60%;    /* #a8a8b8 靜音文字 */
+    --accent: 255 70% 68%;              /* #7c5cff 強調色 */
+    --accent-foreground: 240 10% 92%;   /* #e8e8f0 強調文字 */
+    --destructive: 0 100% 68%;          /* #ff5c5c 錯誤紅 */
+    --destructive-foreground: 240 10% 92%; /* #e8e8f0 錯誤文字 */
+    --border: 232 25% 20%;              /* #35354a 邊框 */
+    --input: 232 25% 20%;               /* #35354a 輸入框 */
+    --ring: 255 70% 68%;                /* #7c5cff 焦點環 */
+    --radius: 0.75rem;
+  }
+
+  /* 備用亮色主題（可選） */
+  .light {
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;
@@ -34,29 +59,6 @@
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 221.2 83.2% 53.3%;
-    --radius: 0.5rem;
-  }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 84% 4.9%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 94.1%;
   }
 }
 
@@ -78,8 +80,8 @@
   body {
     @apply text-foreground;
     font-family: 'GameFont', 'Inter', 'Noto Sans TC', sans-serif !important;
-    background: #000000; /* 黑色背景，確保沒有藍色洩漏 */
-    margin: 0 !important; /* 確保沒有任何邊距 */
+    background: #0f0f14; /* 深藍灰夜間背景 */
+    margin: 0 !important;
     padding: 0 !important;
     position: fixed !important;
     top: 0 !important;

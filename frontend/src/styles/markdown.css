@@ -1,0 +1,331 @@
+/* Markdown Preview Styles - HackMD inspired */
+
+.markdown-preview {
+  @apply text-gray-900;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  line-height: 1.8;
+  font-size: 16px;
+}
+
+.markdown-preview h1,
+.markdown-preview h2,
+.markdown-preview h3,
+.markdown-preview h4,
+.markdown-preview h5,
+.markdown-preview h6 {
+  @apply font-bold text-gray-900 mt-6 mb-3;
+  line-height: 1.4;
+}
+
+.markdown-preview h1 {
+  @apply text-3xl border-b-2 border-gray-200 pb-2;
+}
+
+.markdown-preview h2 {
+  @apply text-2xl border-b border-gray-200 pb-2;
+}
+
+.markdown-preview h3 {
+  @apply text-xl;
+}
+
+.markdown-preview h4 {
+  @apply text-lg;
+}
+
+.markdown-preview h5,
+.markdown-preview h6 {
+  @apply text-base;
+}
+
+.markdown-preview p {
+  @apply mb-4 leading-relaxed;
+}
+
+.markdown-preview a {
+  @apply text-blue-600 hover:text-blue-800 underline decoration-blue-400 hover:decoration-blue-600 transition-colors;
+}
+
+.markdown-preview strong {
+  @apply font-bold text-gray-900;
+}
+
+.markdown-preview em {
+  @apply italic;
+}
+
+.markdown-preview code {
+  @apply bg-gray-100 text-red-600 px-1.5 py-0.5 rounded-sm text-sm font-mono;
+  font-size: 0.9em;
+}
+
+.markdown-preview pre {
+  @apply bg-[#2C2C2C] text-gray-100 p-4 rounded-md overflow-x-auto mb-4 border border-gray-700;
+}
+
+.markdown-preview pre code {
+  @apply bg-transparent text-gray-100 p-0;
+  font-size: 14px;
+}
+
+.markdown-preview ul,
+.markdown-preview ol {
+  @apply mb-4 pl-6;
+}
+
+.markdown-preview ul {
+  @apply list-disc;
+}
+
+.markdown-preview ol {
+  @apply list-decimal;
+}
+
+.markdown-preview li {
+  @apply mb-2;
+}
+
+.markdown-preview blockquote {
+  @apply border-l-4 border-yellow-400 pl-4 py-2 my-4 text-gray-700 bg-yellow-50;
+}
+
+.markdown-preview hr {
+  @apply my-6 border-t-2 border-gray-200;
+}
+
+.markdown-preview table {
+  @apply w-full border-collapse mb-4;
+}
+
+.markdown-preview th {
+  @apply bg-gray-100 border border-gray-300 px-4 py-2 font-bold text-left;
+}
+
+.markdown-preview td {
+  @apply border border-gray-300 px-4 py-2;
+}
+
+.markdown-preview img {
+  @apply max-w-full h-auto rounded-lg my-4 shadow-md;
+}
+
+/* Task lists */
+.markdown-preview input[type="checkbox"] {
+  @apply mr-2 w-4 h-4 accent-blue-600;
+}
+
+/* Code blocks with syntax highlighting support */
+.markdown-preview pre[class*="language-"] {
+  @apply bg-gray-900 text-gray-100;
+}
+
+/* Horizontal scroll for wide content */
+.markdown-preview pre,
+.markdown-preview table {
+  @apply overflow-x-auto;
+}
+
+/* Better spacing for first and last elements */
+.markdown-preview > *:first-child {
+  @apply mt-0;
+}
+
+.markdown-preview > *:last-child {
+  @apply mb-0;
+}
+
+/* Enhanced link styling */
+.markdown-preview a[href^="http"]::after {
+  content: " ↗";
+  @apply text-xs text-gray-400;
+}
+
+/* Improved blockquote */
+.markdown-preview blockquote p {
+  @apply mb-0;
+}
+
+/* Better table styling */
+.markdown-preview table {
+  @apply shadow-sm rounded-lg overflow-hidden;
+}
+
+.markdown-preview thead tr {
+  @apply bg-gray-100;
+}
+
+.markdown-preview tbody tr:hover {
+  @apply bg-gray-50 transition-colors;
+}
+
+/* Inline code differentiation */
+.markdown-preview :not(pre) > code {
+  @apply font-mono text-sm;
+}
+
+/* Add some breathing room */
+.markdown-preview {
+  @apply p-2;
+}
+
+/* ========================================
+   Dark Mode Styles
+   ======================================== */
+
+.markdown-preview-dark {
+  @apply text-gray-200;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  line-height: 1.8;
+  font-size: 16px;
+}
+
+.markdown-preview-dark h1,
+.markdown-preview-dark h2,
+.markdown-preview-dark h3,
+.markdown-preview-dark h4,
+.markdown-preview-dark h5,
+.markdown-preview-dark h6 {
+  @apply font-bold text-gray-100 mt-6 mb-3;
+  line-height: 1.4;
+}
+
+.markdown-preview-dark h1 {
+  @apply text-3xl border-b-2 border-gray-700 pb-2;
+}
+
+.markdown-preview-dark h2 {
+  @apply text-2xl border-b border-gray-700 pb-2;
+}
+
+.markdown-preview-dark h3 {
+  @apply text-xl;
+}
+
+.markdown-preview-dark h4 {
+  @apply text-lg;
+}
+
+.markdown-preview-dark h5,
+.markdown-preview-dark h6 {
+  @apply text-base;
+}
+
+.markdown-preview-dark p {
+  @apply mb-4 leading-relaxed text-gray-200;
+}
+
+.markdown-preview-dark a {
+  @apply text-blue-400 hover:text-blue-300 underline decoration-blue-500 hover:decoration-blue-400 transition-colors;
+}
+
+.markdown-preview-dark strong {
+  @apply font-bold text-gray-100;
+}
+
+.markdown-preview-dark em {
+  @apply italic text-gray-300;
+}
+
+.markdown-preview-dark code {
+  @apply bg-gray-900 text-pink-400 px-1.5 py-0.5 rounded-sm text-sm font-mono;
+  font-size: 0.9em;
+}
+
+.markdown-preview-dark pre {
+  @apply bg-[#0D1117] text-gray-200 p-4 rounded-md overflow-x-auto mb-4 border border-gray-800;
+}
+
+.markdown-preview-dark pre code {
+  @apply bg-transparent text-gray-200 p-0;
+  font-size: 14px;
+}
+
+.markdown-preview-dark ul,
+.markdown-preview-dark ol {
+  @apply mb-4 pl-6 text-gray-200;
+}
+
+.markdown-preview-dark ul {
+  @apply list-disc;
+}
+
+.markdown-preview-dark ol {
+  @apply list-decimal;
+}
+
+.markdown-preview-dark li {
+  @apply mb-2;
+}
+
+.markdown-preview-dark blockquote {
+  @apply border-l-4 border-yellow-600 pl-4 py-2 my-4 text-gray-300 bg-yellow-900/10;
+}
+
+.markdown-preview-dark hr {
+  @apply my-6 border-t-2 border-gray-800;
+}
+
+.markdown-preview-dark table {
+  @apply w-full border-collapse mb-4;
+}
+
+.markdown-preview-dark th {
+  @apply bg-gray-800 border border-gray-700 px-4 py-2 font-bold text-left text-gray-200;
+}
+
+.markdown-preview-dark td {
+  @apply border border-gray-700 px-4 py-2 text-gray-300;
+}
+
+.markdown-preview-dark img {
+  @apply max-w-full h-auto rounded-lg my-4 shadow-md;
+}
+
+/* Task lists */
+.markdown-preview-dark input[type="checkbox"] {
+  @apply mr-2 w-4 h-4 accent-blue-500;
+}
+
+/* Horizontal scroll for wide content */
+.markdown-preview-dark pre,
+.markdown-preview-dark table {
+  @apply overflow-x-auto;
+}
+
+/* Better spacing for first and last elements */
+.markdown-preview-dark > *:first-child {
+  @apply mt-0;
+}
+
+.markdown-preview-dark > *:last-child {
+  @apply mb-0;
+}
+
+/* Enhanced link styling */
+.markdown-preview-dark a[href^="http"]::after {
+  content: " ↗";
+  @apply text-xs text-gray-500;
+}
+
+/* Improved blockquote */
+.markdown-preview-dark blockquote p {
+  @apply mb-0;
+}
+
+/* Better table styling */
+.markdown-preview-dark table {
+  @apply shadow-sm rounded-lg overflow-hidden;
+}
+
+.markdown-preview-dark thead tr {
+  @apply bg-gray-800;
+}
+
+.markdown-preview-dark tbody tr:hover {
+  @apply bg-gray-800/50 transition-colors;
+}
+
+/* Inline code differentiation */
+.markdown-preview-dark :not(pre) > code {
+  @apply font-mono text-sm;
+}

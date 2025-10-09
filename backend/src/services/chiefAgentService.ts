@@ -8,6 +8,8 @@ import { memoryService } from './memoryService'
 import { subAgentService } from './subAgentService'
 import { multimodalProcessor } from './multimodalProcessor'
 import { chatSessionService } from './chatSessionService'
+import { taskQueueService, TaskPriority } from './taskQueueService'
+import { dynamicSubAgentService } from './dynamicSubAgentService'
 
 const execAsync = promisify(exec)
 
@@ -206,7 +208,6 @@ ${contextInfo}
         keyPoints: parsed.keyPoints || [],
         tags: parsed.tags || [],
         aiSentiment: parsed.sentiment || 'neutral',
-        aiImportance: parsed.importance || 5,
         title: parsed.title,
         emoji: parsed.emoji
       })
@@ -891,9 +892,13 @@ ${input.content}
   }
 
   /**
-   * 上傳知識到分發系統（新架構 - 雙階段處理）
+   * 上傳知識到分發系統（新架構 - 雙階段處理 + 動態 SubAgent）
    * 階段1: 白噗噗快速分類 + 即時回應（前端立即顯示）
    * 階段2: Sub-Agent 深度分析 + 寫入知識庫（後端非同步處理）
+   *
+   * 支援雙軌系統：
+   * - 用戶有自訂 Subcategory → 使用動態 SubAgent
+   * - 用戶無自訂 Subcategory → 使用預設 Assistant
    */
   async uploadKnowledge(
     userId: string,
@@ -903,6 +908,12 @@ ${input.content}
 
     try {
       logger.info(`[Chief Agent] 開始處理知識上傳，用戶: ${userId}`)
+
+      // === 檢查用戶是否有自訂 Subcategory ===
+      const userSubAgents = await dynamicSubAgentService.getUserSubAgents(userId)
+      const useDynamicSubAgents = userSubAgents.length > 0
+
+      logger.info(`[Chief Agent] 用戶有 ${userSubAgents.length} 個自訂 SubAgent，使用${useDynamicSubAgents ? '動態' : '預設'}系統`)
 
       // === 階段 1: 白噗噗快速分類（Gemini 2.5 Flash）===
       const quickResult = await this.quickClassifyForTororo(userId, input)
@@ -932,6 +943,89 @@ ${input.content}
 
       // 2. 確定內容類型
       const contentType = this.determineContentType(input)
+
+      // === 動態 SubAgent 路徑 ===
+      if (useDynamicSubAgents) {
+        logger.info('[Chief Agent] 使用動態 SubAgent 系統')
+
+        // 使用關鍵字匹配找到最相關的 SubAgent
+        const relevantSubAgents = await dynamicSubAgentService.findRelevantSubAgents(
+          userId,
+          input.content,
+          3 // 取前 3 個最相關的
+        )
+
+        if (relevantSubAgents.length === 0) {
+          logger.warn('[Chief Agent] 沒有找到相關的 SubAgent，降級到預設系統')
+          // 降級到舊系統
+        } else {
+          const targetSubAgent = relevantSubAgents[0]
+          logger.info(`[Chief Agent] 選擇 SubAgent: ${targetSubAgent.nameChinese} (${targetSubAgent.id})`)
+
+          // 創建知識分發記錄（使用 subcategoryId）
+          const distribution = await prisma.knowledgeDistribution.create({
+            data: {
+              userId,
+              rawContent: input.content,
+              contentType,
+              fileUrls: input.files?.map(f => f.url) || [],
+              fileNames: input.files?.map(f => f.name) || [],
+              fileTypes: input.files?.map(f => f.type) || [],
+              links: input.links?.map(l => l.url) || [],
+              linkTitles: input.links?.map(l => l.title || l.url) || [],
+              chiefAnalysis: `白噗噗快速分類 → 動態 SubAgent: ${targetSubAgent.nameChinese}`,
+              chiefSummary: quickResult.quickSummary,
+              identifiedTopics: [targetSubAgent.nameChinese],
+              suggestedTags: targetSubAgent.keywords,
+              distributedTo: [], // 動態 SubAgent 不使用 Assistant ID
+              storedBy: [],
+              processingTime: Date.now() - startTime,
+            },
+            include: {
+              agentDecisions: true,
+              memories: true,
+            }
+          })
+
+          logger.info(`[Chief Agent] 知識分發記錄創建完成，ID: ${distribution.id}`)
+
+          // 加入任務隊列，但傳遞 subcategoryId 而非 assistantId
+          const taskId = await taskQueueService.addTask(
+            userId,
+            distribution.id,
+            [targetSubAgent.id], // 傳遞 subcategoryId
+            TaskPriority.NORMAL,
+            { useDynamicSubAgent: true } // 標記使用動態 SubAgent
+          )
+
+          logger.info(`[Chief Agent] 動態 SubAgent 任務已加入隊列，TaskID: ${taskId}`)
+
+          // 返回白噗噗的溫暖回應 + SubAgent 資訊
+          return {
+            distribution,
+            tororoResponse: {
+              warmMessage: `${quickResult.warmResponse}\n由 ${targetSubAgent.emoji} ${targetSubAgent.nameChinese} 來處理喔！`,
+              category: quickResult.category,
+              quickSummary: quickResult.quickSummary,
+              confidence: quickResult.confidence,
+              subAgent: {
+                id: targetSubAgent.id,
+                name: targetSubAgent.nameChinese,
+                emoji: targetSubAgent.emoji,
+                color: targetSubAgent.color
+              }
+            },
+            agentDecisions: [],
+            memoriesCreated: [],
+            processingTime: Date.now() - startTime,
+            backgroundProcessing: true,
+            useDynamicSubAgent: true
+          }
+        }
+      }
+
+      // === 預設 Assistant 路徑（降級或無自訂 SubAgent）===
+      logger.info('[Chief Agent] 使用預設 Assistant 系統')
 
       // 3. 獲取對應的 Assistant ID
       const targetAssistant = await assistantService.getAssistantByType(quickResult.category)
@@ -966,24 +1060,16 @@ ${input.content}
 
       logger.info(`[Chief Agent] 知識分發記錄創建完成，ID: ${distribution.id}`)
 
-      // === 階段 2: 非同步觸發 Sub-Agent 深度處理 ===
-      // 不等待完成，立即返回給前端
-      setImmediate(async () => {
-        try {
-          logger.info(`[Sub-Agent] 開始非同步深度分析，分發ID: ${distribution.id}`)
+      // === 階段 2: 加入任務隊列進行 Sub-Agent 深度處理 ===
+      // 使用任務隊列系統，防止並發過載
+      const taskId = await taskQueueService.addTask(
+        userId,
+        distribution.id,
+        [targetAssistant.id],
+        TaskPriority.NORMAL // 可根據需求調整優先級
+      )
 
-          const subAgentResult = await subAgentService.processDistribution(
-            userId,
-            distribution.id,
-            [targetAssistant.id]
-          )
-
-          logger.info(`[Sub-Agent] 深度分析完成 - 創建記憶: ${subAgentResult.memoriesCreated.length}`)
-        } catch (error) {
-          logger.error('[Sub-Agent] 非同步處理失敗:', error)
-        }
-      })
-
+      logger.info(`[Chief Agent] 任務已加入隊列，TaskID: ${taskId}`)
       logger.info(`[Chief Agent] 白噗噗即時回應完成 - 耗時: ${Date.now() - startTime}ms`)
 
       // 立即返回白噗噗的溫暖回應給前端

@@ -11,22 +11,33 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-# 檢查環境變數
-if [ -z "$GEMINI_API_KEY" ]; then
-    if [ -f backend/.env ]; then
-        source backend/.env
-    fi
-    if [ -z "$GEMINI_API_KEY" ] || [ "$GEMINI_API_KEY" = "your-api-key" ]; then
-        echo -e "${YELLOW}⚠️  GEMINI_API_KEY 未設置，AI 功能可能無法使用${NC}"
-        echo -e "${YELLOW}   請在 backend/.env 中設置 GEMINI_API_KEY${NC}"
-    fi
+# 載入環境變數
+if [ -f .env ]; then
+    echo -e "${BLUE}=== 載入環境變數 ===${NC}"
+    set -a
+    source .env
+    set +a
+    echo -e "${GREEN}✅ 已從根目錄 .env 載入環境變數${NC}"
+else
+    echo -e "${RED}❌ 找不到 .env 檔案${NC}"
+    echo -e "${YELLOW}   請複製 .env.example 為 .env 並填入實際值${NC}"
+    echo -e "${YELLOW}   指令: cp .env.example .env${NC}"
+    exit 1
+fi
+
+# 檢查必要的環境變數
+if [ -z "$GEMINI_API_KEY" ] || [ "$GEMINI_API_KEY" = "your-api-key" ] || [ "$GEMINI_API_KEY" = "YOUR_GEMINI_API_KEY_HERE" ]; then
+    echo -e "${YELLOW}⚠️  GEMINI_API_KEY 未設置或使用預設值${NC}"
+    echo -e "${YELLOW}   AI 功能可能無法使用，請在 .env 中設置實際的 API Key${NC}"
 fi
 
 if [ -z "$DATABASE_URL" ]; then
     echo -e "${RED}❌ DATABASE_URL 未設置${NC}"
-    echo -e "${YELLOW}   請確保 backend/.env 中有 MongoDB Atlas 連接字符串${NC}"
+    echo -e "${YELLOW}   請在根目錄 .env 中設置 MongoDB Atlas 連接字符串${NC}"
     exit 1
 fi
+
+echo -e "${GREEN}✅ 環境變數檢查完成${NC}"
 
 # 清理舊進程
 echo -e "${BLUE}=== 清理舊進程 ===${NC}"

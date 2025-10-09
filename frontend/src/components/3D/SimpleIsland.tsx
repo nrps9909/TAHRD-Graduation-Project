@@ -12,6 +12,9 @@ interface SimpleIslandProps {
   isActive?: boolean
   memories?: Memory[] // 記憶列表
   islandId?: string // 島嶼ID（用於生成位置種子）
+  onMemoryClick?: (memory: Memory) => void // 記憶點擊回調
+  isPawPad?: boolean // 是否為肉球形狀
+  isCenterPad?: boolean // 是否為中央大肉球（心形）
 }
 
 export function SimpleIsland({
@@ -20,7 +23,10 @@ export function SimpleIsland({
   scale = 1.0,
   isActive = false,
   memories = [],
-  islandId = 'default'
+  islandId = 'default',
+  onMemoryClick,
+  isPawPad = false,
+  isCenterPad = false
 }: SimpleIslandProps) {
   const islandRef = useRef<THREE.Group>(null)
 
@@ -52,49 +58,130 @@ export function SimpleIsland({
       position={[position[0], position[1] - 1, position[2]]}
       scale={scale}
     >
-      {/* Main island body */}
-      <mesh position={[0, -0.5, 0]} receiveShadow castShadow>
-        <coneGeometry args={[24, 4, 64]} />
-        <meshStandardMaterial
-          color="#8B7355"
-          roughness={0.9}
-          metalness={0.1}
-        />
-      </mesh>
+      {isPawPad ? (
+        isCenterPad ? (
+          // 🐾 中央大肉球 - 心形/倒三角形
+          <>
+            {/* 底部基座 - 心形底座 */}
+            <mesh position={[0, -0.8, 0]} receiveShadow castShadow scale={[1, 1, 1.2]}>
+              <cylinderGeometry args={[14, 16, 2, 3]} />
+              <meshStandardMaterial
+                color="#D4C5B9"
+                roughness={0.9}
+                metalness={0}
+              />
+            </mesh>
 
-      {/* Beach layer - 沙滩层 */}
-      <mesh position={[0, 0.3, 0]} receiveShadow castShadow>
-        <cylinderGeometry args={[20, 22, 0.8, 64]} />
-        <meshStandardMaterial
-          color={beachColor}
-          roughness={0.8}
-          metalness={0.1}
-        />
-      </mesh>
+            {/* 主體 - 三角柱基礎 */}
+            <mesh position={[0, 0.3, 0]} receiveShadow castShadow scale={[1, 1, 1.15]} rotation={[0, 0, 0]}>
+              <cylinderGeometry args={[12, 13.5, 1.8, 3]} />
+              <meshStandardMaterial
+                color={color}
+                roughness={0.85}
+                metalness={0}
+                emissive={isActive ? color : '#000000'}
+                emissiveIntensity={isActive ? 0.12 : 0}
+              />
+            </mesh>
 
-      {/* Top grass layer - 草地层 */}
-      <mesh position={[0, 0.8, 0]} receiveShadow castShadow>
-        <cylinderGeometry args={[18, 20, 0.5, 64]} />
-        <meshStandardMaterial
-          color={color}
-          roughness={0.9}
-          metalness={0}
-          emissive={isActive ? color : '#000000'}
-          emissiveIntensity={isActive ? 0.3 : 0}
-        />
-      </mesh>
+            {/* 頂部平台 - 心形種樹區域，完全扁平 */}
+            <mesh position={[0, 1.2, 0]} receiveShadow castShadow scale={[1, 1, 1.1]} rotation={[0, Math.PI, 0]}>
+              <cylinderGeometry args={[11, 12, 0.4, 3]} />
+              <meshStandardMaterial
+                color={new THREE.Color(color).lerp(new THREE.Color('#ffffff'), 0.15).getStyle()}
+                roughness={0.8}
+                metalness={0}
+                emissive={isActive ? color : '#000000'}
+                emissiveIntensity={isActive ? 0.08 : 0}
+              />
+            </mesh>
+          </>
+        ) : (
+          // 🐾 腳趾肉球 - 橢圓豆形
+          <>
+            {/* 底部基座 - 橢圓底座 */}
+            <mesh position={[0, -0.8, 0]} receiveShadow castShadow scale={[0.85, 1, 1.1]}>
+              <cylinderGeometry args={[13, 15, 2, 32]} />
+              <meshStandardMaterial
+                color="#D4C5B9"
+                roughness={0.9}
+                metalness={0}
+              />
+            </mesh>
 
-      {/* Inner grass detail - 内层草地细节 */}
-      <mesh position={[0, 1.1, 0]} receiveShadow castShadow>
-        <cylinderGeometry args={[15, 17, 0.3, 64]} />
-        <meshStandardMaterial
-          color={grassColor}
-          roughness={0.85}
-          metalness={0}
-          emissive={isActive ? grassColor : '#000000'}
-          emissiveIntensity={isActive ? 0.2 : 0}
-        />
-      </mesh>
+            {/* 主體 - 橢圓柱基礎 */}
+            <mesh position={[0, 0.3, 0]} receiveShadow castShadow scale={[0.8, 1, 1.15]}>
+              <cylinderGeometry args={[11.5, 12.5, 1.8, 32]} />
+              <meshStandardMaterial
+                color={color}
+                roughness={0.85}
+                metalness={0}
+                emissive={isActive ? color : '#000000'}
+                emissiveIntensity={isActive ? 0.12 : 0}
+              />
+            </mesh>
+
+            {/* 頂部平台 - 橢圓種樹區域，完全扁平 */}
+            <mesh position={[0, 1.2, 0]} receiveShadow castShadow scale={[0.75, 1, 1.2]}>
+              <cylinderGeometry args={[10.5, 11, 0.4, 32]} />
+              <meshStandardMaterial
+                color={new THREE.Color(color).lerp(new THREE.Color('#ffffff'), 0.15).getStyle()}
+                roughness={0.8}
+                metalness={0}
+                emissive={isActive ? color : '#000000'}
+                emissiveIntensity={isActive ? 0.08 : 0}
+              />
+            </mesh>
+          </>
+        )
+      ) : (
+        // 原本的島嶼形狀
+        <>
+          {/* Main island body */}
+          <mesh position={[0, -0.5, 0]} receiveShadow castShadow>
+            <coneGeometry args={[24, 4, 64]} />
+            <meshStandardMaterial
+              color="#8B7355"
+              roughness={0.9}
+              metalness={0.1}
+            />
+          </mesh>
+
+          {/* Beach layer - 沙滩层 */}
+          <mesh position={[0, 0.3, 0]} receiveShadow castShadow>
+            <cylinderGeometry args={[20, 22, 0.8, 64]} />
+            <meshStandardMaterial
+              color={beachColor}
+              roughness={0.8}
+              metalness={0.1}
+            />
+          </mesh>
+
+          {/* Top grass layer - 草地层 */}
+          <mesh position={[0, 0.8, 0]} receiveShadow castShadow>
+            <cylinderGeometry args={[18, 20, 0.5, 64]} />
+            <meshStandardMaterial
+              color={color}
+              roughness={0.9}
+              metalness={0}
+              emissive={isActive ? color : '#000000'}
+              emissiveIntensity={isActive ? 0.3 : 0}
+            />
+          </mesh>
+
+          {/* Inner grass detail - 内层草地细节 */}
+          <mesh position={[0, 1.1, 0]} receiveShadow castShadow>
+            <cylinderGeometry args={[15, 17, 0.3, 64]} />
+            <meshStandardMaterial
+              color={grassColor}
+              roughness={0.85}
+              metalness={0}
+              emissive={isActive ? grassColor : '#000000'}
+              emissiveIntensity={isActive ? 0.2 : 0}
+            />
+          </mesh>
+        </>
+      )}
 
       {/* 記憶樹 - 每個記憶一棵樹 */}
       {memories.map((memory, index) => {
@@ -111,6 +198,7 @@ export function SimpleIsland({
             islandColor={color}
             position={[treePos.x, treePos.y, treePos.z]}
             seed={treeSeed}
+            onClick={onMemoryClick}
           />
         )
       })}

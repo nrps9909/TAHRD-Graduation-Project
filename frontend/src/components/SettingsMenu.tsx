@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuthStore } from '../stores/authStore'
 import { useNavigate } from 'react-router-dom'
+import { Z_INDEX_CLASSES } from '../constants/zIndex'
 
 interface SettingsMenuProps {
   isOpen: boolean
@@ -57,7 +58,7 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[45]"
             onClick={onClose}
           />
 
@@ -67,7 +68,7 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: -400, opacity: 0 }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed left-0 top-0 bottom-0 w-[500px] bg-gradient-to-br from-pink-50 via-yellow-50 to-pink-100 shadow-2xl z-50 overflow-hidden"
+            className={`fixed left-0 top-0 bottom-0 w-[500px] bg-gradient-to-br from-pink-50 via-yellow-50 to-pink-100 shadow-2xl ${Z_INDEX_CLASSES.SIDEBAR} overflow-hidden`}
           >
             {/* 標題區域 */}
             <div className="bg-gradient-to-r from-pink-500 to-yellow-500 p-6 text-white">

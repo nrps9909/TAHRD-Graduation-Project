@@ -13,7 +13,7 @@ export function convertDBMemoryToIslandMemory(dbMemory: DBMemory): IslandMemory 
   return {
     id: dbMemory.id,
     title: dbMemory.title,
-    importance: dbMemory.aiImportance, // 使用 AI 評估的重要性
+    importance: dbMemory.isPinned ? 8 : 5, // 釘選的記憶視為重要，其他使用預設值
     category: dbMemory.category as IslandCategory,
     content: dbMemory.summary || dbMemory.rawContent,
     tags: dbMemory.tags,

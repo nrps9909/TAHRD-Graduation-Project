@@ -6,7 +6,7 @@ import CreateMemoryModal from '../KnowledgeDatabase/CreateMemoryModal'
 import MemoryDetailModal from '../KnowledgeDatabase/MemoryDetailModal'
 
 type ViewMode = 'table' | 'card'
-type SortField = 'createdAt' | 'aiImportance' | 'title'
+type SortField = 'createdAt' | 'title'
 type SortOrder = 'asc' | 'desc'
 
 export default function DatabaseView() {
@@ -59,8 +59,6 @@ export default function DatabaseView() {
       let comparison = 0
       if (sortField === 'createdAt') {
         comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-      } else if (sortField === 'aiImportance') {
-        comparison = a.aiImportance - b.aiImportance
       } else if (sortField === 'title') {
         comparison = a.title.localeCompare(b.title, 'zh-TW')
       }
@@ -190,20 +188,58 @@ export default function DatabaseView() {
 
       {/* 主內容區 */}
       <div className="flex-1 flex flex-col">
-        {/* 頂部導航欄 */}
+        {/* 頂部導航欄 - 重新設計排版 */}
         <div className="bg-white border-b-4 border-pink-200" style={{ boxShadow: '0 4px 20px rgba(255, 179, 217, 0.2)' }}>
           <div className="px-8 py-4">
+            {/* 第一行：標題和統計資訊 */}
             <div className="flex items-center justify-between mb-4">
-              <h1 className="text-3xl font-bold" style={{
-                color: '#FF8FB3',
-                textShadow: '2px 2px 0px rgba(255, 245, 225, 0.8)'
-              }}>
-                🐾 Knowledge Database
-              </h1>
-              <div className="flex items-center gap-3">
+              <div className="flex-1">
+                <h1 className="text-3xl font-bold mb-1" style={{
+                  color: '#FF8FB3',
+                  textShadow: '2px 2px 0px rgba(255, 245, 225, 0.8)'
+                }}>
+                  🐾 Knowledge Database
+                </h1>
+                <p className="text-sm" style={{ color: '#999' }}>
+                  共 {filteredMemories.length} 條記憶
+                  {selectedCategory && ` / ${categories.find(c => c.value === selectedCategory)?.label}`}
+                </p>
+              </div>
+            </div>
+
+            {/* 第二行：搜尋框和操作按鈕 - 使用 grid 佈局確保充分利用空間 */}
+            <div className="grid grid-cols-12 gap-3">
+              {/* 搜尋框 - 佔 8 列 */}
+              <div className="col-span-8">
+                <input
+                  type="text"
+                  placeholder="🔍 搜尋標題、內容、標籤..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full px-6 py-3 rounded-2xl font-medium focus:outline-none transition-all"
+                  style={{
+                    border: '3px solid #FFE5F0',
+                    background: 'white',
+                    color: '#666',
+                    fontSize: '16px',
+                    boxShadow: '0 2px 15px rgba(255, 179, 217, 0.1)'
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.boxShadow = '0 0 30px rgba(255, 179, 217, 0.3)'
+                    e.currentTarget.style.borderColor = '#FFB3D9'
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.boxShadow = '0 2px 15px rgba(255, 179, 217, 0.1)'
+                    e.currentTarget.style.borderColor = '#FFE5F0'
+                  }}
+                />
+              </div>
+
+              {/* 新增記憶按鈕 - 佔 2 列 */}
+              <div className="col-span-2">
                 <button
                   onClick={() => setShowCreateModal(true)}
-                  className="px-6 py-2 rounded-2xl font-medium transition-all hover:scale-105"
+                  className="w-full h-full px-4 py-3 rounded-2xl font-medium transition-all hover:scale-105 flex items-center justify-center gap-2"
                   style={{
                     background: 'linear-gradient(135deg, #FFB3D9, #FF8FB3)',
                     color: 'white',
@@ -211,11 +247,17 @@ export default function DatabaseView() {
                     boxShadow: '0 2px 10px rgba(255, 179, 217, 0.5)'
                   }}
                 >
-                  ✨ 新增記憶
+                  <span className="text-lg">✨</span>
+                  <span className="hidden xl:inline">新增記憶</span>
+                  <span className="xl:hidden">新增</span>
                 </button>
+              </div>
+
+              {/* 返回島嶼按鈕 - 佔 2 列 */}
+              <div className="col-span-2">
                 <button
                   onClick={() => window.location.href = '/'}
-                  className="px-6 py-2 rounded-2xl font-medium transition-all hover:scale-105"
+                  className="w-full h-full px-4 py-3 rounded-2xl font-medium transition-all hover:scale-105 flex items-center justify-center gap-2"
                   style={{
                     background: 'linear-gradient(135deg, #FFF5E1, #FFFACD)',
                     color: '#FF8FB3',
@@ -223,34 +265,12 @@ export default function DatabaseView() {
                     boxShadow: '0 2px 10px rgba(255, 245, 225, 0.5)'
                   }}
                 >
-                  🏝️ 返回島嶼
+                  <span className="text-lg">🏝️</span>
+                  <span className="hidden xl:inline">返回島嶼</span>
+                  <span className="xl:hidden">島嶼</span>
                 </button>
               </div>
             </div>
-
-            {/* 搜尋框 */}
-            <input
-              type="text"
-              placeholder="🔍 搜尋標題、內容、標籤..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full px-6 py-3 rounded-2xl font-medium focus:outline-none transition-all"
-              style={{
-                border: '3px solid #FFE5F0',
-                background: 'white',
-                color: '#666',
-                fontSize: '16px',
-                boxShadow: '0 2px 15px rgba(255, 179, 217, 0.1)'
-              }}
-              onFocus={(e) => {
-                e.currentTarget.style.boxShadow = '0 0 30px rgba(255, 179, 217, 0.3)'
-                e.currentTarget.style.borderColor = '#FFB3D9'
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.boxShadow = '0 2px 15px rgba(255, 179, 217, 0.1)'
-                e.currentTarget.style.borderColor = '#FFE5F0'
-              }}
-            />
           </div>
         </div>
 
@@ -336,38 +356,30 @@ function TableView({ memories, pinnedMemories, sortField, sortOrder, onSort, onT
       border: '3px solid #FFE5F0',
       boxShadow: '0 8px 30px rgba(255, 179, 217, 0.15)'
     }}>
-      <table className="w-full">
+      <table className="w-full table-fixed">
         <thead>
           <tr style={{ background: 'linear-gradient(135deg, #FFF5E1, #FFE5F0)', borderBottom: '2px solid #FFE5F0' }}>
-            <th className="px-4 py-3 text-left w-8"></th>
             <th className="px-4 py-3 text-left w-12"></th>
+            <th className="px-4 py-3 text-left w-16"></th>
             <th
-              className="px-4 py-3 text-left cursor-pointer hover:bg-pink-50 transition-colors"
+              className="px-4 py-3 text-left cursor-pointer hover:bg-pink-50 transition-colors w-[30%]"
               onClick={() => onSort('title')}
             >
               <div className="flex items-center gap-2 font-bold" style={{ color: '#FF8FB3' }}>
                 標題 <SortIcon field="title" />
               </div>
             </th>
-            <th className="px-4 py-3 text-left">
+            <th className="px-4 py-3 text-left w-[15%]">
               <div className="font-bold" style={{ color: '#FF8FB3' }}>分類</div>
             </th>
-            <th className="px-4 py-3 text-left">
+            <th className="px-4 py-3 text-left w-[15%]">
               <div className="font-bold" style={{ color: '#FF8FB3' }}>標籤</div>
             </th>
-            <th className="px-4 py-3 text-left">
+            <th className="px-4 py-3 text-left w-[15%]">
               <div className="font-bold" style={{ color: '#FF8FB3' }}>NPC</div>
             </th>
             <th
-              className="px-4 py-3 text-left cursor-pointer hover:bg-pink-50 transition-colors"
-              onClick={() => onSort('aiImportance')}
-            >
-              <div className="flex items-center gap-2 font-bold" style={{ color: '#FF8FB3' }}>
-                重要度 <SortIcon field="aiImportance" />
-              </div>
-            </th>
-            <th
-              className="px-4 py-3 text-left cursor-pointer hover:bg-pink-50 transition-colors"
+              className="px-4 py-3 text-left cursor-pointer hover:bg-pink-50 transition-colors w-[10%]"
               onClick={() => onSort('createdAt')}
             >
               <div className="flex items-center gap-2 font-bold" style={{ color: '#FF8FB3' }}>
@@ -464,25 +476,6 @@ function TableView({ memories, pinnedMemories, sortField, sortOrder, onSort, onT
                   )}
                 </td>
                 <td className="px-4 py-4">
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="w-16 h-2 rounded-full overflow-hidden"
-                      style={{ background: '#FFE5F0' }}
-                    >
-                      <div
-                        className="h-full rounded-full transition-all"
-                        style={{
-                          width: `${memory.aiImportance * 10}%`,
-                          background: 'linear-gradient(90deg, #FFB3D9, #FF8FB3)'
-                        }}
-                      />
-                    </div>
-                    <span className="text-sm font-bold" style={{ color: '#FF8FB3' }}>
-                      {memory.aiImportance}
-                    </span>
-                  </div>
-                </td>
-                <td className="px-4 py-4">
                   <div className="text-sm" style={{ color: '#999' }}>
                     {new Date(memory.createdAt).toLocaleDateString('zh-TW', {
                       month: 'short',
@@ -525,10 +518,17 @@ function CardView({ memories, pinnedMemories, onTogglePin, onSelectMemory }: Car
   const allMemories = [...pinnedMemories, ...memories.filter(m => !m.isPinned)]
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
       {allMemories.map((memory) => (
         <MemoryCard key={memory.id} memory={memory} onTogglePin={onTogglePin} onSelectMemory={onSelectMemory} />
       ))}
+
+      {allMemories.length === 0 && (
+        <div className="col-span-full text-center py-20">
+          <div className="text-6xl mb-4">🔍</div>
+          <p className="text-lg font-medium" style={{ color: '#999' }}>沒有找到記憶</p>
+        </div>
+      )}
     </div>
   )
 }
@@ -595,7 +595,6 @@ function MemoryCard({ memory, onTogglePin, onSelectMemory }: { memory: Memory; o
 
       <div className="flex items-center justify-between text-xs" style={{ color: '#FFB3D9' }}>
         <span>🗓️ {new Date(memory.createdAt).toLocaleDateString('zh-TW')}</span>
-        <span>⭐ {memory.aiImportance}/10</span>
       </div>
     </div>
   )

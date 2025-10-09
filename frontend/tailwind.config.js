@@ -50,20 +50,65 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // 心語小鎮特有的療癒色彩 - Animal Crossing 风格
-        healing: {
-          warm: "#F4E4C1",      // 温暖米色
-          gentle: "#E8F4F8",    // 柔和天蓝
-          soft: "#F0E6FF",      // 柔软紫
-          nature: "#E6F7E6",    // 自然绿
-          sunset: "#FFE6E1",    // 日落粉
-          peach: "#FFE5D9",     // 蜜桃色
-          mint: "#D4F1F4",      // 薄荷色
-          lavender: "#E8D5F2", // 薰衣草
-          cream: "#FFF8E7",     // 奶油色
-          sky: "#C3E5FF",       // 天空蓝
+        // 高級夜間模式配色方案 - 深色優雅主題
+        dark: {
+          bg: {
+            primary: "#0f0f14",      // 主背景 - 深藍灰
+            secondary: "#1a1a24",    // 次要背景
+            tertiary: "#25252f",     // 第三層背景
+            elevated: "#2d2d3a",     // 懸浮元素背景
+            hover: "#35354a",        // 懸停狀態
+          },
+          text: {
+            primary: "#e8e8f0",      // 主要文字
+            secondary: "#a8a8b8",    // 次要文字
+            tertiary: "#78788a",     // 輔助文字
+            muted: "#58586a",        // 靜音文字
+            accent: "#c794ff",       // 強調文字
+          },
+          accent: {
+            primary: "#7c5cff",      // 主要強調色 - 紫色
+            secondary: "#ff6eb4",    // 次要強調色 - 粉色
+            tertiary: "#00d4ff",     // 第三強調色 - 青色
+            success: "#5cff7c",      // 成功綠
+            warning: "#ffb85c",      // 警告橙
+            error: "#ff5c5c",        // 錯誤紅
+          },
+          border: {
+            subtle: "#2a2a38",       // 微妙邊框
+            medium: "#35354a",       // 中等邊框
+            strong: "#45455a",       // 強烈邊框
+            accent: "#7c5cff40",     // 強調邊框
+          },
+          glow: {
+            purple: "#7c5cff30",     // 紫色光暈
+            pink: "#ff6eb430",       // 粉色光暈
+            cyan: "#00d4ff30",       // 青色光暈
+            white: "#ffffff10",      // 白色光暈
+          }
         },
-        // 可爱糖果色
+        // 夜間模式專用漸變色
+        gradient: {
+          purple: "linear-gradient(135deg, #7c5cff, #a78bfa)",
+          pink: "linear-gradient(135deg, #ff6eb4, #ff9ece)",
+          cyan: "linear-gradient(135deg, #00d4ff, #5ce1e6)",
+          warm: "linear-gradient(135deg, #7c5cff, #ff6eb4)",
+          cool: "linear-gradient(135deg, #00d4ff, #7c5cff)",
+        },
+        // 心語小鎮特有的療癒色彩 - Animal Crossing 风格 (保留用於特殊用途)
+        healing: {
+          warm: "#F4E4C1",
+          gentle: "#E8F4F8",
+          soft: "#F0E6FF",
+          nature: "#E6F7E6",
+          sunset: "#FFE6E1",
+          peach: "#FFE5D9",
+          mint: "#D4F1F4",
+          lavender: "#E8D5F2",
+          cream: "#FFF8E7",
+          sky: "#C3E5FF",
+        },
+        // 可爱糖果色 (保留用於特殊用途)
         candy: {
           pink: "#FFB3D9",
           blue: "#B3D9FF",
@@ -72,16 +117,16 @@ export default {
           purple: "#D9B3FF",
           orange: "#FFD9B3",
         },
-        // 白噗噗專屬療癒色系 - 寶寶粉 & 鵝黃色
+        // 白噗噗專屬療癒色系 (保留用於特殊用途)
         baby: {
-          pink: "#FFD4E5",      // 寶寶粉
-          yellow: "#FFF4D4",    // 鵝黃色
-          peach: "#FFE5DB",     // 柔和蜜桃
-          cream: "#FFF9E6",     // 奶油黃
-          blush: "#FFE0EC",     // 腮紅粉
-          butter: "#FFECB3",    // 奶油黃
+          pink: "#FFD4E5",
+          yellow: "#FFF4D4",
+          peach: "#FFE5DB",
+          cream: "#FFF9E6",
+          blush: "#FFE0EC",
+          butter: "#FFECB3",
         },
-        // 柔和自然色
+        // 柔和自然色 (保留用於特殊用途)
         pastel: {
           grass: "#A8E6A3",
           water: "#A3D5E6",
@@ -89,7 +134,7 @@ export default {
           wood: "#D4A574",
           stone: "#C4C4C4",
         },
-        // 動物森友會風格色彩
+        // 動物森友會風格色彩 (保留用於特殊用途)
         brown: {
           100: "#F7F3E9",
           200: "#F0E6D2",
@@ -225,6 +270,14 @@ export default {
         "pulse-gentle": {
           "0%, 100%": { opacity: 1 },
           "50%": { opacity: 0.7 },
+        },
+        "shimmer": {
+          "0%": { backgroundPosition: "-1000px 0" },
+          "100%": { backgroundPosition: "1000px 0" },
+        },
+        "pulse-slow": {
+          "0%, 100%": { opacity: 1 },
+          "50%": { opacity: 0.5 },
         }
       },
       animation: {
@@ -251,6 +304,8 @@ export default {
         "bounce-gentle": "bounce-gentle 2s ease-in-out infinite",
         "swing": "swing 1s ease-in-out infinite",
         "pulse-gentle": "pulse-gentle 3s ease-in-out infinite",
+        "shimmer": "shimmer 2s linear infinite",
+        "pulse-slow": "pulse-slow 4s ease-in-out infinite",
       },
       // 可爱字体大小
       fontSize: {
@@ -263,5 +318,22 @@ export default {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [
+    require("tailwindcss-animate"),
+    require('@tailwindcss/typography'),
+    function({ addUtilities }) {
+      addUtilities({
+        '.scrollbar-hide': {
+          /* IE and Edge */
+          '-ms-overflow-style': 'none',
+          /* Firefox */
+          'scrollbar-width': 'none',
+          /* Safari and Chrome */
+          '&::-webkit-scrollbar': {
+            display: 'none'
+          }
+        }
+      })
+    }
+  ],
 }

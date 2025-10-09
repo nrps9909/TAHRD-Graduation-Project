@@ -44,7 +44,7 @@ export function IslandLabel({ island, position, onClick, onHover }: IslandLabelP
       <Html
         center
         distanceFactor={12}
-        zIndexRange={[10, 0]}
+        zIndexRange={[15, 0]}
         style={{
           transition: 'transform 0.1s ease-out',
           transform: isHovered ? 'scale(1.15)' : 'scale(1)',

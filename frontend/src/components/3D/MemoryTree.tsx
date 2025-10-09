@@ -17,6 +17,7 @@ interface MemoryTreeProps {
   islandColor: string // 島嶼主題色
   position: [number, number, number] // 樹在島上的位置
   seed: number // 隨機種子，用於生成不同的樹
+  onClick?: (memory: Memory) => void // 點擊回調
 }
 
 /**
@@ -75,7 +76,7 @@ function generateTreeParams(seed: number) {
   }
 }
 
-export function MemoryTree({ memory, islandColor, position, seed }: MemoryTreeProps) {
+export function MemoryTree({ memory, islandColor, position, seed, onClick }: MemoryTreeProps) {
   const groupRef = useRef<Group>(null)
 
   // 計算樹的顏色
@@ -112,6 +113,17 @@ export function MemoryTree({ memory, islandColor, position, seed }: MemoryTreePr
       ref={groupRef}
       position={position}
       rotation={[0, treeParams.rotation, treeParams.lean]}
+      onClick={(e) => {
+        e.stopPropagation()
+        onClick?.(memory)
+      }}
+      onPointerOver={(e) => {
+        e.stopPropagation()
+        document.body.style.cursor = 'pointer'
+      }}
+      onPointerOut={() => {
+        document.body.style.cursor = 'default'
+      }}
     >
       {/* 樹幹 */}
       <mesh

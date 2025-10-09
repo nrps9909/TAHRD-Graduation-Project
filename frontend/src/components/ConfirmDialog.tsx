@@ -1,3 +1,5 @@
+import { Z_INDEX_CLASSES } from '../constants/zIndex'
+
 interface ConfirmDialogProps {
   title: string
   message: string
@@ -44,11 +46,11 @@ export default function ConfirmDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm animate-fade-in"
+      className={`fixed inset-0 ${Z_INDEX_CLASSES.MODAL_BACKDROP} flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm animate-fade-in`}
       onClick={onCancel}
     >
       <div
-        className="relative w-full max-w-md rounded-3xl p-6 shadow-2xl animate-scale-in"
+        className={`relative w-full max-w-md rounded-3xl p-6 shadow-2xl animate-scale-in ${Z_INDEX_CLASSES.MODAL}`}
         style={{
           background: 'white',
           border: '3px solid #FFE5F0',

@@ -3,6 +3,7 @@ import { Context } from '../context'
 import * as bcrypt from 'bcryptjs'
 import * as jwt from 'jsonwebtoken'
 import { logger } from '../utils/logger'
+import { categoryInitService } from '../services/categoryInitService'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default-secret'
 const JWT_EXPIRES_IN = '7d' // Token 有效期: 7天
@@ -82,6 +83,15 @@ export const authResolvers = {
         )
 
         logger.info(`User registered: ${user.username} (${user.id})`)
+
+        // 自動初始化分類系統（5個島嶼 + 7個小類別）
+        try {
+          await categoryInitService.initializeDefaultCategories(user.id)
+          logger.info(`[Auth] 已為新用戶 ${user.username} 初始化分類系統`)
+        } catch (error) {
+          logger.error(`[Auth] 初始化分類系統失敗:`, error)
+          // 不阻擋註冊流程，只記錄錯誤
+        }
 
         return {
           token,

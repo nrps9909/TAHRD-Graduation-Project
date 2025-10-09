@@ -2,6 +2,7 @@ import { Server, Socket } from 'socket.io'
 import { PrismaClient } from '@prisma/client'
 import Redis from 'ioredis'
 import { logger } from './utils/logger'
+import { taskQueueService } from './services/taskQueueService'
 // Legacy imports - disabled for new architecture
 // import { conversationResolvers } from './resolvers/conversationResolvers'
 // import { npcInteractionService } from './services/npcInteractionService'
@@ -134,6 +135,32 @@ export const socketHandler = (io: Server, prisma: PrismaClient, redis: Redis) =>
       socket.emit('active-npc-conversations', [])
       // const active = npcInteractionService.getActiveConversations()
       // socket.emit('active-npc-conversations', active)
+    })
+
+    // 獲取任務隊列狀態
+    socket.on('get-queue-stats', () => {
+      const stats = taskQueueService.getStats()
+      socket.emit('queue-stats', stats)
+    })
+
+    // 獲取用戶的任務列表
+    socket.on('get-user-tasks', ({ userId }) => {
+      if (!userId) {
+        socket.emit('error', { message: 'User ID required' })
+        return
+      }
+      const tasks = taskQueueService.getUserTasks(userId)
+      socket.emit('user-tasks', tasks)
+    })
+
+    // 獲取特定任務狀態
+    socket.on('get-task-status', ({ taskId }) => {
+      if (!taskId) {
+        socket.emit('error', { message: 'Task ID required' })
+        return
+      }
+      const task = taskQueueService.getTaskStatus(taskId)
+      socket.emit('task-status', task)
     })
 
     // 心跳檢測

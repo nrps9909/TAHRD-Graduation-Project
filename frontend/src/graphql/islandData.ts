@@ -15,7 +15,6 @@ export const GET_ALL_MEMORIES = gql`
       title
       summary
       rawContent
-      aiImportance
       category
       tags
       createdAt
@@ -37,7 +36,6 @@ export const GET_MEMORIES_BY_CATEGORY = gql`
       id
       title
       summary
-      aiImportance
       category
       tags
       createdAt
@@ -53,7 +51,6 @@ export const GET_ASSISTANT_MEMORIES = gql`
     memories(filter: { assistantId: $assistantId }) {
       id
       title
-      aiImportance
       category
       tags
       createdAt

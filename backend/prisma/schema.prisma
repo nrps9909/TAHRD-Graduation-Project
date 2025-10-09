@@ -36,6 +36,8 @@ model User {
   chatMessages ChatMessage[]
   chatSessions ChatSession[]
   settings     UserSettings?
+  islands      Island[]
+  subcategories Subcategory[]
 
   @@map("users")
 }
@@ -134,6 +136,9 @@ model Memory {
   userId           String   @map("user_id") @db.ObjectId
   assistantId      String   @map("assistant_id") @db.ObjectId
 
+  // 新的分類系統（可選，向後兼容）
+  subcategoryId    String?  @map("subcategory_id") @db.ObjectId
+
   // Content
   rawContent       String   @map("raw_content") @db.String
   summary          String?  @db.String
@@ -151,8 +156,8 @@ model Memory {
   // AI Processing
   keyPoints        String[] @map("key_points")
   aiSentiment      String?  @map("ai_sentiment") // positive, neutral, negative
-  aiImportance     Int      @default(5) @map("ai_importance") // 1-10
   aiAnalysis       String?  @map("ai_analysis") @db.String // Gemini's analysis
+  rawData          String?  @map("raw_data") @db.String // Original user-AI conversation
 
   // Classification
   category         AssistantType
@@ -181,12 +186,14 @@ model Memory {
   // Relations
   user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   assistant        Assistant @relation(fields: [assistantId], references: [id], onDelete: Cascade)
+  subcategory      Subcategory? @relation(fields: [subcategoryId], references: [id], onDelete: SetNull)
   chatMessages     ChatMessage[]
   distribution     KnowledgeDistribution? @relation(fields: [distributionId], references: [id])
 
   @@index([userId, category])
   @@index([userId, createdAt])
   @@index([userId, assistantId])
+  @@index([userId, subcategoryId])
   @@index([tags])
   @@index([distributionId])
   @@map("memories")
@@ -502,4 +509,92 @@ model LegacyConversation {
 
   @@index([userId])
   @@map("legacy_conversations")
+}
+
+// ============ Custom Category System ============
+
+// Island - 代表大類別（島嶼，建議5個左右）
+model Island {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId           String   @map("user_id") @db.ObjectId
+
+  // 順序位置（用於排序顯示）
+  position         Int
+
+  // 自訂資訊
+  name             String   // 英文名稱，例如：LEARNING_ISLAND
+  nameChinese      String   @map("name_chinese") // 中文名稱
+  emoji            String   @default("🏝️")
+  color            String   @default("#FFB3D9") // Hex color code
+  description      String?  @db.String
+
+  // 3D 位置（島嶼在場景中的位置）
+  positionX        Float    @default(0) @map("position_x")
+  positionY        Float    @default(0) @map("position_y")
+  positionZ        Float    @default(0) @map("position_z")
+
+  // 統計
+  subcategoryCount Int      @default(0) @map("subcategory_count")
+  memoryCount      Int      @default(0) @map("memory_count")
+
+  // 狀態
+  isActive         Boolean  @default(true) @map("is_active")
+
+  // Timestamps
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subcategories    Subcategory[]
+
+  @@index([userId, position])
+  @@index([userId])
+  @@map("islands")
+}
+
+// Subcategory - 代表小類別（SubAgent，可自由新增刪減）
+model Subcategory {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId           String   @map("user_id") @db.ObjectId
+  islandId         String   @map("island_id") @db.ObjectId
+
+  // 順序位置（用於排序顯示）
+  position         Int
+
+  // 自訂資訊
+  name             String   // 英文名稱，例如：LEARNING
+  nameChinese      String   @map("name_chinese") // 中文名稱
+  emoji            String   @default("📚")
+  color            String   @default("#FFB3D9")
+  description      String?  @db.String
+
+  // AI 設定（關鍵！動態提示詞）
+  systemPrompt     String   @map("system_prompt") @db.String
+  personality      String   @db.String
+  chatStyle        String   @map("chat_style") @db.String
+
+  // 關鍵字（用於分類判斷）
+  keywords         String[] @default([])
+
+  // 統計
+  memoryCount      Int      @default(0) @map("memory_count")
+  chatCount        Int      @default(0) @map("chat_count")
+
+  // 狀態
+  isActive         Boolean  @default(true) @map("is_active")
+
+  // Timestamps
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  island           Island   @relation(fields: [islandId], references: [id], onDelete: Cascade)
+  memories         Memory[]
+
+  @@index([userId, position])
+  @@index([userId, islandId])
+  @@index([userId])
+  @@map("subcategories")
 }

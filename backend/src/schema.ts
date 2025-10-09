@@ -1,6 +1,7 @@
 import { gql } from 'graphql-tag'
+import { categoryTypeDefs } from './schema/categorySchema'
 
-export const typeDefs = gql`
+const baseTypeDefs = gql`
   scalar DateTime
   scalar JSON
 
@@ -115,8 +116,8 @@ export const typeDefs = gql`
     # AI Processing
     keyPoints: [String!]!
     aiSentiment: String
-    aiImportance: Int!
     aiAnalysis: String
+    rawData: String
 
     # Classification
     category: AssistantType!
@@ -347,15 +348,15 @@ export const typeDefs = gql`
   # ============ Response Types ============
 
   type UploadKnowledgeResponse {
-    distribution: KnowledgeDistribution!
-    tororoResponse: TororoResponse!  # 白噗噗的即時回應
+    distribution: KnowledgeDistribution  # 可為 null（不值得記錄時）
+    tororoResponse: TororoQuickResponse!  # 白噗噗的即時回應
     agentDecisions: [AgentDecision!]!
     memoriesCreated: [Memory!]!
     processingTime: Float!
     backgroundProcessing: Boolean!  # 標記是否正在後台處理
   }
 
-  type TororoResponse {
+  type TororoQuickResponse {
     warmMessage: String!     # 白噗噗的溫暖回應訊息
     category: AssistantType! # 分類結果
     quickSummary: String!    # 一句話摘要
@@ -428,9 +429,24 @@ export const typeDefs = gql`
     contextType: ChatContextType = MEMORY_CREATION
   }
 
+  input CreateMemoryDirectInput {
+    title: String
+    content: String!
+    tags: [String!]
+    category: AssistantType
+    emoji: String
+  }
+
   input UpdateMemoryInput {
     title: String
+    rawContent: String
+    emoji: String
     tags: [String!]
+    fileUrls: [String!]
+    fileNames: [String!]
+    fileTypes: [String!]
+    links: [String!]
+    linkTitles: [String!]
     isPinned: Boolean
     isArchived: Boolean
   }
@@ -699,6 +715,7 @@ export const typeDefs = gql`
 
     # ===== Memory Mutations =====
     createMemory(input: CreateMemoryInput!): CreateMemoryResponse!
+    createMemoryDirect(input: CreateMemoryDirectInput!): Memory!
     updateMemory(id: ID!, input: UpdateMemoryInput!): Memory!
     deleteMemory(id: ID!): Boolean!
     archiveMemory(id: ID!): Memory!
@@ -790,3 +807,6 @@ export const typeDefs = gql`
     memoryCount: Int!
   }
 `
+
+// Export merged schema
+export const typeDefs = [baseTypeDefs, categoryTypeDefs]

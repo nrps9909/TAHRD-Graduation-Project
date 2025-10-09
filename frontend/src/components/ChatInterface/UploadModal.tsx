@@ -3,6 +3,7 @@ import FileUpload from './FileUpload'
 import FilePreview from './FilePreview'
 import LinkInput from './LinkInput'
 import LinkPreview from './LinkPreview'
+import { Z_INDEX_CLASSES } from '../../constants/zIndex'
 
 interface UploadedFile {
   id: string
@@ -48,7 +49,7 @@ export default function UploadModal({ isOpen, onClose, onConfirm }: UploadModalP
   const hasContent = selectedFiles.length > 0 || selectedLinks.length > 0
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
+    <div className={`fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center ${Z_INDEX_CLASSES.MODAL} animate-fade-in`}>
       <div className="bg-gradient-to-br from-white to-healing-cream rounded-bubble p-8 max-w-3xl w-full m-4 shadow-cute-xl border-4 border-white animate-bounce-in max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">

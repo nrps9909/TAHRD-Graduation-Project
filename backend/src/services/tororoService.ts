@@ -102,7 +102,7 @@ class TororoService {
           title: result.memory.title || tororoAnalysis.analysis.title,
           emoji: result.memory.emoji || tororoAnalysis.analysis.emoji,
           category: result.memory.category,
-          importance: result.memory.aiImportance,
+          importance: result.memory.isPinned ? 8 : 5,
           summary: result.memory.summary || ''
         },
         greeting: tororoAnalysis.greeting || '喵～收到你的想法了！',
@@ -202,13 +202,9 @@ class TororoService {
   private generateFlowerInfo(memory: any) {
     const region = this.getRegionPosition(memory.category)
 
-    // 根據重要度計算大小
+    // 根據是否釘選計算大小
     const baseSize = 1.0
-    let sizeMultiplier = 1.0
-    if (memory.aiImportance <= 3) sizeMultiplier = 0.6
-    else if (memory.aiImportance <= 6) sizeMultiplier = 1.0
-    else if (memory.aiImportance <= 9) sizeMultiplier = 1.5
-    else sizeMultiplier = 2.0
+    const sizeMultiplier = memory.isPinned ? 1.5 : 1.0
 
     return {
       id: `flower_${memory.id}`,

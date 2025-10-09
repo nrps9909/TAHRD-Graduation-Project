@@ -1,3 +1,5 @@
+import { Z_INDEX_CLASSES } from '../constants/zIndex'
+
 interface BulkActionsBarProps {
   selectedCount: number
   totalCount: number
@@ -23,7 +25,7 @@ export default function BulkActionsBar({
   if (style === 'cute') {
     return (
       <div
-        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 animate-slide-up"
+        className={`fixed bottom-6 left-1/2 -translate-x-1/2 ${Z_INDEX_CLASSES.BULK_ACTIONS} animate-slide-up`}
         style={{
           animation: 'slideUp 0.3s ease-out',
         }}
@@ -110,7 +112,7 @@ export default function BulkActionsBar({
 
   // Modern style
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 animate-slide-up-modern">
+    <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 ${Z_INDEX_CLASSES.BULK_ACTIONS} animate-slide-up-modern`}>
       <div className="flex items-center gap-4 px-6 py-4 bg-white rounded-xl shadow-2xl border border-gray-200">
         {/* Selected count */}
         <div className="flex items-center gap-3">
