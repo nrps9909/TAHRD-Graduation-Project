@@ -300,7 +300,60 @@ cd frontend && npm run test
 
 ## 🚀 生產環境部署
 
-### Docker 部署（推薦）
+> **⚡ 新功能！** 使用 GitHub Actions CI/CD 實現超快速部署！
+> 
+> 詳細說明請參考：[FAST-DEPLOY.md](FAST-DEPLOY.md)
+> 
+> **性能對比：**
+> - 🐢 舊方式（服務器構建）：~10 分鐘
+> - ⚡ 新方式（CI/CD）：~30 秒
+>
+> **推薦使用新方式！** 👇
+
+### 方式 1: 快速部署（推薦）⚡
+
+使用 GitHub Actions 自動構建和部署：
+
+1. **配置 GitHub Secrets**（首次）
+   ```
+   Settings → Secrets → Actions：
+   - SERVER_HOST: 你的服務器 IP
+   - SERVER_USER: SSH 用戶名
+   - SSH_PRIVATE_KEY: SSH 私鑰
+   ```
+
+2. **服務器端準備**（首次）
+   ```bash
+   # SSH 到服務器
+   cd /opt/heart-whisper-town
+   git pull origin production
+   chmod +x quick-deploy.sh
+   
+   # 登入 GHCR
+   echo YOUR_TOKEN | docker login ghcr.io -u YOUR_USERNAME --password-stdin
+   ```
+
+3. **自動部署**
+   ```bash
+   # 本地推送代碼
+   git push origin production
+   
+   # GitHub Actions 會自動：
+   # ✅ 構建 Docker 映像
+   # ✅ 推送到 GitHub Container Registry
+   # ✅ 部署到服務器
+   # ⏱️ 總耗時：服務器端只需 ~30 秒！
+   ```
+
+4. **手動快速部署**（如需）
+   ```bash
+   # 在服務器上執行
+   sudo ./quick-deploy.sh
+   ```
+
+詳細配置請參考 [FAST-DEPLOY.md](FAST-DEPLOY.md)
+
+### 方式 2: Docker 部署（傳統）
 
 ```bash
 # 1. 克隆專案

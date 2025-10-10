@@ -163,7 +163,7 @@ export async function generateTororoResponse(context: ConversationContext): Prom
 
     // 呼叫後端 GraphQL API（後端使用 Gemini CLI）
     const generatedText = await rateLimiter.retryWithBackoff(async () => {
-      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000'
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || (import.meta.env.MODE === 'production' ? '' : 'http://localhost:4000')
 
       const response = await fetch(`${backendUrl}/graphql`, {
         method: 'POST',

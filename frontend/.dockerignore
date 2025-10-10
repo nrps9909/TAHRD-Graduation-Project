@@ -1,0 +1,35 @@
+# Node modules
+node_modules
+npm-debug.log
+
+# 構建輸出
+dist
+build
+
+# 開發文件
+*.md
+.git
+.gitignore
+.env
+.env.*
+!.env.production
+
+# 測試文件
+*.test.ts
+*.test.tsx
+*.test.js
+*.spec.ts
+*.spec.tsx
+*.spec.js
+__tests__
+coverage
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# 其他
+public/*.map
+

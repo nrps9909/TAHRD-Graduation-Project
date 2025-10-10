@@ -3,8 +3,9 @@ import { onError } from '@apollo/client/link/error'
 import { setContext } from '@apollo/client/link/context'
 
 // GraphQL API endpoint
+// 使用相對路徑，在生產環境會通過 Nginx 代理到後端
 const httpLink = new HttpLink({
-  uri: import.meta.env.VITE_GRAPHQL_URL || 'http://localhost:4000/graphql',
+  uri: import.meta.env.VITE_GRAPHQL_URL || (import.meta.env.MODE === 'production' ? '/graphql' : 'http://localhost:4000/graphql'),
 })
 
 // Error handling link
