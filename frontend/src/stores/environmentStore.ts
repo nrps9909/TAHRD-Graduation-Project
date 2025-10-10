@@ -410,16 +410,16 @@ export const useEnvironmentStore = create<EnvironmentStore>((set, get) => ({
         const location = JSON.parse(savedLocation)
         const timestamp = parseInt(savedTimestamp)
         const now = Date.now()
-        const oneDay = 24 * 60 * 60 * 1000
+        const thirtyMinutes = 30 * 60 * 1000
 
-        // 如果位置是 24 小時內儲存的，就使用它
-        if (now - timestamp < oneDay) {
+        // 如果位置是 30 分鐘內儲存的，就使用它
+        if (now - timestamp < thirtyMinutes) {
           console.log('📍 使用已儲存的位置:', location)
           set({ userLocation: location })
           get().fetchWeather()
           return
         } else {
-          console.log('📍 儲存的位置已過期，重新獲取')
+          console.log('📍 儲存的位置已過期（超過30分鐘），重新獲取')
         }
       }
     } catch (error) {
@@ -527,11 +527,11 @@ export const useEnvironmentStore = create<EnvironmentStore>((set, get) => ({
       get().updateGameTime()
     }, 1000)
 
-    // 設置天氣更新（每30分鐘更新一次）
+    // 設置天氣和位置自動更新（每30分鐘更新一次）
     const weatherInterval = setInterval(() => {
-      if (get().userLocation) {
-        get().fetchWeather()
-      }
+      console.log('🔄 自動更新位置和天氣...')
+      // 每30分鐘重新獲取位置和天氣
+      get().requestUserLocation()
     }, 30 * 60 * 1000)
 
     console.log('✓ Environment system initialized')

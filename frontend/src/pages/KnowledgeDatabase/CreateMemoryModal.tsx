@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { useMutation, useQuery } from '@apollo/client'
 import { CREATE_MEMORY_DIRECT, UPDATE_MEMORY, GET_MEMORIES } from '../../graphql/memory'
 import { UPLOAD_KNOWLEDGE, GET_ASSISTANTS } from '../../graphql/knowledge'
+import { GET_SUBCATEGORIES, Subcategory } from '../../graphql/category'
 import type { UploadKnowledgeInput } from '../../graphql/knowledge'
 import type { Memory } from '../../graphql/memory'
 
@@ -17,6 +18,7 @@ export default function CreateMemoryModal({ onClose, onSuccess }: CreateMemoryMo
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [selectedAssistant, setSelectedAssistant] = useState('')
+  const [subcategoryId, setSubcategoryId] = useState<string | null>(null)
   const [tags, setTags] = useState<string[]>([])
   const [newTag, setNewTag] = useState('')
   const [files, setFiles] = useState<File[]>([])
@@ -30,11 +32,13 @@ export default function CreateMemoryModal({ onClose, onSuccess }: CreateMemoryMo
   const { data: memoriesData } = useQuery(GET_MEMORIES, {
     variables: { limit: 1000 }
   })
+  const { data: subcategoriesData } = useQuery(GET_SUBCATEGORIES)
   const [createMemoryDirect] = useMutation(CREATE_MEMORY_DIRECT)
   const [uploadKnowledge] = useMutation(UPLOAD_KNOWLEDGE)
   const [updateMemory] = useMutation(UPDATE_MEMORY)
 
   const assistants = assistantsData?.assistants?.filter((a: any) => a.type !== 'CHIEF') || []
+  const subcategories: Subcategory[] = subcategoriesData?.subcategories || []
 
   // 提取所有現有標籤和熱門標籤
   const { allExistingTags, popularTags } = React.useMemo(() => {
@@ -184,7 +188,7 @@ export default function CreateMemoryModal({ onClose, onSuccess }: CreateMemoryMo
           )
         }
       } else {
-        // 手動指定知識庫 - 使用 createMemoryDirect 支援標籤
+        // 手動指定知識庫 - 使用 createMemoryDirect 支援標籤和自訂分類
         await createMemoryDirect({
           variables: {
             input: {
@@ -192,6 +196,7 @@ export default function CreateMemoryModal({ onClose, onSuccess }: CreateMemoryMo
               content,
               tags: tags.length > 0 ? tags : undefined,
               category: assistants.find((a: any) => a.id === selectedAssistant)?.type,
+              subcategoryId: subcategoryId,
             },
           },
         })
@@ -324,6 +329,36 @@ export default function CreateMemoryModal({ onClose, onSuccess }: CreateMemoryMo
             <p className="text-xs text-gray-400 mt-2">
               {content.length} 字
             </p>
+          </div>
+
+          {/* Subcategory Selection */}
+          <div className="mb-6">
+            <label className="block text-sm font-bold text-gray-600 mb-3">
+              🏷️ 自訂分類（選填）
+            </label>
+            {subcategories.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {subcategories.map((cat) => (
+                  <button
+                    key={cat.id}
+                    onClick={() => setSubcategoryId(subcategoryId === cat.id ? null : cat.id)}
+                    className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all hover:scale-105"
+                    style={{
+                      background: subcategoryId === cat.id ? cat.color : 'white',
+                      color: subcategoryId === cat.id ? '#ffffff' : '#666',
+                      border: `1.5px solid ${subcategoryId === cat.id ? cat.color : '#FFB6C1'}`,
+                    }}
+                  >
+                    <span className="mr-1">{cat.emoji}</span>
+                    {cat.nameChinese}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="text-sm text-gray-500 py-2 px-4 bg-gray-50 rounded-lg">
+                尚無自訂分類，請前往設定頁面建立分類
+              </div>
+            )}
           </div>
 
           {/* Tags */}

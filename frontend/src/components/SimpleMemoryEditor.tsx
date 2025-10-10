@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useMutation, useQuery } from '@apollo/client'
-import { CREATE_MEMORY_DIRECT, UPDATE_MEMORY } from '../graphql/memory'
+import { CREATE_MEMORY_DIRECT, UPDATE_MEMORY, GET_MEMORY } from '../graphql/memory'
 import { GET_SUBCATEGORIES, Subcategory } from '../graphql/category'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -24,6 +24,12 @@ export default function SimpleMemoryEditor({ memoryId, onClose, onSuccess }: Sim
   const [isSaving, setIsSaving] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>('edit')
 
+  // 載入記憶資料（如果有 memoryId）
+  const { data: memoryData, loading: memoryLoading } = useQuery(GET_MEMORY, {
+    variables: { id: memoryId },
+    skip: !memoryId, // 如果沒有 memoryId 就跳過
+  })
+
   // 載入自訂分類
   const { data: subcategoriesData } = useQuery(GET_SUBCATEGORIES)
   const subcategories: Subcategory[] = subcategoriesData?.subcategories || []
@@ -33,8 +39,28 @@ export default function SimpleMemoryEditor({ memoryId, onClose, onSuccess }: Sim
   const fileInputRef = useRef<HTMLInputElement>(null)
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
+  // 用 ref 追蹤最新的編輯器狀態，用於組件卸載時儲存
+  const latestStateRef = useRef({ title, content, subcategoryId, tags })
+
   const [createMemoryDirect] = useMutation(CREATE_MEMORY_DIRECT)
   const [updateMemory] = useMutation(UPDATE_MEMORY)
+
+  // 載入記憶資料到 state
+  useEffect(() => {
+    if (memoryData?.memory && !memoryLoading) {
+      const memory = memoryData.memory
+      console.log('📖 載入記憶資料', memory)
+      setTitle(memory.title || '')
+      setContent(memory.rawContent || '')
+      setSubcategoryId(memory.subcategoryId || null)
+      setTags(memory.tags || [])
+    }
+  }, [memoryData, memoryLoading])
+
+  // 更新最新狀態的 ref
+  useEffect(() => {
+    latestStateRef.current = { title, content, subcategoryId, tags }
+  }, [title, content, subcategoryId, tags])
 
   // 鎖定背景滾動
   useEffect(() => {
@@ -58,9 +84,10 @@ export default function SimpleMemoryEditor({ memoryId, onClose, onSuccess }: Sim
   const autoSave = useCallback(async () => {
     if (!memoryId) return  // 只有在編輯模式才自動儲存
 
+    console.log('🔄 自動儲存觸發', { memoryId, title, subcategoryId, tags })
     setIsSaving(true)
     try {
-      await updateMemory({
+      const result = await updateMemory({
         variables: {
           id: memoryId,
           input: {
@@ -71,8 +98,9 @@ export default function SimpleMemoryEditor({ memoryId, onClose, onSuccess }: Sim
           },
         },
       })
+      console.log('✅ 自動儲存成功', result)
     } catch (error) {
-      console.error('自動儲存失敗', error)
+      console.error('❌ 自動儲存失敗', error)
     } finally {
       setIsSaving(false)
     }
@@ -80,7 +108,7 @@ export default function SimpleMemoryEditor({ memoryId, onClose, onSuccess }: Sim
 
   // 內容改變時，延遲自動儲存
   useEffect(() => {
-    if (!memoryId) return  // 新增模式不自動儲存
+    if (!memoryId) return  // 沒有 ID 時跳過
 
     // 清除之前的計時器
     if (saveTimeoutRef.current) {
@@ -99,6 +127,30 @@ export default function SimpleMemoryEditor({ memoryId, onClose, onSuccess }: Sim
       }
     }
   }, [title, content, subcategoryId, tags, memoryId, autoSave])
+
+  // 組件卸載時最後儲存一次（關閉編輯器時）
+  useEffect(() => {
+    return () => {
+      // 在組件卸載時，使用 ref 中的最新狀態立即保存
+      const { title, content, subcategoryId, tags } = latestStateRef.current
+      if (memoryId && (title || content || tags.length > 0)) {
+        updateMemory({
+          variables: {
+            id: memoryId,
+            input: {
+              title: title || null,
+              rawContent: content,
+              subcategoryId: subcategoryId,
+              tags: tags,
+            },
+          },
+        }).catch(error => {
+          console.error('關閉時儲存失敗', error)
+        })
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [memoryId, updateMemory])  // 只依賴 memoryId 和 updateMemory
 
   const handleAddTag = () => {
     if (newTag.trim() && !tags.includes(newTag.trim())) {
@@ -247,7 +299,7 @@ export default function SimpleMemoryEditor({ memoryId, onClose, onSuccess }: Sim
                         {subcategories.map((cat) => (
                           <button
                             key={cat.id}
-                            onClick={() => setSubcategoryId(cat.id)}
+                            onClick={() => setSubcategoryId(subcategoryId === cat.id ? null : cat.id)}
                             className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all hover:scale-105"
                             style={{
                               background: subcategoryId === cat.id ? cat.color : '#2a2a2a',
@@ -375,7 +427,7 @@ export default function SimpleMemoryEditor({ memoryId, onClose, onSuccess }: Sim
                           {subcategories.map((cat) => (
                             <button
                               key={cat.id}
-                              onClick={() => setSubcategoryId(cat.id)}
+                              onClick={() => setSubcategoryId(subcategoryId === cat.id ? null : cat.id)}
                               className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all hover:scale-105"
                               style={{
                                 background: subcategoryId === cat.id ? cat.color : '#2a2a2a',

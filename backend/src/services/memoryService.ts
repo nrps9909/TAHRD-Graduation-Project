@@ -184,6 +184,8 @@ export class MemoryService {
       title?: string
       rawContent?: string
       emoji?: string
+      category?: AssistantType
+      subcategoryId?: string | null
       tags?: string[]
       fileUrls?: string[]
       fileNames?: string[]
@@ -211,7 +213,8 @@ export class MemoryService {
           archivedAt: updates.isArchived ? new Date() : null
         },
         include: {
-          assistant: true
+          assistant: true,
+          subcategory: true
         }
       })
 

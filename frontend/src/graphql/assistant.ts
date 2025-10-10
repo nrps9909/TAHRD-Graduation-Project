@@ -11,6 +11,12 @@ export const GET_ASSISTANTS = gql`
       nameChinese
       emoji
       color
+      modelUrl
+      textureId
+      shape
+      customShapeData
+      islandHeight
+      islandBevel
       systemPrompt
       personality
       chatStyle
@@ -173,6 +179,40 @@ export const CLASSIFY_AND_CREATE = gql`
         emoji
         category
       }
+    }
+  }
+`
+
+export const UPDATE_ASSISTANT = gql`
+  mutation UpdateAssistant(
+    $id: ID!
+    $color: String
+    $modelUrl: String
+    $textureId: String
+    $shape: String
+    $customShapeData: String
+    $islandHeight: Float
+    $islandBevel: Float
+  ) {
+    updateAssistant(
+      id: $id
+      color: $color
+      modelUrl: $modelUrl
+      textureId: $textureId
+      shape: $shape
+      customShapeData: $customShapeData
+      islandHeight: $islandHeight
+      islandBevel: $islandBevel
+    ) {
+      id
+      color
+      shape
+      textureId
+      modelUrl
+      customShapeData
+      islandHeight
+      islandBevel
+      updatedAt
     }
   }
 `

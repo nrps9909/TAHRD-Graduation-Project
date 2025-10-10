@@ -49,7 +49,7 @@ interface DistributionInput {
 export class SubAgentService {
   private mcpUrl: string
   private useGeminiCLI: boolean = true
-  private geminiModel: string = 'gemini-2.5-pro' // Sub-Agent 使用 Pro 進行深度分析
+  private geminiModel: string = 'gemini-2.5-flash' // 暫時使用 Flash (Pro 目前過載 503)
 
   constructor() {
     this.mcpUrl = process.env.MCP_SERVICE_URL || 'http://localhost:8765'
@@ -233,8 +233,12 @@ export class SubAgentService {
       // 創建完整的記憶記錄（包含 Sub-Agent 的深度分析）
       const memory = await prisma.memory.create({
         data: {
-          userId,
-          assistantId,
+          user: {
+            connect: { id: userId }
+          },
+          assistant: {
+            connect: { id: assistantId }
+          },
           rawContent: distribution.rawContent,
           title: suggestedTitle, // 使用 Sub-Agent 建議的標題
           summary: detailedSummary, // 使用詳細摘要
@@ -248,8 +252,10 @@ export class SubAgentService {
           aiSentiment: sentiment, // 使用情感分析結果
           aiAnalysis: evaluation.reasoning, // 使用 Sub-Agent 的詳細分析
           category: evaluation.suggestedCategory || assistant.type,
-          tags: [...new Set([...distribution.suggestedTags, ...evaluation.suggestedTags])], // 合併並去重標籤
-          distributionId,
+          tags: [...new Set([...distribution.suggestedTags, ...evaluation.suggestedTags])].slice(0, 5), // 合併並去重標籤，最多5個
+          distribution: {
+            connect: { id: distributionId }
+          },
           relevanceScore: evaluation.relevanceScore,
           // 如果有行動建議，存儲在 metadata 中
           ...(actionableAdvice && {
@@ -419,15 +425,9 @@ ${distribution.chiefSummary}
       try {
         logger.info(`[Sub-Agent] Calling Gemini CLI Pro for deep analysis`)
 
-        // 转义 prompt 中的特殊字符
-        const escapedPrompt = prompt
-          .replace(/\\/g, '\\\\')
-          .replace(/"/g, '\\"')
-          .replace(/\$/g, '\\$')
-          .replace(/`/g, '\\`')
-
-        // 使用 Gemini CLI Pro 调用（深度分析）
-        const command = `gemini -m ${this.geminiModel} -p "${escapedPrompt}"`
+        // 使用 stdin 傳遞 prompt（更可靠，避免特殊字符問題）
+        // 使用 echo + pipe 方式傳遞完整的 prompt
+        const command = `echo ${JSON.stringify(prompt)} | gemini -m ${this.geminiModel}`
         const { stdout, stderr } = await execAsync(command, {
           maxBuffer: 10 * 1024 * 1024, // 10MB buffer
           timeout: 90000, // 90 seconds timeout (Pro 需要更長時間)
@@ -443,6 +443,7 @@ ${distribution.chiefSummary}
 
         const response = stdout.trim()
         logger.info(`[Sub-Agent] Gemini CLI Pro response received (${response.length} chars)`)
+        logger.info(`[Sub-Agent] Response preview: ${response.substring(0, 500)}...`)
         return response
       } catch (error: any) {
         logger.error('[Sub-Agent] Gemini CLI Pro error:', error.message)
@@ -609,11 +610,11 @@ ${distribution.chiefSummary}
               distribution
             )
 
-            // 創建決策記錄（注意：不使用 assistantId）
+            // 創建決策記錄（注意：動態 SubAgent 不使用 assistantId）
             const decision = await prisma.agentDecision.create({
               data: {
                 distributionId,
-                assistantId: '', // 動態 SubAgent 不使用 Assistant ID
+                // assistantId 省略，因為動態 SubAgent 不使用 Assistant
                 relevanceScore: evaluation.relevanceScore,
                 shouldStore: evaluation.shouldStore,
                 reasoning: evaluation.reasoning,
@@ -823,8 +824,12 @@ ${distribution.chiefSummary}
       // 創建完整的記憶記錄（使用 subcategoryId）
       const memory = await prisma.memory.create({
         data: {
-          userId,
-          subcategoryId, // 使用 subcategoryId 而非 assistantId
+          user: {
+            connect: { id: userId }
+          },
+          subcategory: {
+            connect: { id: subcategoryId }
+          },
           rawContent: distribution.rawContent,
           title: suggestedTitle,
           summary: detailedSummary,
@@ -838,8 +843,10 @@ ${distribution.chiefSummary}
           aiSentiment: sentiment,
           aiAnalysis: evaluation.reasoning,
           category: AssistantType.RESOURCES, // 動態 SubAgent 使用 RESOURCES 作為預設
-          tags: [...new Set([...distribution.suggestedTags, ...evaluation.suggestedTags, ...subAgent.keywords])],
-          distributionId,
+          tags: [...new Set([...distribution.suggestedTags, ...evaluation.suggestedTags, ...subAgent.keywords])].slice(0, 5), // 最多5個標籤
+          distribution: {
+            connect: { id: distributionId }
+          },
           relevanceScore: evaluation.relevanceScore,
           ...(actionableAdvice && {
             metadata: {

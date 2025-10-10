@@ -64,6 +64,14 @@ const baseTypeDefs = gql`
     # 3D Position (for Island View)
     position: Location!
 
+    # 3D Appearance
+    modelUrl: String
+    textureId: String
+    shape: String
+    customShapeData: String
+    islandHeight: Float
+    islandBevel: Float
+
     # Statistics
     totalMemories: Int!
     totalChats: Int!
@@ -99,7 +107,8 @@ const baseTypeDefs = gql`
   type Memory {
     id: ID!
     userId: ID!
-    assistantId: ID!
+    assistantId: ID  # Optional: null for dynamic SubAgent memories
+    subcategoryId: ID  # Optional: used by dynamic SubAgents
 
     # Content
     rawContent: String!
@@ -147,7 +156,8 @@ const baseTypeDefs = gql`
 
     # Relations
     user: User!
-    assistant: Assistant!
+    assistant: Assistant  # Optional: null for dynamic SubAgent memories
+    subcategory: Subcategory  # Optional: used by dynamic SubAgents
     chatMessages: [ChatMessage!]!
   }
 
@@ -434,6 +444,7 @@ const baseTypeDefs = gql`
     content: String!
     tags: [String!]
     category: AssistantType
+    subcategoryId: ID
     emoji: String
   }
 
@@ -441,6 +452,8 @@ const baseTypeDefs = gql`
     title: String
     rawContent: String
     emoji: String
+    category: AssistantType
+    subcategoryId: ID
     tags: [String!]
     fileUrls: [String!]
     fileNames: [String!]
@@ -735,6 +748,18 @@ const baseTypeDefs = gql`
     # ===== Chief Agent Special Mutations =====
     classifyAndCreate(content: String!): CreateMemoryResponse!
     generateDailySummary(date: DateTime!): DailySummary!
+
+    # ===== Assistant Mutations =====
+    updateAssistant(
+      id: ID!
+      color: String
+      modelUrl: String
+      textureId: String
+      shape: String
+      customShapeData: String
+      islandHeight: Float
+      islandBevel: Float
+    ): Assistant!
 
     # ===== Tororo (白噗噗) AI Mutations =====
     generateTororoResponse(prompt: String!): TororoResponsePayload!

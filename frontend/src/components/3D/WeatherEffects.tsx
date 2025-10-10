@@ -173,61 +173,6 @@ export function FogEffect({ density = 0.01 }: { density?: number }) {
 }
 
 /**
- * 雲層效果（動態）
- */
-export function DynamicClouds({ coverage = 0.5 }: { coverage?: number }) {
-  const cloudsRef = useRef<THREE.Points>(null)
-
-  // 創建雲粒子
-  const cloudParticles = useMemo(() => {
-    const particleCount = Math.floor(1000 * coverage)
-    const positions = new Float32Array(particleCount * 3)
-
-    for (let i = 0; i < particleCount; i++) {
-      positions[i * 3] = (Math.random() - 0.5) * 500
-      positions[i * 3 + 1] = Math.random() * 50 + 80 // 雲層高度
-      positions[i * 3 + 2] = (Math.random() - 0.5) * 500
-    }
-
-    return positions
-  }, [coverage])
-
-  // 雲朵緩慢移動
-  useFrame(({ clock }) => {
-    if (!cloudsRef.current) return
-
-    const positions = cloudsRef.current.geometry.attributes.position.array as Float32Array
-    const time = clock.getElapsedTime()
-
-    for (let i = 0; i < positions.length / 3; i++) {
-      positions[i * 3] += Math.sin(time * 0.05 + i) * 0.01
-    }
-
-    cloudsRef.current.geometry.attributes.position.needsUpdate = true
-  })
-
-  return (
-    <points ref={cloudsRef}>
-      <bufferGeometry>
-        <bufferAttribute
-          attach="attributes-position"
-          count={cloudParticles.length / 3}
-          array={cloudParticles}
-          itemSize={3}
-        />
-      </bufferGeometry>
-      <pointsMaterial
-        size={20}
-        color="#ffffff"
-        transparent
-        opacity={0.4}
-        sizeAttenuation
-      />
-    </points>
-  )
-}
-
-/**
  * 主天氣系統組件 - 根據天氣類型自動渲染對應效果
  */
 export function WeatherSystem() {
@@ -255,11 +200,6 @@ export function WeatherSystem() {
 
       {/* 霧天效果 */}
       {type === 'foggy' && <FogEffect density={0.05} />}
-
-      {/* 多雲效果 */}
-      {(type === 'cloudy' || type === 'partly-cloudy') && (
-        <DynamicClouds coverage={type === 'cloudy' ? 0.8 : 0.5} />
-      )}
     </group>
   )
 }

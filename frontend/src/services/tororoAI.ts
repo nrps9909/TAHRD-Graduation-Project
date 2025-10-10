@@ -147,7 +147,10 @@ export async function generateTororoResponse(context: ConversationContext): Prom
 
   // 如果是簡單互動，直接返回預設回應
   if (usePresetActions.includes(context.action)) {
-    console.log(`[Tororo] 使用預設回應: ${context.action}`)
+    // 只在開發模式且啟用 debug 時輸出
+    if (import.meta.env.DEV && import.meta.env.VITE_DEBUG === 'true') {
+      console.log(`[Tororo] 使用預設回應: ${context.action}`)
+    }
     return getFallbackResponse(context.action)
   }
 

@@ -19,7 +19,7 @@ type ViewMode = 'edit' | 'preview' | 'split'
 export default function MemoryEditor({ memory, onClose, onUpdate }: MemoryEditorProps) {
   const [title, setTitle] = useState(memory.title || '')
   const [content, setContent] = useState(memory.rawContent || memory.summary || '')
-  const [subcategoryId, setSubcategoryId] = useState<string | null>(null)
+  const [subcategoryId, setSubcategoryId] = useState<string | null>(memory.subcategoryId || null)
   const [tags, setTags] = useState<string[]>(memory.tags)
   const [newTag, setNewTag] = useState('')
   const [isSaving, setIsSaving] = useState(false)
@@ -68,8 +68,8 @@ export default function MemoryEditor({ memory, onClose, onUpdate }: MemoryEditor
           input: {
             title,
             rawContent: content,
-            subcategoryId,
             tags,
+            subcategoryId,
             fileUrls: attachments.map(a => a.url),
             fileNames: attachments.map(a => a.name),
             fileTypes: attachments.map(a => a.type),
@@ -82,7 +82,7 @@ export default function MemoryEditor({ memory, onClose, onUpdate }: MemoryEditor
       console.error('Auto-save error:', error)
       setIsSaving(false)
     }
-  }, [title, content, subcategoryId, tags, attachments, memory.id, updateMemory])
+  }, [title, content, tags, subcategoryId, attachments, memory.id, updateMemory])
 
   // Debounced 自動儲存
   useEffect(() => {
@@ -99,7 +99,7 @@ export default function MemoryEditor({ memory, onClose, onUpdate }: MemoryEditor
         clearTimeout(saveTimeoutRef.current)
       }
     }
-  }, [title, content, subcategoryId, tags, attachments, autoSave])
+  }, [title, content, tags, attachments, autoSave])
 
   const handlePin = async () => {
     try {

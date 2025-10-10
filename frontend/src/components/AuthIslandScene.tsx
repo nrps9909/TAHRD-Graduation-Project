@@ -10,7 +10,7 @@ import { useIslandStore } from '../stores/islandStore'
 const IslandArchipelago = lazy(() => import('./3D/IslandArchipelago').then(m => ({ default: m.IslandArchipelago })))
 const CentralIsland = lazy(() => import('./3D/CentralIsland').then(m => ({ default: m.CentralIsland })))
 const RealisticOcean = lazy(() => import('./3D/RealisticOcean').then(m => ({ default: m.RealisticOcean })))
-const RealisticClouds = lazy(() => import('./3D/RealisticClouds').then(m => ({ default: m.RealisticClouds })))
+const AnimalCrossingClouds = lazy(() => import('./3D/AnimalCrossingClouds').then(m => ({ default: m.AnimalCrossingClouds })))
 const FallbackOcean = lazy(() => import('./3D/FallbackOcean').then(m => ({ default: m.FallbackOcean })))
 const MemoryTree = lazy(() => import('./3D/MemoryTree').then(m => ({ default: m.MemoryTree })))
 const RegionalFlower = lazy(() => import('./3D/RegionalFlowers').then(m => ({ default: m.RegionalFlower })))
@@ -155,9 +155,9 @@ export default function AuthIslandScene() {
             turbidity={2}
           />
 
-          {/* Clouds - 真實雲朵 */}
+          {/* Clouds - 動物森友會風格雲朵 */}
           <Suspense fallback={null}>
-            <RealisticClouds />
+            <AnimalCrossingClouds count={30} />
           </Suspense>
 
           {/* Ocean - 真實海洋（帶 fallback） */}

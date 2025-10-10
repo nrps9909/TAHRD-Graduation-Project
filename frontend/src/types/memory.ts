@@ -14,6 +14,7 @@ export interface Memory {
   title: string
   emoji: string
   category: MemoryCategory  // 類別
+  subcategoryId?: string | null  // 自訂分類 ID
   tags: string[]  // Hashtags
   keyPoints?: string[]  // 重點分析
   aiSentiment?: string
@@ -25,6 +26,12 @@ export interface Memory {
   assistant?: {
     id: string
     name: string
+    nameChinese: string
+    emoji: string
+    color: string
+  }
+  subcategory?: {
+    id: string
     nameChinese: string
     emoji: string
     color: string
@@ -87,7 +94,8 @@ export interface UpdateMemoryInput {
   summary?: string
   title?: string
   emoji?: string
-  category?: MemoryCategory
+  category?: MemoryCategory  // 主分類
+  subcategoryId?: string | null  // 自訂分類
   tags?: string[]
   keyPoints?: string[]
   isPinned?: boolean

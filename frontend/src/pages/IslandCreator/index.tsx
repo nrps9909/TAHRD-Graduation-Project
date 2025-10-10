@@ -1,16 +1,19 @@
 /**
- * IslandCreator - 島嶼創建器頁面
+ * IslandCreator - 島嶼創建器/編輯器頁面
  * 玩家可以繪製自訂形狀並即時預覽 3D 島嶼
+ * 支持創建新島嶼或編輯現有島嶼
  */
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, PerspectiveCamera, Environment } from '@react-three/drei'
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js'
 import { IslandDrawer } from '../../components/IslandDrawer'
 import { CustomIsland } from '../../components/3D/CustomIsland'
 import { islandShapePresets, type ShapePreset } from '../../utils/islandShapePresets'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
+import { useIslandStore } from '../../stores/islandStore'
+import { saveUserIslands } from '../../utils/islandDataConverter'
 
 interface Point {
   x: number
@@ -28,6 +31,8 @@ interface IslandConfig {
 
 export default function IslandCreator() {
   const navigate = useNavigate()
+  const { islandId } = useParams<{ islandId?: string }>()
+  const { islands, updateIsland } = useIslandStore()
   const canvasRef = useRef<any>(null)
   const [showDrawer, setShowDrawer] = useState(false)
   const [showPresets, setShowPresets] = useState(false)
@@ -41,6 +46,56 @@ export default function IslandCreator() {
   })
   const [savedIslands, setSavedIslands] = useState<IslandConfig[]>([])
 
+  // 判斷是否為編輯模式
+  const isEditMode = !!islandId
+  const currentIsland = isEditMode ? islands.find(i => i.id === islandId) : null
+
+  // 載入現有島嶼配置（編輯模式）
+  useEffect(() => {
+    if (isEditMode && currentIsland) {
+      // 嘗試從 localStorage 載入形狀數據
+      let loadedShape: Point[] = []
+      let loadedHeight = 2
+      let loadedBevel = 0.5
+
+      try {
+        const customShapeData = (currentIsland as any).customShapeData
+        if (customShapeData && typeof customShapeData === 'string') {
+          loadedShape = JSON.parse(customShapeData)
+          console.log('✅ [IslandCreator] 載入自訂形狀:', loadedShape.length, '個點')
+        }
+
+        const islandHeight = (currentIsland as any).islandHeight
+        if (islandHeight !== undefined) {
+          loadedHeight = islandHeight
+        }
+
+        const islandBevel = (currentIsland as any).islandBevel
+        if (islandBevel !== undefined) {
+          loadedBevel = islandBevel
+        }
+      } catch (error) {
+        console.warn('⚠️ [IslandCreator] 載入形狀資料失敗:', error)
+      }
+
+      setConfig({
+        shape: loadedShape,
+        color: currentIsland.color,
+        height: loadedHeight,
+        bevel: loadedBevel,
+        texture: 'grass',
+        name: currentIsland.name
+      })
+
+      console.log('🔵 [IslandCreator] 已載入島嶼配置:', {
+        name: currentIsland.name,
+        shapePoints: loadedShape.length,
+        height: loadedHeight,
+        bevel: loadedBevel
+      })
+    }
+  }, [isEditMode, currentIsland])
+
   const handleComplete = (points: Point[]) => {
     setConfig({ ...config, shape: points })
     setShowDrawer(false)
@@ -51,15 +106,69 @@ export default function IslandCreator() {
     setShowPresets(false)
   }
 
-  const handleSave = () => {
-    const name = prompt('請輸入島嶼名稱：', config.name)
-    if (!name) return
+  const handleSave = async () => {
+    if (isEditMode && islandId) {
+      // 編輯模式：更新島嶼配置到資料庫
+      try {
+        console.log('🔵 [IslandCreator] 開始保存島嶼...')
+        console.log('🔵 [IslandCreator] Island ID:', islandId)
+        console.log('🔵 [IslandCreator] Config:', config)
 
-    const newConfig = { ...config, name }
-    const updated = [...savedIslands, newConfig]
-    setSavedIslands(updated)
-    localStorage.setItem('savedIslands', JSON.stringify(updated))
-    alert(`✅ 島嶼「${name}」已保存！`)
+        // 將 shape 轉換為 JSON 字符串
+        const customShapeData = config.shape.length > 0 ? JSON.stringify(config.shape) : null
+
+        // TODO: 添加 GraphQL mutation 調用來保存到資料庫
+        // 暫時先保存到本地 store 和 localStorage
+
+        // 更新本地 store（包含所有新欄位）
+        updateIsland(islandId, {
+          color: config.color,
+          customShapeData: customShapeData || undefined,
+          islandHeight: config.height,
+          islandBevel: config.bevel,
+          updatedAt: new Date(),
+        })
+
+        // 保存所有島嶼到 localStorage（包含形狀、高度、斜率）
+        const updatedIslands = islands.map(island =>
+          island.id === islandId
+            ? {
+                ...island,
+                color: config.color,
+                customShapeData: customShapeData,
+                islandHeight: config.height,
+                islandBevel: config.bevel,
+                updatedAt: new Date()
+              }
+            : island
+        )
+        saveUserIslands(updatedIslands)
+
+        console.log('✅ [IslandCreator] 島嶼已保存', {
+          shape: config.shape.length,
+          height: config.height,
+          bevel: config.bevel
+        })
+        alert(`✅ 島嶼「${config.name}」已更新！\n\n形狀點數: ${config.shape.length}\n高度: ${config.height}\n斜率: ${config.bevel}`)
+
+        // 使用 router navigate 而非 window.location
+        console.log('🔵 [IslandCreator] 導航回首頁...')
+        navigate('/', { replace: true })
+      } catch (error) {
+        console.error('❌ [IslandCreator] 更新失敗:', error)
+        alert(`更新失敗: ${error instanceof Error ? error.message : '未知錯誤'}`)
+      }
+    } else {
+      // 創建模式：保存到 localStorage
+      const name = prompt('請輸入島嶼名稱：', config.name)
+      if (!name) return
+
+      const newConfig = { ...config, name }
+      const updated = [...savedIslands, newConfig]
+      setSavedIslands(updated)
+      localStorage.setItem('savedIslands', JSON.stringify(updated))
+      alert(`✅ 島嶼「${name}」已保存！`)
+    }
   }
 
   const handleLoad = () => {
@@ -138,8 +247,12 @@ export default function IslandCreator() {
                 ← 返回主頁
               </button>
               <div>
-                <h1 className="text-2xl font-bold text-gray-800">🏝️ 島嶼創建器</h1>
-                <p className="text-sm text-gray-600">繪製你的專屬島嶼形狀</p>
+                <h1 className="text-2xl font-bold text-gray-800">
+                  {isEditMode ? `🎨 編輯島嶼 - ${config.name}` : '🏝️ 島嶼創建器'}
+                </h1>
+                <p className="text-sm text-gray-600">
+                  {isEditMode ? '修改島嶼顏色和紋理' : '繪製你的專屬島嶼形狀'}
+                </p>
               </div>
             </div>
 
@@ -231,10 +344,10 @@ export default function IslandCreator() {
             </button>
             <button
               onClick={handleSave}
-              disabled={config.shape.length === 0}
+              disabled={!isEditMode && config.shape.length === 0}
               className="px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              💾 保存
+              {isEditMode ? '💾 保存更新' : '💾 保存'}
             </button>
             <button
               onClick={handleExport}

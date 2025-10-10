@@ -76,6 +76,14 @@ function App() {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/island-creator/:islandId"
+        element={
+          <ProtectedRoute>
+            <IslandCreator />
+          </ProtectedRoute>
+        }
+      />
 
       {/* Fallback - 未登入時重定向到登入頁，已登入則到首頁 */}
       <Route

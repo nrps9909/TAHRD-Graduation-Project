@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useMutation, useQuery } from '@apollo/client'
 import { UPDATE_MEMORY, DELETE_MEMORY, ARCHIVE_MEMORY, PIN_MEMORY, UNPIN_MEMORY, GET_MEMORIES } from '../../graphql/memory'
+import { GET_SUBCATEGORIES, Subcategory } from '../../graphql/category'
 import type { Memory } from '../../graphql/memory'
 
 interface MemoryDetailModalProps {
@@ -17,6 +18,7 @@ export default function MemoryDetailModal({ memory, onClose, onUpdate }: MemoryD
   const [editedTags, setEditedTags] = useState<string[]>(memory.tags)
   const [newTag, setNewTag] = useState('')
   const [selectedEmoji, setSelectedEmoji] = useState(memory.emoji || memory.assistant?.emoji || '📝')
+  const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<string | null>(memory.subcategoryId || null)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const emojiPickerRef = useRef<HTMLDivElement>(null)
   const tagInputRef = useRef<HTMLDivElement>(null)
@@ -31,6 +33,10 @@ export default function MemoryDetailModal({ memory, onClose, onUpdate }: MemoryD
   const { data: memoriesData } = useQuery(GET_MEMORIES, {
     variables: { limit: 1000 }
   })
+
+  // 查詢所有自訂分類
+  const { data: subcategoriesData } = useQuery(GET_SUBCATEGORIES)
+  const subcategories: Subcategory[] = subcategoriesData?.subcategories || []
 
   // 提取所有現有標籤和熱門標籤
   const { allExistingTags, popularTags } = React.useMemo(() => {
@@ -113,7 +119,8 @@ export default function MemoryDetailModal({ memory, onClose, onUpdate }: MemoryD
           input: {
             title: editedTitle,
             tags: editedTags,
-            emoji: selectedEmoji, // 保存 emoji
+            emoji: selectedEmoji,
+            subcategoryId: selectedSubcategoryId, // 保存自訂分類
           },
         },
       })
@@ -134,8 +141,8 @@ export default function MemoryDetailModal({ memory, onClose, onUpdate }: MemoryD
       alert('此標籤已存在！')
       return
     }
-    if (editedTags.length >= 10) {
-      alert('最多只能添加 10 個標籤！')
+    if (editedTags.length >= 5) {
+      alert('最多只能添加 5 個標籤！')
       return
     }
     if (trimmedTag.length > 50) {
@@ -285,6 +292,7 @@ export default function MemoryDetailModal({ memory, onClose, onUpdate }: MemoryD
                       setIsEditing(false)
                       setEditedTitle(memory.title || memory.summary || '')
                       setEditedTags(memory.tags)
+                      setSelectedSubcategoryId(memory.subcategoryId || null)
                     }}
                     className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl transition-all"
                   >
@@ -311,13 +319,65 @@ export default function MemoryDetailModal({ memory, onClose, onUpdate }: MemoryD
 
         {/* Content */}
         <div className="overflow-y-auto max-h-[calc(90vh-200px)] px-8 py-6">
+          {/* Subcategory Selection - 自訂分類選擇器 */}
+          {(subcategories.length > 0 || selectedSubcategoryId) && (
+            <div className="mb-6">
+              <h3 className="text-sm font-bold text-gray-600 mb-3">🏷️ 自訂分類</h3>
+              {isEditing ? (
+                <div className="flex flex-wrap gap-2">
+                  {/* 無分類選項 */}
+                  <button
+                    onClick={() => setSelectedSubcategoryId(null)}
+                    className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all hover:scale-105"
+                    style={{
+                      background: selectedSubcategoryId === null ? '#f3f4f6' : 'white',
+                      color: selectedSubcategoryId === null ? '#374151' : '#666',
+                      border: `1.5px solid ${selectedSubcategoryId === null ? '#9ca3af' : '#e5e7eb'}`,
+                    }}
+                  >
+                    無分類
+                  </button>
+                  {/* 分類選項 */}
+                  {subcategories.map((cat) => (
+                    <button
+                      key={cat.id}
+                      onClick={() => setSelectedSubcategoryId(selectedSubcategoryId === cat.id ? null : cat.id)}
+                      className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all hover:scale-105"
+                      style={{
+                        background: selectedSubcategoryId === cat.id ? cat.color : 'white',
+                        color: selectedSubcategoryId === cat.id ? '#ffffff' : '#666',
+                        border: `1.5px solid ${selectedSubcategoryId === cat.id ? cat.color : '#FFB6C1'}`,
+                      }}
+                    >
+                      <span className="mr-1">{cat.emoji}</span>
+                      {cat.nameChinese}
+                    </button>
+                  ))}
+                </div>
+              ) : selectedSubcategoryId && memory.subcategory ? (
+                <div
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium"
+                  style={{
+                    background: memory.subcategory.color,
+                    color: '#ffffff',
+                  }}
+                >
+                  <span>{memory.subcategory.emoji}</span>
+                  <span>{memory.subcategory.nameChinese}</span>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">無分類</p>
+              )}
+            </div>
+          )}
+
           {/* Tags Section - 只有在有標籤時才顯示 */}
           {(editedTags.length > 0 || isEditing) && (
             <div className="mb-6">
               <h3 className="text-sm font-bold text-gray-600 mb-3">🏷️ 標籤</h3>
 
               {/* 熱門標籤快捷按鈕 - 只在編輯模式顯示 */}
-              {isEditing && popularTags.length > 0 && editedTags.length < 10 && (
+              {isEditing && popularTags.length > 0 && editedTags.length < 5 && (
                 <div className="mb-3">
                   <label className="block text-xs font-medium text-gray-500 mb-2">
                     🔥 熱門標籤
@@ -330,8 +390,8 @@ export default function MemoryDetailModal({ memory, onClose, onUpdate }: MemoryD
                         <button
                           key={tag}
                           onClick={() => {
-                            if (editedTags.length >= 10) {
-                              alert('最多只能添加 10 個標籤！')
+                            if (editedTags.length >= 5) {
+                              alert('最多只能添加 5 個標籤！')
                               return
                             }
                             setEditedTags([...editedTags, tag])
@@ -397,8 +457,8 @@ export default function MemoryDetailModal({ memory, onClose, onUpdate }: MemoryD
                         <button
                           key={tag}
                           onClick={() => {
-                            if (editedTags.length >= 10) {
-                              alert('最多只能添加 10 個標籤！')
+                            if (editedTags.length >= 5) {
+                              alert('最多只能添加 5 個標籤！')
                               return
                             }
                             setEditedTags([...editedTags, tag])

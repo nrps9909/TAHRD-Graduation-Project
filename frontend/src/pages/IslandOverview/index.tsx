@@ -86,6 +86,29 @@ export default function IslandOverview() {
     }
   }, [memoryData, memoriesLoading, loadIslands, setLoading])
 
+  // 監聽頁面可見性變化，重新載入島嶼數據
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && !memoriesLoading) {
+        console.log('🔄 [IslandOverview] 頁面重新可見，重新載入島嶼數據...')
+
+        try {
+          const userIslands = loadUserIslands()
+          const allMemories: Memory[] = memoryData?.memories || []
+          const islandsWithMemories = assignMemoriesToIslands(userIslands, allMemories)
+          loadIslands(islandsWithMemories)
+
+          console.log('✅ [IslandOverview] 島嶼數據已重新載入')
+        } catch (error) {
+          console.error('❌ [IslandOverview] 重新載入失敗:', error)
+        }
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [memoryData, memoriesLoading, loadIslands])
+
   const handleTororoClick = () => {
     // Tororo (小白) - 知識園丁，使用 Tororo 白色模型
     setCurrentLive2DModel('/models/tororo_white/tororo.model3.json')
@@ -116,6 +139,14 @@ export default function IslandOverview() {
     // 播放點擊音效
     if (audioInitialized) {
       sound.sfx.click()
+    }
+  }
+
+  // 處理編輯島嶼按鈕點擊 - 跳轉到島嶼創建器/編輯器頁面
+  const handleEditIsland = () => {
+    const currentIsland = getCurrentIsland()
+    if (currentIsland) {
+      navigate(`/island-creator/${currentIsland.id}`)
     }
   }
 
@@ -190,6 +221,7 @@ export default function IslandOverview() {
             categories={getCurrentIsland()!.categories}
             updatedAt={getCurrentIsland()!.updatedAt}
             regionDistribution={getCurrentIsland()!.regionDistribution}
+            onEditClick={handleEditIsland}
           />
         </motion.div>
       )}

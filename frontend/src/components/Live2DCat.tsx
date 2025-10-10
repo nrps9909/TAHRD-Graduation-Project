@@ -49,6 +49,9 @@ export default function Live2DCat({
     removePendingAttachment,
   } = useCatChat(isBlackCat ? 'hijiki' : 'tororo')
 
+  // 確保 pendingAttachments 始終是數組
+  const safeAttachments = pendingAttachments || []
+
   const [triggerMotion, setTriggerMotion] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -223,11 +226,11 @@ export default function Live2DCat({
 
   const handleSendMessage = async () => {
     // Must have either text or attachments
-    if (!inputText.trim() && pendingAttachments.length === 0) return
+    if (!inputText.trim() && safeAttachments.length === 0) return
     if (isProcessing) return // Prevent double submission
 
     const userContent = inputText || '上傳了檔案'
-    const hasAttachments = pendingAttachments.length > 0
+    const hasAttachments = safeAttachments.length > 0
 
     // Play message sent sound
     play('message_sent')
@@ -238,7 +241,7 @@ export default function Live2DCat({
       type: 'user',
       content: userContent,
       timestamp: new Date(),
-      attachments: hasAttachments ? pendingAttachments.map(att => ({
+      attachments: hasAttachments ? safeAttachments.map(att => ({
         type: att.type,
         name: att.name,
         url: att.url
@@ -247,7 +250,7 @@ export default function Live2DCat({
 
     addMessage(newMessage)
     setInputText('')
-    const attachments = [...pendingAttachments]
+    const attachments = [...safeAttachments]
     setPendingAttachments([])
     setIsProcessing(true)
 
@@ -399,7 +402,7 @@ export default function Live2DCat({
     if (!files || files.length === 0) return
 
     // Check if adding these files would exceed the limit
-    if (pendingAttachments.length + files.length > 10) {
+    if (safeAttachments.length + files.length > 10) {
       alert('最多只能上傳 10 個檔案！')
       return
     }
@@ -423,7 +426,9 @@ export default function Live2DCat({
 
   const removeAttachment = (index: number) => {
     // Revoke the object URL to free memory
-    URL.revokeObjectURL(pendingAttachments[index].url)
+    if (safeAttachments[index]) {
+      URL.revokeObjectURL(safeAttachments[index].url)
+    }
     removePendingAttachment(index)
   }
 
@@ -449,7 +454,7 @@ export default function Live2DCat({
       })
     } else {
       // Check if we can add more attachments
-      if (pendingAttachments.length >= 10) {
+      if (safeAttachments.length >= 10) {
         alert('最多只能上傳 10 個檔案！')
         return
       }
@@ -485,32 +490,28 @@ export default function Live2DCat({
   }
 
   return (
-    <div className={`fixed inset-0 ${Z_INDEX_CLASSES.FULLSCREEN_CHAT} flex items-center justify-center bg-gradient-to-br ${theme.bgGradient} backdrop-blur-sm animate-fadeIn`}>
-      <div className={`relative w-full h-full max-w-7xl max-h-[90vh] mx-4 bg-gradient-to-br ${theme.cardGradient} backdrop-blur-md rounded-3xl shadow-cute-xl overflow-hidden animate-scale-in`}>
+    <div className={`fixed inset-0 ${Z_INDEX_CLASSES.FULLSCREEN_CHAT} flex items-center justify-center bg-gradient-to-br ${isBlackCat ? 'from-slate-900/95 via-indigo-950/95 to-purple-950/95' : theme.bgGradient} backdrop-blur-md animate-fadeIn`}>
+      <div className={`relative w-full h-full max-w-7xl max-h-[90vh] mx-4 bg-gradient-to-br ${isBlackCat ? 'from-slate-800/98 via-indigo-900/98 to-purple-900/98' : theme.cardGradient} backdrop-blur-xl rounded-[3rem] ${isBlackCat ? 'shadow-[0_0_60px_rgba(99,102,241,0.3)] border-4 border-indigo-500/40' : 'shadow-cute-xl'} overflow-hidden animate-scale-in`}>
 
         {/* Header */}
         <div
-          className={`relative backdrop-blur-sm border-b-4 ${theme.headerBorder} px-6 py-4`}
-          style={{
-            background: isBlackCat ? 'rgba(26, 26, 36, 0.95)' : 'rgba(255, 255, 255, 0.8)'
-          }}
+          className={`relative backdrop-blur-sm border-b-4 px-6 py-4 ${isBlackCat ? 'border-indigo-500/50 bg-gradient-to-r from-slate-800/95 to-indigo-900/95' : `${theme.headerBorder} bg-white/80`}`}
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className={`w-14 h-14 bg-gradient-to-br ${theme.avatarGradient} rounded-full flex items-center justify-center shadow-cute animate-bounce-gentle`}>
+              <div className={`w-14 h-14 bg-gradient-to-br ${isBlackCat ? 'from-indigo-600 to-purple-600' : theme.avatarGradient} rounded-full flex items-center justify-center ${isBlackCat ? 'shadow-[0_0_20px_rgba(99,102,241,0.5)]' : 'shadow-cute'} animate-bounce-gentle border-2 ${isBlackCat ? 'border-indigo-400/40' : ''}`}>
                 <span className="text-3xl">{catEmoji}</span>
               </div>
               <div>
                 <h2
-                  className={`text-2xl font-bold ${isBlackCat ? '' : 'bg-gradient-to-r bg-clip-text text-transparent'}`}
+                  className={`text-2xl font-bold ${isBlackCat ? 'bg-gradient-to-r from-indigo-200 to-purple-200 bg-clip-text text-transparent' : 'bg-gradient-to-r bg-clip-text text-transparent'}`}
                   style={{
-                    color: isBlackCat ? '#e8e8f0' : undefined,
                     backgroundImage: isBlackCat ? undefined : `linear-gradient(to right, ${theme.titleGradient})`
                   }}
                 >
                   {catName}
                 </h2>
-                <p className="text-sm" style={{ color: isBlackCat ? '#a8a8b8' : '#6b7280' }}>{catDescription}</p>
+                <p className={`text-sm ${isBlackCat ? 'text-indigo-300' : 'text-gray-600'}`}>{catDescription}</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -522,9 +523,9 @@ export default function Live2DCat({
                 }}
                 className={`w-12 h-12 ${
                   soundEnabled
-                    ? `bg-gradient-to-br ${theme.buttonGradient}`
-                    : 'bg-gray-300'
-                } hover:scale-110 text-white rounded-full shadow-cute flex items-center justify-center transition-all active:scale-95`}
+                    ? isBlackCat ? 'bg-gradient-to-br from-indigo-600 to-purple-600 border-2 border-indigo-400/40' : `bg-gradient-to-br ${theme.buttonGradient}`
+                    : 'bg-gray-600'
+                } hover:scale-110 text-white rounded-xl ${isBlackCat && soundEnabled ? 'shadow-[0_0_20px_rgba(99,102,241,0.4)]' : 'shadow-cute'} flex items-center justify-center transition-all active:scale-95`}
                 title={soundEnabled ? '關閉音效' : '開啟音效'}
               >
                 <span className="text-xl">{soundEnabled ? '🔊' : '🔇'}</span>
@@ -536,7 +537,7 @@ export default function Live2DCat({
                   play('button_click')
                   onClose?.()
                 }}
-                className="w-12 h-12 bg-gradient-to-br from-red-300 to-red-400 hover:from-red-400 hover:to-red-500 text-white rounded-full shadow-cute flex items-center justify-center transition-all hover:scale-110 active:scale-95"
+                className="w-12 h-12 bg-gradient-to-br from-red-400 to-red-500 hover:from-red-500 hover:to-red-600 text-white rounded-xl shadow-lg border-2 border-red-300 flex items-center justify-center transition-all hover:scale-110 active:scale-95 font-bold"
               >
                 ✕
               </button>
@@ -547,7 +548,7 @@ export default function Live2DCat({
         {/* Main Content */}
         <div className="flex h-[calc(100%-88px)]">
           {/* Live2D Model Area */}
-          <div className={`w-1/3 bg-gradient-to-br ${isBlackCat ? 'from-gray-800/70 to-gray-900/70 border-r-4 border-gray-700/30' : 'from-baby-cream/50 to-baby-yellow/50 border-r-4 border-baby-blush/30'} flex flex-col items-center justify-center p-6`}>
+          <div className={`w-1/3 bg-gradient-to-br ${isBlackCat ? 'from-slate-800/80 to-indigo-900/80 border-r-4 border-indigo-500/30' : 'from-baby-cream/50 to-baby-yellow/50 border-r-4 border-baby-blush/30'} flex flex-col items-center justify-center p-6`}>
             <div className="relative w-full h-full flex items-center justify-center">
               {showFallback ? (
                 <div className="text-center animate-gentle-float">
@@ -585,9 +586,9 @@ export default function Live2DCat({
                   <div
                     className={`max-w-[70%] select-text ${
                       message.type === 'user'
-                        ? `${isBlackCat ? 'bg-[#444654] text-white' : 'bg-gradient-to-br from-baby-blush to-baby-pink text-gray-800'}`
-                        : isBlackCat ? 'bg-[#343541] text-gray-100' : 'bg-white/90 text-gray-800'
-                    } rounded-2xl px-5 py-3 shadow-cute`}
+                        ? `${isBlackCat ? 'bg-gradient-to-br from-indigo-600/90 to-purple-600/90 text-indigo-50 border-2 border-indigo-400/40 shadow-[0_0_20px_rgba(99,102,241,0.3)]' : 'bg-gradient-to-br from-baby-blush to-baby-pink text-gray-800'}`
+                        : isBlackCat ? 'bg-gradient-to-br from-slate-700/90 to-slate-800/90 text-indigo-100 border-2 border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.2)]' : 'bg-white/90 text-gray-800'
+                    } rounded-2xl px-5 py-3`}
                   >
                     {message.attachments && message.attachments.map((att, idx) => (
                       <div key={idx} className="mb-2">
@@ -595,22 +596,22 @@ export default function Live2DCat({
                           <img src={att.url} alt={att.name} className="rounded-xl max-w-full h-auto" />
                         )}
                         {att.type === 'audio' && (
-                          <div className="flex items-center gap-2 bg-baby-cream/50 rounded-xl px-3 py-2 select-text">
+                          <div className={`flex items-center gap-2 rounded-xl px-3 py-2 select-text ${isBlackCat ? 'bg-slate-600/50 border border-indigo-400/30' : 'bg-baby-cream/50'}`}>
                             <span className="text-2xl">🎵</span>
-                            <span className="text-sm select-text">{att.name}</span>
+                            <span className={`text-sm select-text ${isBlackCat ? 'text-indigo-200' : ''}`}>{att.name}</span>
                           </div>
                         )}
                         {att.type === 'file' && (
-                          <div className="flex items-center gap-2 bg-baby-cream/50 rounded-xl px-3 py-2 select-text">
+                          <div className={`flex items-center gap-2 rounded-xl px-3 py-2 select-text ${isBlackCat ? 'bg-slate-600/50 border border-indigo-400/30' : 'bg-baby-cream/50'}`}>
                             <span className="text-2xl">📄</span>
-                            <span className="text-sm select-text">{att.name}</span>
+                            <span className={`text-sm select-text ${isBlackCat ? 'text-indigo-200' : ''}`}>{att.name}</span>
                           </div>
                         )}
                       </div>
                     ))}
                     <p className="text-cute-base leading-relaxed select-text">{message.content}</p>
-                    <p className="text-cute-xs text-gray-400 mt-1 select-text">
-                      {message.timestamp.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}
+                    <p className={`text-cute-xs mt-1 select-text ${isBlackCat ? 'text-indigo-300/70' : 'text-gray-400'}`}>
+                      {new Date(message.timestamp).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </div>
                 </div>
@@ -619,20 +620,20 @@ export default function Live2DCat({
             </div>
 
             {/* Input Area */}
-            <div className={`border-t-4 ${isBlackCat ? 'border-gray-700/50' : 'border-baby-blush/30'} ${isBlackCat ? 'bg-[#40414f]/90' : 'bg-white/80'} backdrop-blur-sm p-4`}>
+            <div className={`border-t-4 ${isBlackCat ? 'border-indigo-500/40' : 'border-baby-blush/30'} ${isBlackCat ? 'bg-gradient-to-r from-slate-800/95 to-indigo-900/95' : 'bg-white/80'} backdrop-blur-sm p-4`}>
               {/* Pending Attachments Preview */}
-              {pendingAttachments.length > 0 && (
-                <div className="mb-3 p-3 bg-baby-cream/50 rounded-xl">
+              {safeAttachments.length > 0 && (
+                <div className={`mb-3 p-3 rounded-xl ${isBlackCat ? 'bg-slate-700/50' : 'bg-baby-cream/50'}`}>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-semibold text-gray-700">
-                      待發送的檔案 ({pendingAttachments.length}/10)
+                    <span className={`text-sm font-semibold ${isBlackCat ? 'text-indigo-200' : 'text-gray-700'}`}>
+                      待發送的檔案 ({safeAttachments.length}/10)
                     </span>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {pendingAttachments.map((att, index) => (
+                    {safeAttachments.map((att, index) => (
                       <div
                         key={index}
-                        className="relative group bg-white rounded-lg p-2 shadow-sm flex items-center gap-2 max-w-[200px]"
+                        className={`relative group rounded-lg p-2 shadow-sm flex items-center gap-2 max-w-[200px] ${isBlackCat ? 'bg-slate-600/60 border-2 border-indigo-400/30' : 'bg-white'}`}
                       >
                         {att.type === 'image' && (
                           <img src={att.url} alt={att.name} className="w-10 h-10 object-cover rounded" />
@@ -643,7 +644,7 @@ export default function Live2DCat({
                         {att.type === 'file' && (
                           <span className="text-2xl">📄</span>
                         )}
-                        <span className="text-xs text-gray-600 truncate flex-1">{att.name}</span>
+                        <span className={`text-xs truncate flex-1 ${isBlackCat ? 'text-indigo-100' : 'text-gray-600'}`}>{att.name}</span>
                         <button
                           onClick={() => removeAttachment(index)}
                           className="w-5 h-5 bg-red-400 hover:bg-red-500 text-white rounded-full flex items-center justify-center text-xs transition-all hover:scale-110"
@@ -662,14 +663,14 @@ export default function Live2DCat({
                 <div className="flex gap-2">
                   <button
                     onClick={() => handleFileUpload('image')}
-                    className={`w-12 h-12 bg-gradient-to-br ${theme.buttonGradient} ${theme.buttonHover} text-white rounded-xl shadow-cute transition-all hover:scale-105 active:scale-95 flex items-center justify-center`}
+                    className={`w-12 h-12 bg-gradient-to-br ${isBlackCat ? 'from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 border-2 border-indigo-400/30' : `${theme.buttonGradient} ${theme.buttonHover}`} text-white rounded-xl shadow-cute transition-all hover:scale-105 active:scale-95 flex items-center justify-center`}
                     title="上傳圖片"
                   >
                     <span className="text-xl">🖼️</span>
                   </button>
                   <button
                     onClick={() => handleFileUpload('file')}
-                    className={`w-12 h-12 bg-gradient-to-br ${isBlackCat ? 'from-gray-600 to-gray-700' : 'from-baby-yellow to-baby-butter'} ${isBlackCat ? 'hover:from-gray-700 hover:to-gray-800' : 'hover:from-yellow-300 hover:to-yellow-400'} text-white rounded-xl shadow-cute transition-all hover:scale-105 active:scale-95 flex items-center justify-center`}
+                    className={`w-12 h-12 bg-gradient-to-br ${isBlackCat ? 'from-slate-600 to-slate-700 hover:from-slate-500 hover:to-slate-600 border-2 border-indigo-400/30' : 'from-baby-yellow to-baby-butter hover:from-yellow-300 hover:to-yellow-400'} text-white rounded-xl shadow-cute transition-all hover:scale-105 active:scale-95 flex items-center justify-center`}
                     title="上傳檔案"
                   >
                     <span className="text-xl">📎</span>
@@ -679,8 +680,8 @@ export default function Live2DCat({
                     className={`w-12 h-12 bg-gradient-to-br ${
                       isRecording
                         ? 'from-red-400 to-red-500 animate-pulse'
-                        : isBlackCat ? 'from-gray-600 to-gray-700' : 'from-baby-peach to-pink-300'
-                    } ${!isRecording && (isBlackCat ? 'hover:from-gray-700 hover:to-gray-800' : 'hover:from-pink-300 hover:to-pink-400')} text-white rounded-xl shadow-cute transition-all hover:scale-105 active:scale-95 flex items-center justify-center`}
+                        : isBlackCat ? 'from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 border-2 border-indigo-400/30' : 'from-baby-peach to-pink-300 hover:from-pink-300 hover:to-pink-400'
+                    } text-white rounded-xl shadow-cute transition-all hover:scale-105 active:scale-95 flex items-center justify-center`}
                     title={isRecording ? '停止錄音' : '錄音'}
                   >
                     <span className="text-xl">{isRecording ? '⏹️' : '🎤'}</span>
@@ -696,12 +697,12 @@ export default function Live2DCat({
                     onKeyPress={(e) => e.key === 'Enter' && !isProcessing && handleSendMessage()}
                     disabled={isProcessing}
                     placeholder={`跟${catName}說些什麼吧... ${isBlackCat ? '🌙' : '💕'}`}
-                    className={`flex-1 px-4 py-3 ${isBlackCat ? 'bg-white/95 text-gray-900 placeholder-gray-400 border-gray-300 focus:border-gray-500 focus:ring-gray-400/20' : 'bg-white/90 text-gray-800 placeholder-gray-400 border-baby-blush/50 focus:border-baby-pink focus:ring-baby-pink/20'} border-2 rounded-xl focus:outline-none focus:ring-2`}
+                    className={`flex-1 px-5 py-3 ${isBlackCat ? 'bg-slate-700/80 text-indigo-50 placeholder-indigo-300/60 border-indigo-400/40 focus:border-indigo-400 focus:ring-indigo-400/30' : 'bg-white/90 text-gray-800 placeholder-gray-400 border-baby-blush/50 focus:border-baby-pink focus:ring-baby-pink/20'} border-2 rounded-xl focus:outline-none focus:ring-2 font-medium transition-all`}
                   />
                   <button
                     onClick={handleSendMessage}
-                    disabled={(!inputText.trim() && pendingAttachments.length === 0) || isProcessing}
-                    className={`px-6 py-3 bg-gradient-to-br ${theme.buttonGradient} ${theme.buttonHover} disabled:from-gray-300 disabled:to-gray-400 text-white rounded-xl font-bold shadow-cute transition-all hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:hover:scale-100`}
+                    disabled={(!inputText.trim() && safeAttachments.length === 0) || isProcessing}
+                    className={`px-6 py-3 bg-gradient-to-br ${isBlackCat ? 'from-indigo-500 to-purple-500 hover:from-indigo-400 hover:to-purple-400 border-2 border-indigo-300/40' : `${theme.buttonGradient} ${theme.buttonHover}`} disabled:from-gray-300 disabled:to-gray-400 disabled:border-gray-300 text-white rounded-xl font-bold shadow-lg transition-all hover:scale-105 hover:shadow-xl active:scale-95 disabled:cursor-not-allowed disabled:hover:scale-100`}
                   >
                     {isProcessing ? '處理中... ⏳' : '發送 ✨'}
                   </button>

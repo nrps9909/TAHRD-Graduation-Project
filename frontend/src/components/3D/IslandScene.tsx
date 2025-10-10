@@ -1,5 +1,4 @@
 import { Canvas } from '@react-three/fiber'
-import { Sky } from '@react-three/drei'
 import { EffectComposer, Bloom, ChromaticAberration } from '@react-three/postprocessing'
 import { BlendFunction } from 'postprocessing'
 import { IslandArchipelago } from './IslandArchipelago'
@@ -8,11 +7,12 @@ import { HijikiCat } from './HijikiCat'
 import { CentralIsland } from './CentralIsland'
 import { CameraController } from './CameraController'
 import { RealisticOcean } from './RealisticOcean'
-import { RealisticClouds } from './RealisticClouds'
+import { AnimalCrossingClouds } from './AnimalCrossingClouds'
 import { FallbackOcean } from './FallbackOcean'
 import { MemoryDetailModal } from '../MemoryDetailModal'
 import { CelestialSystem } from './CelestialBodies'
 import { WeatherSystem, WeatherInfo } from './WeatherEffects'
+import { NaturalSky } from './NaturalSky'
 import { Suspense, useState, useEffect } from 'react'
 import { useIslandStore } from '../../stores/islandStore'
 import { useEnvironmentStore } from '../../stores/environmentStore'
@@ -92,9 +92,9 @@ export function IslandScene({
   }
 
   // 視覺效果設定（固定值，不使用調試面板）
-  const bloomIntensity = 0.3
-  const bloomThreshold = 0.9
-  const chromaticOffset = 0.001
+  const bloomIntensity = 0.2      // 降低發光強度
+  const bloomThreshold = 0.95     // 提高閾值，只有更亮的物體才發光
+  const chromaticOffset = 0.0008  // 稍微降低色差效果
 
   return (
     <>
@@ -119,27 +119,18 @@ export function IslandScene({
         <CelestialSystem />
 
         {/* 柔和環境光 - 簡約氛圍 */}
-        <ambientLight intensity={0.4} color="#FEFEFE" />
-        <pointLight position={[0, 40, 0]} intensity={0.15} color="#FFFFFF" />
+        <ambientLight intensity={0.25} color="#E8F4F8" />
+        <pointLight position={[0, 40, 0]} intensity={0.08} color="#FFF8E1" />
 
-        {/* 🌤️ 動態天空 - 根據太陽位置調整 */}
-        <Sky
-          distance={450000}
-          sunPosition={[sunPosition.position.x / 10, sunPosition.position.y / 10, sunPosition.position.z / 10]}
-          inclination={0.5}
-          azimuth={0.15}
-          mieCoefficient={0.003}
-          mieDirectionalG={0.6}
-          rayleigh={0.8}
-          turbidity={2}
-        />
+        {/* 🌤️ 自然天空系統 - 深邃的藍天 */}
+        <NaturalSky />
 
         {/* 🌧️ 天氣效果系統 */}
         <WeatherSystem />
 
-        {/* Clouds - 真实云朵 */}
+        {/* ☁️ 動物森友會風格雲朵 - 覆蓋整個場景 */}
         <Suspense fallback={null}>
-          <RealisticClouds />
+          <AnimalCrossingClouds count={40} />
         </Suspense>
 
         {/* Ocean - 真实海洋（带 fallback） */}

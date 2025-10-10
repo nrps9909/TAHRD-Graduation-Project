@@ -144,7 +144,7 @@ class TororoService {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt,
-          model: 'gemini-2.5-pro',
+          model: 'gemini-2.5-flash',
           temperature: 0.8
         })
       })

@@ -26,6 +26,7 @@ interface IslandStatusCardProps {
     misc: number
   }
   className?: string
+  onEditClick?: () => void // 編輯按鈕回調
 }
 
 // 類別圖標映射
@@ -60,7 +61,8 @@ export function IslandStatusCard({
   categories = [],
   updatedAt,
   regionDistribution,
-  className = ''
+  className = '',
+  onEditClick
 }: IslandStatusCardProps) {
   // 計算最活躍的區域（前3個）
   const topRegions = regionDistribution
@@ -137,6 +139,22 @@ export function IslandStatusCard({
                   {description}
                 </p>
               </div>
+
+              {/* 編輯按鈕 */}
+              {onEditClick && (
+                <button
+                  onClick={onEditClick}
+                  className="w-10 h-10 rounded-[12px] flex items-center justify-center text-lg transition-all duration-200 hover:scale-110 active:scale-95"
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.35)',
+                    backdropFilter: 'blur(8px)',
+                    boxShadow: 'inset 0 2px 6px rgba(255, 255, 255, 0.4), 0 2px 8px rgba(0, 0, 0, 0.15)',
+                  }}
+                  title="編輯島嶼"
+                >
+                  🎨
+                </button>
+              )}
             </div>
           </div>
         </div>

@@ -75,7 +75,7 @@ export const categoryTypeDefs = gql`
   }
 
   # 分類統計
-  type CategoryStats {
+  type CustomCategoryStats {
     islandsCount: Int!
     subcategoriesCount: Int!
     totalMemories: Int!
@@ -146,12 +146,12 @@ export const categoryTypeDefs = gql`
     subcategory(id: ID!): Subcategory
 
     # 統計
-    categoryStats: CategoryStats!
+    categoryStats: CustomCategoryStats!
   }
 
   extend type Mutation {
     # 初始化分類系統（首次使用）
-    initializeCategories: CategoryStats!
+    initializeCategories: CustomCategoryStats!
 
     # 島嶼管理
     createIsland(input: CreateIslandInput!): Island!

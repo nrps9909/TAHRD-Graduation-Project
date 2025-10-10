@@ -48,8 +48,8 @@ export class MultimodalProcessor {
 
   constructor() {
     // 初始化 Gemini 模型
-    this.visionModel = genAI.getGenerativeModel({ model: 'gemini-2.5-pro' })
-    this.textModel = genAI.getGenerativeModel({ model: 'gemini-2.5-pro' })
+    this.visionModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
+    this.textModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
   }
 
   /**

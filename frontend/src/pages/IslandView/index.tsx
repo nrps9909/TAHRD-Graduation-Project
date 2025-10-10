@@ -21,7 +21,7 @@ export default function IslandView() {
   const [inputText, setInputText] = useState('')
   const [messages, setMessages] = useState<Message[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const { data, loading } = useQuery(GET_ASSISTANTS)
+  const { data, loading, refetch } = useQuery(GET_ASSISTANTS)
 
   // 获取当前assistant
   const assistant = data?.assistants.find((a: Assistant) => a.id === assistantId)
@@ -103,6 +103,23 @@ export default function IslandView() {
       e.preventDefault()
       handleSendMessage()
     }
+  }
+
+  // 处理島嶼編輯保存成功
+  const handleIslandSaveSuccess = async () => {
+    console.log('🟢 [IslandView] handleIslandSaveSuccess 被調用')
+    console.log('🟢 [IslandView] 當前 assistant 顏色:', assistant?.color)
+
+    // 重新獲取資料以更新 3D 場景
+    console.log('🟢 [IslandView] 準備 refetch 資料...')
+    const result = await refetch()
+
+    console.log('✅ [IslandView] refetch 完成')
+    console.log('✅ [IslandView] 新的 assistants 資料:', result.data.assistants)
+
+    const updatedAssistant = result.data.assistants.find((a: any) => a.id === assistantId)
+    console.log('✅ [IslandView] 更新後的 assistant:', updatedAssistant)
+    console.log('✅ [IslandView] 新顏色:', updatedAssistant?.color)
   }
 
   return (
@@ -526,6 +543,7 @@ export default function IslandView() {
           islandId={assistantId || ''}
           islandName={`${assistant.nameChinese}的島嶼`}
           currentColor={assistant.color}
+          onSaveSuccess={handleIslandSaveSuccess}
         />
       )}
 

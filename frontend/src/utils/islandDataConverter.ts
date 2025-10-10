@@ -66,11 +66,16 @@ export function assignMemoriesToIslands(
       island.categories.includes(memory.category)
     )
 
+    // 去重：確保每個記憶 ID 只出現一次
+    const uniqueMemories = Array.from(
+      new Map(islandMemories.map(m => [m.id, m])).values()
+    )
+
     return {
       ...island,
-      memories: islandMemories,
-      memoryCount: islandMemories.length,
-      regionDistribution: calculateRegionDistribution(islandMemories),
+      memories: uniqueMemories,
+      memoryCount: uniqueMemories.length,
+      regionDistribution: calculateRegionDistribution(uniqueMemories),
       updatedAt: new Date()
     }
   })

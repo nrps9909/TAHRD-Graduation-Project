@@ -7,10 +7,12 @@ import { useRef, useMemo, useEffect } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Water } from 'three-stdlib'
 import * as THREE from 'three'
+import { useEnvironmentStore } from '../../stores/environmentStore'
 
 export function RealisticOcean() {
   const waterRef = useRef<Water>(null)
   const { gl, scene, camera } = useThree()
+  const { sunPosition } = useEnvironmentStore()
 
   // 创建水面纹理
   const waterNormals = useMemo(() => {
@@ -33,11 +35,11 @@ export function RealisticOcean() {
       textureHeight: 512,
       waterNormals,
       sunDirection: new THREE.Vector3(0.7, 0.5, 0.3),
-      sunColor: 0xffffff,
-      waterColor: 0x89cff0, // 温暖的蓝色
-      distortionScale: 3.7,
+      sunColor: 0xfff8e1,      // 溫暖的陽光色
+      waterColor: 0x5BA3D0,    // 清新的海藍色（動森風格）
+      distortionScale: 2.0,    // 降低扭曲，讓反射更平滑
       fog: scene.fog !== undefined,
-      alpha: 0.9,
+      alpha: 0.95,             // 稍微提高透明度
     })
 
     waterInstance.rotation.x = -Math.PI / 2
@@ -56,10 +58,18 @@ export function RealisticOcean() {
     }
   }, [water, scene])
 
-  // 动画更新
+  // 动画更新 - 同步太陽方向
   useFrame((_, delta) => {
     if (water) {
       water.material.uniforms.time.value += delta * 0.3 // 波浪速度
+
+      // 同步太陽方向，讓反射更自然
+      const normalizedSunPos = new THREE.Vector3(
+        sunPosition.position.x,
+        sunPosition.position.y,
+        sunPosition.position.z
+      ).normalize()
+      water.material.uniforms.sunDirection.value.copy(normalizedSunPos)
     }
   })
 

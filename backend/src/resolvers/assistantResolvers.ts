@@ -107,6 +107,88 @@ export const assistantResolvers = {
       } catch (error) {
         throw new GraphQLError('Failed to classify and create: ' + (error as Error).message)
       }
+    },
+
+    /**
+     * 更新助手配置（顏色、外觀等）
+     */
+    updateAssistant: async (
+      _: any,
+      {
+        id,
+        color,
+        modelUrl,
+        textureId,
+        shape,
+        customShapeData,
+        islandHeight,
+        islandBevel
+      }: {
+        id: string
+        color?: string
+        modelUrl?: string
+        textureId?: string
+        shape?: string
+        customShapeData?: string
+        islandHeight?: number
+        islandBevel?: number
+      },
+      { prisma }: Context
+    ) => {
+      try {
+        const updateData: any = {}
+
+        if (color !== undefined) {
+          updateData.color = color
+        }
+
+        if (modelUrl !== undefined) {
+          updateData.modelUrl = modelUrl
+        }
+
+        if (textureId !== undefined) {
+          updateData.textureId = textureId
+        }
+
+        if (shape !== undefined) {
+          updateData.shape = shape
+        }
+
+        if (customShapeData !== undefined) {
+          updateData.customShapeData = customShapeData
+        }
+
+        if (islandHeight !== undefined) {
+          updateData.islandHeight = islandHeight
+        }
+
+        if (islandBevel !== undefined) {
+          updateData.islandBevel = islandBevel
+        }
+
+        const assistant = await prisma.assistant.update({
+          where: { id },
+          data: {
+            ...updateData,
+            updatedAt: new Date()
+          }
+        })
+
+        console.log('✅ Assistant updated:', {
+          id,
+          color,
+          modelUrl,
+          textureId,
+          shape,
+          customShapeData: customShapeData ? 'custom shape saved' : undefined,
+          islandHeight,
+          islandBevel
+        })
+        return assistant
+      } catch (error) {
+        console.error('❌ Failed to update assistant:', error)
+        throw new GraphQLError('Failed to update assistant: ' + (error as Error).message)
+      }
     }
   },
 

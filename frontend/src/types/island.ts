@@ -58,6 +58,14 @@ export interface Island {
     resources: number
     misc: number
   }
+
+  // 自訂形狀和 3D 配置（可選）
+  customShapeData?: string // JSON 字串，儲存自訂繪製的形狀點
+  islandHeight?: number // 島嶼高度（0.5-5.0）
+  islandBevel?: number // 島嶼邊緣斜率（0-2.0）
+  shape?: string // 預設形狀類型
+  textureId?: string // 紋理 ID
+  modelUrl?: string // 自訂 3D 模型 URL
 }
 
 /**

@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { useQuery } from '@apollo/client'
 import { GET_MEMORIES, GET_PINNED_MEMORIES } from '../../graphql/memory'
 import { GET_ASSISTANTS } from '../../graphql/knowledge'
+import { GET_SUBCATEGORIES, Subcategory } from '../../graphql/category'
 import MemoryCard from './MemoryCard'
 import MemoryDetailModal from './MemoryDetailModal'
 import CreateMemoryModal from './CreateMemoryModal'
@@ -13,20 +14,21 @@ type ViewMode = 'grid' | 'list'
 
 export default function KnowledgeDatabase() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
+  const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('') // 延遲搜尋
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState<SortOption>('recent')
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
   const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null)
   const [showArchived, setShowArchived] = useState(false)
   const [showCreateModal, setShowCreateModal] = useState(false)
-  const [advancedFilters, setAdvancedFilters] = useState<FilterOptions>({}) // 進階篩選狀態
+  const [advancedFilters, setAdvancedFilters] = useState<FilterOptions>({})
 
   // 搜尋防抖處理
   React.useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery)
-    }, 500) // 500ms 延遲
+    }, 500)
 
     return () => clearTimeout(timer)
   }, [searchQuery])
@@ -34,28 +36,47 @@ export default function KnowledgeDatabase() {
   // Fetch assistants for category filter
   const { data: assistantsData } = useQuery(GET_ASSISTANTS)
 
+  // Fetch subcategories
+  const { data: subcategoriesData } = useQuery(GET_SUBCATEGORIES)
+
   // Fetch pinned memories
   const { data: pinnedData } = useQuery(GET_PINNED_MEMORIES)
 
-  // Fetch all memories (使用延遲後的搜尋查詢)
+  // Fetch all memories
   const { data: memoriesData, loading, refetch } = useQuery(GET_MEMORIES, {
     variables: {
       filter: {
         category: selectedCategory === 'all' ? undefined : selectedCategory,
-        search: debouncedSearchQuery || undefined, // 使用延遲搜尋
+        search: debouncedSearchQuery || undefined,
         isArchived: showArchived,
       },
       limit: 100,
       offset: 0,
     },
-    fetchPolicy: 'cache-and-network', // 確保資料正確更新
-    notifyOnNetworkStatusChange: true, // 網路狀態改變時通知
+    fetchPolicy: 'cache-and-network',
+    notifyOnNetworkStatusChange: true,
   })
 
-  // 直接從 query 結果取得資料，避免引用問題
   const memories: Memory[] = memoriesData?.memories || []
   const pinnedMemories: Memory[] = pinnedData?.pinnedMemories || []
   const assistants = assistantsData?.assistants || []
+  const subcategories: Subcategory[] = subcategoriesData?.subcategories || []
+
+  // 統計每個 subcategory 的記憶數量
+  const subcategoryMemoryCounts = React.useMemo(() => {
+    const counts: Record<string, number> = {}
+    memories.forEach((memory: Memory) => {
+      if (memory.subcategoryId) {
+        counts[memory.subcategoryId] = (counts[memory.subcategoryId] || 0) + 1
+      }
+    })
+    pinnedMemories.forEach((memory: Memory) => {
+      if (memory.subcategoryId) {
+        counts[memory.subcategoryId] = (counts[memory.subcategoryId] || 0) + 1
+      }
+    })
+    return counts
+  }, [memories, pinnedMemories])
 
   // 提取所有唯一標籤
   const allTags = React.useMemo(() => {
@@ -69,16 +90,18 @@ export default function KnowledgeDatabase() {
     return Array.from(tagSet).sort()
   }, [memories, pinnedMemories])
 
-  // Sort and filter memories - 使用 useMemo 避免重複排序和引用問題
-  // 同時排除已釘選的記憶，避免重複顯示
+  // Sort and filter memories
   const sortedMemories = React.useMemo(() => {
-    // 建立釘選記憶的 ID Set 用於快速查找
     const pinnedIds = new Set(pinnedMemories.map(m => m.id))
 
-    // 過濾掉已釘選的記憶，然後應用進階篩選和排序
     return memories
-      .filter(memory => !pinnedIds.has(memory.id)) // 排除已釘選的
+      .filter(memory => !pinnedIds.has(memory.id))
       .filter(memory => {
+        // Subcategory 篩選
+        if (selectedSubcategoryId) {
+          if (memory.subcategoryId !== selectedSubcategoryId) return false
+        }
+
         // 標籤篩選
         if (advancedFilters.selectedTags && advancedFilters.selectedTags.length > 0) {
           const hasMatchingTag = memory.tags.some(tag =>
@@ -94,7 +117,6 @@ export default function KnowledgeDatabase() {
           }
         }
         if (advancedFilters.dateRange?.end) {
-          // 設定為當天結束時間（23:59:59）
           const endDate = new Date(advancedFilters.dateRange.end)
           endDate.setHours(23, 59, 59, 999)
           if (new Date(memory.createdAt) > endDate) {
@@ -113,112 +135,170 @@ export default function KnowledgeDatabase() {
             return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         }
       })
-  }, [memories, pinnedMemories, sortBy, advancedFilters]) // 添加 advancedFilters 依賴
+  }, [memories, pinnedMemories, sortBy, selectedSubcategoryId, advancedFilters])
 
   return (
-    <div className="min-h-screen" style={{ background: '#0f0f14' }}>
-      {/* Header - 充分利用水平空間的布局 */}
-      <div className="border-b sticky top-0 z-10 shadow-2xl backdrop-blur-lg" style={{ background: 'rgba(26, 26, 36, 0.95)', borderColor: '#35354a' }}>
-        <div className="max-w-6xl mx-auto px-6 py-3">
-          {/* 單行布局：所有控制項橫向排列，充分利用寬度 */}
-          <div className="flex items-center gap-3 mb-3">
-            {/* 左側：標題和統計 */}
-            <div className="flex items-baseline gap-2 flex-shrink-0">
-              <h1 className="text-2xl font-bold whitespace-nowrap" style={{ color: '#e8e8f0' }}>
-                💝 知識寶庫
+    <div
+      className="min-h-screen"
+      style={{
+        background: 'linear-gradient(135deg, #16213e 0%, #1a1a2e 100%)',
+      }}
+    >
+      {/* Header - 動森風格夜晚模式 */}
+      <div
+        className="border-b sticky top-0 z-10 shadow-2xl"
+        style={{
+          background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(26, 26, 46, 0.95) 100%)',
+          backdropFilter: 'blur(24px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+          borderColor: 'rgba(251, 191, 36, 0.3)',
+          boxShadow: '0 8px 32px 0 rgba(251, 191, 36, 0.15)',
+        }}
+      >
+        <div className="max-w-6xl mx-auto px-6 py-4">
+          {/* 標題區域 */}
+          <div className="flex items-center gap-3 mb-4">
+            <div
+              className="flex items-baseline gap-3 px-4 py-2 rounded-2xl"
+              style={{
+                background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.2) 0%, rgba(251, 146, 60, 0.2) 100%)',
+                border: '2px solid rgba(251, 191, 36, 0.4)',
+                boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.1)',
+              }}
+            >
+              <h1 className="text-3xl font-black" style={{ color: '#fef3c7', textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)' }}>
+                🌙 知識寶庫
               </h1>
-              <span className="text-xs font-medium px-2 py-1 rounded-full border" style={{ color: '#a8a8b8', background: '#2d2d3a', borderColor: '#2a2a38' }}>
-                {pinnedMemories.length + sortedMemories.length}
+              <span
+                className="text-sm font-bold px-3 py-1 rounded-full"
+                style={{
+                  background: 'rgba(251, 191, 36, 0.3)',
+                  color: '#fef3c7',
+                  boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.1)',
+                }}
+              >
+                ✨ {pinnedMemories.length + sortedMemories.length}
               </span>
             </div>
+          </div>
 
-            {/* 中間：分類篩選器 - 水平展開 */}
-            <div className="flex items-center gap-2 flex-1 overflow-x-auto scrollbar-hide">
-              <span className="text-xs font-medium whitespace-nowrap" style={{ color: '#78788a' }}>|</span>
+          {/* 分類和工具列 */}
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* 分類按鈕 */}
+            <div className="flex items-center gap-2 flex-wrap flex-1">
               <button
                 onClick={() => {
                   setSelectedCategory('all')
+                  setSelectedSubcategoryId(null)
                   refetch()
                 }}
-                className="px-4 py-1.5 rounded-full font-medium text-sm transition-all whitespace-nowrap hover:scale-105"
-                style={selectedCategory === 'all' ? {
-                  background: '#7c5cff',
-                  color: '#e8e8f0',
-                  boxShadow: '0 10px 25px rgba(124, 92, 255, 0.3)',
-                  transform: 'scale(1.05)'
+                className="px-4 py-2 rounded-2xl font-bold text-sm transition-all hover:scale-105"
+                style={selectedCategory === 'all' && !selectedSubcategoryId ? {
+                  background: 'linear-gradient(135deg, #fbbf24 0%, #fb923c 100%)',
+                  color: '#1a1a2e',
+                  boxShadow: '0 8px 20px rgba(251, 191, 36, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)',
                 } : {
-                  background: '#2d2d3a',
-                  color: '#a8a8b8',
-                  border: '1px solid #2a2a38'
+                  background: 'rgba(30, 41, 59, 0.6)',
+                  color: '#cbd5e1',
+                  border: '2px solid rgba(251, 191, 36, 0.2)',
                 }}
               >
-                🌈 全部
+                🌟 全部
               </button>
               {assistants.filter((a: any) => a.type !== 'CHIEF').map((assistant: any) => (
                 <button
                   key={assistant.id}
                   onClick={() => {
                     setSelectedCategory(assistant.type)
+                    setSelectedSubcategoryId(null)
                     refetch()
                   }}
-                  className="px-4 py-1.5 rounded-full font-medium text-sm transition-all whitespace-nowrap hover:scale-105"
-                  style={selectedCategory === assistant.type ? {
-                    background: '#7c5cff',
-                    color: '#e8e8f0',
-                    boxShadow: '0 10px 25px rgba(124, 92, 255, 0.3)',
-                    transform: 'scale(1.05)'
+                  className="px-4 py-2 rounded-2xl font-bold text-sm transition-all hover:scale-105"
+                  style={selectedCategory === assistant.type && !selectedSubcategoryId ? {
+                    background: 'linear-gradient(135deg, #fbbf24 0%, #fb923c 100%)',
+                    color: '#1a1a2e',
+                    boxShadow: '0 8px 20px rgba(251, 191, 36, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)',
                   } : {
-                    background: '#2d2d3a',
-                    color: '#a8a8b8',
-                    border: '1px solid #2a2a38'
+                    background: 'rgba(30, 41, 59, 0.6)',
+                    color: '#cbd5e1',
+                    border: '2px solid rgba(251, 191, 36, 0.2)',
                   }}
                 >
                   {assistant.emoji} {assistant.nameChinese}
                 </button>
               ))}
+
+              {/* Subcategory 按鈕 - 如果有自訂分類 */}
+              {subcategories.length > 0 && (
+                <>
+                  <div style={{ width: '2px', height: '24px', background: 'rgba(251, 191, 36, 0.3)', margin: '0 8px' }} />
+                  {subcategories.map((subcat) => (
+                    <button
+                      key={subcat.id}
+                      onClick={() => {
+                        setSelectedCategory('all')
+                        setSelectedSubcategoryId(selectedSubcategoryId === subcat.id ? null : subcat.id)
+                        refetch()
+                      }}
+                      className="px-4 py-2 rounded-2xl font-bold text-sm transition-all hover:scale-105 relative"
+                      style={selectedSubcategoryId === subcat.id ? {
+                        background: `linear-gradient(135deg, ${subcat.color} 0%, ${subcat.color}dd 100%)`,
+                        color: '#ffffff',
+                        boxShadow: `0 8px 20px ${subcat.color}66, inset 0 1px 0 rgba(255, 255, 255, 0.3)`,
+                      } : {
+                        background: 'rgba(30, 41, 59, 0.6)',
+                        color: '#cbd5e1',
+                        border: `2px solid ${subcat.color}33`,
+                      }}
+                    >
+                      {subcat.emoji} {subcat.nameChinese}
+                      {(subcategoryMemoryCounts[subcat.id] || 0) > 0 && (
+                        <span className="ml-2 opacity-90 text-xs">
+                          {subcategoryMemoryCounts[subcat.id]}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </>
+              )}
             </div>
 
-            {/* 右側：搜尋和工具列 */}
+            {/* 工具列 */}
             <div className="flex items-center gap-2 flex-shrink-0">
               {/* 搜尋欄 */}
-              <div className="relative w-64">
+              <div className="relative">
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="搜尋記憶..."
-                  className="w-full px-3 py-2 pl-9 border rounded-lg focus:outline-none focus:ring-2 text-sm transition-all"
+                  className="w-64 px-4 py-2 pl-10 rounded-2xl focus:outline-none text-sm transition-all font-medium"
                   style={{
-                    background: '#2d2d3a',
-                    borderColor: '#35354a',
-                    color: '#e8e8f0'
+                    background: 'rgba(30, 41, 59, 0.6)',
+                    border: '2px solid rgba(251, 191, 36, 0.2)',
+                    color: '#fef3c7',
                   }}
                   onFocus={(e) => {
-                    e.target.style.borderColor = '#7c5cff'
-                    e.target.style.boxShadow = '0 0 0 3px rgba(124, 92, 255, 0.2)'
+                    e.target.style.borderColor = 'rgba(251, 191, 36, 0.6)'
+                    e.target.style.boxShadow = '0 0 0 4px rgba(251, 191, 36, 0.15)'
                   }}
                   onBlur={(e) => {
-                    e.target.style.borderColor = '#35354a'
+                    e.target.style.borderColor = 'rgba(251, 191, 36, 0.2)'
                     e.target.style.boxShadow = 'none'
                   }}
                 />
-                <svg className="w-4 h-4 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: '#78788a' }}>
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
+                <span className="absolute left-3 top-2.5 text-lg">🔍</span>
               </div>
 
-              {/* 分隔線 */}
-              <div className="h-6 w-px" style={{ background: '#35354a' }}></div>
-
-              {/* 排序選擇器 */}
+              {/* 排序 */}
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as SortOption)}
-                className="px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 text-sm transition-all cursor-pointer"
+                className="px-4 py-2 rounded-2xl focus:outline-none text-sm transition-all cursor-pointer font-bold"
                 style={{
-                  background: '#2d2d3a',
-                  borderColor: '#35354a',
-                  color: '#e8e8f0'
+                  background: 'rgba(30, 41, 59, 0.6)',
+                  border: '2px solid rgba(251, 191, 36, 0.2)',
+                  color: '#cbd5e1',
                 }}
               >
                 <option value="recent">⏰ 最新</option>
@@ -226,37 +306,41 @@ export default function KnowledgeDatabase() {
               </select>
 
               {/* 視圖切換 */}
-              <div className="flex gap-1 rounded-lg p-1 border" style={{ background: '#2d2d3a', borderColor: '#2a2a38' }}>
+              <div
+                className="flex gap-1 p-1 rounded-2xl"
+                style={{
+                  background: 'rgba(30, 41, 59, 0.6)',
+                  border: '2px solid rgba(251, 191, 36, 0.2)',
+                }}
+              >
                 <button
                   onClick={() => setViewMode('grid')}
-                  className="p-2 rounded transition-all"
+                  className="p-2 rounded-xl transition-all"
                   style={viewMode === 'grid' ? {
-                    background: '#7c5cff',
-                    color: '#e8e8f0',
-                    boxShadow: '0 10px 25px rgba(124, 92, 255, 0.3)'
+                    background: 'linear-gradient(135deg, #fbbf24 0%, #fb923c 100%)',
+                    color: '#1a1a2e',
                   } : {
-                    color: '#78788a'
+                    color: '#94a3b8',
                   }}
                   title="網格視圖"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
                   </svg>
                 </button>
                 <button
                   onClick={() => setViewMode('list')}
-                  className="p-2 rounded transition-all"
+                  className="p-2 rounded-xl transition-all"
                   style={viewMode === 'list' ? {
-                    background: '#7c5cff',
-                    color: '#e8e8f0',
-                    boxShadow: '0 10px 25px rgba(124, 92, 255, 0.3)'
+                    background: 'linear-gradient(135deg, #fbbf24 0%, #fb923c 100%)',
+                    color: '#1a1a2e',
                   } : {
-                    color: '#78788a'
+                    color: '#94a3b8',
                   }}
                   title="列表視圖"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 6h16M4 12h16M4 18h16" />
                   </svg>
                 </button>
               </div>
@@ -264,15 +348,15 @@ export default function KnowledgeDatabase() {
               {/* 封存切換 */}
               <button
                 onClick={() => setShowArchived(!showArchived)}
-                className="px-3 py-2 rounded-lg font-medium text-sm transition-all whitespace-nowrap border"
+                className="px-4 py-2 rounded-2xl font-bold text-sm transition-all hover:scale-105"
                 style={showArchived ? {
-                  background: '#7c5cff',
-                  color: '#e8e8f0',
-                  boxShadow: '0 10px 25px rgba(124, 92, 255, 0.3)'
+                  background: 'linear-gradient(135deg, #fbbf24 0%, #fb923c 100%)',
+                  color: '#1a1a2e',
+                  boxShadow: '0 8px 20px rgba(251, 191, 36, 0.4)',
                 } : {
-                  background: '#2d2d3a',
-                  color: '#a8a8b8',
-                  borderColor: '#2a2a38'
+                  background: 'rgba(30, 41, 59, 0.6)',
+                  color: '#cbd5e1',
+                  border: '2px solid rgba(251, 191, 36, 0.2)',
                 }}
                 title={showArchived ? '隱藏封存' : '顯示封存'}
               >
@@ -301,8 +385,15 @@ export default function KnowledgeDatabase() {
         {/* Pinned Memories */}
         {pinnedMemories.length > 0 && !showArchived && (
           <div className="mb-6">
-            <h2 className="text-base font-semibold mb-3 flex items-center gap-1.5" style={{ color: '#e8e8f0' }}>
-              📌 釘選
+            <h2
+              className="text-lg font-black mb-4 flex items-center gap-2 px-4 py-2 rounded-2xl inline-flex"
+              style={{
+                color: '#fef3c7',
+                background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.2) 0%, rgba(251, 146, 60, 0.2) 100%)',
+                border: '2px solid rgba(251, 191, 36, 0.3)',
+              }}
+            >
+              📌 釘選記憶
             </h2>
             <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4' : 'space-y-3'}>
               {pinnedMemories.map((memory) => (
@@ -321,19 +412,38 @@ export default function KnowledgeDatabase() {
         {/* All Memories */}
         {loading ? (
           <div className="text-center py-20">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-t-transparent" style={{ borderColor: '#7c5cff', borderTopColor: 'transparent' }}></div>
-            <p className="mt-4" style={{ color: '#a8a8b8' }}>載入中...</p>
+            <div
+              className="inline-block animate-spin rounded-full h-16 w-16 border-4"
+              style={{
+                borderColor: 'rgba(251, 191, 36, 0.3)',
+                borderTopColor: '#fbbf24',
+              }}
+            ></div>
+            <p className="mt-4 font-bold text-lg" style={{ color: '#cbd5e1' }}>載入中...</p>
           </div>
         ) : sortedMemories.length === 0 ? (
-          <div className="text-center py-20">
-            <div className="text-6xl mb-4">🌸</div>
-            <p className="text-lg" style={{ color: '#a8a8b8' }}>還沒有記憶呢</p>
-            <p className="text-sm mt-2" style={{ color: '#78788a' }}>開始記錄你的想法吧！</p>
+          <div
+            className="text-center py-20 rounded-3xl"
+            style={{
+              background: 'rgba(30, 41, 59, 0.4)',
+              border: '2px solid rgba(251, 191, 36, 0.2)',
+            }}
+          >
+            <div className="text-7xl mb-4">🌸</div>
+            <p className="text-xl font-black mb-2" style={{ color: '#fef3c7' }}>還沒有記憶呢</p>
+            <p className="text-sm font-semibold" style={{ color: '#94a3b8' }}>開始記錄你的想法吧！</p>
           </div>
         ) : (
           <>
             {pinnedMemories.length > 0 && !showArchived && (
-              <h2 className="text-base font-semibold mb-3 flex items-center gap-1.5" style={{ color: '#e8e8f0' }}>
+              <h2
+                className="text-lg font-black mb-4 flex items-center gap-2 px-4 py-2 rounded-2xl inline-flex"
+                style={{
+                  color: '#fef3c7',
+                  background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.2) 0%, rgba(251, 146, 60, 0.2) 100%)',
+                  border: '2px solid rgba(251, 191, 36, 0.3)',
+                }}
+              >
                 📚 所有記憶
               </h2>
             )}
@@ -352,26 +462,24 @@ export default function KnowledgeDatabase() {
         )}
       </div>
 
-      {/* Floating Action Button */}
+      {/* Floating Action Button - 動森風格 */}
       <button
         onClick={() => setShowCreateModal(true)}
-        className="fixed bottom-6 right-6 w-14 h-14 rounded-full flex items-center justify-center z-20 transition-all duration-300 hover:scale-110"
+        className="fixed bottom-8 right-8 w-16 h-16 rounded-full flex items-center justify-center z-20 transition-all duration-300 hover:scale-110 active:scale-95"
         style={{
-          background: '#7c5cff',
-          color: '#e8e8f0',
-          boxShadow: '0 20px 40px rgba(124, 92, 255, 0.4)'
+          background: 'linear-gradient(135deg, #fbbf24 0%, #fb923c 100%)',
+          boxShadow: '0 8px 32px rgba(251, 191, 36, 0.5), inset 0 2px 0 rgba(255, 255, 255, 0.3)',
+          border: '3px solid rgba(255, 255, 255, 0.2)',
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.background = '#ff6eb4'
-          e.currentTarget.style.boxShadow = '0 20px 40px rgba(255, 110, 180, 0.4)'
+          e.currentTarget.style.boxShadow = '0 12px 40px rgba(251, 191, 36, 0.6), inset 0 2px 0 rgba(255, 255, 255, 0.3)'
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.background = '#7c5cff'
-          e.currentTarget.style.boxShadow = '0 20px 40px rgba(124, 92, 255, 0.4)'
+          e.currentTarget.style.boxShadow = '0 8px 32px rgba(251, 191, 36, 0.5), inset 0 2px 0 rgba(255, 255, 255, 0.3)'
         }}
-        title="新增知識"
+        title="新增記憶"
       >
-        <span className="text-2xl">✨</span>
+        <span className="text-3xl">✨</span>
       </button>
 
       {/* Create Memory Modal */}
