@@ -530,8 +530,8 @@ model Island {
   position         Int
 
   // 自訂資訊
-  name             String   // 英文名稱，例如：LEARNING_ISLAND
-  nameChinese      String   @map("name_chinese") // 中文名稱
+  name             String?  // 英文名稱（已廢棄，僅向後兼容）
+  nameChinese      String   @map("name_chinese") // 中文名稱（主要使用）
   emoji            String   @default("🏝️")
   color            String   @default("#FFB3D9") // Hex color code
   description      String?  @db.String
@@ -540,6 +540,14 @@ model Island {
   positionX        Float    @default(0) @map("position_x")
   positionY        Float    @default(0) @map("position_y")
   positionZ        Float    @default(0) @map("position_z")
+
+  // 3D 外觀配置（可選）
+  modelUrl         String?  @map("model_url") // Custom 3D model URL (GLTF/GLB)
+  textureId        String?  @map("texture_id") // Selected texture ID
+  shape            String?  @default("circle") // Island shape: circle, hexagon, square, organic, etc.
+  customShapeData  String?  @map("custom_shape_data") @db.String // JSON string of custom drawn shape points
+  islandHeight     Float?   @default(2.0) @map("island_height") // Island height (0.5-5.0)
+  islandBevel      Float?   @default(0.5) @map("island_bevel") // Island edge bevel/slope (0-2.0)
 
   // 統計
   subcategoryCount Int      @default(0) @map("subcategory_count")
@@ -571,8 +579,8 @@ model Subcategory {
   position         Int
 
   // 自訂資訊
-  name             String   // 英文名稱，例如：LEARNING
-  nameChinese      String   @map("name_chinese") // 中文名稱
+  name             String?  // 英文名稱（已廢棄，僅向後兼容）
+  nameChinese      String   @map("name_chinese") // 中文名稱（主要使用）
   emoji            String   @default("📚")
   color            String   @default("#FFB3D9")
   description      String?  @db.String

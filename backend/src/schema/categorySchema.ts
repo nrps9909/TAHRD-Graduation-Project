@@ -21,6 +21,14 @@ export const categoryTypeDefs = gql`
     positionY: Float!
     positionZ: Float!
 
+    # 3D 外觀配置（可選）
+    modelUrl: String
+    textureId: String
+    shape: String
+    customShapeData: String
+    islandHeight: Float
+    islandBevel: Float
+
     # 統計
     subcategoryCount: Int!
     memoryCount: Int!

@@ -1083,11 +1083,13 @@ export default function TororoKnowledgeAssistant({
                 </h2>
 
                 {/* Result Cards */}
-                <div className="bg-gradient-to-br from-amber-50/95 to-yellow-50/95 backdrop-blur-sm rounded-3xl p-8 shadow-xl border-2 border-amber-200/70 mb-6">
-                  {/* 顯示白噗噗的溫馨回應，而不是技術性摘要 */}
-                  <p className="text-lg text-amber-900 mb-4 leading-relaxed font-medium">
-                    {processingResult.tororoResponse?.warmMessage || '已成功記錄！'}
-                  </p>
+                <div className="bg-gradient-to-br from-amber-50/95 to-yellow-50/95 backdrop-blur-sm rounded-3xl p-8 shadow-xl border-2 border-amber-200/70 mb-6 space-y-4">
+                  {/* 記錄內容摘要（對話框顯示） */}
+                  {processingResult.tororoResponse?.recordSummary && (
+                    <p className="text-base text-amber-800 leading-relaxed font-medium">
+                      {processingResult.tororoResponse.recordSummary}
+                    </p>
+                  )}
 
                   {processingResult.memoriesCreated.length > 0 && (
                     <div className="flex flex-wrap gap-3 justify-center">

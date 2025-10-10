@@ -22,6 +22,8 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
     autoSave: true,
     showTutorial: true,
     showNotifications: true,
+    showMemoryFlowers: true,
+    showIslandAnimations: true,
 
     // 音效設定
     masterVolume: 80,
@@ -53,50 +55,104 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* 背景遮罩 */}
+          {/* 背景遮罩 - 黑夜模式 */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[45]"
+            className="fixed inset-0 backdrop-blur-sm z-[45]"
+            style={{
+              background: 'rgba(22, 33, 62, 0.7)',
+            }}
             onClick={onClose}
           />
 
-          {/* 設定選單主體 */}
+          {/* 設定選單主體 - 動森風格黑夜模式 */}
           <motion.div
             initial={{ x: -400, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: -400, opacity: 0 }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className={`fixed left-0 top-0 bottom-0 w-[500px] bg-gradient-to-br from-pink-50 via-yellow-50 to-pink-100 shadow-2xl ${Z_INDEX_CLASSES.SIDEBAR} overflow-hidden`}
+            className={`fixed left-0 top-0 bottom-0 w-[500px] shadow-2xl ${Z_INDEX_CLASSES.SIDEBAR} overflow-hidden`}
+            style={{
+              background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(26, 26, 46, 0.95) 100%)',
+              backdropFilter: 'blur(16px) saturate(150%)',
+              WebkitBackdropFilter: 'blur(16px) saturate(150%)',
+              borderRight: '3px solid rgba(251, 191, 36, 0.3)',
+              boxShadow: '4px 0 24px rgba(251, 191, 36, 0.2)',
+            }}
           >
-            {/* 標題區域 */}
-            <div className="bg-gradient-to-r from-pink-500 to-yellow-500 p-6 text-white">
+            {/* 標題區域 - 深色優雅 */}
+            <div className="p-6" style={{
+              background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(251, 146, 60, 0.15) 100%)',
+              borderBottom: '2px solid rgba(251, 191, 36, 0.3)',
+            }}>
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-2xl font-black">⚙️ 遊戲設定</h2>
-                  <p className="text-sm text-white/80 mt-1">心語小鎮設定選單</p>
+                  <h2 className="text-2xl font-black" style={{
+                    color: '#fef3c7',
+                    textShadow: '0 2px 8px rgba(251, 191, 36, 0.3)',
+                  }}>
+                    ⚙️ 遊戲設定
+                  </h2>
+                  <p className="text-sm mt-1 font-semibold" style={{ color: '#94a3b8' }}>
+                    心語小鎮設定選單
+                  </p>
                 </div>
                 <button
                   onClick={onClose}
-                  className="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-all"
+                  className="w-12 h-12 rounded-2xl flex items-center justify-center transition-all hover:scale-110"
+                  style={{
+                    background: 'rgba(30, 41, 59, 0.6)',
+                    border: '2px solid rgba(251, 191, 36, 0.3)',
+                    color: '#cbd5e1',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(251, 191, 36, 0.3)'
+                    e.currentTarget.style.color = '#fef3c7'
+                    e.currentTarget.style.transform = 'scale(1.1) rotate(90deg)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'rgba(30, 41, 59, 0.6)'
+                    e.currentTarget.style.color = '#cbd5e1'
+                    e.currentTarget.style.transform = 'scale(1)'
+                  }}
                 >
-                  ✕
+                  <span className="text-xl">✕</span>
                 </button>
               </div>
             </div>
 
-            {/* 分頁標籤 */}
-            <div className="flex bg-white/60 border-b-2 border-pink-200">
+            {/* 分頁標籤 - 黑夜模式 */}
+            <div className="flex border-b" style={{
+              background: 'rgba(30, 41, 59, 0.4)',
+              borderColor: 'rgba(251, 191, 36, 0.2)',
+            }}>
               {tabs.map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex-1 py-3 px-2 text-sm font-bold transition-all ${
-                    activeTab === tab.id
-                      ? 'bg-white text-pink-600 border-b-4 border-pink-500'
-                      : 'text-gray-600 hover:bg-white/40'
-                  }`}
+                  className="flex-1 py-3 px-2 text-sm font-bold transition-all"
+                  style={activeTab === tab.id ? {
+                    background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.25) 0%, rgba(251, 146, 60, 0.25) 100%)',
+                    color: '#fef3c7',
+                    borderBottom: '3px solid #fbbf24',
+                    boxShadow: '0 4px 12px rgba(251, 191, 36, 0.2)',
+                  } : {
+                    color: '#94a3b8',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (activeTab !== tab.id) {
+                      e.currentTarget.style.background = 'rgba(251, 191, 36, 0.1)'
+                      e.currentTarget.style.color = '#cbd5e1'
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (activeTab !== tab.id) {
+                      e.currentTarget.style.background = 'transparent'
+                      e.currentTarget.style.color = '#94a3b8'
+                    }
+                  }}
                 >
                   <div className="text-lg mb-1">{tab.icon}</div>
                   <div className="text-xs">{tab.label}</div>
@@ -113,49 +169,131 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
                   animate={{ opacity: 1, y: 0 }}
                   className="space-y-4"
                 >
-                  <div className="bg-white/80 rounded-xl p-4 shadow-md">
-                    <h3 className="font-bold text-lg mb-3 text-pink-600">📝 基本設定</h3>
+                  <div className="rounded-2xl p-5 shadow-lg" style={{
+                    background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(26, 26, 46, 0.6) 100%)',
+                    backdropFilter: 'blur(12px)',
+                    border: '2px solid rgba(251, 191, 36, 0.2)',
+                  }}>
+                    <h3 className="font-bold text-lg mb-4" style={{ color: '#fbbf24', textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)' }}>
+                      📝 基本設定
+                    </h3>
 
                     <div className="space-y-3">
-                      <label className="flex items-center justify-between">
-                        <span className="text-sm font-medium">自動儲存</span>
+                      <label className="flex items-center justify-between p-3 rounded-xl transition-all" style={{
+                        background: 'rgba(30, 41, 59, 0.4)',
+                        border: '1px solid rgba(251, 191, 36, 0.15)',
+                      }}>
+                        <span className="text-sm font-bold" style={{ color: '#fef3c7' }}>自動儲存</span>
                         <input
                           type="checkbox"
                           checked={settings.autoSave}
                           onChange={(e) => setSettings({ ...settings, autoSave: e.target.checked })}
-                          className="w-5 h-5 rounded accent-pink-500"
+                          className="w-5 h-5 rounded accent-amber-500"
                         />
                       </label>
 
-                      <label className="flex items-center justify-between">
-                        <span className="text-sm font-medium">顯示新手教學</span>
+                      <label className="flex items-center justify-between p-3 rounded-xl transition-all" style={{
+                        background: 'rgba(30, 41, 59, 0.4)',
+                        border: '1px solid rgba(251, 191, 36, 0.15)',
+                      }}>
+                        <span className="text-sm font-bold" style={{ color: '#fef3c7' }}>顯示新手教學</span>
                         <input
                           type="checkbox"
                           checked={settings.showTutorial}
                           onChange={(e) => setSettings({ ...settings, showTutorial: e.target.checked })}
-                          className="w-5 h-5 rounded accent-pink-500"
+                          className="w-5 h-5 rounded accent-amber-500"
                         />
                       </label>
 
-                      <label className="flex items-center justify-between">
-                        <span className="text-sm font-medium">顯示通知</span>
+                      <label className="flex items-center justify-between p-3 rounded-xl transition-all" style={{
+                        background: 'rgba(30, 41, 59, 0.4)',
+                        border: '1px solid rgba(251, 191, 36, 0.15)',
+                      }}>
+                        <span className="text-sm font-bold" style={{ color: '#fef3c7' }}>顯示通知</span>
                         <input
                           type="checkbox"
                           checked={settings.showNotifications}
                           onChange={(e) => setSettings({ ...settings, showNotifications: e.target.checked })}
-                          className="w-5 h-5 rounded accent-pink-500"
+                          className="w-5 h-5 rounded accent-amber-500"
+                        />
+                      </label>
+
+                      <label className="flex items-center justify-between p-3 rounded-xl transition-all" style={{
+                        background: 'rgba(30, 41, 59, 0.4)',
+                        border: '1px solid rgba(251, 191, 36, 0.15)',
+                      }}>
+                        <span className="text-sm font-bold" style={{ color: '#fef3c7' }}>🌳 顯示記憶樹</span>
+                        <input
+                          type="checkbox"
+                          checked={settings.showMemoryFlowers}
+                          onChange={(e) => setSettings({ ...settings, showMemoryFlowers: e.target.checked })}
+                          className="w-5 h-5 rounded accent-amber-500"
+                        />
+                      </label>
+
+                      <label className="flex items-center justify-between p-3 rounded-xl transition-all" style={{
+                        background: 'rgba(30, 41, 59, 0.4)',
+                        border: '1px solid rgba(251, 191, 36, 0.15)',
+                      }}>
+                        <span className="text-sm font-bold" style={{ color: '#fef3c7' }}>🏝️ 島嶼動畫效果</span>
+                        <input
+                          type="checkbox"
+                          checked={settings.showIslandAnimations}
+                          onChange={(e) => setSettings({ ...settings, showIslandAnimations: e.target.checked })}
+                          className="w-5 h-5 rounded accent-amber-500"
                         />
                       </label>
                     </div>
                   </div>
 
-                  <div className="bg-white/80 rounded-xl p-4 shadow-md">
-                    <h3 className="font-bold text-lg mb-3 text-pink-600">ℹ️ 遊戲說明</h3>
-                    <div className="text-sm text-gray-700 space-y-2">
-                      <p>🏝️ <strong>探索島嶼</strong>：點擊不同的知識島嶼進入詳細檢視</p>
-                      <p>🌸 <strong>記憶花朵</strong>：每個記憶都會以花朵形式綻放在島上</p>
-                      <p>🐱 <strong>AI 貓咪</strong>：與可愛的 AI 貓咪助手對話</p>
-                      <p>📚 <strong>知識寶庫</strong>：中央水晶球可查看所有知識</p>
+                  <div className="rounded-2xl p-5 shadow-lg" style={{
+                    background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(26, 26, 46, 0.6) 100%)',
+                    backdropFilter: 'blur(12px)',
+                    border: '2px solid rgba(251, 191, 36, 0.2)',
+                  }}>
+                    <h3 className="font-bold text-lg mb-4" style={{ color: '#fbbf24', textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)' }}>
+                      ℹ️ 遊戲說明
+                    </h3>
+                    <div className="text-sm space-y-3" style={{ color: '#cbd5e1', lineHeight: '1.6' }}>
+                      <div className="p-3 rounded-xl" style={{
+                        background: 'rgba(251, 191, 36, 0.1)',
+                        border: '1px solid rgba(251, 191, 36, 0.2)',
+                      }}>
+                        <p className="font-bold mb-1" style={{ color: '#fbbf24' }}>🏝️ 探索島嶼</p>
+                        <p>點擊不同的知識島嶼進入詳細檢視，每個島嶼代表一個知識領域</p>
+                      </div>
+
+                      <div className="p-3 rounded-xl" style={{
+                        background: 'rgba(251, 191, 36, 0.1)',
+                        border: '1px solid rgba(251, 191, 36, 0.2)',
+                      }}>
+                        <p className="font-bold mb-1" style={{ color: '#fbbf24' }}>🌳 記憶樹</p>
+                        <p>每個記憶都會以生長的樹木形式呈現在島上，顏色和高度反映記憶的特性</p>
+                      </div>
+
+                      <div className="p-3 rounded-xl" style={{
+                        background: 'rgba(251, 191, 36, 0.1)',
+                        border: '1px solid rgba(251, 191, 36, 0.2)',
+                      }}>
+                        <p className="font-bold mb-1" style={{ color: '#fbbf24' }}>🐱 AI 貓咪助手</p>
+                        <p>與可愛的白噗噗（Tororo）和小黑（Hijiki）對話，幫助你整理知識</p>
+                      </div>
+
+                      <div className="p-3 rounded-xl" style={{
+                        background: 'rgba(251, 191, 36, 0.1)',
+                        border: '1px solid rgba(251, 191, 36, 0.2)',
+                      }}>
+                        <p className="font-bold mb-1" style={{ color: '#fbbf24' }}>💝 知識寶庫</p>
+                        <p>中央的知識寶庫可查看和管理所有記憶，支援搜尋和分類</p>
+                      </div>
+
+                      <div className="p-3 rounded-xl" style={{
+                        background: 'rgba(251, 191, 36, 0.1)',
+                        border: '1px solid rgba(251, 191, 36, 0.2)',
+                      }}>
+                        <p className="font-bold mb-1" style={{ color: '#fbbf24' }}>🎨 島嶼創建器</p>
+                        <p>使用島嶼創建器自由繪製和自定義你的專屬島嶼形狀</p>
+                      </div>
                     </div>
                   </div>
                 </motion.div>
@@ -168,69 +306,44 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
                   animate={{ opacity: 1, y: 0 }}
                   className="space-y-4"
                 >
-                  <div className="bg-white/80 rounded-xl p-4 shadow-md">
-                    <h3 className="font-bold text-lg mb-3 text-pink-600">🎵 音量控制</h3>
+                  <div className="rounded-2xl p-5 shadow-lg" style={{
+                    background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(26, 26, 46, 0.6) 100%)',
+                    backdropFilter: 'blur(12px)',
+                    border: '2px solid rgba(251, 191, 36, 0.2)',
+                  }}>
+                    <h3 className="font-bold text-lg mb-4" style={{ color: '#fbbf24', textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)' }}>
+                      🎵 音量控制
+                    </h3>
 
                     <div className="space-y-4">
-                      <div>
-                        <div className="flex justify-between mb-2">
-                          <label className="text-sm font-medium">主音量</label>
-                          <span className="text-sm text-gray-600">{settings.masterVolume}%</span>
+                      {[
+                        { label: '主音量', key: 'masterVolume' as const },
+                        { label: '背景音樂', key: 'musicVolume' as const },
+                        { label: '音效', key: 'sfxVolume' as const },
+                        { label: '環境音', key: 'ambientVolume' as const },
+                      ].map(({ label, key }) => (
+                        <div key={key} className="p-3 rounded-xl" style={{
+                          background: 'rgba(30, 41, 59, 0.4)',
+                          border: '1px solid rgba(251, 191, 36, 0.15)',
+                        }}>
+                          <div className="flex justify-between mb-2">
+                            <label className="text-sm font-bold" style={{ color: '#fef3c7' }}>{label}</label>
+                            <span className="text-sm font-bold" style={{ color: '#fbbf24' }}>{settings[key]}%</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            value={settings[key]}
+                            onChange={(e) => setSettings({ ...settings, [key]: parseInt(e.target.value) })}
+                            className="w-full accent-amber-500"
+                            style={{
+                              height: '8px',
+                              borderRadius: '4px',
+                            }}
+                          />
                         </div>
-                        <input
-                          type="range"
-                          min="0"
-                          max="100"
-                          value={settings.masterVolume}
-                          onChange={(e) => setSettings({ ...settings, masterVolume: parseInt(e.target.value) })}
-                          className="w-full accent-pink-500"
-                        />
-                      </div>
-
-                      <div>
-                        <div className="flex justify-between mb-2">
-                          <label className="text-sm font-medium">背景音樂</label>
-                          <span className="text-sm text-gray-600">{settings.musicVolume}%</span>
-                        </div>
-                        <input
-                          type="range"
-                          min="0"
-                          max="100"
-                          value={settings.musicVolume}
-                          onChange={(e) => setSettings({ ...settings, musicVolume: parseInt(e.target.value) })}
-                          className="w-full accent-pink-500"
-                        />
-                      </div>
-
-                      <div>
-                        <div className="flex justify-between mb-2">
-                          <label className="text-sm font-medium">音效</label>
-                          <span className="text-sm text-gray-600">{settings.sfxVolume}%</span>
-                        </div>
-                        <input
-                          type="range"
-                          min="0"
-                          max="100"
-                          value={settings.sfxVolume}
-                          onChange={(e) => setSettings({ ...settings, sfxVolume: parseInt(e.target.value) })}
-                          className="w-full accent-pink-500"
-                        />
-                      </div>
-
-                      <div>
-                        <div className="flex justify-between mb-2">
-                          <label className="text-sm font-medium">環境音</label>
-                          <span className="text-sm text-gray-600">{settings.ambientVolume}%</span>
-                        </div>
-                        <input
-                          type="range"
-                          min="0"
-                          max="100"
-                          value={settings.ambientVolume}
-                          onChange={(e) => setSettings({ ...settings, ambientVolume: parseInt(e.target.value) })}
-                          className="w-full accent-pink-500"
-                        />
-                      </div>
+                      ))}
                     </div>
                   </div>
                 </motion.div>
@@ -243,16 +356,27 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
                   animate={{ opacity: 1, y: 0 }}
                   className="space-y-4"
                 >
-                  <div className="bg-white/80 rounded-xl p-4 shadow-md">
-                    <h3 className="font-bold text-lg mb-3 text-pink-600">🎨 畫面品質</h3>
+                  <div className="rounded-2xl p-5 shadow-lg" style={{
+                    background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(26, 26, 46, 0.6) 100%)',
+                    backdropFilter: 'blur(12px)',
+                    border: '2px solid rgba(251, 191, 36, 0.2)',
+                  }}>
+                    <h3 className="font-bold text-lg mb-4" style={{ color: '#fbbf24', textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)' }}>
+                      🎨 畫面品質
+                    </h3>
 
                     <div className="space-y-4">
                       <div>
-                        <label className="text-sm font-medium block mb-2">圖形品質</label>
+                        <label className="text-sm font-bold block mb-2" style={{ color: '#fef3c7' }}>圖形品質</label>
                         <select
                           value={settings.quality}
                           onChange={(e) => setSettings({ ...settings, quality: e.target.value as any })}
-                          className="w-full px-4 py-2 rounded-lg border-2 border-pink-200 focus:border-pink-400 focus:outline-none"
+                          className="w-full px-4 py-3 rounded-xl font-bold focus:outline-none"
+                          style={{
+                            border: '2px solid rgba(251, 191, 36, 0.3)',
+                            background: 'rgba(30, 41, 59, 0.6)',
+                            color: '#fef3c7',
+                          }}
                         >
                           <option value="low">低 - 提升效能</option>
                           <option value="medium">中 - 平衡</option>
@@ -260,35 +384,24 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
                         </select>
                       </div>
 
-                      <label className="flex items-center justify-between">
-                        <span className="text-sm font-medium">顯示 FPS</span>
-                        <input
-                          type="checkbox"
-                          checked={settings.showFPS}
-                          onChange={(e) => setSettings({ ...settings, showFPS: e.target.checked })}
-                          className="w-5 h-5 rounded accent-pink-500"
-                        />
-                      </label>
-
-                      <label className="flex items-center justify-between">
-                        <span className="text-sm font-medium">粒子效果</span>
-                        <input
-                          type="checkbox"
-                          checked={settings.showParticles}
-                          onChange={(e) => setSettings({ ...settings, showParticles: e.target.checked })}
-                          className="w-5 h-5 rounded accent-pink-500"
-                        />
-                      </label>
-
-                      <label className="flex items-center justify-between">
-                        <span className="text-sm font-medium">動態陰影</span>
-                        <input
-                          type="checkbox"
-                          checked={settings.showShadows}
-                          onChange={(e) => setSettings({ ...settings, showShadows: e.target.checked })}
-                          className="w-5 h-5 rounded accent-pink-500"
-                        />
-                      </label>
+                      {[
+                        { label: '顯示 FPS', key: 'showFPS' as const },
+                        { label: '粒子效果', key: 'showParticles' as const },
+                        { label: '動態陰影', key: 'showShadows' as const },
+                      ].map(({ label, key }) => (
+                        <label key={key} className="flex items-center justify-between p-3 rounded-xl transition-all" style={{
+                          background: 'rgba(30, 41, 59, 0.4)',
+                          border: '1px solid rgba(251, 191, 36, 0.15)',
+                        }}>
+                          <span className="text-sm font-bold" style={{ color: '#fef3c7' }}>{label}</span>
+                          <input
+                            type="checkbox"
+                            checked={settings[key]}
+                            onChange={(e) => setSettings({ ...settings, [key]: e.target.checked })}
+                            className="w-5 h-5 rounded accent-amber-500"
+                          />
+                        </label>
+                      ))}
                     </div>
                   </div>
                 </motion.div>
@@ -301,28 +414,40 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
                   animate={{ opacity: 1, y: 0 }}
                   className="space-y-4"
                 >
-                  <div className="bg-white/80 rounded-xl p-4 shadow-md">
-                    <h3 className="font-bold text-lg mb-3 text-pink-600">👤 使用者資訊</h3>
+                  <div className="rounded-2xl p-5 shadow-lg" style={{
+                    background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(26, 26, 46, 0.6) 100%)',
+                    backdropFilter: 'blur(12px)',
+                    border: '2px solid rgba(251, 191, 36, 0.2)',
+                  }}>
+                    <h3 className="font-bold text-lg mb-4" style={{ color: '#fbbf24', textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)' }}>
+                      👤 使用者資訊
+                    </h3>
 
                     <div className="space-y-3">
-                      <div>
-                        <label className="text-sm text-gray-600">使用者名稱</label>
-                        <p className="font-bold text-lg">{user?.username || '未登入'}</p>
-                      </div>
-                      <div>
-                        <label className="text-sm text-gray-600">顯示名稱</label>
-                        <p className="font-bold text-lg">{user?.displayName || '-'}</p>
-                      </div>
-                      <div>
-                        <label className="text-sm text-gray-600">電子郵件</label>
-                        <p className="font-bold text-lg">{user?.email || '-'}</p>
-                      </div>
+                      {[
+                        { label: '使用者名稱', value: user?.username || '未登入' },
+                        { label: '顯示名稱', value: user?.displayName || '-' },
+                        { label: '電子郵件', value: user?.email || '-' },
+                      ].map(({ label, value }) => (
+                        <div key={label} className="p-3 rounded-xl" style={{
+                          background: 'rgba(30, 41, 59, 0.4)',
+                          border: '1px solid rgba(251, 191, 36, 0.15)',
+                        }}>
+                          <label className="text-xs font-semibold block mb-1" style={{ color: '#94a3b8' }}>{label}</label>
+                          <p className="font-bold text-lg" style={{ color: '#fef3c7' }}>{value}</p>
+                        </div>
+                      ))}
                     </div>
                   </div>
 
                   <button
                     onClick={handleLogout}
-                    className="w-full py-3 rounded-xl bg-gradient-to-r from-red-400 to-pink-400 text-white font-bold shadow-lg hover:shadow-xl transition-all"
+                    className="w-full py-4 rounded-2xl font-bold shadow-lg transition-all hover:scale-[1.02]"
+                    style={{
+                      background: 'linear-gradient(135deg, #fb923c 0%, #f87171 100%)',
+                      color: '#1a1a2e',
+                      boxShadow: '0 4px 12px rgba(251, 146, 60, 0.3)',
+                    }}
                   >
                     🚪 登出帳號
                   </button>
@@ -336,32 +461,57 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
                   animate={{ opacity: 1, y: 0 }}
                   className="space-y-4"
                 >
-                  <div className="bg-white/80 rounded-xl p-4 shadow-md">
-                    <h3 className="font-bold text-lg mb-3 text-pink-600">🌸 心語小鎮</h3>
+                  <div className="rounded-2xl p-5 shadow-lg" style={{
+                    background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(26, 26, 46, 0.6) 100%)',
+                    backdropFilter: 'blur(12px)',
+                    border: '2px solid rgba(251, 191, 36, 0.2)',
+                  }}>
+                    <h3 className="font-bold text-lg mb-4" style={{ color: '#fbbf24', textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)' }}>
+                      🌸 心語小鎮
+                    </h3>
 
-                    <div className="text-sm text-gray-700 space-y-3">
-                      <p className="font-bold text-base">Heart Whisper Town</p>
+                    <div className="text-sm space-y-3" style={{ color: '#cbd5e1', lineHeight: '1.6' }}>
+                      <p className="font-bold text-base" style={{ color: '#fef3c7' }}>Heart Whisper Town</p>
                       <p>版本：1.0.0 Beta</p>
                       <p className="leading-relaxed">
                         一個結合 AI 貓咪陪伴與知識島嶼養成的療癒系遊戲。
                         與可愛的 AI 貓咪一起，打造你專屬的療癒知識世界。
                       </p>
 
-                      <div className="pt-3 border-t border-pink-200">
-                        <p className="font-bold mb-2">✨ 特色功能</p>
-                        <ul className="space-y-1 ml-4">
-                          <li>• 智能 AI 貓咪助手對話系統</li>
-                          <li>• 記憶花朵綻放視覺化</li>
-                          <li>• 知識島嶼成長養成</li>
-                          <li>• 3D 療癒場景探索</li>
-                          <li>• 個人化知識管理</li>
+                      <div className="pt-3 border-t" style={{ borderColor: 'rgba(251, 191, 36, 0.2)' }}>
+                        <p className="font-bold mb-2" style={{ color: '#fbbf24' }}>✨ 特色功能</p>
+                        <ul className="space-y-1.5 ml-4">
+                          <li className="flex items-start gap-2">
+                            <span style={{ color: '#fbbf24' }}>•</span>
+                            <span>智能 AI 貓咪助手對話系統</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <span style={{ color: '#fbbf24' }}>•</span>
+                            <span>記憶樹成長視覺化系統</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <span style={{ color: '#fbbf24' }}>•</span>
+                            <span>知識島嶼成長養成機制</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <span style={{ color: '#fbbf24' }}>•</span>
+                            <span>3D 療癒場景自由探索</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <span style={{ color: '#fbbf24' }}>•</span>
+                            <span>個人化知識管理系統</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <span style={{ color: '#fbbf24' }}>•</span>
+                            <span>島嶼創建器 - 繪製專屬形狀</span>
+                          </li>
                         </ul>
                       </div>
 
-                      <div className="pt-3 border-t border-pink-200">
-                        <p className="font-bold mb-2">👥 開發團隊</p>
+                      <div className="pt-3 border-t" style={{ borderColor: 'rgba(251, 191, 36, 0.2)' }}>
+                        <p className="font-bold mb-2" style={{ color: '#fbbf24' }}>👥 開發團隊</p>
                         <p>Heart Whisper Town Team</p>
-                        <p className="text-xs text-gray-500 mt-2">
+                        <p className="text-xs mt-2" style={{ color: '#64748b' }}>
                           © 2024 All Rights Reserved
                         </p>
                       </div>

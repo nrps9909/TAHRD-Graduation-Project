@@ -35,9 +35,11 @@ export interface TororoResponse {
     importance: number
     summary: string
   }
-  greeting: string
-  suggestion: string
-  encouragement: string
+  warmMessage: string // 貓咪的溫暖稱讚
+  recordSummary: string // 記錄了什麼內容
+  greeting?: string // 已棄用，保留向後兼容
+  suggestion?: string // 已棄用，保留向後兼容
+  encouragement?: string // 已棄用，保留向後兼容
   flower?: {
     id: string
     type: string
@@ -99,24 +101,25 @@ class TororoService {
         success: true,
         memory: {
           id: result.memory.id,
-          title: result.memory.title || tororoAnalysis.analysis.title,
-          emoji: result.memory.emoji || tororoAnalysis.analysis.emoji,
+          title: result.memory.title || tororoAnalysis.analysis?.title || '記憶',
+          emoji: result.memory.emoji || tororoAnalysis.analysis?.emoji || '🌸',
           category: result.memory.category,
           importance: result.memory.isPinned ? 8 : 5,
           summary: result.memory.summary || ''
         },
-        greeting: tororoAnalysis.greeting || '喵～收到你的想法了！',
-        suggestion: tororoAnalysis.suggestion || `我覺得可以種在「${this.getCategoryName(classification.suggestedCategory)}」那裡～`,
-        encouragement: tororoAnalysis.encouragement || '每一個想法都值得被珍惜呢～',
+        warmMessage: tororoAnalysis.warmMessage || '你願意記錄知識真好～每個想法都很珍貴呢～',
+        recordSummary: tororoAnalysis.recordSummary || `記錄了你的想法，由${this.getCategoryName(classification.suggestedCategory)}來處理喔！`,
+        greeting: '', // 已棄用
+        suggestion: '', // 已棄用
+        encouragement: '', // 已棄用
         flower
       }
     } catch (error) {
       logger.error('Tororo failed to create memory:', error)
       return {
         success: false,
-        greeting: '喵...',
-        suggestion: '',
-        encouragement: '抱歉，種花的時候遇到了一點問題...',
+        warmMessage: '抱歉，記錄的時候遇到了一點問題...',
+        recordSummary: '處理失敗',
         error: error instanceof Error ? error.message : 'Unknown error'
       }
     }

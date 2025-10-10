@@ -163,24 +163,6 @@ export default function IslandOverview() {
               </div>
             </div>
           </motion.button>
-
-          {/* 島嶼創建器入口 */}
-          <motion.button
-            initial={{ x: -100, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            transition={{ delay: 0.6, type: 'spring', stiffness: 200 }}
-            onClick={() => navigate('/island-creator')}
-            whileHover={{ scale: 1.05, opacity: 1 }}
-            className={`${Z_INDEX_CLASSES.FIXED_PANEL} group`}
-            title="島嶼創建器 - 繪製你的專屬島嶼"
-          >
-            <div className="relative w-12 h-12 rounded-2xl backdrop-blur-md bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-white/20 shadow-lg transition-all group-hover:from-blue-500/30 group-hover:to-purple-500/30 group-hover:border-white/30">
-              <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-blue-300/30 to-purple-300/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              <div className="absolute inset-0 flex items-center justify-center text-white/90 group-hover:text-white text-2xl transition-all group-hover:scale-110 duration-300">
-                🎨
-              </div>
-            </div>
-          </motion.button>
         </div>
       )}
 
@@ -204,6 +186,7 @@ export default function IslandOverview() {
             categories={getCurrentIsland()!.subcategories?.map(sub => sub.nameChinese) || []}
             updatedAt={new Date(getCurrentIsland()!.updatedAt)}
             onEditClick={handleEditIsland}
+            onBackClick={resetToOverview}
           />
         </motion.div>
       )}

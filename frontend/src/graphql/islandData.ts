@@ -17,7 +17,15 @@ export const GET_ALL_MEMORIES = gql`
       rawContent
       category
       tags
+      emoji
       createdAt
+      subcategoryId
+      subcategory {
+        id
+        nameChinese
+        emoji
+        color
+      }
       assistant {
         id
         nameChinese

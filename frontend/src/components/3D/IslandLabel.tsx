@@ -98,7 +98,7 @@ export function IslandLabel({ island, position, onClick, onHover }: IslandLabelP
               letterSpacing: '0.05em'
             }}
           >
-            {island.name}
+            {island.nameChinese}
           </h2>
 
           {/* Hover 提示 */}

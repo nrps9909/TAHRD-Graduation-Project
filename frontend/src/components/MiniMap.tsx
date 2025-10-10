@@ -74,7 +74,12 @@ export function MiniMap({ onIslandClick }: MiniMapProps) {
 
   const mapSize = 180 // 縮小尺寸
   const viewBox = 100
+  const viewBoxHeight = 110 // 增加高度以避免底部裁切
   const islandRadius = 10 // 縮小島嶼
+
+  // 計算海洋容器的實際高度，根據 viewBox 比例
+  const mapContainerWidth = mapSize - 24 // 減去左右 padding (px-3 = 12px * 2)
+  const oceanHeight = (mapContainerWidth * viewBoxHeight) / viewBox // 保持與 viewBox 相同比例
 
   return (
     <div className={`fixed bottom-6 right-6 ${Z_INDEX_CLASSES.MINIMAP}`}>
@@ -83,7 +88,7 @@ export function MiniMap({ onIslandClick }: MiniMapProps) {
         className="relative rounded-[28px] overflow-hidden transition-all duration-300 hover:scale-[1.02]"
         style={{
           width: `${mapSize}px`,
-          height: `${mapSize}px`, // 改成正方形
+          height: `${24 + oceanHeight + 24}px`, // padding-top + 海洋高度 + padding-bottom
           background: 'linear-gradient(145deg, rgba(255, 250, 240, 0.65) 0%, rgba(255, 245, 230, 0.55) 100%)',
           backdropFilter: 'blur(20px) saturate(180%)',
           WebkitBackdropFilter: 'blur(20px) saturate(180%)',
@@ -103,46 +108,13 @@ export function MiniMap({ onIslandClick }: MiniMapProps) {
           }}
         />
 
-        {/* 標題區域 - 只有總覽按鈕 */}
-        <div className="relative px-3 pt-3 pb-2">
-          <div className="flex items-center justify-center">
-            {/* 回總覽按鈕 */}
-            <button
-              onClick={() => onIslandClick('overview')}
-              className="group/btn relative px-4 py-2 rounded-[14px] transition-all duration-200 hover:scale-105 active:scale-95"
-              style={{
-                background: currentIslandId === 'overview'
-                  ? 'linear-gradient(135deg, rgba(251, 191, 36, 0.7) 0%, rgba(245, 158, 11, 0.6) 100%)'
-                  : 'linear-gradient(135deg, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.4) 100%)',
-                border: currentIslandId === 'overview'
-                  ? '2px solid rgba(251, 191, 36, 0.8)'
-                  : '2px solid rgba(203, 213, 225, 0.6)',
-                boxShadow: currentIslandId === 'overview'
-                  ? '0 3px 8px rgba(251, 191, 36, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.6)'
-                  : '0 2px 6px rgba(0, 0, 0, 0.1), inset 0 1px 2px rgba(255, 255, 255, 0.6)',
-                color: currentIslandId === 'overview' ? '#78350F' : '#64748B',
-                fontWeight: '700',
-                fontSize: '11px',
-              }}
-            >
-              <span className="relative z-10">總覽</span>
-              <div
-                className="absolute inset-0 rounded-[14px] opacity-0 group-hover/btn:opacity-100 transition-opacity"
-                style={{
-                  background: 'radial-gradient(circle at center, rgba(251, 191, 36, 0.3), transparent 70%)',
-                }}
-              />
-            </button>
-          </div>
-        </div>
-
         {/* 地圖區域 */}
-        <div className="relative px-3 pb-2">
+        <div className="relative px-3 pt-3 pb-3">
           {/* 海洋背景容器 */}
           <div
             className="relative rounded-[20px] overflow-hidden"
             style={{
-              height: `${mapSize - 95}px`, // 調整高度以適應正方形
+              height: `${oceanHeight}px`, // 根據 viewBox 比例計算
               background: 'linear-gradient(135deg, #C3E4FF 0%, #A8D8F0 50%, #8EC5EA 100%)',
               boxShadow: 'inset 0 2px 8px rgba(0, 0, 0, 0.1)',
             }}
@@ -161,7 +133,7 @@ export function MiniMap({ onIslandClick }: MiniMapProps) {
 
             {/* SVG 地圖 */}
             <svg
-              viewBox={`-${viewBox / 2} -${viewBox / 2} ${viewBox} ${viewBox}`}
+              viewBox={`-${viewBox / 2} -${viewBox / 2} ${viewBox} ${viewBoxHeight}`}
               className="w-full h-full relative z-10"
             >
               <defs>
