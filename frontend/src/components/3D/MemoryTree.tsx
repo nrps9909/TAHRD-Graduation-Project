@@ -21,19 +21,18 @@ interface MemoryTreeProps {
 }
 
 /**
- * 根據島嶼顏色和重要性計算樹的顏色
- * @param islandColor 島嶼主題色
- * @param importance 重要性 (1-10)
+ * 根據島嶼顏色計算樹的顏色（不再使用 importance）
+ * @param islandColor 島嶼/小類別主題色
  */
-function calculateTreeColor(islandColor: string, importance: number): string {
+function calculateTreeColor(islandColor: string): string {
   const baseColor = new THREE.Color(islandColor)
 
   // 轉換到 HSL 色彩空間
   const hsl = { h: 0, s: 0, l: 0 }
   baseColor.getHSL(hsl)
 
-  // 彩度調整：importance 1 = 20% 彩度，importance 10 = 100% 彩度
-  const saturation = 0.2 + (importance / 10) * 0.8
+  // 彩度固定為 70%（適中的彩度）
+  const saturation = 0.7
 
   // 稍微調整色調，讓樹看起來更自然（偏綠）
   const hueShift = -0.05 // 向綠色偏移

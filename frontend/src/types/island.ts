@@ -22,7 +22,7 @@ export type IslandCategory =
 export interface Memory {
   id: string
   title: string | null
-  importance: number // 1-10，決定彩度
+  importance: number // @deprecated 已移除，固定為 5。樹的顏色由 subcategory 決定
   category: IslandCategory // 傳統記憶類別（向後兼容）
   content?: string
   tags?: string[]
@@ -32,7 +32,7 @@ export interface Memory {
   // UI 顯示相關
   emoji?: string
   summary?: string | null
-  color?: string // 樹的顏色（從 islandColor 和 importance 計算得出）
+  color?: string // 樹的顏色（從 subcategory.color 獲取）
 
   // 新增：關聯到自訂小類別
   subcategoryId?: string | null
