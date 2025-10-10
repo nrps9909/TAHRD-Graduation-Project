@@ -41,7 +41,7 @@ export default function AuthIslandScene() {
   const islandDecorations = useMemo(() => {
     return islands.map((island, islandIndex) => {
       const position = getCircularPosition(islandIndex, islands.length)
-      const [baseX, baseY, baseZ] = position
+      const [baseX, _baseY, baseZ] = position
 
       // 每個島嶼生成 3-4 棵記憶樹（精簡版，登入頁面用）
       const treeCount = 3 + Math.floor(Math.random() * 2)
@@ -57,9 +57,11 @@ export default function AuthIslandScene() {
             id: `mem-${i}`,
             title: `記憶 ${i}`,
             content: '',
+            category: 'LEARNING' as const, // Default category for preview
             importance: 5 + Math.floor(Math.random() * 5),
             createdAt: new Date(),
-            updatedAt: new Date(),
+            position: [x, 0.5, z] as [number, number, number],
+            tags: [],
           },
           position: [x, 0.5, z] as [number, number, number],
           seed: i * 123 + islandIndex * 456

@@ -1,4 +1,4 @@
-import { useState, Suspense, lazy, useEffect, useRef } from 'react'
+import { useState, Suspense, lazy, useEffect } from 'react'
 import { useMutation, gql } from '@apollo/client'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'

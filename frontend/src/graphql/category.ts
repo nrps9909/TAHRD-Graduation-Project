@@ -25,6 +25,11 @@ export const ISLAND_FRAGMENT = gql`
     isActive
     createdAt
     updatedAt
+
+    # 3D 配置（可選）
+    customShapeData
+    islandHeight
+    islandBevel
   }
 `
 
@@ -211,6 +216,11 @@ export interface Island {
   createdAt: string
   updatedAt: string
   subcategories?: Subcategory[]
+
+  // 3D 配置（可選）
+  customShapeData?: string | null
+  islandHeight?: number | null
+  islandBevel?: number | null
 }
 
 export interface Subcategory {

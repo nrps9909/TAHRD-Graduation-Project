@@ -66,7 +66,7 @@ export function Sun() {
 
       {/* 太陽視覺效果 */}
       <mesh ref={sunMeshRef}>
-        <sphereGeometry args={[10, 32, 32]} />
+        <sphereGeometry args={[100, 32, 32]} />
         <meshBasicMaterial
           color="#ffff00"
           transparent
@@ -134,7 +134,7 @@ export function Moon() {
 
       {/* 月亮視覺效果 - 使用更大的球體和發光材質 */}
       <mesh ref={moonMeshRef}>
-        <sphereGeometry args={[12, 32, 32]} />
+        <sphereGeometry args={[120, 32, 32]} />
         <meshBasicMaterial
           color="#e8f4f8"
           transparent
@@ -145,7 +145,7 @@ export function Moon() {
 
       {/* 月暈效果 - 讓月亮更明顯 */}
       <mesh ref={moonGlowRef}>
-        <sphereGeometry args={[18, 32, 32]} />
+        <sphereGeometry args={[180, 32, 32]} />
         <meshBasicMaterial
           color="#b0c4de"
           transparent

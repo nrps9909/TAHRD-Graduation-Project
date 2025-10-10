@@ -19,6 +19,7 @@ export default function CuteDatabaseView() {
   const [viewMode, setViewMode] = useState<ViewMode>('gallery')
   const [selectedCategory, setSelectedCategory] = useState<MemoryCategory | null>(null)
   const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<string | null>(null)
+  const [selectedIslandId, setSelectedIslandId] = useState<string | null>(null)
   const [expandedIslands, setExpandedIslands] = useState<Set<string>>(new Set())
   const [searchQuery, setSearchQuery] = useState('')
   const debouncedSearch = useDebounce(searchQuery, 300)
@@ -109,6 +110,16 @@ export default function CuteDatabaseView() {
     if (selectedSubcategoryId) {
       filtered = filtered.filter((m: any) => m.subcategoryId === selectedSubcategoryId)
     }
+    // 島嶼過濾（顯示該島嶼下所有小類別的記憶）
+    else if (selectedIslandId) {
+      const selectedIsland = islands.find(i => i.id === selectedIslandId)
+      if (selectedIsland) {
+        const subcategoryIds = (selectedIsland.subcategories || []).map(sub => sub.id)
+        filtered = filtered.filter((m: any) =>
+          subcategoryIds.includes(m.subcategoryId)
+        )
+      }
+    }
     // 大類別（傳統分類）過濾
     else if (selectedCategory) {
       filtered = filtered.filter((m: Memory) => m.category === selectedCategory)
@@ -142,7 +153,7 @@ export default function CuteDatabaseView() {
     })
 
     return filtered
-  }, [memoriesData?.memories, selectedCategory, selectedSubcategoryId, debouncedSearch, sortField])
+  }, [memoriesData?.memories, selectedCategory, selectedSubcategoryId, selectedIslandId, debouncedSearch, sortField, islands])
 
   const handleTogglePin = async (memory: Memory, e?: React.MouseEvent) => {
     e?.stopPropagation()
@@ -288,9 +299,10 @@ export default function CuteDatabaseView() {
               onClick={() => {
                 setSelectedCategory(null)
                 setSelectedSubcategoryId(null)
+                setSelectedIslandId(null)
               }}
               className="w-full text-left px-3 py-2.5 rounded-2xl text-sm font-bold transition-all hover:scale-[1.02]"
-              style={!selectedCategory && !selectedSubcategoryId ? {
+              style={!selectedCategory && !selectedSubcategoryId && !selectedIslandId ? {
                 background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.3) 0%, rgba(251, 146, 60, 0.3) 100%)',
                 color: '#fef3c7',
                 border: '2px solid rgba(251, 191, 36, 0.4)',
@@ -335,6 +347,7 @@ export default function CuteDatabaseView() {
                     {/* 島嶼標題 */}
                     <button
                       onClick={() => {
+                        // 展開/收起島嶼
                         const newExpanded = new Set(expandedIslands)
                         if (isExpanded) {
                           newExpanded.delete(island.id)
@@ -342,14 +355,27 @@ export default function CuteDatabaseView() {
                           newExpanded.add(island.id)
                         }
                         setExpandedIslands(newExpanded)
+
+                        // 選擇島嶼並顯示該島嶼下所有記憶
+                        setSelectedIslandId(island.id)
+                        setSelectedSubcategoryId(null)
+                        setSelectedCategory(null)
                       }}
                       className="w-full text-left px-3 py-2.5 rounded-2xl text-sm font-bold transition-all hover:scale-[1.02]"
-                      style={{
+                      style={selectedIslandId === island.id && !selectedSubcategoryId ? {
+                        background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.3) 0%, rgba(251, 146, 60, 0.3) 100%)',
+                        color: '#fef3c7',
+                        borderTop: '2px solid rgba(251, 191, 36, 0.4)',
+                        borderRight: '2px solid rgba(251, 191, 36, 0.4)',
+                        borderBottom: '2px solid rgba(251, 191, 36, 0.4)',
+                        borderLeft: `4px solid ${island.color}`,
+                      } : {
                         background: 'rgba(30, 41, 59, 0.6)',
                         color: '#fef3c7',
-                        border: '2px solid rgba(251, 191, 36, 0.15)',
-                        borderLeftColor: island.color,
-                        borderLeftWidth: '4px',
+                        borderTop: '2px solid rgba(251, 191, 36, 0.15)',
+                        borderRight: '2px solid rgba(251, 191, 36, 0.15)',
+                        borderBottom: '2px solid rgba(251, 191, 36, 0.15)',
+                        borderLeft: `4px solid ${island.color}`,
                       }}
                     >
                       <div className="flex items-center justify-between">
@@ -382,6 +408,7 @@ export default function CuteDatabaseView() {
                                 key={subcategory.id}
                                 onClick={() => {
                                   setSelectedSubcategoryId(subcategory.id)
+                                  setSelectedIslandId(null)
                                   setSelectedCategory(null)
                                 }}
                                 className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition-all hover:scale-[1.02]"
@@ -424,13 +451,14 @@ export default function CuteDatabaseView() {
                 {categories.map((cat) => {
                   const count = (memoriesData?.memories || []).filter((m: any) => m.category === cat.value && !m.subcategoryId).length
                   if (count === 0) return null
-                  const isSelected = selectedCategory === cat.value && !selectedSubcategoryId
+                  const isSelected = selectedCategory === cat.value && !selectedSubcategoryId && !selectedIslandId
                   return (
                     <button
                       key={cat.value}
                       onClick={() => {
                         setSelectedCategory(cat.value)
                         setSelectedSubcategoryId(null)
+                        setSelectedIslandId(null)
                       }}
                       className="w-full text-left px-3 py-2.5 rounded-2xl text-sm font-bold transition-all hover:scale-[1.02]"
                       style={isSelected ? {
@@ -729,9 +757,6 @@ export default function CuteDatabaseView() {
             setNewMemoryId(null)
             refetch()
           }}
-          onSuccess={() => {
-            refetch()
-          }}
         />
       )}
 
@@ -805,13 +830,14 @@ function SimpleGalleryView({ memories, onTogglePin, onSelectMemory, onDelete }: 
           <div
             key={memory.id}
             onClick={() => onSelectMemory(memory)}
-            className="group relative rounded-2xl p-4 cursor-pointer transition-all hover:scale-[1.02]"
+            className="group relative rounded-2xl p-5 cursor-pointer transition-all hover:scale-[1.02] flex flex-col"
             style={{
               background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(26, 26, 46, 0.6) 100%)',
               backdropFilter: 'blur(12px) saturate(150%)',
               WebkitBackdropFilter: 'blur(12px) saturate(150%)',
               border: '2px solid rgba(251, 191, 36, 0.2)',
               boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+              minHeight: '280px',
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.boxShadow = '0 8px 24px rgba(251, 191, 36, 0.3)'
@@ -824,10 +850,10 @@ function SimpleGalleryView({ memories, onTogglePin, onSelectMemory, onDelete }: 
           >
             {/* 釘選按鈕 */}
             {memory.isPinned && (
-              <div className="absolute top-2 right-2">
+              <div className="absolute top-3 right-3 z-10">
                 <button
                   onClick={(e) => onTogglePin(memory, e)}
-                  className="p-1 rounded-lg transition-all text-sm hover:scale-110"
+                  className="p-1.5 rounded-lg transition-all text-sm hover:scale-110"
                   style={{
                     background: 'linear-gradient(135deg, #fbbf24 0%, #fb923c 100%)',
                     color: '#1a1a2e',
@@ -840,88 +866,120 @@ function SimpleGalleryView({ memories, onTogglePin, onSelectMemory, onDelete }: 
               </div>
             )}
 
-            {/* 標題 */}
-            <h3 className="text-sm font-black mb-2 line-clamp-2 min-h-[2.5rem]" style={{
-              color: '#fef3c7',
-              textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)',
-            }}>
-              {memory.title || memory.summary || '無標題記憶'}
-            </h3>
+            {/* 標題區 - 明顯突出 */}
+            <div className="mb-3">
+              <h3 className="text-base font-black line-clamp-2 leading-snug" style={{
+                color: '#fef3c7',
+                textShadow: '0 2px 4px rgba(0, 0, 0, 0.4)',
+                fontSize: '1.05rem',
+                minHeight: '2.6rem',
+              }}>
+                {memory.title || memory.summary || '無標題記憶'}
+              </h3>
+            </div>
 
-            {/* 內容分析/摘要 */}
-            {memory.summary && (
-              <p className="text-xs line-clamp-3 mb-3 font-medium leading-relaxed" style={{ color: '#cbd5e1' }}>
-                {memory.summary}
-              </p>
-            )}
-
-            {/* 自訂分類 */}
+            {/* 分類區 - 顯眼的標籤 */}
             {(memory as any).subcategory && (
-              <div className="mb-2">
+              <div className="mb-3">
                 <span
-                  className="px-2 py-0.5 text-xs font-bold rounded-lg inline-flex items-center gap-1"
+                  className="px-3 py-1.5 text-xs font-black rounded-xl inline-flex items-center gap-1.5 shadow-lg"
                   style={{
-                    background: `${(memory as any).subcategory.color}20`,
-                    color: (memory as any).subcategory.color,
-                    border: `1px solid ${(memory as any).subcategory.color}50`,
+                    background: `${(memory as any).subcategory.color}`,
+                    color: '#ffffff',
+                    border: `2px solid ${(memory as any).subcategory.color}`,
+                    boxShadow: `0 2px 8px ${(memory as any).subcategory.color}40`,
+                    textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)',
                   }}
                 >
-                  <span>{(memory as any).subcategory.emoji}</span>
+                  <span className="text-sm">{(memory as any).subcategory.emoji}</span>
                   <span>{(memory as any).subcategory.nameChinese}</span>
                 </span>
               </div>
             )}
 
-            {/* 標籤 */}
+            {/* 內容預覽區 - 清晰的摘要 */}
+            <div className="flex-1 mb-3">
+              {memory.rawContent ? (
+                <div className="mb-2">
+                  <div className="text-xs font-bold mb-1" style={{ color: '#94a3b8' }}>
+                    📝 內容預覽
+                  </div>
+                  <p className="text-xs line-clamp-3 font-medium leading-relaxed whitespace-pre-wrap" style={{
+                    color: '#e2e8f0',
+                    lineHeight: '1.6',
+                  }}>
+                    {memory.rawContent}
+                  </p>
+                </div>
+              ) : (
+                <div className="text-xs italic" style={{ color: '#64748b' }}>
+                  無內容預覽
+                </div>
+              )}
+            </div>
+
+            {/* 標籤區 */}
             {memory.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1 mb-3">
-                {memory.tags.slice(0, 3).map((tag: string) => (
-                  <span
-                    key={tag}
-                    className="px-2 py-0.5 text-xs font-bold rounded-lg"
-                    style={{
-                      background: 'rgba(251, 191, 36, 0.15)',
-                      color: '#fbbf24',
-                      border: '1px solid rgba(251, 191, 36, 0.3)',
-                    }}
-                  >
-                    #{tag}
-                  </span>
-                ))}
-                {memory.tags.length > 3 && (
-                  <span className="text-xs font-bold px-1" style={{ color: '#94a3b8' }}>
-                    +{memory.tags.length - 3}
-                  </span>
-                )}
+              <div className="mb-3">
+                <div className="text-xs font-bold mb-1.5" style={{ color: '#94a3b8' }}>
+                  🏷️ 標籤
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {memory.tags.slice(0, 5).map((tag: string) => (
+                    <span
+                      key={tag}
+                      className="px-2.5 py-1 text-xs font-bold rounded-lg"
+                      style={{
+                        background: 'rgba(251, 191, 36, 0.2)',
+                        color: '#fbbf24',
+                        border: '1.5px solid rgba(251, 191, 36, 0.4)',
+                      }}
+                    >
+                      #{tag}
+                    </span>
+                  ))}
+                  {memory.tags.length > 5 && (
+                    <span className="text-xs font-bold px-2 py-1" style={{ color: '#94a3b8' }}>
+                      +{memory.tags.length - 5}
+                    </span>
+                  )}
+                </div>
               </div>
             )}
 
-            {/* 日期與時間 */}
-            <div className="flex items-center justify-between text-xs pt-2 border-t font-semibold" style={{
-              borderColor: 'rgba(251, 191, 36, 0.2)',
-              color: '#94a3b8',
-            }}>
-              <span>📅 {date}</span>
-              <span>🕐 {time}</span>
+            {/* 日期與時間區 - 底部固定 */}
+            <div className="pt-3 border-t" style={{ borderColor: 'rgba(251, 191, 36, 0.25)' }}>
+              <div className="flex items-center justify-between text-xs font-semibold" style={{
+                color: '#94a3b8',
+              }}>
+                <div className="flex items-center gap-1">
+                  <span>📅</span>
+                  <span>{date}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span>🕐</span>
+                  <span>{time}</span>
+                </div>
+              </div>
             </div>
 
             {/* 刪除按鈕（hover 顯示） */}
-            <div className="absolute bottom-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="absolute bottom-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity">
               <button
                 onClick={(e) => onDelete(memory, e)}
-                className="p-1 rounded-lg transition-all hover:scale-110 text-sm"
+                className="p-1.5 rounded-lg transition-all hover:scale-110 text-sm"
                 style={{
-                  background: 'rgba(30, 41, 59, 0.9)',
-                  border: '2px solid rgba(251, 146, 60, 0.3)',
+                  background: 'rgba(30, 41, 59, 0.95)',
+                  border: '2px solid rgba(251, 146, 60, 0.4)',
                 }}
                 title="刪除"
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(251, 146, 60, 0.3)'
-                  e.currentTarget.style.borderColor = 'rgba(251, 146, 60, 0.6)'
+                  e.currentTarget.style.background = 'rgba(251, 146, 60, 0.4)'
+                  e.currentTarget.style.borderColor = 'rgba(251, 146, 60, 0.7)'
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'rgba(30, 41, 59, 0.9)'
-                  e.currentTarget.style.borderColor = 'rgba(251, 146, 60, 0.3)'
+                  e.currentTarget.style.background = 'rgba(30, 41, 59, 0.95)'
+                  e.currentTarget.style.borderColor = 'rgba(251, 146, 60, 0.4)'
                 }}
               >
                 🗑️
@@ -1026,7 +1084,7 @@ function SimpleListView({ memories, onTogglePin, onSelectMemory, onDelete }: Sim
 
             {/* 標籤 - 固定寬度區域 */}
             <div className="flex-shrink-0 hidden md:flex items-center gap-2 w-56">
-              {memory.tags.slice(0, 3).map((tag: string) => (
+              {memory.tags.slice(0, 5).map((tag: string) => (
                 <span
                   key={tag}
                   className="px-2.5 py-1 text-xs font-bold rounded-lg truncate max-w-[80px]"
@@ -1040,9 +1098,9 @@ function SimpleListView({ memories, onTogglePin, onSelectMemory, onDelete }: Sim
                   #{tag}
                 </span>
               ))}
-              {memory.tags.length > 3 && (
+              {memory.tags.length > 5 && (
                 <span className="text-xs font-bold" style={{ color: '#94a3b8' }}>
-                  +{memory.tags.length - 3}
+                  +{memory.tags.length - 5}
                 </span>
               )}
             </div>

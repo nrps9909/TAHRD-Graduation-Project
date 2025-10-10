@@ -4,6 +4,7 @@ import * as THREE from 'three'
 import { Memory } from '../../types/island'
 import { MemoryTree } from './MemoryTree'
 import { generateTreePositions } from '../../utils/treePositioning'
+import { IslandBoundaryConfig } from '../../utils/islandBoundary'
 
 interface SimpleIslandProps {
   position?: [number, number, number]
@@ -49,8 +50,22 @@ export function SimpleIsland({
 
     // 使用島嶼ID作為種子，確保每個島的樹位置是固定的
     const seed = islandId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
-    return generateTreePositions(memories.length, 15, 1.8, seed)
-  }, [memories.length, islandId])
+
+    // 根據島嶼形狀配置邊界
+    const boundaryConfig: IslandBoundaryConfig = isPawPad
+      ? {
+          shape: 'paw',
+          radius: isCenterPad ? 12 : 11,
+          margin: 2
+        }
+      : {
+          shape: 'circle',
+          radius: 15,
+          margin: 2
+        }
+
+    return generateTreePositions(memories.length, 15, 1.8, seed, boundaryConfig)
+  }, [memories.length, islandId, isPawPad, isCenterPad])
 
   return (
     <group

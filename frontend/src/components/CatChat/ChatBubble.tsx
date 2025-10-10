@@ -509,8 +509,7 @@ function ChatHistoryView({
   onLoadSession,
   onDeleteSession,
   onClearHistory,
-  theme,
-  currentCat
+  theme
 }: ChatHistoryViewProps) {
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
 

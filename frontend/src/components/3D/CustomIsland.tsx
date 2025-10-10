@@ -9,6 +9,7 @@ import * as THREE from 'three'
 import { Memory } from '../../types/island'
 import { MemoryTree } from './MemoryTree'
 import { generateTreePositions } from '../../utils/treePositioning'
+import { IslandBoundaryConfig } from '../../utils/islandBoundary'
 
 interface Point {
   x: number
@@ -54,8 +55,17 @@ export function CustomIsland({
   const treePositions = useMemo(() => {
     if (memories.length === 0) return []
     const seed = islandId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
-    return generateTreePositions(memories.length, 15, 1.5, seed)
-  }, [memories.length, islandId])
+
+    // 使用自定义形状的边界配置
+    const boundaryConfig: IslandBoundaryConfig = {
+      shape: 'custom',
+      customPoints: shapePoints,
+      scaleFactor: 20,
+      margin: 2
+    }
+
+    return generateTreePositions(memories.length, 15, 1.5, seed, boundaryConfig)
+  }, [memories.length, islandId, shapePoints])
 
   // 根据玩家绘制的点创建 Three.js Shape
   const shape = useMemo(() => {
@@ -92,23 +102,6 @@ export function CustomIsland({
     bevelSegments: 2
   }), [height, bevel])
 
-  // 计算形状的边界，用于放置树
-  const shapeBounds = useMemo(() => {
-    if (shapePoints.length === 0) {
-      return { minX: -10, maxX: 10, minZ: -10, maxZ: 10 }
-    }
-
-    const scaleFactor = 20
-    const xs = shapePoints.map(p => p.x * scaleFactor)
-    const zs = shapePoints.map(p => p.y * scaleFactor)
-
-    return {
-      minX: Math.min(...xs),
-      maxX: Math.max(...xs),
-      minZ: Math.min(...zs),
-      maxZ: Math.max(...zs)
-    }
-  }, [shapePoints])
 
   if (!shape) {
     return null
@@ -159,10 +152,6 @@ export function CustomIsland({
         const treePos = treePositions[index]
         if (!treePos) return null
 
-        // 确保树在岛屿边界内
-        const boundedX = Math.max(shapeBounds.minX + 2, Math.min(shapeBounds.maxX - 2, treePos.x))
-        const boundedZ = Math.max(shapeBounds.minZ + 2, Math.min(shapeBounds.maxZ - 2, treePos.z))
-
         const treeSeed = memory.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) + index
 
         return (
@@ -170,7 +159,7 @@ export function CustomIsland({
             key={memory.id}
             memory={memory}
             islandColor={color}
-            position={[boundedX, treePos.y + 1.2, boundedZ]}
+            position={[treePos.x, treePos.y + 1.2, treePos.z]}
             seed={treeSeed}
             onClick={onMemoryClick}
           />

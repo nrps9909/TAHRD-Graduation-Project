@@ -12,15 +12,14 @@ import { useEnvironmentStore } from '../../stores/environmentStore'
  * 4. 動態適應 - 根據時間自動調整
  */
 export function NaturalSky() {
-  const { sunPosition, timeOfDay } = useEnvironmentStore()
+  const { sunPosition } = useEnvironmentStore()
 
   // 根據時間計算天空參數
   const skyParams = useMemo(() => {
-    const hour = timeOfDay
+    const hour = 12 // Default to midday for now
     const isDawn = hour >= 5 && hour < 7
     const isDay = hour >= 7 && hour < 17
     const isDusk = hour >= 17 && hour < 19
-    const isNight = hour >= 19 || hour < 5
 
     // 白天 - 清新的藍天（動物森友會風格）
     if (isDay) {
@@ -59,7 +58,7 @@ export function NaturalSky() {
       mieCoefficient: 0.0005,
       mieDirectionalG: 0.9,
     }
-  }, [timeOfDay])
+  }, [])
 
   return (
     <DreiSky

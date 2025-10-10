@@ -16,19 +16,15 @@ export function IslandInfoPanel() {
   if (!island) return null
 
   const totalMemories = island.memoryCount
-  const distribution = island.regionDistribution
 
-  // 区域图标映射
-  const regionIcons = {
-    learning: { emoji: '📚', name: '學習梯田', color: '#4A90E2' },
-    inspiration: { emoji: '💡', name: '靈感高峰', color: '#F5A623' },
-    work: { emoji: '💼', name: '工作平原', color: '#7B68EE' },
-    social: { emoji: '🤝', name: '社交谷地', color: '#FF6B9D' },
-    life: { emoji: '🌸', name: '生活丘陵', color: '#50C878' },
-    goals: { emoji: '🎯', name: '目標山脊', color: '#E74C3C' },
-    resources: { emoji: '📦', name: '資源高地', color: '#9B59B6' },
-    misc: { emoji: '🌊', name: '雜項海域', color: '#6C8EAD' }
-  }
+  // 区域图标映射 - now based on subcategories
+  const subcategoryDisplay = island.subcategories?.map(sub => ({
+    id: sub.id,
+    emoji: sub.emoji,
+    name: sub.nameChinese,
+    color: sub.color,
+    count: sub.memoryCount
+  })) || []
 
   return (
     <div className={`fixed top-20 right-4 ${Z_INDEX_CLASSES.FIXED_PANEL} w-80`}>
@@ -172,7 +168,7 @@ export function IslandInfoPanel() {
               最近更新：
             </span>
             <span className="text-sm font-bold" style={{ color: '#78350F' }}>
-              {formatDistanceToNow(island.updatedAt, { addSuffix: true, locale: zhTW })}
+              {formatDistanceToNow(new Date(island.updatedAt), { addSuffix: true, locale: zhTW })}
             </span>
           </div>
 
@@ -184,7 +180,7 @@ export function IslandInfoPanel() {
             }}
           />
 
-          {/* 區域分布 */}
+          {/* 子類別分布 */}
           <div>
             <h4 className="text-base font-bold mb-3 flex items-center gap-2" style={{ color: '#4A5568' }}>
               <div
@@ -196,39 +192,37 @@ export function IslandInfoPanel() {
               >
                 <span className="text-sm">🗺️</span>
               </div>
-              區域分布
+              子類別分布
             </h4>
             <div className="space-y-3">
-              {(Object.keys(distribution) as Array<keyof typeof distribution>).map((regionKey) => {
-                const region = regionIcons[regionKey]
-                const count = distribution[regionKey]
-                const percentage = totalMemories > 0 ? (count / totalMemories) * 100 : 0
+              {subcategoryDisplay.map((subcategory) => {
+                const percentage = totalMemories > 0 ? (subcategory.count / totalMemories) * 100 : 0
 
                 return (
-                  <div key={regionKey} className="group">
+                  <div key={subcategory.id} className="group">
                     <div className="flex items-center justify-between mb-1.5">
                       <div className="flex items-center gap-2">
                         <div
                           className="w-7 h-7 rounded-[10px] flex items-center justify-center"
                           style={{
-                            background: `linear-gradient(135deg, ${region.color}40 0%, ${region.color}25 100%)`,
+                            background: `linear-gradient(135deg, ${subcategory.color}40 0%, ${subcategory.color}25 100%)`,
                             boxShadow: 'inset 0 1px 2px rgba(255, 255, 255, 0.3)',
                           }}
                         >
-                          <span className="text-sm">{region.emoji}</span>
+                          <span className="text-sm">{subcategory.emoji}</span>
                         </div>
                         <span className="text-sm font-bold" style={{ color: '#4A5568' }}>
-                          {region.name}
+                          {subcategory.name}
                         </span>
                       </div>
                       <span
                         className="text-sm font-black px-2.5 py-1 rounded-[10px]"
                         style={{
-                          color: region.color,
-                          background: `${region.color}20`,
+                          color: subcategory.color,
+                          background: `${subcategory.color}20`,
                         }}
                       >
-                        {count}
+                        {subcategory.count}
                       </span>
                     </div>
                     <div
@@ -242,8 +236,8 @@ export function IslandInfoPanel() {
                         className="h-full rounded-full transition-all duration-500 group-hover:opacity-90"
                         style={{
                           width: `${percentage}%`,
-                          background: `linear-gradient(90deg, ${region.color} 0%, ${region.color}dd 100%)`,
-                          boxShadow: `0 0 8px ${region.color}60`,
+                          background: `linear-gradient(90deg, ${subcategory.color} 0%, ${subcategory.color}dd 100%)`,
+                          boxShadow: `0 0 8px ${subcategory.color}60`,
                         }}
                       />
                     </div>

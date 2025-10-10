@@ -23,7 +23,6 @@ export function TororoCat({ position = [0, 0, 0], scale = 1, onClick, hideLabel 
       name="白噗噗"
       subtitle="你給我好好記住!"
       emoji="🐱"
-      ringColor="#FFFFFF"
       lightColor="#FFFFFF"
       hideLabel={hideLabel}
     />

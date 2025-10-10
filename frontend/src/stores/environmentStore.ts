@@ -211,7 +211,7 @@ async function getLocationName(lat: number, lon: number): Promise<string> {
       const address = data.address
 
       // 嘗試組合更友善的地名
-      let locationParts: string[] = []
+      const locationParts: string[] = []
 
       // 第一部分：縣市級別
       if (address.state) {

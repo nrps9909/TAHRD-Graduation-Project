@@ -3,8 +3,7 @@ import {
   useRef,
   useState,
   useImperativeHandle,
-  forwardRef,
-  Suspense
+  forwardRef
 } from 'react'
 import * as PIXI from 'pixi.js'
 import { Live2DModel } from 'pixi-live2d-display/cubism4'

@@ -9,6 +9,7 @@ import * as THREE from 'three'
 import { Memory } from '../../types/island'
 import { MemoryTree } from './MemoryTree'
 import { generateTreePositions } from '../../utils/treePositioning'
+import { IslandBoundaryConfig } from '../../utils/islandBoundary'
 
 interface PawPadIslandProps {
   position?: [number, number, number]
@@ -89,7 +90,12 @@ export function PawPadIsland({
   })
 
   // 生成樹的位置（只在中央肉球上）
-  const treePositions = generateTreePositions(memories.length, 8, 1.2, islandId.charCodeAt(0))
+  const boundaryConfig: IslandBoundaryConfig = {
+    shape: 'circle',
+    radius: 5,  // 中央肉球半徑
+    margin: 1
+  }
+  const treePositions = generateTreePositions(memories.length, 8, 1.2, islandId.charCodeAt(0), boundaryConfig)
 
   // 四個腳趾肉球的位置（圍繞中央肉球）
   const toePositions: [number, number, number][] = [

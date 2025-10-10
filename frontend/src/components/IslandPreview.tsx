@@ -5,11 +5,10 @@ import { motion } from 'framer-motion'
 import * as THREE from 'three'
 
 // 茂盛的島嶼組件
-function LushIsland({ position, scale, color, delay }: {
+function LushIsland({ position, scale, color }: {
   position: [number, number, number]
   scale: number
   color: string
-  delay: number
 }) {
   return (
     <Float
@@ -198,11 +197,11 @@ function IslandScene() {
       <Environment preset="sunset" />
 
       {/* 多個茂盛的島嶼 */}
-      <LushIsland position={[0, 0, 0]} scale={1.2} color="#8FBC8F" delay={0} />
-      <LushIsland position={[-4, -0.5, -2]} scale={0.8} color="#98D98E" delay={0.2} />
-      <LushIsland position={[4, -0.3, -1]} scale={0.9} color="#7FB069" delay={0.4} />
-      <LushIsland position={[-2, -0.8, 3]} scale={0.7} color="#A8D5BA" delay={0.6} />
-      <LushIsland position={[3, -0.6, 4]} scale={0.75} color="#90C695" delay={0.8} />
+      <LushIsland position={[0, 0, 0]} scale={1.2} color="#8FBC8F" />
+      <LushIsland position={[-4, -0.5, -2]} scale={0.8} color="#98D98E" />
+      <LushIsland position={[4, -0.3, -1]} scale={0.9} color="#7FB069" />
+      <LushIsland position={[-2, -0.8, 3]} scale={0.7} color="#A8D5BA" />
+      <LushIsland position={[3, -0.6, 4]} scale={0.75} color="#90C695" />
 
       {/* 飄浮的雲朵 */}
       <FloatingCloud position={[-3, 2, 2]} />

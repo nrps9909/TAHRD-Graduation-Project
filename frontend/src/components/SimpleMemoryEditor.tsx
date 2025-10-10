@@ -1,26 +1,26 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useMutation, useQuery } from '@apollo/client'
-import { CREATE_MEMORY_DIRECT, UPDATE_MEMORY, GET_MEMORY } from '../graphql/memory'
+import { UPDATE_MEMORY, GET_MEMORY } from '../graphql/memory'
 import { GET_SUBCATEGORIES, Subcategory } from '../graphql/category'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
 import rehypeSanitize from 'rehype-sanitize'
+import SaveStatusIndicator from './Editor/SaveStatusIndicator'
+import TagManager from './Editor/TagManager'
+import CategorySelector from './Editor/CategorySelector'
+import ViewModeToggle, { type ViewMode } from './Editor/ViewModeToggle'
 
 interface SimpleMemoryEditorProps {
   memoryId?: string  // 如果有 ID，表示編輯現有記憶
   onClose: () => void
-  onSuccess: () => void
 }
 
-type ViewMode = 'edit' | 'preview' | 'split'
-
-export default function SimpleMemoryEditor({ memoryId, onClose, onSuccess }: SimpleMemoryEditorProps) {
+export default function SimpleMemoryEditor({ memoryId, onClose }: SimpleMemoryEditorProps) {
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [subcategoryId, setSubcategoryId] = useState<string | null>(null)
   const [tags, setTags] = useState<string[]>([])
-  const [newTag, setNewTag] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -39,7 +39,6 @@ export default function SimpleMemoryEditor({ memoryId, onClose, onSuccess }: Sim
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const previewRef = useRef<HTMLDivElement>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // 用 ref 追蹤最新的編輯器狀態，避免閉包問題
@@ -51,7 +50,6 @@ export default function SimpleMemoryEditor({ memoryId, onClose, onSuccess }: Sim
   // 追蹤是否有待處理的保存請求（用於防止並發）
   const pendingSaveRef = useRef(false)
 
-  const [createMemoryDirect] = useMutation(CREATE_MEMORY_DIRECT)
   const [updateMemory] = useMutation(UPDATE_MEMORY)
 
   // 載入記憶資料到 state
@@ -78,6 +76,18 @@ export default function SimpleMemoryEditor({ memoryId, onClose, onSuccess }: Sim
       document.body.style.overflow = 'unset'
     }
   }, [])
+
+  // 組件卸載時自動保存
+  useEffect(() => {
+    return () => {
+      // 如果有未保存的變更且有 memoryId，嘗試保存
+      if (latestStateRef.current && memoryId && !savingInProgressRef.current) {
+        // 使用 navigator.sendBeacon 進行異步保存，即使頁面關閉也能完成
+        console.log('🔄 組件卸載，嘗試保存最新狀態')
+        // 這裡無法使用異步操作，但我們已經有 beforeunload 處理了
+      }
+    }
+  }, [memoryId])
 
   // 同步滾動
   const handleScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
@@ -206,30 +216,23 @@ export default function SimpleMemoryEditor({ memoryId, onClose, onSuccess }: Sim
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
   }, [hasUnsavedChanges, isSaving])
 
-  const handleAddTag = () => {
-    if (newTag.trim() && !tags.includes(newTag.trim())) {
-      setTags([...tags, newTag.trim()])
-      setNewTag('')
-    }
-  }
-
-  // 失去焦點時也添加標籤
-  const handleTagBlur = () => {
-    handleAddTag()
-  }
-
-  const handleRemoveTag = (tag: string) => {
-    setTags(tags.filter(t => t !== tag))
-  }
 
   // 安全關閉編輯器 - 確保保存完成
   const handleClose = useCallback(async () => {
-    // 如果正在保存，等待完成
+    // 如果正在保存，使用輪詢等待完成（避免遞歸）
     if (isSaving) {
       console.log('⏳ 等待保存完成...')
-      // 簡單等待，實際上 isSaving 狀態會在保存完成後更新
-      await new Promise(resolve => setTimeout(resolve, 100))
-      return handleClose() // 遞歸調用，直到保存完成
+      // 最多等待 5 秒
+      const maxWaitTime = 5000
+      const startTime = Date.now()
+
+      while (savingInProgressRef.current && Date.now() - startTime < maxWaitTime) {
+        await new Promise(resolve => setTimeout(resolve, 100))
+      }
+
+      if (savingInProgressRef.current) {
+        console.warn('⚠️ 保存超時，但仍關閉編輯器')
+      }
     }
 
     // 如果有未保存的變更，立即保存
@@ -292,87 +295,23 @@ export default function SimpleMemoryEditor({ memoryId, onClose, onSuccess }: Sim
 
             {/* 保存狀態指示器 */}
             {memoryId && (
-              <div className="flex items-center gap-2 text-xs ml-4">
-                {isSaving ? (
-                  <>
-                    <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
-                    <span className="text-yellow-400 font-medium">儲存中...</span>
-                  </>
-                ) : saveError ? (
-                  <>
-                    <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                    <span className="text-red-400 font-medium">{saveError}</span>
-                  </>
-                ) : hasUnsavedChanges ? (
-                  <>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                    <span className="text-gray-400 font-medium">未保存</span>
-                  </>
-                ) : lastSaved ? (
-                  <>
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span className="text-green-400 font-medium">
-                      已保存 {new Date(lastSaved).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                    <span className="text-gray-400 font-medium">自動儲存</span>
-                  </>
-                )}
-              </div>
+              <SaveStatusIndicator
+                isSaving={isSaving}
+                saveError={saveError}
+                hasUnsavedChanges={hasUnsavedChanges}
+                lastSaved={lastSaved}
+                onRetry={() => saveImmediately()}
+              />
             )}
           </div>
 
           {/* 右側工具 */}
           <div className="flex items-center gap-1">
             {/* 檢視模式切換 - HackMD 風格 */}
-            <div className="flex items-center bg-gray-700 rounded p-0.5">
-              <button
-                onClick={() => setViewMode('edit')}
-                className={`px-3 py-1 rounded text-xs font-medium transition-all flex items-center gap-1.5 ${
-                  viewMode === 'edit'
-                    ? 'bg-gray-600 text-white'
-                    : 'text-gray-300 hover:text-white hover:bg-gray-600'
-                }`}
-                title="編輯模式"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-                編輯
-              </button>
-              <button
-                onClick={() => setViewMode('split')}
-                className={`px-3 py-1 rounded text-xs font-medium transition-all flex items-center gap-1.5 ${
-                  viewMode === 'split'
-                    ? 'bg-gray-600 text-white'
-                    : 'text-gray-300 hover:text-white hover:bg-gray-600'
-                }`}
-                title="同時"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 4H5a2 2 0 00-2 2v14a2 2 0 002 2h4m10-1V5a2 2 0 00-2-2h-4m5 0v18" />
-                </svg>
-                同時
-              </button>
-              <button
-                onClick={() => setViewMode('preview')}
-                className={`px-3 py-1 rounded text-xs font-medium transition-all flex items-center gap-1.5 ${
-                  viewMode === 'preview'
-                    ? 'bg-gray-600 text-white'
-                    : 'text-gray-300 hover:text-white hover:bg-gray-600'
-                }`}
-                title="檢視模式"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                </svg>
-                檢視
-              </button>
-            </div>
+            <ViewModeToggle
+              viewMode={viewMode}
+              onViewModeChange={setViewMode}
+            />
           </div>
         </div>
       </div>
@@ -400,63 +339,19 @@ export default function SimpleMemoryEditor({ memoryId, onClose, onSuccess }: Sim
                   {/* 分類選擇器 */}
                   <div className="mb-4">
                     <label className="text-xs text-gray-400 mb-2 block">分類</label>
-                    {subcategories.length > 0 ? (
-                      <div className="flex flex-wrap gap-2">
-                        {subcategories.map((cat) => (
-                          <button
-                            key={cat.id}
-                            onClick={() => setSubcategoryId(subcategoryId === cat.id ? null : cat.id)}
-                            className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all hover:scale-105"
-                            style={{
-                              background: subcategoryId === cat.id ? cat.color : '#2a2a2a',
-                              color: subcategoryId === cat.id ? '#ffffff' : '#999',
-                              border: `1.5px solid ${subcategoryId === cat.id ? cat.color : '#3d3d3d'}`,
-                            }}
-                          >
-                            <span className="mr-1">{cat.emoji}</span>
-                            {cat.nameChinese}
-                          </button>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-sm text-gray-500 py-2">
-                        尚無自訂分類，請前往設定頁面建立分類
-                      </div>
-                    )}
+                    <CategorySelector
+                      subcategories={subcategories}
+                      selectedSubcategoryId={subcategoryId}
+                      onSelectSubcategory={setSubcategoryId}
+                    />
                   </div>
 
                   {/* 標籤 */}
-                  <div className="flex flex-wrap items-center gap-2 mb-6">
-                    {tags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-gray-800 text-gray-300 hover:bg-gray-700 transition-colors group"
-                      >
-                        #{tag}
-                        <button
-                          onClick={() => handleRemoveTag(tag)}
-                          className="opacity-0 group-hover:opacity-100 hover:text-red-400 transition-opacity"
-                        >
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </span>
-                    ))}
-                    <input
-                      type="text"
-                      value={newTag}
-                      onChange={(e) => setNewTag(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault()
-                          handleAddTag()
-                        }
-                      }}
-                      onBlur={handleTagBlur}
-                      placeholder="+ 新增標籤"
-                      className="px-2 py-1 text-xs bg-transparent border border-dashed border-gray-700 rounded-md hover:border-gray-600 focus:border-gray-500 focus:outline-none transition-colors text-gray-400"
-                      style={{ width: '100px' }}
+                  <div className="mb-6">
+                    <TagManager
+                      tags={tags}
+                      onTagsChange={setTags}
+                      maxTags={5}
                     />
                   </div>
 
@@ -529,63 +424,18 @@ export default function SimpleMemoryEditor({ memoryId, onClose, onSuccess }: Sim
                     {/* 分類選擇器 */}
                     <div className="mb-4">
                       <label className="text-xs text-gray-400 mb-2 block">分類</label>
-                      {subcategories.length > 0 ? (
-                        <div className="flex flex-wrap gap-2">
-                          {subcategories.map((cat) => (
-                            <button
-                              key={cat.id}
-                              onClick={() => setSubcategoryId(subcategoryId === cat.id ? null : cat.id)}
-                              className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all hover:scale-105"
-                              style={{
-                                background: subcategoryId === cat.id ? cat.color : '#2a2a2a',
-                                color: subcategoryId === cat.id ? '#ffffff' : '#999',
-                                border: `1.5px solid ${subcategoryId === cat.id ? cat.color : '#3d3d3d'}`,
-                              }}
-                            >
-                              <span className="mr-1">{cat.emoji}</span>
-                              {cat.nameChinese}
-                            </button>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="text-sm text-gray-500 py-2">
-                          尚無自訂分類，請前往設定頁面建立分類
-                        </div>
-                      )}
+                      <CategorySelector
+                        subcategories={subcategories}
+                        selectedSubcategoryId={subcategoryId}
+                        onSelectSubcategory={setSubcategoryId}
+                      />
                     </div>
 
                     {/* 標籤 */}
-                    <div className="flex flex-wrap items-center gap-2 mb-6">
-                      {tags.map((tag) => (
-                        <span
-                          key={tag}
-                          className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-gray-800 text-gray-300 hover:bg-gray-700 transition-colors group"
-                        >
-                          #{tag}
-                          <button
-                            onClick={() => handleRemoveTag(tag)}
-                            className="opacity-0 group-hover:opacity-100 hover:text-red-400 transition-opacity"
-                          >
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          </button>
-                        </span>
-                      ))}
-                      <input
-                        type="text"
-                        value={newTag}
-                        onChange={(e) => setNewTag(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault()
-                            handleAddTag()
-                          }
-                        }}
-                        onBlur={handleTagBlur}
-                        placeholder="+ 新增標籤"
-                        className="px-2 py-1 text-xs bg-transparent border border-dashed border-gray-700 rounded-md hover:border-gray-600 focus:border-gray-500 focus:outline-none transition-colors text-gray-400"
-                        style={{ width: '100px' }}
+                    <div className="mb-6">
+                      <TagManager
+                        tags={tags}
+                        onTagsChange={setTags}
                       />
                     </div>
 

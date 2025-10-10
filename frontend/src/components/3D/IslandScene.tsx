@@ -15,7 +15,6 @@ import { WeatherSystem, WeatherInfo } from './WeatherEffects'
 import { NaturalSky } from './NaturalSky'
 import { Suspense, useState, useEffect } from 'react'
 import { useIslandStore } from '../../stores/islandStore'
-import { useEnvironmentStore } from '../../stores/environmentStore'
 import { Memory as IslandMemory } from '../../types/island'
 
 interface IslandSceneProps {
@@ -52,7 +51,6 @@ export function IslandScene({
   hideLabels = false
 }: IslandSceneProps) {
   const { islands, switchIsland, currentIslandId } = useIslandStore()
-  const { sunPosition } = useEnvironmentStore()
   const [cameraTarget, setCameraTarget] = useState<[number, number, number] | null>(null)
   const [selectedMemory, setSelectedMemory] = useState<IslandMemory | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)

@@ -4,49 +4,97 @@
 
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useMutation } from '@apollo/client'
 import { useIslandStore } from '../stores/islandStore'
 import { useAuthStore } from '../stores/authStore'
 import { Island } from '../types/island'
 import { Z_INDEX_CLASSES } from '../constants/zIndex'
+import { CREATE_ISLAND } from '../graphql/category'
+import { GET_ISLANDS } from '../graphql/category'
+
+// 生成英文名稱（簡單的拼音轉換）
+function generateEnglishName(chineseName: string): string {
+  // 簡單實作：移除空格並轉小寫，實際專案可能需要更複雜的拼音轉換
+  return chineseName.replace(/\s+/g, '_').toLowerCase()
+}
+
+// 生成隨機顏色
+function generateRandomColor(): string {
+  const colors = [
+    '#FF6B9D', // 粉紅
+    '#4A90E2', // 藍色
+    '#50C878', // 綠色
+    '#F5A623', // 橙色
+    '#9B59B6', // 紫色
+    '#E74C3C', // 紅色
+    '#7FB069', // 淺綠
+    '#6C8EAD', // 灰藍
+  ]
+  return colors[Math.floor(Math.random() * colors.length)]
+}
 
 export function IslandNavigator() {
   const navigate = useNavigate()
-  const { islands, currentIslandId, switchIsland, addIsland } = useIslandStore()
+  const { islands, currentIslandId, switchIsland } = useIslandStore()
   const { user, logout } = useAuthStore()
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [newIslandName, setNewIslandName] = useState('')
   const [newIslandEmoji, setNewIslandEmoji] = useState('🏝️')
+  const [isCreating, setIsCreating] = useState(false)
+
+  // GraphQL mutation
+  const [createIsland] = useMutation(CREATE_ISLAND, {
+    refetchQueries: [{ query: GET_ISLANDS }],
+    onCompleted: (data) => {
+      console.log('✅ 島嶼創建成功:', data.createIsland)
+      setShowCreateDialog(false)
+      setNewIslandName('')
+      setNewIslandEmoji('🏝️')
+      setIsCreating(false)
+    },
+    onError: (error) => {
+      console.error('❌ 島嶼創建失敗:', error)
+      alert('創建島嶼失敗：' + error.message)
+      setIsCreating(false)
+    }
+  })
 
   const handleLogout = () => {
     logout()
     navigate('/login', { replace: true })
   }
 
-  const handleCreateIsland = () => {
-    if (newIslandName.trim()) {
-      addIsland({
-        name: newIslandName.trim(),
-        emoji: newIslandEmoji,
-        color: '#' + Math.floor(Math.random() * 16777215).toString(16),
-        description: '新建的島嶼',
-        categories: [], // 新島嶼需要用戶後續設置類別
-        memoryCount: 0,
-        memories: [], // 新島嶼沒有記憶
-        regionDistribution: {
-          learning: 0,
-          inspiration: 0,
-          work: 0,
-          social: 0,
-          life: 0,
-          goals: 0,
-          resources: 0,
-          misc: 0
+  const handleCreateIsland = async () => {
+    if (!newIslandName.trim() || isCreating) return
+
+    setIsCreating(true)
+
+    try {
+      // 計算新島嶼的位置（圓形排列）
+      const islandCount = islands.length
+      const radius = 80
+      const angle = (islandCount / (islandCount + 1)) * Math.PI * 2 - Math.PI / 2
+      const positionX = Math.cos(angle) * radius
+      const positionZ = Math.sin(angle) * radius
+
+      await createIsland({
+        variables: {
+          input: {
+            name: generateEnglishName(newIslandName.trim()),
+            nameChinese: newIslandName.trim(),
+            emoji: newIslandEmoji,
+            color: generateRandomColor(),
+            description: '新建的島嶼',
+            positionX,
+            positionY: 0,
+            positionZ
+          }
         }
       })
-      setShowCreateDialog(false)
-      setNewIslandName('')
-      setNewIslandEmoji('🏝️')
+    } catch (error) {
+      // Error handled in onError callback
+      console.error('創建島嶼時發生錯誤:', error)
     }
   }
 
@@ -187,10 +235,10 @@ export function IslandNavigator() {
               </button>
               <button
                 onClick={handleCreateIsland}
-                disabled={!newIslandName.trim()}
+                disabled={!newIslandName.trim() || isCreating}
                 className="flex-1 px-6 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-bold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                創建 🎉
+                {isCreating ? '創建中...' : '創建 🎉'}
               </button>
             </div>
           </div>

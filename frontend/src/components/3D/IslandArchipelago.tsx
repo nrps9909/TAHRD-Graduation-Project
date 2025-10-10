@@ -4,7 +4,7 @@
  * 支持自订形状：如果岛屿有 customShapeData，则使用 CustomIsland 渲染
  */
 
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { useIslandStore } from '../../stores/islandStore'
 import { Memory } from '../../types/island'
 import { IslandLabel } from './IslandLabel'

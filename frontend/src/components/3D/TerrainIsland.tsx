@@ -203,7 +203,7 @@ function getTerrainHeight(x: number, z: number): number {
   }
 
   // 2. 基础高度（中心高，边缘低）
-  let baseHeight = Math.pow(islandFactor, 2) * 2.5
+  const baseHeight = Math.pow(islandFactor, 2) * 2.5
 
   // 3. 找到最接近的区域并应用其特征
   let regionalHeight = 0
@@ -286,7 +286,7 @@ function getColorByTerrain(terrainType: TerrainType, height: number, x: number, 
       // 平原草地：嫩绿色
       return new THREE.Color(0xB4E7B4).lerp(new THREE.Color(0xA0D995), noise + 0.5)
 
-    case TerrainType.TERRACE:
+    case TerrainType.TERRACE: {
       // 梯田：阶梯边缘明显
       const step = Math.floor(height * 10) / 10
       const isBorder = Math.abs(height - step) < 0.05
@@ -297,24 +297,27 @@ function getColorByTerrain(terrainType: TerrainType, height: number, x: number, 
         // 田面：金黄色
         return new THREE.Color(0xFFD98E).lerp(new THREE.Color(0xFFE5A8), noise + 0.5)
       }
+    }
 
     case TerrainType.HILL:
       // 丘陵：草绿色
       return new THREE.Color(0xA8D5A8).lerp(new THREE.Color(0x95C795), noise + 0.5)
 
-    case TerrainType.MOUNTAIN:
+    case TerrainType.MOUNTAIN: {
       // 山地：橄榄绿 + 灰褐
       const rockFactor = Math.max(0, (height - 2.5) / 1.0)
       const greenColor = new THREE.Color(0x8B9D77)
       const rockColor = new THREE.Color(0xB0A090)
       return greenColor.lerp(rockColor, Math.min(rockFactor, 1))
+    }
 
-    case TerrainType.PEAK:
+    case TerrainType.PEAK: {
       // 山峰：浅灰 + 糖霜白
       const snowFactor = Math.max(0, (height - 3.5) / 0.8)
       const stoneColor = new THREE.Color(0xCCCCCC)
       const snowColor = new THREE.Color(0xFFFAFA)
       return stoneColor.lerp(snowColor, Math.min(snowFactor, 1))
+    }
 
     default:
       return new THREE.Color(0xB4E7B4)

@@ -3,7 +3,7 @@
  * 提供便捷的音效控制接口
  */
 
-import { useCallback, useState, useEffect } from 'react'
+import { useCallback, useState } from 'react'
 import {
   BGM,
   SFX,

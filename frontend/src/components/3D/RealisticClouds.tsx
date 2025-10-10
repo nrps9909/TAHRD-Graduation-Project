@@ -21,7 +21,7 @@ function generateRandomClouds(count: number): CloudConfig[] {
 
   for (let i = 0; i < count; i++) {
     const x = (Math.random() - 0.5) * 160 // -80 到 80
-    const y = 25 + Math.random() * 20 // 25 到 45
+    const y = 150 + Math.random() * 50 // 150 到 200 (需要抬頭才看得到)
     const z = -20 - Math.random() * 80 // -20 到 -100
     const speed = 0.01 + Math.random() * 0.02 // 0.01 到 0.03
     const opacity = 0.7 + Math.random() * 0.3 // 0.7 到 1.0 (更不透明)
@@ -73,12 +73,6 @@ export function RealisticClouds() {
             key={index}
             position={config.position}
             opacity={config.opacity}
-            speed={config.speed}
-            width={config.scale}
-            depth={config.scale * 0.5}
-            segments={30}
-            color="#ffffff"
-            fade={30}
           />
         ))}
       </DreiClouds>

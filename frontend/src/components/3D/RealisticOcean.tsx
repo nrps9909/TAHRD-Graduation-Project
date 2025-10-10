@@ -3,15 +3,14 @@
  * 使用 Water shader 创建带波浪和反射的海洋
  */
 
-import { useRef, useMemo, useEffect } from 'react'
+import { useMemo, useEffect } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Water } from 'three-stdlib'
 import * as THREE from 'three'
 import { useEnvironmentStore } from '../../stores/environmentStore'
 
 export function RealisticOcean() {
-  const waterRef = useRef<Water>(null)
-  const { gl, scene, camera } = useThree()
+  const { scene } = useThree()
   const { sunPosition } = useEnvironmentStore()
 
   // 创建水面纹理

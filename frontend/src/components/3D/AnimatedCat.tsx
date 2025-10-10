@@ -25,7 +25,6 @@ interface AnimatedCatProps {
   name?: string // 貓咪名稱
   subtitle?: string // 副標題
   emoji?: string // 表情符號
-  ringColor?: string // 底座光環顏色
   lightColor?: string // hover 光效顏色
   hideLabel?: boolean // 是否隱藏標籤
 }
@@ -39,7 +38,6 @@ function AnimatedCatModel({
   name = '貓咪',
   subtitle = '',
   emoji = '🐱',
-  ringColor = '#FFFFFF',
   lightColor = '#FFFFFF',
   hideLabel = false,
 }: AnimatedCatProps) {

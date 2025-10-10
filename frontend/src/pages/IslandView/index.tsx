@@ -1,15 +1,19 @@
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useQuery } from '@apollo/client'
 import { useParams, useNavigate } from 'react-router-dom'
 import { GET_ASSISTANTS } from '../../graphql/assistant'
+import { GET_MEMORIES } from '../../graphql/memory'
 import { Assistant } from '../../types/assistant'
 import { Message } from '../../types/message'
+import { Memory } from '../../types/memory'
 import MessageBubble from '../../components/ChatInterface/MessageBubble'
 import UploadModal from '../../components/ChatInterface/UploadModal'
 import { IslandStatusCard } from '../../components/IslandStatusCard'
 import { IslandEditorModal } from '../../components/IslandEditorModal'
+import { MemoryTree } from '../../components/3D/MemoryTree'
+import { Memory as IslandMemory } from '../../types/island'
 import { motion } from 'framer-motion'
 
 export default function IslandView() {
@@ -20,11 +24,57 @@ export default function IslandView() {
   const [showIslandEditor, setShowIslandEditor] = useState(false)
   const [inputText, setInputText] = useState('')
   const [messages, setMessages] = useState<Message[]>([])
+  const [selectedMemory, setSelectedMemory] = useState<IslandMemory | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const { data, loading, refetch } = useQuery(GET_ASSISTANTS)
 
+  // 獲取該助理的所有記憶
+  const { data: memoriesData, loading: memoriesLoading } = useQuery(GET_MEMORIES, {
+    variables: {
+      filter: { assistantId },
+      limit: 100,
+    },
+    skip: !assistantId,
+  })
+
   // 获取当前assistant
   const assistant = data?.assistants.find((a: Assistant) => a.id === assistantId)
+
+  // 將記憶轉換為 IslandMemory 格式並分配位置
+  const memoryTrees = useMemo(() => {
+    if (!memoriesData?.memories) return []
+
+    const memories: Memory[] = memoriesData.memories
+    const trees: IslandMemory[] = []
+
+    // 圓形排列算法
+    memories.forEach((memory, index) => {
+      const totalMemories = memories.length
+      const angle = (index / totalMemories) * Math.PI * 2
+      const radius = 8 + (index % 3) * 2 // 8, 10, 12 的半徑層次
+
+      const x = Math.cos(angle) * radius
+      const z = Math.sin(angle) * radius
+      const y = 0 // 樹從地面開始
+
+      trees.push({
+        id: memory.id,
+        title: memory.title || memory.summary || '無標題記憶',
+        content: memory.rawContent || memory.summary || '',
+        category: (memory as any).subcategory?.nameChinese || memory.category || '未分類',
+        importance: 5, // 固定預設值，不再使用此欄位
+        tags: memory.tags || [],
+        position: [x, y, z] as [number, number, number],
+        createdAt: new Date(memory.createdAt),
+        emoji: memory.emoji || (memory as any).subcategory?.emoji || '💭',
+        summary: memory.summary,
+        // 保留 subcategory 資訊用於顯示
+        subcategory: (memory as any).subcategory,
+      })
+    })
+
+    return trees
+  }, [memoriesData, assistant])
 
   // 如果找不到assistant，返回主页
   useEffect(() => {
@@ -314,6 +364,21 @@ export default function IslandView() {
             </group>
           )
         }
+
+        {/* 記憶樹 - Memory Trees */}
+        {!memoriesLoading && memoryTrees.length > 0 && assistant && memoryTrees.map((memory, index) => (
+          <MemoryTree
+            key={memory.id}
+            memory={memory}
+            islandColor={assistant.color}
+            position={memory.position}
+            seed={index * 123.456} // 使用 index 作為種子，確保每棵樹都不同
+            onClick={(clickedMemory) => {
+              console.log('🌳 Clicked memory tree:', clickedMemory)
+              setSelectedMemory(clickedMemory)
+            }}
+          />
+        ))}
       </Canvas>
 
       {/* 島嶼狀態卡片 - 左上角 */}
@@ -332,6 +397,129 @@ export default function IslandView() {
             categories={[assistant.type]}
             updatedAt={new Date(assistant.updatedAt)}
           />
+        </motion.div>
+      )}
+
+      {/* 記憶詳情面板 - Memory Detail Panel */}
+      {selectedMemory && !showChat && (
+        <motion.div
+          initial={{ x: 100, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          exit={{ x: 100, opacity: 0 }}
+          transition={{ type: 'spring', stiffness: 200, damping: 25 }}
+          className="absolute top-4 right-4 w-80 z-20"
+        >
+          <div
+            className="rounded-3xl p-6 shadow-2xl"
+            style={{
+              background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 250, 245, 0.9) 100%)',
+              backdropFilter: 'blur(20px) saturate(180%)',
+              WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+              border: '3px solid rgba(255, 230, 240, 0.8)',
+              boxShadow: `0 12px 40px ${selectedMemory.color}40, inset 0 2px 4px rgba(255, 255, 255, 0.9)`,
+            }}
+          >
+            {/* Header with close button */}
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div
+                  className="text-4xl animate-bounce-gentle"
+                  style={{
+                    filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.1))'
+                  }}
+                >
+                  {selectedMemory.emoji}
+                </div>
+                <div className="flex-1">
+                  <div
+                    className="text-xs font-medium px-2 py-1 rounded-full inline-block mb-1"
+                    style={{
+                      background: `${selectedMemory.color}30`,
+                      color: selectedMemory.color,
+                      border: `1.5px solid ${selectedMemory.color}60`,
+                    }}
+                  >
+                    {selectedMemory.category}
+                  </div>
+                  <h3
+                    className="font-bold text-lg leading-tight"
+                    style={{
+                      color: selectedMemory.color,
+                      textShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                    }}
+                  >
+                    {selectedMemory.title}
+                  </h3>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedMemory(null)}
+                className="text-gray-400 hover:text-gray-600 transition-colors text-2xl leading-none"
+                aria-label="關閉"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Tags */}
+            {selectedMemory.tags && selectedMemory.tags.length > 0 && (
+              <div className="mb-4">
+                <div className="flex flex-wrap gap-2">
+                  {selectedMemory.tags.map((tag, index) => (
+                    <span
+                      key={index}
+                      className="px-3 py-1 rounded-full text-xs font-medium"
+                      style={{
+                        background: 'linear-gradient(135deg, rgba(255, 245, 230, 0.8), rgba(255, 250, 240, 0.6))',
+                        border: '1.5px solid rgba(255, 230, 240, 0.8)',
+                        color: '#666',
+                      }}
+                    >
+                      #{tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Created date */}
+            <div className="text-xs text-gray-500 mb-4">
+              建立於 {selectedMemory.createdAt.toLocaleDateString('zh-TW', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              })}
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  navigate(`/database?memoryId=${selectedMemory.id}`)
+                }}
+                className="flex-1 px-4 py-2.5 rounded-2xl font-medium transition-all duration-300 hover:scale-105 active:scale-95"
+                style={{
+                  background: `linear-gradient(135deg, ${selectedMemory.color}20, ${selectedMemory.color}10)`,
+                  border: `2px solid ${selectedMemory.color}40`,
+                  color: selectedMemory.color,
+                  boxShadow: `0 4px 12px ${selectedMemory.color}20`,
+                }}
+              >
+                查看詳情
+              </button>
+              <button
+                onClick={() => setSelectedMemory(null)}
+                className="px-4 py-2.5 rounded-2xl font-medium transition-all duration-300 hover:scale-105 active:scale-95"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(229, 231, 235, 0.8), rgba(243, 244, 246, 0.6))',
+                  border: '2px solid rgba(209, 213, 219, 0.8)',
+                  color: '#6B7280',
+                }}
+              >
+                關閉
+              </button>
+            </div>
+          </div>
         </motion.div>
       )}
 

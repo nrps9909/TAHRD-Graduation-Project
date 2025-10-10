@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useQuery } from '@apollo/client'
 import { useNavigate } from 'react-router-dom'
 import { GET_ALL_MEMORIES } from '../../graphql/islandData'
+import { GET_ISLANDS } from '../../graphql/category'
 import { IslandScene } from '../../components/3D/IslandScene'
 import Live2DCat from '../../components/Live2DCat'
 import TororoKnowledgeAssistant from '../../components/TororoKnowledgeAssistant'
@@ -9,7 +10,7 @@ import { MiniMap } from '../../components/MiniMap'
 import SettingsMenu from '../../components/SettingsMenu'
 import { IslandStatusCard } from '../../components/IslandStatusCard'
 import { useIslandStore } from '../../stores/islandStore'
-import { assignMemoriesToIslands, loadUserIslands } from '../../utils/islandDataConverter'
+import { convertGraphQLIslandsToIslands } from '../../utils/islandDataConverter'
 import { Memory } from '../../types/memory'
 import { useSound } from '../../hooks/useSound'
 import { motion } from 'framer-motion'
@@ -17,7 +18,11 @@ import { Z_INDEX_CLASSES } from '../../constants/zIndex'
 
 export default function IslandOverview() {
   const navigate = useNavigate()
+
+  // GraphQL Queries - 同時載入島嶼和記憶資料
+  const { data: islandsData, loading: islandsLoading } = useQuery(GET_ISLANDS)
   const { data: memoryData, loading: memoriesLoading } = useQuery(GET_ALL_MEMORIES)
+
   const [showLive2D, setShowLive2D] = useState(false)
   const [currentLive2DModel, setCurrentLive2DModel] = useState<string>('')
   const [audioInitialized, setAudioInitialized] = useState(false)
@@ -45,7 +50,7 @@ export default function IslandOverview() {
   // 首次進入自動打開白噗噗對話
   useEffect(() => {
     const hasShownWelcome = sessionStorage.getItem('tororo_welcome_shown')
-    if (!hasShownWelcome && !memoriesLoading) {
+    if (!hasShownWelcome && !memoriesLoading && !islandsLoading) {
       // 延遲 1 秒後自動打開白噗噗
       const timer = setTimeout(() => {
         handleTororoClick()
@@ -53,61 +58,39 @@ export default function IslandOverview() {
       }, 1000)
       return () => clearTimeout(timer)
     }
-  }, [memoriesLoading])
+  }, [memoriesLoading, islandsLoading])
 
-  // 載入島嶼和記憶數據
+  // 載入島嶼和記憶數據（從 GraphQL）
   useEffect(() => {
-    if (memoriesLoading) {
+    // 等待兩個 query 都載入完成
+    if (memoriesLoading || islandsLoading) {
       setLoading(true)
       return
     }
 
     try {
-      // 1. 載入用戶的島嶼配置（從 localStorage 或使用預設）
-      const userIslands = loadUserIslands()
+      // 1. 獲取 GraphQL 島嶼資料
+      const graphQLIslands = islandsData?.islands || []
 
       // 2. 獲取所有記憶
       const allMemories: Memory[] = memoryData?.memories || []
 
-      // 3. 將記憶分配到島嶼
-      const islandsWithMemories = assignMemoriesToIslands(userIslands, allMemories)
+      // 3. 轉換為前端 Island 格式（包含記憶分配）
+      const convertedIslands = convertGraphQLIslandsToIslands(graphQLIslands, allMemories)
 
       // 4. 載入到 store
-      loadIslands(islandsWithMemories)
+      loadIslands(convertedIslands)
 
-      console.log('✅ 島嶼數據已載入:', {
-        島嶼數量: islandsWithMemories.length,
+      console.log('✅ [IslandOverview] 島嶼數據已載入:', {
+        島嶼數量: convertedIslands.length,
         總記憶數: allMemories.length,
-        各島記憶: islandsWithMemories.map(i => `${i.name}: ${i.memoryCount}`)
+        各島記憶: convertedIslands.map(i => `${i.nameChinese}: ${i.memoryCount}條`)
       })
     } catch (error) {
-      console.error('❌ 載入島嶼數據失敗:', error)
+      console.error('❌ [IslandOverview] 載入島嶼數據失敗:', error)
       setLoading(false)
     }
-  }, [memoryData, memoriesLoading, loadIslands, setLoading])
-
-  // 監聽頁面可見性變化，重新載入島嶼數據
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (!document.hidden && !memoriesLoading) {
-        console.log('🔄 [IslandOverview] 頁面重新可見，重新載入島嶼數據...')
-
-        try {
-          const userIslands = loadUserIslands()
-          const allMemories: Memory[] = memoryData?.memories || []
-          const islandsWithMemories = assignMemoriesToIslands(userIslands, allMemories)
-          loadIslands(islandsWithMemories)
-
-          console.log('✅ [IslandOverview] 島嶼數據已重新載入')
-        } catch (error) {
-          console.error('❌ [IslandOverview] 重新載入失敗:', error)
-        }
-      }
-    }
-
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
-  }, [memoryData, memoriesLoading, loadIslands])
+  }, [islandsData, memoryData, islandsLoading, memoriesLoading, loadIslands, setLoading])
 
   const handleTororoClick = () => {
     // Tororo (小白) - 知識園丁，使用 Tororo 白色模型
@@ -213,14 +196,13 @@ export default function IslandOverview() {
           transition={{ type: 'spring', stiffness: 200, damping: 25 }}
         >
           <IslandStatusCard
-            name={getCurrentIsland()!.name}
+            name={getCurrentIsland()!.nameChinese}
             emoji={getCurrentIsland()!.emoji}
             color={getCurrentIsland()!.color}
-            description={getCurrentIsland()!.description}
+            description={getCurrentIsland()!.description || ''}
             memoryCount={getCurrentIsland()!.memoryCount}
-            categories={getCurrentIsland()!.categories}
-            updatedAt={getCurrentIsland()!.updatedAt}
-            regionDistribution={getCurrentIsland()!.regionDistribution}
+            categories={getCurrentIsland()!.subcategories?.map(sub => sub.nameChinese) || []}
+            updatedAt={new Date(getCurrentIsland()!.updatedAt)}
             onEditClick={handleEditIsland}
           />
         </motion.div>

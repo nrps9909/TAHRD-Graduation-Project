@@ -9,6 +9,7 @@ import * as THREE from 'three'
 import { Memory } from '../../types/island'
 import { MemoryTree } from './MemoryTree'
 import { generateTreePositions } from '../../utils/treePositioning'
+import { IslandBoundaryConfig } from '../../utils/islandBoundary'
 
 interface PawIslandProps {
   position?: [number, number, number]
@@ -43,7 +44,15 @@ export function PawIsland({
   const treePositions = useMemo(() => {
     if (memories.length === 0) return []
     const seed = islandId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
-    return generateTreePositions(memories.length, 18, 1.8, seed)
+
+    // 脚掌形状的边界配置
+    const boundaryConfig: IslandBoundaryConfig = {
+      shape: 'paw',
+      radius: 18,
+      margin: 2
+    }
+
+    return generateTreePositions(memories.length, 18, 1.8, seed, boundaryConfig)
   }, [memories.length, islandId])
 
   // 脚掌的各个肉球位置（用于绘制完整形状）

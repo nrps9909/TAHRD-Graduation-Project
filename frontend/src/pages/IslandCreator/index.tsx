@@ -8,12 +8,13 @@ import { useState, useRef, useEffect } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, PerspectiveCamera, Environment } from '@react-three/drei'
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js'
+import { useMutation } from '@apollo/client'
 import { IslandDrawer } from '../../components/IslandDrawer'
 import { CustomIsland } from '../../components/3D/CustomIsland'
 import { islandShapePresets, type ShapePreset } from '../../utils/islandShapePresets'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useIslandStore } from '../../stores/islandStore'
-import { saveUserIslands } from '../../utils/islandDataConverter'
+import { UPDATE_ISLAND, GET_ISLANDS } from '../../graphql/category'
 
 interface Point {
   x: number
@@ -45,6 +46,23 @@ export default function IslandCreator() {
     name: '我的島嶼'
   })
   const [savedIslands, setSavedIslands] = useState<IslandConfig[]>([])
+  const [isSaving, setIsSaving] = useState(false)
+
+  // GraphQL mutation for updating island
+  const [updateIslandMutation] = useMutation(UPDATE_ISLAND, {
+    refetchQueries: [{ query: GET_ISLANDS }],
+    onCompleted: (data) => {
+      console.log('✅ 島嶼更新成功:', data.updateIsland)
+      setIsSaving(false)
+      alert(`✅ 島嶼「${config.name}」已更新！\n\n形狀點數: ${config.shape.length}\n高度: ${config.height}\n斜率: ${config.bevel}`)
+      navigate('/', { replace: true })
+    },
+    onError: (error) => {
+      console.error('❌ 島嶼更新失敗:', error)
+      alert('更新失敗：' + error.message)
+      setIsSaving(false)
+    }
+  })
 
   // 判斷是否為編輯模式
   const isEditMode = !!islandId
@@ -108,8 +126,11 @@ export default function IslandCreator() {
 
   const handleSave = async () => {
     if (isEditMode && islandId) {
-      // 編輯模式：更新島嶼配置到資料庫
+      // 編輯模式：使用 GraphQL mutation 更新島嶼配置到資料庫
+      if (isSaving) return
+
       try {
+        setIsSaving(true)
         console.log('🔵 [IslandCreator] 開始保存島嶼...')
         console.log('🔵 [IslandCreator] Island ID:', islandId)
         console.log('🔵 [IslandCreator] Config:', config)
@@ -117,46 +138,37 @@ export default function IslandCreator() {
         // 將 shape 轉換為 JSON 字符串
         const customShapeData = config.shape.length > 0 ? JSON.stringify(config.shape) : null
 
-        // TODO: 添加 GraphQL mutation 調用來保存到資料庫
-        // 暫時先保存到本地 store 和 localStorage
+        // 使用 GraphQL mutation 更新資料庫
+        await updateIslandMutation({
+          variables: {
+            id: islandId,
+            input: {
+              color: config.color,
+              customShapeData,
+              islandHeight: config.height,
+              islandBevel: config.bevel,
+            }
+          }
+        })
 
-        // 更新本地 store（包含所有新欄位）
+        // 同時更新本地 store 以保持 UI 同步
         updateIsland(islandId, {
           color: config.color,
           customShapeData: customShapeData || undefined,
           islandHeight: config.height,
           islandBevel: config.bevel,
-          updatedAt: new Date(),
+          updatedAt: new Date().toISOString(),
         })
 
-        // 保存所有島嶼到 localStorage（包含形狀、高度、斜率）
-        const updatedIslands = islands.map(island =>
-          island.id === islandId
-            ? {
-                ...island,
-                color: config.color,
-                customShapeData: customShapeData,
-                islandHeight: config.height,
-                islandBevel: config.bevel,
-                updatedAt: new Date()
-              }
-            : island
-        )
-        saveUserIslands(updatedIslands)
-
-        console.log('✅ [IslandCreator] 島嶼已保存', {
+        console.log('✅ [IslandCreator] 島嶼配置已保存到資料庫', {
           shape: config.shape.length,
           height: config.height,
           bevel: config.bevel
         })
-        alert(`✅ 島嶼「${config.name}」已更新！\n\n形狀點數: ${config.shape.length}\n高度: ${config.height}\n斜率: ${config.bevel}`)
-
-        // 使用 router navigate 而非 window.location
-        console.log('🔵 [IslandCreator] 導航回首頁...')
-        navigate('/', { replace: true })
       } catch (error) {
         console.error('❌ [IslandCreator] 更新失敗:', error)
-        alert(`更新失敗: ${error instanceof Error ? error.message : '未知錯誤'}`)
+        setIsSaving(false)
+        // Error handled in onError callback
       }
     } else {
       // 創建模式：保存到 localStorage
@@ -344,10 +356,10 @@ export default function IslandCreator() {
             </button>
             <button
               onClick={handleSave}
-              disabled={!isEditMode && config.shape.length === 0}
+              disabled={(!isEditMode && config.shape.length === 0) || isSaving}
               className="px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isEditMode ? '💾 保存更新' : '💾 保存'}
+              {isSaving ? '💾 保存中...' : isEditMode ? '💾 保存更新' : '💾 保存'}
             </button>
             <button
               onClick={handleExport}

@@ -8,7 +8,7 @@
  * - 发光：活跃/最近的记忆更亮
  */
 
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import { Html } from '@react-three/drei'

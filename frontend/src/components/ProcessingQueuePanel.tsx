@@ -46,7 +46,7 @@ interface QueueStats {
 }
 
 export function ProcessingQueuePanel() {
-  const [socket, setSocket] = useState<Socket | null>(null)
+  const [_socket, setSocket] = useState<Socket | null>(null)
   const [isExpanded, setIsExpanded] = useState(true)
   const [stats, setStats] = useState<QueueStats | null>(null)
   const [userTasks, setUserTasks] = useState<QueueTask[]>([])

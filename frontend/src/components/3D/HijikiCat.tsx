@@ -23,7 +23,6 @@ export function HijikiCat({ position = [0, 0, 0], scale = 1, onClick, hideLabel 
       name="黑噗噗"
       subtitle="讓我看看!"
       emoji="🌙"
-      ringColor="#4A4A4A"
       lightColor="#FFD700" // 金黃色光效
       hideLabel={hideLabel}
     />

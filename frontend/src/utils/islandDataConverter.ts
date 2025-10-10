@@ -1,116 +1,91 @@
 /**
- * 將 GraphQL 的 Memory 數據轉換為 Island 格式
- * 新架構：根據記憶的 category 分配到對應的島嶼
+ * 將 GraphQL 的 Island 和 Memory 數據轉換為 3D 場景所需的格式
+ * 新架構：Island 從資料庫載入，包含 Subcategories 和 Memories
  */
 
-import { Island, Memory as IslandMemory, IslandCategory, DEFAULT_ISLANDS } from '../types/island'
-import { Memory as DBMemory } from '../types/memory'
+import { Island as GraphQLIsland } from '../graphql/category'
+import { Memory as GraphQLMemory } from '../types/memory'
+import { Island, Memory as IslandMemory, Subcategory, IslandCategory } from '../types/island'
 
 /**
- * 將資料庫的 Memory 轉換為 Island Memory 格式
+ * 將 GraphQL Memory 轉換為 Island Memory 格式（用於 3D 場景）
  */
-export function convertDBMemoryToIslandMemory(dbMemory: DBMemory): IslandMemory {
+export function convertGraphQLMemoryToIslandMemory(graphQLMemory: GraphQLMemory): IslandMemory {
+  // 計算重要性分數（用於控制記憶花的顏色彩度）
+  let importance = 5 // 預設中等重要性
+
+  if (graphQLMemory.isPinned) {
+    importance = 9 // 釘選的記憶非常重要
+  } else if (graphQLMemory.tags && graphQLMemory.tags.length > 3) {
+    importance = 7 // 多標籤的記憶較重要
+  }
+
   return {
-    id: dbMemory.id,
-    title: dbMemory.title,
-    importance: dbMemory.isPinned ? 8 : 5, // 釘選的記憶視為重要，其他使用預設值
-    category: dbMemory.category as IslandCategory,
-    content: dbMemory.summary || dbMemory.rawContent,
-    tags: dbMemory.tags,
-    createdAt: new Date(dbMemory.createdAt)
+    id: graphQLMemory.id,
+    title: graphQLMemory.title || graphQLMemory.summary || '無標題記憶',
+    importance,
+    category: graphQLMemory.category as IslandCategory,
+    content: graphQLMemory.summary || graphQLMemory.rawContent,
+    tags: graphQLMemory.tags || [],
+    createdAt: new Date(graphQLMemory.createdAt),
+    position: [0, 0, 0], // 預設位置，將由使用方設定
+    emoji: graphQLMemory.emoji,
+    summary: graphQLMemory.summary,
+    subcategoryId: graphQLMemory.subcategoryId,
+    subcategory: graphQLMemory.subcategory as Subcategory | undefined
   }
 }
 
 /**
- * 計算區域分布（根據記憶的 category）
+ * 將 GraphQL Island 轉換為前端 Island 格式（用於 3D 場景）
  */
-export function calculateRegionDistribution(memories: IslandMemory[]) {
-  const distribution = {
-    learning: 0,
-    inspiration: 0,
-    work: 0,
-    social: 0,
-    life: 0,
-    goals: 0,
-    resources: 0,
-    misc: 0
+export function convertGraphQLIslandToIsland(
+  graphQLIsland: GraphQLIsland,
+  allMemories: GraphQLMemory[]
+): Island {
+  // 過濾出屬於這個島嶼的所有記憶
+  // 記憶屬於某個島嶼 = 記憶的 subcategoryId 屬於這個島嶼的任一 subcategory
+  const subcategoryIds = (graphQLIsland.subcategories || []).map(sub => sub.id)
+  const islandMemories = allMemories
+    .filter(memory => memory.subcategoryId && subcategoryIds.includes(memory.subcategoryId))
+    .map(convertGraphQLMemoryToIslandMemory)
+
+  return {
+    id: graphQLIsland.id,
+    userId: graphQLIsland.userId,
+    position: graphQLIsland.position,
+    name: graphQLIsland.name,
+    nameChinese: graphQLIsland.nameChinese,
+    emoji: graphQLIsland.emoji,
+    color: graphQLIsland.color,
+    description: graphQLIsland.description || null,
+    positionX: graphQLIsland.positionX,
+    positionY: graphQLIsland.positionY,
+    positionZ: graphQLIsland.positionZ,
+    subcategoryCount: graphQLIsland.subcategoryCount,
+    memoryCount: islandMemories.length, // 使用實際的記憶數量
+    isActive: graphQLIsland.isActive,
+    createdAt: graphQLIsland.createdAt,
+    updatedAt: graphQLIsland.updatedAt,
+    subcategories: graphQLIsland.subcategories as Subcategory[] | undefined,
+    memories: islandMemories,
+    customShapeData: graphQLIsland.customShapeData || null,
+    islandHeight: graphQLIsland.islandHeight || null,
+    islandBevel: graphQLIsland.islandBevel || null,
+    shape: null, // 不再使用，保留以向後兼容
+    textureId: null,
+    modelUrl: null
   }
-
-  memories.forEach(memory => {
-    const category = memory.category.toLowerCase() as keyof typeof distribution
-    if (category in distribution) {
-      distribution[category]++
-    }
-  })
-
-  return distribution
 }
 
 /**
- * 將所有記憶分配到對應的島嶼
- * @param islands 島嶼配置（包含 categories 字段）
- * @param allMemories 所有記憶
- * @returns 填充了記憶的島嶼列表
+ * 將多個 GraphQL Islands 轉換為前端 Islands 格式
  */
-export function assignMemoriesToIslands(
-  islands: Island[],
-  allMemories: DBMemory[]
+export function convertGraphQLIslandsToIslands(
+  graphQLIslands: GraphQLIsland[],
+  allMemories: GraphQLMemory[]
 ): Island[] {
-  // 轉換所有記憶
-  const convertedMemories = allMemories.map(convertDBMemoryToIslandMemory)
-
-  // 為每個島嶼分配記憶
-  return islands.map(island => {
-    // 根據島嶼的 categories 過濾記憶
-    const islandMemories = convertedMemories.filter(memory =>
-      island.categories.includes(memory.category)
-    )
-
-    // 去重：確保每個記憶 ID 只出現一次
-    const uniqueMemories = Array.from(
-      new Map(islandMemories.map(m => [m.id, m])).values()
-    )
-
-    return {
-      ...island,
-      memories: uniqueMemories,
-      memoryCount: uniqueMemories.length,
-      regionDistribution: calculateRegionDistribution(uniqueMemories),
-      updatedAt: new Date()
-    }
-  })
-}
-
-/**
- * 載入用戶的島嶼配置（從 localStorage 或使用預設配置）
- */
-export function loadUserIslands(): Island[] {
-  try {
-    const saved = localStorage.getItem('user-islands')
-    if (saved) {
-      const parsed = JSON.parse(saved)
-      // 轉換日期字符串為 Date 對象
-      return parsed.map((island: any) => ({
-        ...island,
-        createdAt: new Date(island.createdAt),
-        updatedAt: new Date(island.updatedAt)
-      }))
-    }
-  } catch (error) {
-    console.error('Failed to load user islands:', error)
-  }
-
-  // 返回預設配置
-  return DEFAULT_ISLANDS
-}
-
-/**
- * 保存用戶的島嶼配置到 localStorage
- */
-export function saveUserIslands(islands: Island[]) {
-  try {
-    localStorage.setItem('user-islands', JSON.stringify(islands))
-  } catch (error) {
-    console.error('Failed to save user islands:', error)
-  }
+  return graphQLIslands.map(island =>
+    convertGraphQLIslandToIsland(island, allMemories)
+  )
 }

@@ -1,0 +1,29 @@
+# Build output
+dist
+build
+
+# Dependencies
+node_modules
+
+# Config files
+*.config.js
+*.config.ts
+vite.config.ts
+
+# Generated files
+*.generated.ts
+*.d.ts
+
+# Test files (if you add them later)
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+
+# Editor directories
+.vscode
+.idea
+
+# Temporary files
+*.log
+.DS_Store
