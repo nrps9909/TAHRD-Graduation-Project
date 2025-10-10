@@ -92,13 +92,23 @@ async function startServer() {
           'http://localhost:3000',
           'http://localhost:3001',
           'http://localhost:5173', // Vite 預設端口
+          'https://jesse-chen.com',
+          'https://www.jesse-chen.com',
+          'http://jesse-chen.com',
+          'http://www.jesse-chen.com',
           process.env.FRONTEND_URL
         ].filter(Boolean)
         
         // 開發環境允許任何 localhost
         if (process.env.NODE_ENV === 'development' && origin && origin.includes('localhost')) {
           callback(null, true)
-        } else if (!origin || allowedOrigins.includes(origin)) {
+        } 
+        // 生產環境：允許沒有 origin（Nginx 代理的同源請求）
+        else if (!origin && process.env.NODE_ENV === 'production') {
+          callback(null, true)
+        }
+        // 檢查是否在允許列表中
+        else if (!origin || allowedOrigins.includes(origin)) {
           callback(null, true)
         } else {
           callback(new Error('Not allowed by CORS'))
