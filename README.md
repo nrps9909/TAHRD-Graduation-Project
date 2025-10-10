@@ -295,6 +295,175 @@ cd frontend && npm run test
 | `JWT_SECRET` | ✅ | JWT 加密密鑰 | - |
 | `NODE_ENV` | ❌ | 執行環境 | `development` |
 | `PORT` | ❌ | 後端服務埠號 | `4000` |
+| `MCP_SERVICE_URL` | ❌ | MCP 伺服器 URL | `http://localhost:8765` |
+| `USE_GEMINI_CLI` | ❌ | 啟用 Gemini CLI 模式 | `true` |
+
+## 🚀 生產環境部署
+
+### Docker 部署（推薦）
+
+```bash
+# 1. 克隆專案
+git clone https://github.com/your-username/TAHRD-Graduation-Project.git
+cd TAHRD-Graduation-Project
+
+# 2. 配置環境變數
+cp backend/.env.example backend/.env.production
+# 編輯 .env.production 填入實際配置
+
+# 3. 使用 Docker Compose 部署
+docker-compose -f docker-compose.production.yml up -d --build
+
+# 4. 查看服務狀態
+docker-compose -f docker-compose.production.yml ps
+```
+
+### 快速部署腳本
+
+```bash
+# 一鍵部署到生產環境
+./deploy.sh
+
+# 查看服務狀態
+./deploy.sh status
+
+# 查看日誌
+./deploy.sh logs
+
+# 回滾到上一個版本
+./deploy.sh rollback
+```
+
+### SSL/HTTPS 配置
+
+專案支援 Cloudflare Origin Certificate：
+
+```bash
+# 生成 SSL 證書（使用 Cloudflare）
+./setup-ssl.sh
+
+# 證書將安裝到
+# nginx/ssl/cloudflare-origin.pem
+```
+
+**Cloudflare 設定建議**：
+1. **SSL 模式**: Full (strict)
+2. **最小 TLS 版本**: 1.2
+3. **HTTP/3 (QUIC)**: 已啟用
+4. **Brotli 壓縮**: 已啟用
+5. **Always Use HTTPS**: 已啟用
+
+### 性能優化配置
+
+#### Nginx 快取設定
+```nginx
+# 靜態資源快取：1 年
+location ~* \.(jpg|jpeg|png|gif|ico|css|js|svg|woff|woff2)$ {
+    expires 1y;
+    add_header Cache-Control "public, immutable";
+}
+
+# API 請求不快取
+location /graphql {
+    proxy_cache off;
+    proxy_pass http://backend:4000;
+}
+```
+
+#### Cloudflare 快取規則
+
+建議使用 **Cache Rules**（免費 10 個）而非 Page Rules（免費 3 個）：
+
+**靜態資源規則**：
+- **條件**: 檔案副檔名為 `(css|js|jpg|png|gif|svg|woff|woff2|ttf|ico|webp)`
+- **動作**: 
+  - Browser Cache TTL: 1 年
+  - Edge Cache TTL: 1 個月
+
+**API 繞過規則**：
+- **條件**: URI Path 等於 `/graphql`
+- **動作**: Bypass cache
+
+### 健康檢查
+
+部署後請驗證以下項目：
+
+```bash
+# 1. HTTPS 訪問
+curl -I https://your-domain.com
+
+# 2. 健康檢查
+curl https://your-domain.com/health
+
+# 3. GraphQL API
+curl -X POST https://your-domain.com/graphql \
+  -H "Content-Type: application/json" \
+  -d '{"query":"{__typename}"}'
+
+# 4. WebSocket 連接
+# 在瀏覽器開發者工具中檢查 WS 連接
+```
+
+### 監控與維護
+
+#### 查看日誌
+```bash
+# 所有服務日誌
+docker-compose -f docker-compose.production.yml logs -f
+
+# 特定服務日誌
+docker-compose -f docker-compose.production.yml logs -f nginx
+docker-compose -f docker-compose.production.yml logs -f backend
+docker-compose -f docker-compose.production.yml logs -f frontend
+```
+
+#### 定期維護
+```bash
+# 每週執行
+docker system prune -f              # 清理未使用的 Docker 資源
+docker volume prune -f              # 清理未使用的卷
+
+# 每月執行
+docker-compose -f docker-compose.production.yml pull  # 更新映像
+docker-compose -f docker-compose.production.yml up -d --build  # 重建服務
+```
+
+### 故障排查
+
+#### 問題：無法訪問 HTTPS
+```bash
+# 檢查 Nginx 配置
+docker-compose -f docker-compose.production.yml exec nginx nginx -t
+
+# 檢查 SSL 證書
+ls -la nginx/ssl/
+
+# 重啟 Nginx
+docker-compose -f docker-compose.production.yml restart nginx
+```
+
+#### 問題：502 Bad Gateway
+```bash
+# 檢查後端狀態
+docker-compose -f docker-compose.production.yml ps backend
+
+# 查看後端日誌
+docker-compose -f docker-compose.production.yml logs backend
+
+# 重啟後端
+docker-compose -f docker-compose.production.yml restart backend
+```
+
+#### 問題：靜態資源 404
+```bash
+# 檢查前端構建
+docker-compose -f docker-compose.production.yml logs frontend
+
+# 重新構建前端
+docker-compose -f docker-compose.production.yml up -d --build frontend
+```
+
+更多詳細部署資訊，請參考 [FEATURES.md](FEATURES.md) 中的 MCP 架構系統章節
 
 ## 🐛 疑難排解
 

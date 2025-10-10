@@ -10,7 +10,8 @@ RUN npm install
 # 複製源代碼
 COPY . .
 
-# 構建應用
+# 構建應用（增加 Node.js 記憶體限制到 4GB）
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN npm run build
 
 # 生產階段

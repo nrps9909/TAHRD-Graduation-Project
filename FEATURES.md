@@ -1019,6 +1019,411 @@ async function trackGeminiCall(
 
 ---
 
+## 🎨 UI/UX 設計系統
+
+### 📇 記憶卡片設計
+
+#### 視覺層次結構（從上到下）
+
+記憶卡片採用清晰的視覺層次，讓資訊一目了然：
+
+1. **標題區** - 最醒目，使用大字體和陰影效果
+   ```tsx
+   <h3 className="text-base font-black" style={{
+     color: '#fef3c7',
+     textShadow: '0 2px 4px rgba(0, 0, 0, 0.4)',
+     fontSize: '1.05rem'
+   }}>
+     {memory.title || memory.summary || '無標題記憶'}
+   </h3>
+   ```
+
+2. **分類區** - 顯眼的彩色標籤
+   - 使用分類完整顏色作為背景
+   - 白色文字提供清晰對比
+   - 包含 emoji 和中文名稱
+   - 增強的陰影效果，更突出
+
+3. **內容預覽區** - 清晰的摘要顯示
+   - 帶有「📝 內容預覽」小標題
+   - 顯示原始內容而非 AI 摘要
+   - 保留原文格式（換行等）
+   - 最多顯示 3 行，使用 `line-clamp-3`
+
+4. **標籤區** - 明確的標籤區域
+   - 帶有「🏷️ 標籤」小標題
+   - 金黃色主題標籤設計
+   - 最多顯示 3 個標籤
+
+5. **日期時間區** - 底部固定位置
+   - 獨立的時間資訊區塊
+   - 顯示創建日期和時間
+   - 使用分隔線與上方內容區分
+
+#### 卡片互動效果
+
+```typescript
+// Hover 效果
+className="hover:scale-[1.02] transition-all"
+style={{
+  minHeight: '280px',
+  background: 'rgba(30, 41, 59, 0.6)',
+  backdropFilter: 'blur(10px)',
+}}
+```
+
+#### 設計一致性
+
+所有改進都遵循：
+- **Animal Crossing 風格** - 溫暖、友善的配色
+- **夜間模式** - 深色背景配金黃色點綴
+- **玻璃擬態效果** - blur 和半透明背景
+- **微動畫** - hover 時的縮放和陰影變化
+
+### 🏝️ 島嶼視圖系統
+
+#### 分類顏色系統
+
+島嶼視圖完全支援自訂分類顏色：
+
+```typescript
+// 記憶樹優先使用 subcategory 顏色
+const treeColor = useMemo(
+  () => calculateTreeColor(memory.subcategory?.color || islandColor),
+  [islandColor, memory.subcategory]
+)
+```
+
+**特點**：
+- ✅ 記憶樹顏色由小類別（subcategory）決定
+- ✅ 同一小類別的記憶顏色一致
+- ✅ 支援自訂島嶼名稱（`assistant.nameChinese`）
+- ✅ 支援自訂類別名稱（`subcategory.nameChinese`）
+
+#### 記憶重要性系統（已移除）
+
+根據最新設計實踐，我們已移除重要性功能：
+- ❌ 不再顯示重要程度指示器
+- ❌ 不再根據重要性調整視覺效果
+- ✅ 所有記憶採用統一的視覺權重
+
+#### 資料轉換流程
+
+```typescript
+// GraphQL → Island Memory
+const islandMemory = {
+  id: memory.id,
+  title: memory.title,
+  importance: 5, // 固定值
+  category: subcategory.nameChinese, // 顯示小類別
+  subcategory: memory.subcategory, // 保留完整資訊
+  emoji: memory.emoji || subcategory.emoji,
+}
+```
+
+### ✏️ Markdown 編輯器功能
+
+#### 雙編輯器架構
+
+專案提供兩種編輯器模式：
+
+1. **MemoryEditor** - 完整功能編輯器
+   - 三種視圖模式：編輯/同時/預覽
+   - 支援圖片拖放上傳
+   - 即時 Markdown 預覽
+   - 自動保存功能
+
+2. **SimpleMemoryEditor** - 精簡編輯器
+   - 快速編輯體驗
+   - 相同的核心功能
+   - 更緊湊的界面
+
+#### 共用組件系統
+
+為了減少代碼重複，我們創建了以下共用組件：
+
+```typescript
+// 1. SaveStatusIndicator - 保存狀態指示器
+<SaveStatusIndicator
+  status="saving" | "error" | "unsaved" | "saved" | "auto-saved"
+  lastSaved={Date}
+  onRetry={() => void}
+/>
+
+// 2. TagManager - 標籤管理
+<TagManager
+  tags={string[]}
+  onAdd={(tag: string) => void}
+  onRemove={(tag: string) => void}
+/>
+
+// 3. CategorySelector - 分類選擇器
+<CategorySelector
+  categories={Subcategory[]}
+  selectedId={string | null}
+  onSelect={(id: string | null) => void}
+/>
+
+// 4. ViewModeToggle - 視圖模式切換
+<ViewModeToggle
+  mode="edit" | "split" | "preview"
+  onChange={(mode) => void}
+/>
+```
+
+#### 自動保存機制
+
+```typescript
+// 800ms debounce 自動保存
+useEffect(() => {
+  const timer = setTimeout(() => {
+    if (hasUnsavedChanges) {
+      autoSave()
+    }
+  }, 800)
+  
+  return () => clearTimeout(timer)
+}, [content, title, tags])
+```
+
+#### 快捷鍵支援
+
+- **Cmd+S / Ctrl+S** - 手動保存
+- **Cmd+Enter** - 快速保存並關閉
+- **Esc** - 關閉編輯器（會提示保存）
+
+#### 錯誤處理與重試
+
+```typescript
+// 自動重試機制（最多 2 次）
+const saveWithRetry = async (retryCount = 0) => {
+  try {
+    await updateMemory(...)
+    setSaveError(null)
+  } catch (error) {
+    if (retryCount < 2) {
+      setTimeout(() => saveWithRetry(retryCount + 1), 100)
+    } else {
+      setSaveError('保存失敗，請手動重試')
+    }
+  }
+}
+```
+
+---
+
+## 🏗️ MCP 架構系統
+
+### Model Context Protocol (MCP) 簡介
+
+心語小鎮採用先進的 MCP (Model Context Protocol) 架構，實現真正的元宇宙級 NPC 互動體驗。
+
+#### 架構層次
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                Frontend (React/Three.js)                 │
+│              Animal Crossing 風格 UI/UX                  │
+└────────────────────────┬────────────────────────────────┘
+                         │ GraphQL/WebSocket
+┌────────────────────────┴────────────────────────────────┐
+│                Backend (Node.js/Express)                 │
+│                  GraphQL API Server                      │
+└────────────────────────┬────────────────────────────────┘
+                         │ HTTP/REST
+┌────────────────────────┴────────────────────────────────┐
+│             MCP Server (Python/FastAPI)                  │
+│              高效能 NPC 服務                             │
+└────────────────────────┬────────────────────────────────┘
+                         │ Subprocess
+┌────────────────────────┴────────────────────────────────┐
+│                    Gemini CLI                            │
+│            (gemini-2.0-flash-exp model)                  │
+│           自動載入 GEMINI.md 上下文                      │
+└─────────────────────────────────────────────────────────┘
+```
+
+### 核心元宇宙概念
+
+MCP 架構實現以下先進特性：
+
+#### 1. 活生生的 NPC
+每個 NPC 都是持久化的 AI 代理，擁有：
+- **深度人格** - 獨特的性格特質和價值觀
+- **長期記憶** - 記住所有互動和感受
+- **演化關係** - 與玩家的關係會隨時間發展
+
+#### 2. 八卦網絡系統
+```typescript
+// NPC 之間會分享玩家資訊
+interface GossipNetwork {
+  shareInfo(from: NPC, to: NPC, about: Player): void
+  getReputationScore(player: Player): number
+  getSocialFabric(): NPCRelationshipMap
+}
+```
+
+NPC 會：
+- 彼此分享對玩家的印象
+- 形成對玩家的集體意見
+- 根據八卦調整互動方式
+
+#### 3. 持久化世界
+```typescript
+// NPC 在玩家離線時仍然"活著"
+interface PersistentWorld {
+  npcContinueLife(): void
+  npcFormOpinions(): void
+  npcHaveExperiences(): void
+  updateWorldState(): void
+}
+```
+
+- ✅ NPC 持續生活，即使玩家不在線
+- ✅ NPC 形成新的想法和意見
+- ✅ NPC 之間發生互動
+- ✅ 世界狀態不斷演化
+
+#### 4. 情緒智能
+```typescript
+interface EmotionalIntelligence {
+  rememberFeelings: boolean      // 記住情緒感受
+  emotionalContext: EmotionState // 當前情緒狀態
+  empathyLevel: number            // 同理心程度
+  moodInfluence: MoodFactor[]     // 影響心情的因素
+}
+```
+
+NPC 不只記住「說了什麼」，更記住：
+- 對話帶來的感受
+- 互動中的情緒色彩
+- 累積的情感印象
+- 關係的深度與質量
+
+#### 5. 集體意識
+透過 MCP 架構，整個小鎮共享一個集體記憶系統：
+
+```typescript
+interface CollectiveMemory {
+  sharedKnowledge: KnowledgeBase     // 共享知識庫
+  townHistory: Event[]                // 小鎮歷史
+  playerReputations: Map<Player, Rep> // 玩家聲譽
+  culturalNorms: Norm[]               // 文化規範
+}
+```
+
+### MCP 伺服器特性
+
+#### 1. 高效能架構
+```python
+# 使用 uvloop 提升效能 2-3 倍
+import uvloop
+uvloop.install()
+
+# LRU 記憶體快取
+from functools import lru_cache
+
+@lru_cache(maxsize=1000)
+def get_npc_response(npc_id: str, context: str) -> str:
+    # Sub-100ms 快取回應
+    pass
+```
+
+特點：
+- ✅ uvloop 事件循環（2-3x 速度提升）
+- ✅ LRU 記憶體快取（即時回應）
+- ✅ 平行 NPC 處理能力
+- ✅ 快取命中時 < 100ms 回應
+
+#### 2. 記憶管理系統
+```
+backend/memories/
+├── [npc_name]/
+│   ├── [NPC_Name]_Personality.md  # 人格設定
+│   ├── [NPC_Name]_Chat_style.txt  # 對話風格
+│   └── memories/                   # 個人記憶
+├── shared/                         # 共享記憶池
+└── GEMINI.md                       # 系統指令
+```
+
+**記憶層次**：
+1. **個人記憶** - NPC 的個人經驗
+2. **共享記憶** - 小鎮共同知識
+3. **情節記憶** - 特定事件與互動
+4. **語意記憶** - 關於玩家的一般知識
+
+#### 3. API 端點
+```python
+# MCP Server 端點
+POST /generate        # 生成 NPC 對話
+POST /memory/update   # 更新 NPC 記憶
+GET  /status         # 服務狀態
+GET  /health         # 健康檢查
+POST /cache/clear    # 清除快取
+```
+
+### NPC 人格系統
+
+每個 NPC 包含：
+
+```markdown
+# 陸培修_Personality.md
+## 基本資訊
+- 名稱：陸培修 (Lu Peixiu)
+- 年齡：28 歲
+- 職業：藝術家
+- 居住地：創作之島
+
+## 性格特質
+- 夢幻浪漫
+- 創意無限
+- 有點天然呆
+- 喜歡用比喻表達
+
+## 價值觀
+- 相信藝術可以改變世界
+- 追求內心的真實感受
+- 重視創造力勝過物質
+
+## 對話風格
+- 經常使用藝術相關比喻
+- 語氣溫柔且富有詩意
+- 偶爾會陷入沉思
+```
+
+### Gemini CLI 整合
+
+#### 自動上下文載入
+```bash
+# Gemini CLI 自動載入記憶目錄
+gemini chat \
+  --include-directories "backend/memories/npc-1/" \
+  --model gemini-2.0-flash-exp
+```
+
+**優點**：
+- ✅ 無需手動管理提示詞
+- ✅ 自動更新 NPC 記憶
+- ✅ 支援檢查點（Checkpointing）
+- ✅ 會話持久化
+
+#### 效能監控
+```bash
+# 查看 MCP 伺服器狀態
+curl http://localhost:8765/status | jq
+
+# 輸出範例
+{
+  "status": "healthy",
+  "cache_hit_rate": 0.87,
+  "avg_response_time_ms": 45,
+  "active_npcs": 3,
+  "total_memories": 1247
+}
+```
+
+---
+
 ## 📚 技術棧總覽
 
 ### 前端

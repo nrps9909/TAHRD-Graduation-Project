@@ -39,7 +39,7 @@ export default function SimpleMemoryEditor({ memoryId, onClose }: SimpleMemoryEd
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const previewRef = useRef<HTMLDivElement>(null)
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // 用 ref 追蹤最新的編輯器狀態，避免閉包問題
   const latestStateRef = useRef({ title, content, subcategoryId, tags })

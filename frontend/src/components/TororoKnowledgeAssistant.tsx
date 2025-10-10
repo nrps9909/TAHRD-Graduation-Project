@@ -67,7 +67,7 @@ export default function TororoKnowledgeAssistant({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
   const aiGenerationAbortControllerRef = useRef<AbortController | null>(null)
-  const inputDebounceTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const inputDebounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // GraphQL
   const [uploadKnowledge] = useMutation(UPLOAD_KNOWLEDGE)

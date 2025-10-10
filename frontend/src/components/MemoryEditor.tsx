@@ -38,7 +38,7 @@ export default function MemoryEditor({ memory, onClose, onUpdate }: MemoryEditor
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const previewRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const saveTimeoutRef = useRef<NodeJS.Timeout>()
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>()
 
   // 用 ref 追蹤最新的編輯器狀態，避免閉包問題
   const latestStateRef = useRef({ title, content, subcategoryId, tags, attachments })
