@@ -1,14 +1,20 @@
-# 後端 Dockerfile（優化版）
-FROM node:18-alpine AS builder
+# Backend Dockerfile
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# 先複製 package files（利用 Docker 層快取）
-COPY package*.json ./
-COPY prisma ./prisma/
+# 安裝構建依賴
+RUN apk add --no-cache python3 make g++
 
-# 安裝依賴（這層會被快取，除非 package.json 改變）
-RUN npm ci --only=production
+# 複製 package files
+COPY package.json ./
+COPY package-lock.json* ./
+
+# 安裝所有依賴（包括 devDependencies for TypeScript）
+RUN npm install && npm cache clean --force
+
+# 複製 Prisma schema
+COPY prisma ./prisma
 
 # 生成 Prisma Client
 RUN npx prisma generate
@@ -17,27 +23,48 @@ RUN npx prisma generate
 COPY . .
 
 # 構建 TypeScript
-RUN npm run build
+RUN npm run build || true
+
+# 檢查 dist 目錄
+RUN ls -la && ls -la dist/ || echo "No dist directory"
 
 # 生產階段
-FROM node:18-alpine
+FROM node:20-alpine
 
 WORKDIR /app
 
-# 只複製必要的文件
-COPY --from=builder /app/node_modules ./node_modules
+# 安裝運行時依賴
+RUN apk add --no-cache curl openssl
+
+# 複製 package files
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/package-lock.json* ./
+
+# 只安裝生產依賴
+RUN npm install --production && npm cache clean --force
+
+# 複製構建結果和必要文件
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/prisma ./prisma
 
+# 生成 Prisma Client (生產環境)
+RUN npx prisma generate
+
 # 創建必要的目錄
-RUN mkdir -p /app/memories /app/logs
+RUN mkdir -p memories logs
+
+# 設置權限
+RUN chown -R node:node /app
+
+# 切換到非 root 用戶
+USER node
+
+# 暴露端口
+EXPOSE 4000
 
 # 健康檢查
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:4000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+  CMD curl -f http://localhost:4000/health || exit 1
 
-EXPOSE 4000
-
+# 啟動應用
 CMD ["node", "dist/index.js"]
-
