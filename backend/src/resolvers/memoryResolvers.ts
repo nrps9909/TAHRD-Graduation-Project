@@ -231,7 +231,7 @@ export const memoryResolvers = {
       }
 
       try {
-        // 獲取 LIFE 助手作為預設助手（雜項記錄）
+        // 獲取對應分類的助手（預設使用 LIFE）
         const defaultAssistant = await prisma.assistant.findFirst({
           where: { type: input.category || AssistantType.LIFE }
         })

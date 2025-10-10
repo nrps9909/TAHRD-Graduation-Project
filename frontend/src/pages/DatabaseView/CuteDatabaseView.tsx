@@ -10,6 +10,7 @@ import { useDebounce } from '../../hooks/useDebounce'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import { useConfirm } from '../../hooks/useConfirm'
 import { CategoryManagementModal } from '../../components/CategoryManagementModal'
+import { GET_ISLANDS, Island } from '../../graphql/category'
 
 type ViewMode = 'gallery' | 'list'
 type SortField = 'createdAt' | 'title'
@@ -17,6 +18,8 @@ type SortField = 'createdAt' | 'title'
 export default function CuteDatabaseView() {
   const [viewMode, setViewMode] = useState<ViewMode>('gallery')
   const [selectedCategory, setSelectedCategory] = useState<MemoryCategory | null>(null)
+  const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<string | null>(null)
+  const [expandedIslands, setExpandedIslands] = useState<Set<string>>(new Set())
   const [searchQuery, setSearchQuery] = useState('')
   const debouncedSearch = useDebounce(searchQuery, 300)
   const [sortField, setSortField] = useState<SortField>('createdAt')
@@ -52,10 +55,20 @@ export default function CuteDatabaseView() {
       toast.error('載入記憶失敗，請檢查網路連線 😢')
     },
   })
+
+  // 獲取島嶼和小類別資料
+  const { data: islandsData, loading: islandsLoading } = useQuery(GET_ISLANDS, {
+    onError: (error) => {
+      console.error('Failed to load islands:', error)
+    },
+  })
+
   const [pinMemory] = useMutation(PIN_MEMORY, { refetchQueries: ['GetMemories'] })
   const [unpinMemory] = useMutation(UNPIN_MEMORY, { refetchQueries: ['GetMemories'] })
   const [deleteMemory] = useMutation(DELETE_MEMORY)
   const [createMemoryDirect] = useMutation(CREATE_MEMORY_DIRECT)
+
+  const islands: Island[] = islandsData?.islands || []
 
   // 鍵盤快捷鍵
   useEffect(() => {
@@ -92,8 +105,12 @@ export default function CuteDatabaseView() {
   const filteredMemories = useMemo(() => {
     let filtered = memoriesData?.memories || []
 
-    // 分類過濾
-    if (selectedCategory) {
+    // 小類別過濾（優先級最高）
+    if (selectedSubcategoryId) {
+      filtered = filtered.filter((m: any) => m.subcategoryId === selectedSubcategoryId)
+    }
+    // 大類別（傳統分類）過濾
+    else if (selectedCategory) {
       filtered = filtered.filter((m: Memory) => m.category === selectedCategory)
     }
 
@@ -125,7 +142,7 @@ export default function CuteDatabaseView() {
     })
 
     return filtered
-  }, [memoriesData?.memories, selectedCategory, debouncedSearch, sortField])
+  }, [memoriesData?.memories, selectedCategory, selectedSubcategoryId, debouncedSearch, sortField])
 
   const handleTogglePin = async (memory: Memory, e?: React.MouseEvent) => {
     e?.stopPropagation()
@@ -169,10 +186,13 @@ export default function CuteDatabaseView() {
   // 創建新記憶（立即在資料庫創建）
   const handleCreateNewMemory = async () => {
     try {
+      // 不傳遞 category，讓後端使用默認值 LIFE
+      // 用戶可以在編輯器中自由選擇自定義分類 (subcategoryId)
       const result = await createMemoryDirect({
         variables: {
           input: {
             content: '',  // 空白內容
+            // category 會由後端設為默認值 LIFE
           },
         },
       })
@@ -260,13 +280,17 @@ export default function CuteDatabaseView() {
           </button>
         </div>
 
-        {/* 分類篩選 */}
+        {/* 分類篩選 - 島嶼層級視圖 */}
         <div className="flex-1 overflow-y-auto px-3 py-3">
           <div className="space-y-1.5">
+            {/* 全部按鈕 */}
             <button
-              onClick={() => setSelectedCategory(null)}
+              onClick={() => {
+                setSelectedCategory(null)
+                setSelectedSubcategoryId(null)
+              }}
               className="w-full text-left px-3 py-2.5 rounded-2xl text-sm font-bold transition-all hover:scale-[1.02]"
-              style={!selectedCategory ? {
+              style={!selectedCategory && !selectedSubcategoryId ? {
                 background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.3) 0%, rgba(251, 146, 60, 0.3) 100%)',
                 color: '#fef3c7',
                 border: '2px solid rgba(251, 191, 36, 0.4)',
@@ -277,37 +301,157 @@ export default function CuteDatabaseView() {
               }}
             >
               <div className="flex items-center justify-between">
-                <span>🌟 全部</span>
+                <span>🌟 全部記憶</span>
                 <span className="text-xs opacity-90 font-bold">
                   {memoriesData?.memories?.length || 0}
                 </span>
               </div>
             </button>
-            {categories.map((cat) => {
-              const count = (memoriesData?.memories || []).filter((m: any) => m.category === cat.value).length
-              const isSelected = selectedCategory === cat.value
-              return (
+
+            {/* 島嶼列表 */}
+            {islandsLoading ? (
+              <div className="text-center py-4 text-xs text-gray-400">載入中...</div>
+            ) : islands.length === 0 ? (
+              <div className="text-center py-4 text-xs text-gray-400">
+                尚未建立島嶼分類
+                <br />
                 <button
-                  key={cat.value}
-                  onClick={() => setSelectedCategory(cat.value)}
-                  className="w-full text-left px-3 py-2.5 rounded-2xl text-sm font-bold transition-all hover:scale-[1.02]"
-                  style={isSelected ? {
-                    background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.3) 0%, rgba(251, 146, 60, 0.3) 100%)',
-                    color: '#fef3c7',
-                    border: '2px solid rgba(251, 191, 36, 0.4)',
-                  } : {
-                    background: 'rgba(30, 41, 59, 0.6)',
-                    color: '#cbd5e1',
-                    border: '2px solid rgba(251, 191, 36, 0.15)',
-                  }}
+                  onClick={() => setShowCategoryModal(true)}
+                  className="mt-2 text-xs text-[#fbbf24] hover:underline"
                 >
-                  <div className="flex items-center justify-between">
-                    <span>{cat.emoji} {cat.label}</span>
-                    <span className="text-xs opacity-90 font-bold">{count}</span>
-                  </div>
+                  點擊設定分類
                 </button>
-              )
-            })}
+              </div>
+            ) : (
+              islands.map((island) => {
+                const isExpanded = expandedIslands.has(island.id)
+                const subcategories = island.subcategories || []
+                const islandMemoryCount = (memoriesData?.memories || []).filter((m: any) =>
+                  subcategories.some(sub => sub.id === m.subcategoryId)
+                ).length
+
+                return (
+                  <div key={island.id} className="space-y-1">
+                    {/* 島嶼標題 */}
+                    <button
+                      onClick={() => {
+                        const newExpanded = new Set(expandedIslands)
+                        if (isExpanded) {
+                          newExpanded.delete(island.id)
+                        } else {
+                          newExpanded.add(island.id)
+                        }
+                        setExpandedIslands(newExpanded)
+                      }}
+                      className="w-full text-left px-3 py-2.5 rounded-2xl text-sm font-bold transition-all hover:scale-[1.02]"
+                      style={{
+                        background: 'rgba(30, 41, 59, 0.6)',
+                        color: '#fef3c7',
+                        border: '2px solid rgba(251, 191, 36, 0.15)',
+                        borderLeftColor: island.color,
+                        borderLeftWidth: '4px',
+                      }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="transition-transform" style={{
+                            transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                          }}>▶</span>
+                          <span>{island.emoji} {island.nameChinese}</span>
+                        </div>
+                        <span className="text-xs opacity-90 font-bold">{islandMemoryCount}</span>
+                      </div>
+                    </button>
+
+                    {/* 小類別列表（展開時顯示） */}
+                    {isExpanded && (
+                      <div className="ml-4 space-y-1">
+                        {subcategories.length === 0 ? (
+                          <div className="px-3 py-2 text-xs text-gray-400">
+                            尚無小類別
+                          </div>
+                        ) : (
+                          subcategories.map((subcategory) => {
+                            const subMemoryCount = (memoriesData?.memories || []).filter(
+                              (m: any) => m.subcategoryId === subcategory.id
+                            ).length
+                            const isSelected = selectedSubcategoryId === subcategory.id
+
+                            return (
+                              <button
+                                key={subcategory.id}
+                                onClick={() => {
+                                  setSelectedSubcategoryId(subcategory.id)
+                                  setSelectedCategory(null)
+                                }}
+                                className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition-all hover:scale-[1.02]"
+                                style={isSelected ? {
+                                  background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.25) 0%, rgba(251, 146, 60, 0.25) 100%)',
+                                  color: '#fef3c7',
+                                  border: '1.5px solid rgba(251, 191, 36, 0.4)',
+                                } : {
+                                  background: 'rgba(30, 41, 59, 0.4)',
+                                  color: '#cbd5e1',
+                                  border: '1.5px solid rgba(251, 191, 36, 0.1)',
+                                }}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <span>{subcategory.emoji} {subcategory.nameChinese}</span>
+                                  <span className="text-xs opacity-75">{subMemoryCount}</span>
+                                </div>
+                              </button>
+                            )
+                          })
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })
+            )}
+
+            {/* 傳統分類（向後兼容） */}
+            {categories.some((cat) => {
+              const count = (memoriesData?.memories || []).filter((m: any) => m.category === cat.value && !m.subcategoryId).length
+              return count > 0
+            }) && (
+              <>
+                <div className="pt-3 pb-2 px-3 text-xs font-bold text-gray-400 border-t mt-3" style={{
+                  borderColor: 'rgba(251, 191, 36, 0.2)',
+                }}>
+                  📋 傳統分類
+                </div>
+                {categories.map((cat) => {
+                  const count = (memoriesData?.memories || []).filter((m: any) => m.category === cat.value && !m.subcategoryId).length
+                  if (count === 0) return null
+                  const isSelected = selectedCategory === cat.value && !selectedSubcategoryId
+                  return (
+                    <button
+                      key={cat.value}
+                      onClick={() => {
+                        setSelectedCategory(cat.value)
+                        setSelectedSubcategoryId(null)
+                      }}
+                      className="w-full text-left px-3 py-2.5 rounded-2xl text-sm font-bold transition-all hover:scale-[1.02]"
+                      style={isSelected ? {
+                        background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.3) 0%, rgba(251, 146, 60, 0.3) 100%)',
+                        color: '#fef3c7',
+                        border: '2px solid rgba(251, 191, 36, 0.4)',
+                      } : {
+                        background: 'rgba(30, 41, 59, 0.6)',
+                        color: '#cbd5e1',
+                        border: '2px solid rgba(251, 191, 36, 0.15)',
+                      }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span>{cat.emoji} {cat.label}</span>
+                        <span className="text-xs opacity-90 font-bold">{count}</span>
+                      </div>
+                    </button>
+                  )
+                })}
+              </>
+            )}
           </div>
         </div>
       </div>

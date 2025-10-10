@@ -22,6 +22,9 @@ export default function SimpleMemoryEditor({ memoryId, onClose, onSuccess }: Sim
   const [tags, setTags] = useState<string[]>([])
   const [newTag, setNewTag] = useState('')
   const [isSaving, setIsSaving] = useState(false)
+  const [lastSaved, setLastSaved] = useState<Date | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>('edit')
 
   // 載入記憶資料（如果有 memoryId）
@@ -39,8 +42,14 @@ export default function SimpleMemoryEditor({ memoryId, onClose, onSuccess }: Sim
   const fileInputRef = useRef<HTMLInputElement>(null)
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  // 用 ref 追蹤最新的編輯器狀態，用於組件卸載時儲存
+  // 用 ref 追蹤最新的編輯器狀態，避免閉包問題
   const latestStateRef = useRef({ title, content, subcategoryId, tags })
+
+  // 追蹤是否有進行中的保存請求
+  const savingInProgressRef = useRef(false)
+
+  // 追蹤是否有待處理的保存請求（用於防止並發）
+  const pendingSaveRef = useRef(false)
 
   const [createMemoryDirect] = useMutation(CREATE_MEMORY_DIRECT)
   const [updateMemory] = useMutation(UPDATE_MEMORY)
@@ -80,45 +89,98 @@ export default function SimpleMemoryEditor({ memoryId, onClose, onSuccess }: Sim
     }
   }
 
-  // 自動儲存函數
-  const autoSave = useCallback(async () => {
-    if (!memoryId) return  // 只有在編輯模式才自動儲存
+  // 改進的自動儲存函數 - 使用 ref 避免閉包問題和狀態競爭
+  const autoSave = useCallback(async (retryCount = 0): Promise<boolean> => {
+    if (!memoryId) return false  // 只有在編輯模式才自動儲存
 
-    console.log('🔄 自動儲存觸發', { memoryId, title, subcategoryId, tags })
+    // 如果正在保存，標記為有待處理的保存，然後返回
+    if (savingInProgressRef.current) {
+      pendingSaveRef.current = true
+      console.log('⏳ 保存進行中，稍後重試')
+      return false
+    }
+
+    // 從 ref 讀取最新狀態，避免閉包陷阱
+    const currentState = latestStateRef.current
+
+    console.log('🔄 自動儲存觸發', { memoryId, ...currentState, retryCount })
+
+    savingInProgressRef.current = true
     setIsSaving(true)
+    setSaveError(null)
+
     try {
       const result = await updateMemory({
         variables: {
           id: memoryId,
           input: {
-            title: title || null,
-            rawContent: content,
-            subcategoryId: subcategoryId,
-            tags: tags,
+            title: currentState.title || null,
+            rawContent: currentState.content,
+            subcategoryId: currentState.subcategoryId,
+            tags: currentState.tags,
           },
         },
       })
       console.log('✅ 自動儲存成功', result)
+      setLastSaved(new Date())
+      setHasUnsavedChanges(false)
+      setIsSaving(false)
+      savingInProgressRef.current = false
+
+      // 如果在保存過程中有新的更改，立即觸發新的保存
+      if (pendingSaveRef.current) {
+        pendingSaveRef.current = false
+        console.log('🔄 執行待處理的保存')
+        // 使用 setTimeout 避免阻塞
+        setTimeout(() => autoSave(), 100)
+      }
+
+      return true
     } catch (error) {
       console.error('❌ 自動儲存失敗', error)
-    } finally {
-      setIsSaving(false)
-    }
-  }, [memoryId, title, content, subcategoryId, tags, updateMemory])
+      savingInProgressRef.current = false
 
-  // 內容改變時，延遲自動儲存
+      // 最多重試 2 次
+      if (retryCount < 2) {
+        console.log(`🔄 重試保存 (${retryCount + 1}/2)`)
+        await new Promise(resolve => setTimeout(resolve, 1000)) // 等待 1 秒後重試
+        return autoSave(retryCount + 1)
+      }
+
+      setSaveError('儲存失敗，請檢查網路連線')
+      setIsSaving(false)
+      return false
+    }
+  }, [memoryId, updateMemory])  // 只依賴 memoryId 和 updateMemory
+
+  // 立即儲存（用於關鍵操作，如關閉編輯器）
+  const saveImmediately = useCallback(async (): Promise<boolean> => {
+    // 清除任何待處理的定時器
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current)
+      saveTimeoutRef.current = null
+    }
+
+    // 立即執行保存
+    return await autoSave()
+  }, [autoSave])
+
+  // 內容改變時，標記為未保存並延遲自動儲存
   useEffect(() => {
     if (!memoryId) return  // 沒有 ID 時跳過
+
+    // 標記為有未保存的變更
+    setHasUnsavedChanges(true)
 
     // 清除之前的計時器
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current)
     }
 
-    // 設定新的計時器（1秒後儲存）
+    // 設定新的計時器（800ms 後儲存，平衡響應速度和請求頻率）
     saveTimeoutRef.current = setTimeout(() => {
       autoSave()
-    }, 1000)
+    }, 800)
 
     // 清理函數
     return () => {
@@ -126,31 +188,23 @@ export default function SimpleMemoryEditor({ memoryId, onClose, onSuccess }: Sim
         clearTimeout(saveTimeoutRef.current)
       }
     }
-  }, [title, content, subcategoryId, tags, memoryId, autoSave])
+    // 注意：不要把 autoSave 放在依賴中，避免無限循環
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [title, content, subcategoryId, tags, memoryId])
 
-  // 組件卸載時最後儲存一次（關閉編輯器時）
+  // 瀏覽器關閉前警告（如果有未保存的變更）
   useEffect(() => {
-    return () => {
-      // 在組件卸載時，使用 ref 中的最新狀態立即保存
-      const { title, content, subcategoryId, tags } = latestStateRef.current
-      if (memoryId && (title || content || tags.length > 0)) {
-        updateMemory({
-          variables: {
-            id: memoryId,
-            input: {
-              title: title || null,
-              rawContent: content,
-              subcategoryId: subcategoryId,
-              tags: tags,
-            },
-          },
-        }).catch(error => {
-          console.error('關閉時儲存失敗', error)
-        })
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges || isSaving) {
+        e.preventDefault()
+        e.returnValue = '你有未保存的變更，確定要離開嗎？'
+        return '你有未保存的變更，確定要離開嗎？'
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [memoryId, updateMemory])  // 只依賴 memoryId 和 updateMemory
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [hasUnsavedChanges, isSaving])
 
   const handleAddTag = () => {
     if (newTag.trim() && !tags.includes(newTag.trim())) {
@@ -159,20 +213,52 @@ export default function SimpleMemoryEditor({ memoryId, onClose, onSuccess }: Sim
     }
   }
 
+  // 失去焦點時也添加標籤
+  const handleTagBlur = () => {
+    handleAddTag()
+  }
+
   const handleRemoveTag = (tag: string) => {
     setTags(tags.filter(t => t !== tag))
   }
 
+  // 安全關閉編輯器 - 確保保存完成
+  const handleClose = useCallback(async () => {
+    // 如果正在保存，等待完成
+    if (isSaving) {
+      console.log('⏳ 等待保存完成...')
+      // 簡單等待，實際上 isSaving 狀態會在保存完成後更新
+      await new Promise(resolve => setTimeout(resolve, 100))
+      return handleClose() // 遞歸調用，直到保存完成
+    }
+
+    // 如果有未保存的變更，立即保存
+    if (hasUnsavedChanges && memoryId) {
+      console.log('💾 關閉前保存變更...')
+      const saved = await saveImmediately()
+      if (!saved) {
+        // 保存失敗，詢問用戶是否仍要關閉
+        const shouldClose = window.confirm('保存失敗，確定要關閉嗎？未保存的變更將會丟失。')
+        if (!shouldClose) {
+          return
+        }
+      }
+    }
+
+    // 關閉編輯器
+    onClose()
+  }, [isSaving, hasUnsavedChanges, memoryId, saveImmediately, onClose])
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
       e.preventDefault()
-      onClose()
+      handleClose()
     }
     // Cmd/Ctrl + S 手動觸發儲存
     if ((e.metaKey || e.ctrlKey) && e.key === 's') {
       e.preventDefault()
       if (memoryId) {
-        autoSave()  // 直接調用自動儲存函數
+        saveImmediately()
       }
     }
   }
@@ -185,8 +271,9 @@ export default function SimpleMemoryEditor({ memoryId, onClose, onSuccess }: Sim
           {/* 左側 */}
           <div className="flex items-center gap-2">
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-700 transition-colors text-gray-300 hover:text-white"
+              title="關閉（會自動保存）"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -203,10 +290,37 @@ export default function SimpleMemoryEditor({ memoryId, onClose, onSuccess }: Sim
               <span className="text-sm font-medium">{title || '未命名文件'}</span>
             </div>
 
-            {/* 提示文字 */}
+            {/* 保存狀態指示器 */}
             {memoryId && (
-              <div className="flex items-center gap-2 text-xs text-gray-400 ml-4">
-                <span>自動儲存</span>
+              <div className="flex items-center gap-2 text-xs ml-4">
+                {isSaving ? (
+                  <>
+                    <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
+                    <span className="text-yellow-400 font-medium">儲存中...</span>
+                  </>
+                ) : saveError ? (
+                  <>
+                    <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                    <span className="text-red-400 font-medium">{saveError}</span>
+                  </>
+                ) : hasUnsavedChanges ? (
+                  <>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                    <span className="text-gray-400 font-medium">未保存</span>
+                  </>
+                ) : lastSaved ? (
+                  <>
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span className="text-green-400 font-medium">
+                      已保存 {new Date(lastSaved).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                    <span className="text-gray-400 font-medium">自動儲存</span>
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -259,14 +373,6 @@ export default function SimpleMemoryEditor({ memoryId, onClose, onSuccess }: Sim
                 檢視
               </button>
             </div>
-
-            {/* 自動儲存指示器 */}
-            {isSaving && (
-              <div className="flex items-center gap-2 text-xs" style={{ color: '#999' }}>
-                <span className="animate-pulse">●</span>
-                <span>儲存中...</span>
-              </div>
-            )}
           </div>
         </div>
       </div>
@@ -347,6 +453,7 @@ export default function SimpleMemoryEditor({ memoryId, onClose, onSuccess }: Sim
                           handleAddTag()
                         }
                       }}
+                      onBlur={handleTagBlur}
                       placeholder="+ 新增標籤"
                       className="px-2 py-1 text-xs bg-transparent border border-dashed border-gray-700 rounded-md hover:border-gray-600 focus:border-gray-500 focus:outline-none transition-colors text-gray-400"
                       style={{ width: '100px' }}
@@ -475,6 +582,7 @@ export default function SimpleMemoryEditor({ memoryId, onClose, onSuccess }: Sim
                             handleAddTag()
                           }
                         }}
+                        onBlur={handleTagBlur}
                         placeholder="+ 新增標籤"
                         className="px-2 py-1 text-xs bg-transparent border border-dashed border-gray-700 rounded-md hover:border-gray-600 focus:border-gray-500 focus:outline-none transition-colors text-gray-400"
                         style={{ width: '100px' }}

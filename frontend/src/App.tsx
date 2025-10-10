@@ -2,8 +2,6 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import IslandOverview from './pages/IslandOverview'
 import IslandView from './pages/IslandView'
 import CuteDatabaseView from './pages/DatabaseView/CuteDatabaseView'
-import KnowledgeDatabase from './pages/KnowledgeDatabase'
-import TororoTest from './pages/TororoTest'
 import IslandCreator from './pages/IslandCreator'
 import { AuthPage } from './pages/Auth'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -44,6 +42,11 @@ function App() {
           </ProtectedRoute>
         }
       />
+      {/*
+        ⚠️ 重要：知識庫頁面統一使用 /database 路由
+        請勿創建 /knowledge 或其他重複的知識庫路由！
+        如需修改知識庫功能，請直接編輯 CuteDatabaseView 組件
+      */}
       <Route
         path="/database"
         element={
@@ -52,22 +55,11 @@ function App() {
           </ProtectedRoute>
         }
       />
-      <Route
-        path="/knowledge"
-        element={
-          <ProtectedRoute>
-            <KnowledgeDatabase />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/tororo-test"
-        element={
-          <ProtectedRoute>
-            <TororoTest />
-          </ProtectedRoute>
-        }
-      />
+      {/*
+        ⚠️ 重要：測試/開發頁面已移除
+        請勿創建 /test、/demo 等測試路由！
+        如需測試功能，請使用開發環境的獨立測試文件
+      */}
       <Route
         path="/island-creator"
         element={

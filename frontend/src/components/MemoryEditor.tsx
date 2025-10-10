@@ -36,6 +36,15 @@ export default function MemoryEditor({ memory, onClose, onUpdate }: MemoryEditor
   const fileInputRef = useRef<HTMLInputElement>(null)
   const saveTimeoutRef = useRef<NodeJS.Timeout>()
 
+  // 用 ref 追蹤最新的編輯器狀態，避免閉包問題
+  const latestStateRef = useRef({ title, content, subcategoryId, tags, attachments })
+
+  // 追蹤是否有進行中的保存請求
+  const savingInProgressRef = useRef(false)
+
+  // 追蹤是否有待處理的保存請求（用於防止並發）
+  const pendingSaveRef = useRef(false)
+
   // 同步滾動
   const handleScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
     if (viewMode === 'split' && previewRef.current) {
@@ -51,6 +60,11 @@ export default function MemoryEditor({ memory, onClose, onUpdate }: MemoryEditor
   const [pinMemory] = useMutation(PIN_MEMORY)
   const [unpinMemory] = useMutation(UNPIN_MEMORY)
 
+  // 更新最新狀態的 ref
+  useEffect(() => {
+    latestStateRef.current = { title, content, subcategoryId, tags, attachments }
+  }, [title, content, subcategoryId, tags, attachments])
+
   useEffect(() => {
     document.body.style.overflow = 'hidden'
     return () => {
@@ -58,31 +72,55 @@ export default function MemoryEditor({ memory, onClose, onUpdate }: MemoryEditor
     }
   }, [])
 
-  // 自動儲存
+  // 自動儲存 - 使用 ref 避免閉包問題和狀態競爭
   const autoSave = useCallback(async () => {
+    // 如果正在保存，標記為有待處理的保存，然後返回
+    if (savingInProgressRef.current) {
+      pendingSaveRef.current = true
+      console.log('⏳ 保存進行中，稍後重試')
+      return
+    }
+
+    // 從 ref 讀取最新狀態，避免閉包陷阱
+    const currentState = latestStateRef.current
+
+    console.log('🔄 自動儲存觸發 (MemoryEditor)', { memoryId: memory.id })
+
+    savingInProgressRef.current = true
+    setIsSaving(true)
+
     try {
-      setIsSaving(true)
       await updateMemory({
         variables: {
           id: memory.id,
           input: {
-            title,
-            rawContent: content,
-            tags,
-            subcategoryId,
-            fileUrls: attachments.map(a => a.url),
-            fileNames: attachments.map(a => a.name),
-            fileTypes: attachments.map(a => a.type),
+            title: currentState.title,
+            rawContent: currentState.content,
+            tags: currentState.tags,
+            subcategoryId: currentState.subcategoryId,
+            fileUrls: currentState.attachments.map(a => a.url),
+            fileNames: currentState.attachments.map(a => a.name),
+            fileTypes: currentState.attachments.map(a => a.type),
           },
         },
       })
+      console.log('✅ 自動儲存成功 (MemoryEditor)')
       setLastSaved(new Date())
       setIsSaving(false)
+      savingInProgressRef.current = false
+
+      // 如果在保存過程中有新的更改，立即觸發新的保存
+      if (pendingSaveRef.current) {
+        pendingSaveRef.current = false
+        console.log('🔄 執行待處理的保存')
+        setTimeout(() => autoSave(), 100)
+      }
     } catch (error) {
-      console.error('Auto-save error:', error)
+      console.error('❌ 自動儲存失敗 (MemoryEditor)', error)
       setIsSaving(false)
+      savingInProgressRef.current = false
     }
-  }, [title, content, tags, subcategoryId, attachments, memory.id, updateMemory])
+  }, [memory.id, updateMemory])  // 只依賴 memory.id 和 updateMemory
 
   // Debounced 自動儲存
   useEffect(() => {
@@ -92,14 +130,46 @@ export default function MemoryEditor({ memory, onClose, onUpdate }: MemoryEditor
 
     saveTimeoutRef.current = setTimeout(() => {
       autoSave()
-    }, 1500)
+    }, 800)  // 800ms 後儲存，平衡響應速度和請求頻率
 
     return () => {
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current)
       }
     }
-  }, [title, content, tags, attachments, autoSave])
+    // 注意：不要把 autoSave 放在依賴中，避免無限循環
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [title, content, tags, subcategoryId, attachments])
+
+  // 檢查是否有未保存的變更
+  const hasUnsavedChanges = () => {
+    return (
+      title !== (memory.title || '') ||
+      content !== (memory.rawContent || memory.summary || '') ||
+      JSON.stringify(tags) !== JSON.stringify(memory.tags) ||
+      subcategoryId !== (memory.subcategoryId || null)
+    )
+  }
+
+  // 安全關閉 - 確保保存後再關閉
+  const handleClose = async () => {
+    // 清除 pending 的 timeout
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current)
+    }
+
+    // 如果有未保存的變更，先保存
+    if (hasUnsavedChanges()) {
+      try {
+        await autoSave()
+      } catch (error) {
+        console.error('Failed to save before closing:', error)
+      }
+    }
+
+    // 關閉編輯器
+    onClose()
+  }
 
   const handlePin = async () => {
     try {
@@ -129,6 +199,11 @@ export default function MemoryEditor({ memory, onClose, onUpdate }: MemoryEditor
       setTags([...tags, newTag.trim()])
       setNewTag('')
     }
+  }
+
+  // 失去焦點時也添加標籤
+  const handleTagBlur = () => {
+    handleAddTag()
   }
 
   const handleRemoveTag = (tag: string) => {
@@ -228,7 +303,7 @@ export default function MemoryEditor({ memory, onClose, onUpdate }: MemoryEditor
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
       e.preventDefault()
-      onClose()
+      handleClose()
     }
   }
 
@@ -240,7 +315,7 @@ export default function MemoryEditor({ memory, onClose, onUpdate }: MemoryEditor
           {/* 左側 */}
           <div className="flex items-center gap-2">
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-700 transition-colors text-gray-300 hover:text-white"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -447,6 +522,7 @@ export default function MemoryEditor({ memory, onClose, onUpdate }: MemoryEditor
                           handleAddTag()
                         }
                       }}
+                      onBlur={handleTagBlur}
                       placeholder="+ 新增標籤"
                       className="px-2 py-1 text-xs bg-transparent border border-dashed border-gray-700 rounded-md hover:border-gray-600 focus:border-gray-500 focus:outline-none transition-colors text-gray-400"
                       style={{ width: '100px' }}
