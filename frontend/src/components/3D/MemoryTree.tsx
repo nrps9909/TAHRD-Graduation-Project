@@ -78,10 +78,10 @@ function generateTreeParams(seed: number) {
 export function MemoryTree({ memory, islandColor, position, seed, onClick }: MemoryTreeProps) {
   const groupRef = useRef<Group>(null)
 
-  // 計算樹的顏色
+  // 計算樹的顏色（優先使用 subcategory.color，否則使用 islandColor）
   const treeColor = useMemo(
-    () => calculateTreeColor(islandColor, memory.importance),
-    [islandColor, memory.importance]
+    () => calculateTreeColor((memory.subcategory as any)?.color || islandColor),
+    [islandColor, memory.subcategory]
   )
 
   // 生成樹的隨機參數
@@ -205,19 +205,6 @@ export function MemoryTree({ memory, islandColor, position, seed, onClick }: Mem
         </>
       )}
 
-      {/* 重要性指示（可選）- 樹頂的小光點 */}
-      {memory.importance >= 8 && (
-        <mesh
-          position={[0, treeParams.trunkHeight + treeParams.canopyHeight + 0.3, 0]}
-        >
-          <sphereGeometry args={[0.15, 8, 8]} />
-          <meshBasicMaterial
-            color="#FFD700"
-            transparent
-            opacity={0.8}
-          />
-        </mesh>
-      )}
     </group>
   )
 }

@@ -11,19 +11,10 @@ import { Island, Memory as IslandMemory, Subcategory, IslandCategory } from '../
  * 將 GraphQL Memory 轉換為 Island Memory 格式（用於 3D 場景）
  */
 export function convertGraphQLMemoryToIslandMemory(graphQLMemory: GraphQLMemory): IslandMemory {
-  // 計算重要性分數（用於控制記憶花的顏色彩度）
-  let importance = 5 // 預設中等重要性
-
-  if (graphQLMemory.isPinned) {
-    importance = 9 // 釘選的記憶非常重要
-  } else if (graphQLMemory.tags && graphQLMemory.tags.length > 3) {
-    importance = 7 // 多標籤的記憶較重要
-  }
-
   return {
     id: graphQLMemory.id,
     title: graphQLMemory.title || graphQLMemory.summary || '無標題記憶',
-    importance,
+    importance: 5, // 固定為 5，已廢棄此欄位
     category: graphQLMemory.category as IslandCategory,
     content: graphQLMemory.summary || graphQLMemory.rawContent,
     tags: graphQLMemory.tags || [],
