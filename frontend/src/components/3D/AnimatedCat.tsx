@@ -181,7 +181,7 @@ function AnimatedCatModel({
   // }, [hovered])
 
   // 点击处理 - 播放音效并触发动画
-  const handleClick = (e: any) => {
+  const handleClick = (e: React.MouseEvent | MouseEvent) => {
     e.stopPropagation()
     playMeowSound()
     setClicked(true)

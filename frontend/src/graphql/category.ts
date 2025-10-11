@@ -228,7 +228,7 @@ export interface Subcategory {
   userId: string
   islandId: string
   position: number
-  name: string
+  name: string | null
   nameChinese: string
   emoji: string
   color: string
@@ -281,7 +281,7 @@ export interface UpdateIslandInput {
 
 export interface CreateSubcategoryInput {
   islandId: string
-  name: string
+  name?: string | null
   nameChinese: string
   emoji?: string
   color?: string

@@ -15,7 +15,7 @@ export interface DynamicSubAgent {
   userId: string
   islandId: string
   position: number
-  name: string
+  name: string | null
   nameChinese: string
   emoji: string
   color: string

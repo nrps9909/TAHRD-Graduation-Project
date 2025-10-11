@@ -80,7 +80,7 @@ export function MemoryTree({ memory, islandColor, position, seed, onClick }: Mem
 
   // 計算樹的顏色（優先使用 subcategory.color，否則使用 islandColor）
   const treeColor = useMemo(
-    () => calculateTreeColor((memory.subcategory as any)?.color || islandColor),
+    () => calculateTreeColor(memory.subcategory?.color || islandColor),
     [islandColor, memory.subcategory]
   )
 

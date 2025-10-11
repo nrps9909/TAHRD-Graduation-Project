@@ -185,7 +185,7 @@ export function IslandScene({
             blendFunction={BlendFunction.ADD}
           />
           <ChromaticAberration
-            offset={[chromaticOffset, chromaticOffset] as any}
+            offset={[chromaticOffset, chromaticOffset] as [number, number]}
             blendFunction={BlendFunction.NORMAL}
             radialModulation={false}
             modulationOffset={0}

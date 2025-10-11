@@ -179,7 +179,13 @@ export function RegionalFlower({ flower, onClick, isActive = false }: RegionalFl
 
 // ===== 各种花朵形状组件 =====
 
-function BookFlower({ config, hovered, isActive }: any) {
+interface FlowerProps {
+  config: typeof CATEGORY_CONFIG[keyof typeof CATEGORY_CONFIG]
+  hovered: boolean
+  isActive: boolean
+}
+
+function BookFlower({ config, hovered, isActive }: FlowerProps) {
   return (
     <>
       {/* 书本中心 */}
@@ -202,7 +208,7 @@ function BookFlower({ config, hovered, isActive }: any) {
   )
 }
 
-function BulbFlower({ config, hovered, isActive }: any) {
+function BulbFlower({ config, hovered, isActive }: FlowerProps) {
   return (
     <>
       {/* 灯泡主体 */}
@@ -225,7 +231,7 @@ function BulbFlower({ config, hovered, isActive }: any) {
   )
 }
 
-function GearFlower({ config, hovered, isActive }: any) {
+function GearFlower({ config, hovered, isActive }: FlowerProps) {
   return (
     <>
       {/* 齿轮中心 */}
@@ -254,7 +260,7 @@ function GearFlower({ config, hovered, isActive }: any) {
   )
 }
 
-function HeartFlower({ config, hovered, isActive }: any) {
+function HeartFlower({ config, hovered, isActive }: FlowerProps) {
   return (
     <>
       {/* 心形（用两个球体组合） */}
@@ -286,7 +292,7 @@ function HeartFlower({ config, hovered, isActive }: any) {
   )
 }
 
-function SakuraFlower({ config, hovered, isActive }: any) {
+function SakuraFlower({ config, hovered, isActive }: FlowerProps) {
   return (
     <>
       {/* 樱花中心 */}
@@ -321,7 +327,7 @@ function SakuraFlower({ config, hovered, isActive }: any) {
   )
 }
 
-function ArrowFlower({ config, hovered, isActive }: any) {
+function ArrowFlower({ config, hovered, isActive }: FlowerProps) {
   return (
     <>
       {/* 箭头杆 */}
@@ -351,7 +357,7 @@ function ArrowFlower({ config, hovered, isActive }: any) {
   )
 }
 
-function ChestFlower({ config, hovered, isActive }: any) {
+function ChestFlower({ config, hovered, isActive }: FlowerProps) {
   return (
     <>
       {/* 宝箱主体 */}

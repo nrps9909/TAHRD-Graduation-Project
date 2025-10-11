@@ -52,7 +52,7 @@ export const categoryTypeDefs = gql`
     position: Int!
 
     # 自訂資訊
-    name: String!
+    name: String
     nameChinese: String!
     emoji: String!
     color: String!
@@ -116,7 +116,7 @@ export const categoryTypeDefs = gql`
 
   input CreateSubcategoryInput {
     islandId: ID!
-    name: String!
+    name: String
     nameChinese: String!
     emoji: String
     color: String

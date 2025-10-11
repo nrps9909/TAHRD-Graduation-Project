@@ -47,7 +47,7 @@ export interface Subcategory {
   position: number
 
   // 自訂資訊
-  name: string
+  name: string | null
   nameChinese: string
   emoji: string
   color: string
