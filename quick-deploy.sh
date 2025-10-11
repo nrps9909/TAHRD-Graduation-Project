@@ -17,7 +17,7 @@ NC='\033[0m'
 
 # 配置
 PROJECT_DIR="/opt/heart-whisper-town"
-GITHUB_REPO="${GITHUB_REPOSITORY:-nrps9909/TAHRD-Graduation-Project}"
+GITHUB_REPO="${GITHUB_REPOSITORY:-nrps9909/tahrd-graduation-project}"
 
 cd "$PROJECT_DIR"
 
