@@ -42,7 +42,11 @@
       "Bash(docker inspect:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(mongosh:*)",
+      "Bash(npx ts-node:*)",
+      "Bash(docker ps:*)",
+      "Bash(docker-compose:*)"
     ],
     "deny": [],
     "additionalDirectories": [
