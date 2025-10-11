@@ -4,10 +4,12 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 # 複製 package files
-COPY package.json package-lock.json* ./
+COPY package.json ./
 
-# 安裝依賴（使用 ci 更快更可靠）
-RUN npm ci && npm cache clean --force
+# 安裝依賴
+# 注意：此項目使用 npm workspaces，子目錄沒有 package-lock.json
+# 因此使用 npm install 而不是 npm ci
+RUN npm install && npm cache clean --force
 
 # 複製源代碼
 COPY . .

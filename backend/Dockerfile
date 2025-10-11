@@ -8,10 +8,11 @@ RUN apk add --no-cache python3 make g++ curl
 
 # 複製 package files
 COPY package.json ./
-COPY package-lock.json* ./
 
 # 安裝所有依賴（包括 devDependencies for TypeScript）
-RUN npm ci && npm cache clean --force
+# 注意：此項目使用 npm workspaces，子目錄沒有 package-lock.json
+# 因此使用 npm install 而不是 npm ci
+RUN npm install && npm cache clean --force
 
 # 複製 Prisma schema
 COPY prisma ./prisma
@@ -38,10 +39,9 @@ RUN apk add --no-cache curl openssl
 
 # 複製 package files
 COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/package-lock.json* ./
 
-# 只安裝生產依賴（使用 ci 更快更可靠）
-RUN npm ci --production --ignore-scripts && npm cache clean --force
+# 只安裝生產依賴
+RUN npm install --production --ignore-scripts && npm cache clean --force
 
 # 複製構建結果和必要文件
 COPY --from=builder /app/dist ./dist
