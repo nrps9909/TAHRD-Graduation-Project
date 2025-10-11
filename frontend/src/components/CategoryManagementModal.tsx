@@ -399,8 +399,8 @@ const SubcategoriesTab: React.FC<SubcategoriesTabProps> = ({
 interface IslandFormModalProps {
   island?: Island
   onClose: () => void
-  onCreate?: any
-  onUpdate?: any
+  onCreate?: (variables: { variables: { input: { name: string; nameChinese: string; emoji?: string; color?: string; description?: string } } }) => Promise<unknown>
+  onUpdate?: (variables: { variables: { id: string; input: { name?: string; nameChinese?: string; emoji?: string; color?: string; description?: string } } }) => Promise<unknown>
   onRefetch: () => void
 }
 
@@ -423,9 +423,13 @@ const IslandFormModal: React.FC<IslandFormModalProps> = ({
     e.preventDefault()
     try {
       if (island) {
-        await onUpdate({ variables: { id: island.id, input: formData } })
+        if (onUpdate) {
+          await onUpdate({ variables: { id: island.id, input: formData } })
+        }
       } else {
-        await onCreate({ variables: { input: formData } })
+        if (onCreate) {
+          await onCreate({ variables: { input: formData } })
+        }
       }
       await onRefetch()
       onClose()
@@ -529,8 +533,8 @@ interface SubcategoryFormModalProps {
   subcategory?: Subcategory
   islands: Island[]
   onClose: () => void
-  onCreate?: any
-  onUpdate?: any
+  onCreate?: (variables: { variables: { input: { islandId: string; name?: string; nameChinese: string; emoji?: string; color?: string; description?: string; systemPrompt: string; personality: string; chatStyle: string; keywords?: string[] } } }) => Promise<unknown>
+  onUpdate?: (variables: { variables: { id: string; input: { islandId?: string; name?: string; nameChinese?: string; emoji?: string; color?: string; description?: string; systemPrompt?: string; personality?: string; chatStyle?: string; keywords?: string[] } } }) => Promise<unknown>
   onRefetch: () => void
 }
 
@@ -563,9 +567,13 @@ const SubcategoryFormModal: React.FC<SubcategoryFormModalProps> = ({
         keywords: formData.keywords.split(',').map((k) => k.trim()).filter(Boolean),
       }
       if (subcategory) {
-        await onUpdate({ variables: { id: subcategory.id, input } })
+        if (onUpdate) {
+          await onUpdate({ variables: { id: subcategory.id, input } })
+        }
       } else {
-        await onCreate({ variables: { input } })
+        if (onCreate) {
+          await onCreate({ variables: { input } })
+        }
       }
       await onRefetch()
       onClose()

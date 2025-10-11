@@ -11,7 +11,7 @@
 
 import { useRef, useEffect, useState, Suspense } from 'react'
 import * as THREE from 'three'
-import { useFrame } from '@react-three/fiber'
+import { useFrame, ThreeEvent } from '@react-three/fiber'
 import { useGLTF, Html } from '@react-three/drei'
 import { useSpring, animated } from '@react-spring/three'
 import { LoadingCat } from './LoadingCat'
@@ -181,7 +181,16 @@ function AnimatedCatModel({
   // }, [hovered])
 
   // 点击处理 - 播放音效并触发动画
-  const handleClick = (e: React.MouseEvent | MouseEvent) => {
+  const handleClick = (e: ThreeEvent<MouseEvent>) => {
+    e.stopPropagation()
+    playMeowSound()
+    setClicked(true)
+    setTimeout(() => setClicked(false), 300)
+    if (onClick) onClick()
+  }
+
+  // HTML 元素點擊處理
+  const handleHtmlClick = (e: React.MouseEvent<HTMLDivElement>) => {
     e.stopPropagation()
     playMeowSound()
     setClicked(true)
@@ -224,10 +233,7 @@ function AnimatedCatModel({
               pointerEvents: 'auto',
               transform: hovered ? 'scale(1.1)' : 'scale(1)',
             }}
-            onClick={(e) => {
-              e.stopPropagation()
-              handleClick(e)
-            }}
+            onClick={handleHtmlClick}
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
           >

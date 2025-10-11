@@ -1,6 +1,7 @@
 import { Canvas } from '@react-three/fiber'
 import { EffectComposer, Bloom, ChromaticAberration } from '@react-three/postprocessing'
 import { BlendFunction } from 'postprocessing'
+import { Vector2 } from 'three'
 import { IslandArchipelago } from './IslandArchipelago'
 import { TororoCat } from './TororoCat'
 import { HijikiCat } from './HijikiCat'
@@ -185,7 +186,7 @@ export function IslandScene({
             blendFunction={BlendFunction.ADD}
           />
           <ChromaticAberration
-            offset={[chromaticOffset, chromaticOffset] as [number, number]}
+            offset={new Vector2(chromaticOffset, chromaticOffset)}
             blendFunction={BlendFunction.NORMAL}
             radialModulation={false}
             modulationOffset={0}

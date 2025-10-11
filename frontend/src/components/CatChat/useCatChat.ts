@@ -6,10 +6,15 @@
 import { useState, useCallback, useEffect } from 'react'
 import { CatAgent, ChatMessage } from './ChatBubble'
 
+interface SearchResult {
+  length?: number
+  [key: string]: unknown
+}
+
 interface UseCatChatOptions {
   initialCat?: CatAgent
   onCreateMemory?: (content: string) => Promise<void>
-  onSearchMemories?: (query: string) => Promise<any>
+  onSearchMemories?: (query: string) => Promise<SearchResult | undefined>
 }
 
 // 聊天會話歷史
@@ -36,13 +41,25 @@ export function useCatChat(options: UseCatChatOptions = {}) {
       try {
         const stored = localStorage.getItem(STORAGE_KEY)
         if (stored) {
-          const parsed = JSON.parse(stored)
+          const parsed = JSON.parse(stored) as Array<{
+            id: string
+            catAgent: CatAgent
+            startTime: string
+            endTime?: string
+            messages: Array<{
+              id: string
+              catAgent: CatAgent
+              message: string
+              timestamp: string
+              isUser: boolean
+            }>
+          }>
           // 轉換日期字串回 Date 物件
-          const history = parsed.map((session: any) => ({
+          const history = parsed.map((session) => ({
             ...session,
             startTime: new Date(session.startTime),
             endTime: session.endTime ? new Date(session.endTime) : undefined,
-            messages: session.messages.map((msg: any) => ({
+            messages: session.messages.map((msg) => ({
               ...msg,
               timestamp: new Date(msg.timestamp)
             }))
