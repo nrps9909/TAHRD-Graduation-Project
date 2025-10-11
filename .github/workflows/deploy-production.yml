@@ -63,7 +63,7 @@ jobs:
 
       - name: Validate Docker Compose
         run: |
-          docker-compose -f docker-compose.production-prebuilt.yml config > /dev/null
+          docker compose -f docker-compose.production-prebuilt.yml config > /dev/null
           echo "✅ Docker Compose 配置驗證通過"
 
       - name: Validate Nginx Config
@@ -170,14 +170,14 @@ jobs:
             # 3. 拉取最新映像
             echo "🐳 拉取最新 Docker 映像..."
             export GITHUB_REPOSITORY="${GITHUB_REPOSITORY}"
-            if ! docker-compose -f docker-compose.production-prebuilt.yml pull; then
+            if ! docker compose -f docker-compose.production-prebuilt.yml pull; then
               echo "❌ 拉取映像失敗！"
               exit 1
             fi
 
             # 4. 重新創建容器
             echo "🔄 重新創建容器..."
-            docker-compose -f docker-compose.production-prebuilt.yml up -d --force-recreate
+            docker compose -f docker-compose.production-prebuilt.yml up -d --force-recreate
 
             # 5. 等待服務啟動
             echo "⏳ 等待服務啟動..."
@@ -208,7 +208,7 @@ jobs:
             if [ "$BACKEND_HEALTHY" = false ]; then
               echo "❌ 後端健康檢查失敗！"
               echo "📋 後端日誌："
-              docker-compose -f docker-compose.production-prebuilt.yml logs --tail=50 backend
+              docker compose -f docker-compose.production-prebuilt.yml logs --tail=50 backend
               exit 1
             fi
 
@@ -217,7 +217,7 @@ jobs:
                 -H "Content-Type: application/json" \
                 -d '{"query":"{__typename}"}' > /dev/null; then
               echo "❌ GraphQL 健康檢查失敗！"
-              docker-compose -f docker-compose.production-prebuilt.yml logs --tail=50 backend
+              docker compose -f docker-compose.production-prebuilt.yml logs --tail=50 backend
               exit 1
             fi
             echo "✅ GraphQL 健康檢查通過"
@@ -232,7 +232,7 @@ jobs:
             echo "========================================="
             echo ""
             echo "📊 服務狀態："
-            docker-compose -f docker-compose.production-prebuilt.yml ps
+            docker compose -f docker-compose.production-prebuilt.yml ps
 
       # 部署失敗時自動回滾
       - name: Rollback on failure
@@ -263,7 +263,7 @@ jobs:
 
               # 回滾容器
               echo "🔄 重啟服務..."
-              docker-compose -f docker-compose.production-prebuilt.yml up -d --force-recreate
+              docker compose -f docker-compose.production-prebuilt.yml up -d --force-recreate
 
               echo "✅ 回滾完成"
             else
@@ -272,11 +272,11 @@ jobs:
 
             echo ""
             echo "📊 當前服務狀態："
-            docker-compose -f docker-compose.production-prebuilt.yml ps
+            docker compose -f docker-compose.production-prebuilt.yml ps
 
             echo ""
             echo "📋 最近的日誌："
-            docker-compose -f docker-compose.production-prebuilt.yml logs --tail=50
+            docker compose -f docker-compose.production-prebuilt.yml logs --tail=50
 
       # 部署狀態通知
       - name: Notify deployment status
