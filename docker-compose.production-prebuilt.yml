@@ -4,21 +4,8 @@ version: '3.8'
 # 映像由 GitHub Actions 自動構建並推送到 GHCR
 
 services:
-  # MongoDB 資料庫
-  mongodb:
-    image: mongo:7
-    container_name: heart-whisper-mongodb
-    restart: unless-stopped
-    volumes:
-      - mongodb_data:/data/db
-    networks:
-      - heart-whisper-network
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
+  # 使用 MongoDB Atlas 雲端資料庫，不需要本地 MongoDB 容器
+  # DATABASE_URL 從 .env.production 中讀取
 
   # Redis 緩存
   redis:
@@ -46,10 +33,8 @@ services:
     environment:
       - NODE_ENV=production
       - REDIS_URL=redis://redis:6379
-      - DATABASE_URL=mongodb://mongodb:27017/heart-whisper-town
+      # DATABASE_URL 從 .env.production 中讀取（MongoDB Atlas）
     depends_on:
-      mongodb:
-        condition: service_healthy
       redis:
         condition: service_healthy
     volumes:
@@ -102,8 +87,6 @@ services:
       retries: 3
 
 volumes:
-  mongodb_data:
-    driver: local
   redis_data:
     driver: local
 
