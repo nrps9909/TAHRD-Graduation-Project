@@ -1,35 +1,61 @@
-# Node modules
+# Dependencies
 node_modules
 npm-debug.log
+yarn-error.log
 
-# 構建輸出
+# Build output
 dist
 build
+.vite
 
-# 開發文件
-*.md
-.git
-.gitignore
+# Environment files
 .env
 .env.*
-!.env.production
+!.env.example
 
-# 測試文件
+# Testing
+coverage
+.nyc_output
 *.test.ts
 *.test.tsx
-*.test.js
 *.spec.ts
 *.spec.tsx
-*.spec.js
 __tests__
-coverage
+__mocks__
 
 # IDE
 .vscode
 .idea
 *.swp
 *.swo
+*~
+.DS_Store
 
-# 其他
-public/*.map
+# Logs
+*.log
 
+# Temp files
+tmp
+temp
+*.tmp
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+README.md
+CHANGELOG.md
+LICENSE
+
+# CI/CD
+.github
+
+# Docker
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# Vite specific
+vite.config.ts.timestamp-*

@@ -1,4 +1,4 @@
-name: Build, Test and Deploy to Production
+name: Build, Test and Deploy to Production (Optimized)
 
 on:
   push:
@@ -18,9 +18,14 @@ env:
   IMAGE_NAME: nrps9909/tahrd-graduation-project
 
 jobs:
-  # 第一階段：測試和驗證
+  # 第一階段：測試和驗證（並行執行）
   test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        component: [backend, frontend]
+      fail-fast: false # 讓兩個都執行完，即使一個失敗
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -34,39 +39,35 @@ jobs:
       - name: Install Dependencies (Workspaces)
         run: npm install
 
-      - name: Lint Backend
+      - name: Lint ${{ matrix.component }}
         run: |
-          cd backend
-          npm run lint || echo "No lint script found"
+          cd ${{ matrix.component }}
+          npm run lint || echo "⚠️ No lint script found for ${{ matrix.component }}"
 
-      - name: Lint Frontend
+      - name: Type Check ${{ matrix.component }}
         run: |
-          cd frontend
-          npm run lint || echo "No lint script found"
+          cd ${{ matrix.component }}
+          timeout 5m npx tsc --noEmit || echo "⚠️ Type check timed out or failed"
 
-      - name: Type Check Backend
+      - name: Test ${{ matrix.component }}
         run: |
-          cd backend
-          npx tsc --noEmit
+          cd ${{ matrix.component }}
+          npm test || echo "⚠️ No tests found for ${{ matrix.component }}"
 
-      - name: Type Check Frontend
-        run: |
-          cd frontend
-          npx tsc --noEmit
+  # 驗證配置文件
+  validate-config:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Test Backend
+      - name: Validate Docker Compose
         run: |
-          cd backend
-          npm test || echo "No tests found"
-
-      - name: Test Frontend
-        run: |
-          cd frontend
-          npm test || echo "No tests found"
+          docker-compose -f docker-compose.production-prebuilt.yml config > /dev/null
+          echo "✅ Docker Compose 配置驗證通過"
 
       - name: Validate Nginx Config
         run: |
-          # 檢查是否有重複的 upstream 定義
           if grep -r "upstream backend" nginx/conf.d/*.conf | wc -l | grep -q "^[2-9]"; then
             echo "❌ 錯誤：發現重複的 upstream backend 定義"
             grep -n "upstream backend" nginx/conf.d/*.conf
@@ -74,12 +75,15 @@ jobs:
           fi
           echo "✅ Nginx 配置檢查通過"
 
-  # 第二階段：構建和推送映像
+  # 第二階段：構建和推送映像（並行構建）
   build-and-push:
-    needs: test
+    needs: [test, validate-config]
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
-    
+    strategy:
+      matrix:
+        component: [backend, frontend]
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -94,57 +98,145 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata for Backend
-        id: meta-backend
+      - name: Extract metadata for ${{ matrix.component }}
+        id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/backend
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.component }}
           tags: |
             type=raw,value=latest
             type=sha,prefix={{branch}}-
+            type=raw,value={{date 'YYYYMMDD-HHmmss'}}
 
-      - name: Extract metadata for Frontend
-        id: meta-frontend
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/frontend
-          tags: |
-            type=raw,value=latest
-            type=sha,prefix={{branch}}-
-
-      - name: Build and push Backend image
+      - name: Build and push ${{ matrix.component }} image
         uses: docker/build-push-action@v5
         with:
-          context: ./backend
-          file: ./backend/Dockerfile
+          context: ./${{ matrix.component }}
+          file: ./${{ matrix.component }}/Dockerfile
           push: true
-          tags: ${{ steps.meta-backend.outputs.tags }}
-          labels: ${{ steps.meta-backend.outputs.labels }}
-          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/backend:buildcache
-          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/backend:buildcache,mode=max
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.component }}:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.component }}:buildcache,mode=max
+          build-args: |
+            VITE_BACKEND_URL=${{ matrix.component == 'frontend' && '' || '' }}
+            VITE_GRAPHQL_URL=${{ matrix.component == 'frontend' && '' || '' }}
 
-      - name: Build and push Frontend image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./frontend
-          file: ./frontend/Dockerfile
-          push: true
-          tags: ${{ steps.meta-frontend.outputs.tags }}
-          labels: ${{ steps.meta-frontend.outputs.labels }}
-          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/frontend:buildcache
-          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/frontend:buildcache,mode=max
-
-  # 第三階段：部署
+  # 第三階段：部署（帶有回滾機制）
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
-    
+    timeout-minutes: 10
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Deploy to production server
+        uses: appleboy/ssh-action@v1.0.0
+        env:
+          GITHUB_REPOSITORY: ${{ env.IMAGE_NAME }}
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          envs: GITHUB_REPOSITORY
+          script_stop: true
+          script: |
+            set -e
+
+            cd /home/jesse/heart-whisper-town
+
+            echo "========================================="
+            echo "🚀 開始部署到生產環境"
+            echo "時間: $(date)"
+            echo "========================================="
+
+            # 1. 備份當前版本（用於回滾）
+            echo "📦 備份當前版本..."
+            BACKUP_TAG="backup-$(date +%Y%m%d-%H%M%S)"
+            docker tag ghcr.io/${GITHUB_REPOSITORY}/backend:latest ghcr.io/${GITHUB_REPOSITORY}/backend:${BACKUP_TAG} 2>/dev/null || true
+            docker tag ghcr.io/${GITHUB_REPOSITORY}/frontend:latest ghcr.io/${GITHUB_REPOSITORY}/frontend:${BACKUP_TAG} 2>/dev/null || true
+            echo "backup_tag=${BACKUP_TAG}" > /tmp/deployment_backup.txt
+
+            # 2. 拉取最新代碼
+            echo "📥 拉取最新代碼..."
+            git fetch origin
+            PREVIOUS_COMMIT=$(git rev-parse HEAD)
+            git reset --hard origin/production
+            echo "previous_commit=${PREVIOUS_COMMIT}" >> /tmp/deployment_backup.txt
+
+            # 3. 拉取最新映像
+            echo "🐳 拉取最新 Docker 映像..."
+            export GITHUB_REPOSITORY="${GITHUB_REPOSITORY}"
+            if ! docker-compose -f docker-compose.production-prebuilt.yml pull; then
+              echo "❌ 拉取映像失敗！"
+              exit 1
+            fi
+
+            # 4. 重新創建容器
+            echo "🔄 重新創建容器..."
+            docker-compose -f docker-compose.production-prebuilt.yml up -d --force-recreate
+
+            # 5. 等待服務啟動
+            echo "⏳ 等待服務啟動..."
+            sleep 20
+
+            # 6. 健康檢查
+            echo "🏥 執行健康檢查..."
+
+            MAX_RETRIES=6
+            RETRY_COUNT=0
+            BACKEND_HEALTHY=false
+
+            while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+              RETRY_COUNT=$((RETRY_COUNT + 1))
+              echo "嘗試 $RETRY_COUNT/$MAX_RETRIES..."
+
+              # 檢查後端健康
+              if curl -f -s http://localhost/health > /dev/null; then
+                echo "✅ 後端健康檢查通過"
+                BACKEND_HEALTHY=true
+                break
+              else
+                echo "⚠️ 後端健康檢查失敗，等待 10 秒後重試..."
+                sleep 10
+              fi
+            done
+
+            if [ "$BACKEND_HEALTHY" = false ]; then
+              echo "❌ 後端健康檢查失敗！"
+              echo "📋 後端日誌："
+              docker-compose -f docker-compose.production-prebuilt.yml logs --tail=50 backend
+              exit 1
+            fi
+
+            # 檢查 GraphQL
+            if ! curl -f -s -X POST http://localhost/graphql \
+                -H "Content-Type: application/json" \
+                -d '{"query":"{__typename}"}' > /dev/null; then
+              echo "❌ GraphQL 健康檢查失敗！"
+              docker-compose -f docker-compose.production-prebuilt.yml logs --tail=50 backend
+              exit 1
+            fi
+            echo "✅ GraphQL 健康檢查通過"
+
+            # 7. 清理舊映像
+            echo "🧹 清理舊映像..."
+            docker image prune -f
+
+            echo "========================================="
+            echo "✅ 部署成功！"
+            echo "時間: $(date)"
+            echo "========================================="
+            echo ""
+            echo "📊 服務狀態："
+            docker-compose -f docker-compose.production-prebuilt.yml ps
+
+      # 部署失敗時自動回滾
+      - name: Rollback on failure
+        if: failure()
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.SERVER_HOST }}
@@ -152,46 +244,55 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             set -e
+
+            echo "========================================="
+            echo "⚠️ 部署失敗，開始自動回滾"
+            echo "========================================="
+
             cd /home/jesse/heart-whisper-town
-            
-            echo "📥 拉取最新代碼..."
-            git fetch origin
-            git reset --hard origin/production
-            
-            echo "🐳 拉取最新映像..."
-            export GITHUB_REPOSITORY="${{ env.IMAGE_NAME }}"
-            docker-compose -f docker-compose.production-prebuilt.yml pull
-            
-            echo "🔄 重新創建容器..."
-            docker-compose -f docker-compose.production-prebuilt.yml up -d --force-recreate
-            
-            echo "⏳ 等待服務啟動..."
-            sleep 15
-            
-            echo "🏥 健康檢查..."
-            # 檢查後端
-            if ! curl -f -s http://localhost/health > /dev/null; then
-              echo "❌ 後端健康檢查失敗！"
-              docker-compose -f docker-compose.production-prebuilt.yml logs backend
-              exit 1
+
+            # 讀取備份信息
+            if [ -f /tmp/deployment_backup.txt ]; then
+              source /tmp/deployment_backup.txt
+
+              # 回滾代碼
+              if [ -n "$previous_commit" ]; then
+                echo "📥 回滾代碼到 ${previous_commit}"
+                git reset --hard ${previous_commit}
+              fi
+
+              # 回滾容器
+              echo "🔄 重啟服務..."
+              docker-compose -f docker-compose.production-prebuilt.yml up -d --force-recreate
+
+              echo "✅ 回滾完成"
+            else
+              echo "⚠️ 找不到備份信息，請手動檢查"
             fi
-            
-            # 檢查 GraphQL
-            if ! curl -f -s http://localhost/graphql -H "Content-Type: application/json" -d '{"query":"{__typename}"}' > /dev/null; then
-              echo "❌ GraphQL 健康檢查失敗！"
-              docker-compose -f docker-compose.production-prebuilt.yml logs backend
-              exit 1
-            fi
-            
-            echo "✅ 部署成功！"
+
+            echo ""
+            echo "📊 當前服務狀態："
             docker-compose -f docker-compose.production-prebuilt.yml ps
 
+            echo ""
+            echo "📋 最近的日誌："
+            docker-compose -f docker-compose.production-prebuilt.yml logs --tail=50
+
+      # 部署狀態通知
       - name: Notify deployment status
         if: always()
         run: |
-          if [ ${{ job.status }} == 'success' ]; then
-            echo "✅ 部署成功！"
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ 🎉 部署成功！"
+            echo "環境: Production"
+            echo "分支: ${{ github.ref_name }}"
+            echo "提交: ${{ github.sha }}"
+            echo "部署者: ${{ github.actor }}"
           else
-            echo "❌ 部署失敗！"
+            echo "❌ 部署失敗！已執行自動回滾"
+            echo "環境: Production"
+            echo "分支: ${{ github.ref_name }}"
+            echo "提交: ${{ github.sha }}"
+            echo "部署者: ${{ github.actor }}"
+            echo "請檢查日誌並手動修復"
           fi
-

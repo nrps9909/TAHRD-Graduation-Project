@@ -1,0 +1,197 @@
+name: Build, Test and Deploy to Production
+
+on:
+  push:
+    branches:
+      - production
+  pull_request:
+    branches:
+      - production
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: nrps9909/tahrd-graduation-project
+
+jobs:
+  # 第一階段：測試和驗證
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Dependencies (Workspaces)
+        run: npm install
+
+      - name: Lint Backend
+        run: |
+          cd backend
+          npm run lint || echo "No lint script found"
+
+      - name: Lint Frontend
+        run: |
+          cd frontend
+          npm run lint || echo "No lint script found"
+
+      - name: Type Check Backend
+        run: |
+          cd backend
+          npx tsc --noEmit
+
+      - name: Type Check Frontend
+        run: |
+          cd frontend
+          npx tsc --noEmit
+
+      - name: Test Backend
+        run: |
+          cd backend
+          npm test || echo "No tests found"
+
+      - name: Test Frontend
+        run: |
+          cd frontend
+          npm test || echo "No tests found"
+
+      - name: Validate Nginx Config
+        run: |
+          # 檢查是否有重複的 upstream 定義
+          if grep -r "upstream backend" nginx/conf.d/*.conf | wc -l | grep -q "^[2-9]"; then
+            echo "❌ 錯誤：發現重複的 upstream backend 定義"
+            grep -n "upstream backend" nginx/conf.d/*.conf
+            exit 1
+          fi
+          echo "✅ Nginx 配置檢查通過"
+
+  # 第二階段：構建和推送映像
+  build-and-push:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for Backend
+        id: meta-backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/backend
+          tags: |
+            type=raw,value=latest
+            type=sha,prefix={{branch}}-
+
+      - name: Extract metadata for Frontend
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/frontend
+          tags: |
+            type=raw,value=latest
+            type=sha,prefix={{branch}}-
+
+      - name: Build and push Backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/backend:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/backend:buildcache,mode=max
+
+      - name: Build and push Frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/frontend:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/frontend:buildcache,mode=max
+
+  # 第三階段：部署
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to production server
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            cd /home/jesse/heart-whisper-town
+            
+            echo "📥 拉取最新代碼..."
+            git fetch origin
+            git reset --hard origin/production
+            
+            echo "🐳 拉取最新映像..."
+            export GITHUB_REPOSITORY="${{ env.IMAGE_NAME }}"
+            docker-compose -f docker-compose.production-prebuilt.yml pull
+            
+            echo "🔄 重新創建容器..."
+            docker-compose -f docker-compose.production-prebuilt.yml up -d --force-recreate
+            
+            echo "⏳ 等待服務啟動..."
+            sleep 15
+            
+            echo "🏥 健康檢查..."
+            # 檢查後端
+            if ! curl -f -s http://localhost/health > /dev/null; then
+              echo "❌ 後端健康檢查失敗！"
+              docker-compose -f docker-compose.production-prebuilt.yml logs backend
+              exit 1
+            fi
+            
+            # 檢查 GraphQL
+            if ! curl -f -s http://localhost/graphql -H "Content-Type: application/json" -d '{"query":"{__typename}"}' > /dev/null; then
+              echo "❌ GraphQL 健康檢查失敗！"
+              docker-compose -f docker-compose.production-prebuilt.yml logs backend
+              exit 1
+            fi
+            
+            echo "✅ 部署成功！"
+            docker-compose -f docker-compose.production-prebuilt.yml ps
+
+      - name: Notify deployment status
+        if: always()
+        run: |
+          if [ ${{ job.status }} == 'success' ]; then
+            echo "✅ 部署成功！"
+          else
+            echo "❌ 部署失敗！"
+          fi
+
