@@ -183,7 +183,7 @@ jobs:
 
             # 3. 拉取最新映像
             echo "🐳 拉取最新 Docker 映像..."
-            export GITHUB_REPOSITORY="${GITHUB_REPOSITORY}"
+            # 映像名稱已在 docker-compose.production-prebuilt.yml 中硬編碼為小寫
             if ! docker compose -f docker-compose.production-prebuilt.yml pull; then
               echo "❌ 拉取映像失敗！"
               exit 1

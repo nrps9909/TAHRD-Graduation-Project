@@ -24,7 +24,7 @@ services:
 
   # 後端 API（使用預構建映像）
   backend:
-    image: ghcr.io/${GITHUB_REPOSITORY}/backend:latest
+    image: ghcr.io/nrps9909/tahrd-graduation-project/backend:latest
     container_name: heart-whisper-backend
     restart: unless-stopped
     env_file:
@@ -50,7 +50,7 @@ services:
 
   # 前端應用（使用預構建映像）
   frontend:
-    image: ghcr.io/${GITHUB_REPOSITORY}/frontend:latest
+    image: ghcr.io/nrps9909/tahrd-graduation-project/frontend:latest
     container_name: heart-whisper-frontend
     restart: unless-stopped
     env_file:
