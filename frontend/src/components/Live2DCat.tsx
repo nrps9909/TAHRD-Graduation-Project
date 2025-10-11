@@ -273,7 +273,7 @@ export default function Live2DCat({
     if (!modelRef.current) return
 
     try {
-      const model = modelRef.current as Live2DModelWithInternal
+      const model = modelRef.current as unknown as Live2DModelWithInternal
       const internalModel = model.internalModel
       if (!internalModel?.motionManager) return
 
