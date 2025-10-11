@@ -37,7 +37,9 @@
       "Read(/tmp/**)",
       "Bash(cursor:*)",
       "Bash(sed:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(redis-cli ping:*)",
+      "Bash(docker inspect:*)"
     ],
     "deny": [],
     "additionalDirectories": [
