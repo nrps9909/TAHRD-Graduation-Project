@@ -23,7 +23,7 @@ import { Z_INDEX_CLASSES } from '../constants/zIndex'
 import { useAuthStore } from '../stores/authStore'
 
 // Register PIXI globally for Live2D
-;(window as any).PIXI = PIXI
+;(window as Window & typeof globalThis & { PIXI: typeof PIXI }).PIXI = PIXI
 
 interface TororoKnowledgeAssistantProps {
   modelPath: string
@@ -32,12 +32,37 @@ interface TororoKnowledgeAssistantProps {
 
 type ViewMode = 'main' | 'processing' | 'success' | 'history'
 
+interface UploadResult {
+  distribution?: {
+    id: string
+  }
+  memoriesCreated?: Array<{
+    id: string
+    title: string
+    emoji?: string
+    summary?: string
+    category?: string
+    tags?: string[]
+    assistant: {
+      emoji?: string
+      nameChinese: string
+    }
+  }>
+  tororoResponse?: {
+    warmMessage?: string
+    category?: string
+    shouldRecord?: boolean
+  }
+  backgroundProcessing?: boolean
+  skipRecording?: boolean
+}
+
 interface HistoryRecord {
   id: string
   inputText: string
   files: { name: string; type: string }[]
   timestamp: Date
-  result?: any
+  result?: UploadResult
   distributionId?: string  // 儲存 distribution ID 以便後續查詢
 }
 
@@ -54,7 +79,7 @@ export default function TororoKnowledgeAssistant({
   const [inputText, setInputText] = useState('')
   const [isRecordingTranscribe, setIsRecordingTranscribe] = useState(false) // 語音轉文字
   const [isRecordingDialog, setIsRecordingDialog] = useState(false) // 語音對話
-  const [processingResult, setProcessingResult] = useState<any>(null)
+  const [processingResult, setProcessingResult] = useState<UploadResult | null>(null)
   const [audioDialogResponse, setAudioDialogResponse] = useState<string>('')
   const [displayedText, setDisplayedText] = useState<string>('')
   const [isTyping, setIsTyping] = useState(false)
@@ -95,7 +120,7 @@ export default function TororoKnowledgeAssistant({
   /**
    * 生成 AI 回應並顯示（優化版本，支援取消）
    */
-  const generateAndDisplayResponse = useCallback(async (action: UserAction, additionalContext?: any) => {
+  const generateAndDisplayResponse = useCallback(async (action: UserAction, additionalContext?: Record<string, unknown>) => {
     try {
       // 取消之前的請求
       if (aiGenerationAbortControllerRef.current) {
@@ -143,8 +168,8 @@ export default function TororoKnowledgeAssistant({
     try {
       const stored = localStorage.getItem(HISTORY_STORAGE_KEY)
       if (stored) {
-        const parsed = JSON.parse(stored)
-        const historyWithDates = parsed.map((record: any) => ({
+        const parsed = JSON.parse(stored) as Array<Omit<HistoryRecord, 'timestamp'> & { timestamp: string }>
+        const historyWithDates = parsed.map((record) => ({
           ...record,
           timestamp: new Date(record.timestamp)
         }))
@@ -156,7 +181,7 @@ export default function TororoKnowledgeAssistant({
   }, [])
 
   // 儲存歷史紀錄
-  const saveToHistory = (input: string, files: File[], result?: any) => {
+  const saveToHistory = (input: string, files: File[], result?: UploadResult) => {
     const record: HistoryRecord = {
       id: `history_${Date.now()}`,
       inputText: input,
@@ -1280,9 +1305,9 @@ export default function TororoKnowledgeAssistant({
                   )}
 
                   {/* 顯示記憶標題和詳細資訊 */}
-                  {processingResult.memoriesCreated.length > 0 && (
+                  {processingResult.memoriesCreated && processingResult.memoriesCreated.length > 0 && (
                     <div className="space-y-3">
-                      {processingResult.memoriesCreated.map((memory: any, index: number) => (
+                      {processingResult.memoriesCreated.map((memory, index: number) => (
                         <motion.div
                           key={memory.id}
                           initial={{ opacity: 0, y: 20 }}

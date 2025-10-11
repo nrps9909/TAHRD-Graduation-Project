@@ -116,7 +116,7 @@ export function ProcessingQueuePanel() {
     })
 
     // 監聽任務開始
-    newSocket.on('task-start', (data: any) => {
+    newSocket.on('task-start', (data: { taskId: string }) => {
       console.log('[Queue] 任務開始:', data)
       // 請求更新狀態
       newSocket.emit('get-queue-stats')
@@ -134,7 +134,7 @@ export function ProcessingQueuePanel() {
     })
 
     // 監聽任務完成
-    newSocket.on('task-complete', (data: any) => {
+    newSocket.on('task-complete', (data: { taskId: string }) => {
       console.log('[Queue] 任務完成 ✅:', data)
       setCompletedCount(prev => prev + 1)
       setProcessingTasks(prev => {
@@ -150,7 +150,7 @@ export function ProcessingQueuePanel() {
     })
 
     // 監聽任務錯誤
-    newSocket.on('task-error', (data: any) => {
+    newSocket.on('task-error', (data: { taskId: string, error?: string }) => {
       console.error('[Queue] 任務錯誤 ❌:', data)
       setProcessingTasks(prev => {
         const newMap = new Map(prev)
