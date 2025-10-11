@@ -4,16 +4,16 @@ import { EffectComposer, Bloom } from '@react-three/postprocessing'
 import { BlendFunction } from 'postprocessing'
 import { Suspense, useMemo, lazy } from 'react'
 import { motion } from 'framer-motion'
-import { useIslandStore } from '../stores/islandStore'
 
 // Lazy load 重量級 3D 組件
-const IslandArchipelago = lazy(() => import('./3D/IslandArchipelago').then(m => ({ default: m.IslandArchipelago })))
+const PawIsland = lazy(() => import('./3D/PawIsland').then(m => ({ default: m.PawIsland })))
 const CentralIsland = lazy(() => import('./3D/CentralIsland').then(m => ({ default: m.CentralIsland })))
 const RealisticOcean = lazy(() => import('./3D/RealisticOcean').then(m => ({ default: m.RealisticOcean })))
 const AnimalCrossingClouds = lazy(() => import('./3D/AnimalCrossingClouds').then(m => ({ default: m.AnimalCrossingClouds })))
 const FallbackOcean = lazy(() => import('./3D/FallbackOcean').then(m => ({ default: m.FallbackOcean })))
 const MemoryTree = lazy(() => import('./3D/MemoryTree').then(m => ({ default: m.MemoryTree })))
 const RegionalFlower = lazy(() => import('./3D/RegionalFlowers').then(m => ({ default: m.RegionalFlower })))
+const IslandBeacon = lazy(() => import('./3D/IslandBeacon').then(m => ({ default: m.IslandBeacon })))
 
 /**
  * 計算環形布局位置（與主場景相同）
@@ -29,25 +29,40 @@ function getCircularPosition(
   return [x, 0, z]
 }
 
+// 生成隨機示範島嶼（用於展示，不使用真實知識庫）
+const generateDemoIslands = () => {
+  const islandCount = 5
+  const colors = ['#FF6B9D', '#FFA07A', '#FFD700', '#98D8C8', '#B19CD9']
+  const names = ['靈感之島', '學習之島', '創意之島', '夢想之島', '探索之島']
+
+  return Array.from({ length: islandCount }, (_, i) => ({
+    id: `demo-island-${i}`,
+    name: names[i],
+    color: colors[i],
+    description: '示範島嶼',
+  }))
+}
+
 /**
- * 認證頁面的島嶼場景 - 完全仿照主畫面島嶼
+ * 認證頁面的島嶼場景 - 展示隨機生成的示範島嶼
  * 包含自動旋轉、半透明遮罩、預覽式展示
- * 【後期效果】島上長滿記憶樹和花朵
+ * 【示範效果】島上生長少量記憶樹和花朵
  */
 export default function AuthIslandScene() {
-  const { islands } = useIslandStore()
+  // 使用隨機生成的示範島嶼，而不是真實知識庫
+  const demoIslands = useMemo(() => generateDemoIslands(), [])
 
-  // 為每個島嶼生成大量記憶樹和花朵（後期玩家效果）
+  // 為每個島嶼生成少量記憶樹和花朵（優化性能）
   const islandDecorations = useMemo(() => {
-    return islands.map((island, islandIndex) => {
-      const position = getCircularPosition(islandIndex, islands.length)
+    return demoIslands.map((island, islandIndex) => {
+      const position = getCircularPosition(islandIndex, demoIslands.length)
       const [baseX, _baseY, baseZ] = position
 
-      // 每個島嶼生成 3-4 棵記憶樹（精簡版，登入頁面用）
-      const treeCount = 3 + Math.floor(Math.random() * 2)
+      // 每個島嶼生成 2 棵記憶樹（減少以提升性能）
+      const treeCount = 2
       const trees = Array.from({ length: treeCount }, (_, i) => {
         const angle = (i / treeCount) * Math.PI * 2
-        const radius = 3 + Math.random() * 4
+        const radius = 3 + Math.random() * 3
         const x = baseX + Math.cos(angle) * radius
         const z = baseZ + Math.sin(angle) * radius
 
@@ -57,7 +72,7 @@ export default function AuthIslandScene() {
             id: `mem-${i}`,
             title: `記憶 ${i}`,
             content: '',
-            category: 'LEARNING' as const, // Default category for preview
+            category: 'LEARNING' as const,
             importance: 5 + Math.floor(Math.random() * 5),
             createdAt: new Date(),
             position: [x, 0.5, z] as [number, number, number],
@@ -68,12 +83,12 @@ export default function AuthIslandScene() {
         }
       })
 
-      // 每個島嶼生成 6-8 朵花（精簡版，登入頁面用）
-      const flowerCount = 6 + Math.floor(Math.random() * 3)
+      // 每個島嶼生成 4 朵花（減少以提升性能）
+      const flowerCount = 4
       const categories = ['learning', 'inspiration', 'work', 'social', 'life', 'goals', 'resources'] as const
       const flowers = Array.from({ length: flowerCount }, (_, i) => {
         const angle = Math.random() * Math.PI * 2
-        const radius = 2 + Math.random() * 5
+        const radius = 2 + Math.random() * 4
         const x = baseX + Math.cos(angle) * radius
         const z = baseZ + Math.sin(angle) * radius
 
@@ -90,7 +105,7 @@ export default function AuthIslandScene() {
 
       return { island, trees, flowers, basePosition: position }
     })
-  }, [islands])
+  }, [demoIslands])
 
   // 中央島嶼不種樹，保持乾淨
 
@@ -102,7 +117,7 @@ export default function AuthIslandScene() {
       {/* 3D Canvas - 主島嶼場景 - 禁用互動 */}
       <Canvas
         shadows
-        camera={{ position: [0, 70, 80], fov: 60 }}
+        camera={{ position: [0, 65, 85], fov: 55 }}
         className="w-full h-full pointer-events-none"
         gl={{
           powerPreference: 'high-performance',
@@ -112,9 +127,9 @@ export default function AuthIslandScene() {
           depth: true,
           precision: 'lowp', // 降低精度加快渲染
         }}
-        dpr={[0.8, 1.2]} // 進一步降低像素比
+        dpr={[0.7, 1]} // 進一步降低像素比，提升性能
         frameloop="demand"
-        performance={{ min: 0.5 }} // 性能優先模式
+        performance={{ min: 0.4 }} // 性能優先模式，更低的最小幀率
       >
         <Suspense fallback={null}>
           {/* Lighting - 溫馨可愛的光照系統 */}
@@ -126,11 +141,11 @@ export default function AuthIslandScene() {
             intensity={0.3}
             color="#FFE5B4"
             castShadow
-            shadow-mapSize={[512, 512]}
-            shadow-camera-left={-80}
-            shadow-camera-right={80}
-            shadow-camera-top={80}
-            shadow-camera-bottom={-80}
+            shadow-mapSize={[256, 256]}
+            shadow-camera-left={-60}
+            shadow-camera-right={60}
+            shadow-camera-top={60}
+            shadow-camera-bottom={-60}
             shadow-bias={-0.0001}
           />
 
@@ -157,9 +172,9 @@ export default function AuthIslandScene() {
             turbidity={2}
           />
 
-          {/* Clouds - 動物森友會風格雲朵 */}
+          {/* Clouds - 動物森友會風格雲朵（減少數量提升性能） */}
           <Suspense fallback={null}>
-            <AnimalCrossingClouds count={30} />
+            <AnimalCrossingClouds count={15} />
           </Suspense>
 
           {/* Ocean - 真實海洋（帶 fallback） */}
@@ -167,13 +182,28 @@ export default function AuthIslandScene() {
             <RealisticOcean />
           </Suspense>
 
-          {/* 環形群島系統 - 所有知識庫 */}
+          {/* 環形群島系統 - 隨機生成示範島嶼 */}
           <group scale={1.125}>
-            <IslandArchipelago hideLabels={true} />
-
-            {/* 每個島嶼的記憶樹和花朵（後期玩家效果）*/}
-            {islandDecorations.map(({ island, trees, flowers }) => (
+            {islandDecorations.map(({ island, trees, flowers, basePosition }) => (
               <group key={island.id}>
+                {/* 島嶼本體 */}
+                <PawIsland
+                  position={basePosition}
+                  color={island.color}
+                  scale={1.8}
+                  isActive={false}
+                  memories={[]}
+                  islandId={island.id}
+                />
+
+                {/* 識別光柱 */}
+                <IslandBeacon
+                  position={basePosition}
+                  color={island.color}
+                  height={12}
+                  isHovered={false}
+                />
+
                 {/* 記憶樹 */}
                 {trees.map((tree) => (
                   <MemoryTree
@@ -207,7 +237,7 @@ export default function AuthIslandScene() {
             enablePan={false}
             enableRotate={false}
             autoRotate
-            autoRotateSpeed={0.5}
+            autoRotateSpeed={0.3}
             minPolarAngle={Math.PI / 4}
             maxPolarAngle={Math.PI / 2.2}
           />
@@ -215,8 +245,8 @@ export default function AuthIslandScene() {
           {/* 🌟 後處理視覺效果 - 簡化以提升性能 */}
           <EffectComposer>
             <Bloom
-              intensity={0.2}
-              luminanceThreshold={0.95}
+              intensity={0.15}
+              luminanceThreshold={0.98}
               luminanceSmoothing={0.9}
               blendFunction={BlendFunction.ADD}
             />

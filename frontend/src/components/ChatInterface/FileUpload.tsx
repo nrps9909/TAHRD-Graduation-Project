@@ -103,20 +103,22 @@ export default function FileUpload({ onFilesSelected, maxFiles = 5, maxSize = 10
         onDrop={handleDrop}
         onClick={() => fileInputRef.current?.click()}
         className={`
-          border-3 border-dashed rounded-cute p-8 text-center cursor-pointer
-          transition-all duration-300
+          border-2 sm:border-3 border-dashed rounded-xl sm:rounded-2xl md:rounded-cute p-4 sm:p-6 md:p-8 text-center cursor-pointer
+          transition-all duration-300 active:scale-95
           ${isDragging
             ? 'border-candy-pink bg-candy-pink/10 scale-105'
             : 'border-gray-300 hover:border-candy-blue hover:bg-candy-blue/5'
           }
         `}
       >
-        <div className="text-6xl mb-4 animate-bounce-gentle">📎</div>
-        <p className="text-cute-base text-gray-700 font-medium mb-2">
-          點擊或拖拽文件到這裡
+        <div className="text-4xl sm:text-5xl md:text-6xl mb-2 sm:mb-3 md:mb-4 animate-bounce-gentle">📎</div>
+        <p className="text-sm sm:text-base md:text-cute-base text-gray-700 font-medium mb-1 sm:mb-2">
+          <span className="hidden sm:inline">點擊或拖拽文件到這裡</span>
+          <span className="sm:hidden">點擊上傳文件</span>
         </p>
-        <p className="text-cute-sm text-gray-500">
-          支持圖片、PDF、文檔等（最多 {maxFiles} 個文件，每個不超過 {maxSize}MB）
+        <p className="text-xs sm:text-sm md:text-cute-sm text-gray-500">
+          <span className="hidden md:inline">支持圖片、PDF、文檔等（最多 {maxFiles} 個文件，每個不超過 {maxSize}MB）</span>
+          <span className="md:hidden">支持圖片、文檔（≤{maxSize}MB）</span>
         </p>
       </div>
     </>

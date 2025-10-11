@@ -25,6 +25,7 @@ export default function IslandView() {
   const [inputText, setInputText] = useState('')
   const [messages, setMessages] = useState<Message[]>([])
   const [selectedMemory, setSelectedMemory] = useState<IslandMemory | null>(null)
+  const [isMobile, setIsMobile] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const { data, loading, refetch } = useQuery(GET_ASSISTANTS)
 
@@ -75,6 +76,16 @@ export default function IslandView() {
 
     return trees
   }, [memoriesData, assistant])
+
+  // 檢測螢幕尺寸，調整是否為手機
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   // 如果找不到assistant，返回主页
   useEffect(() => {
@@ -176,10 +187,15 @@ export default function IslandView() {
     <div className="fixed inset-0 w-full h-full overflow-hidden" style={{
       background: 'linear-gradient(135deg, #FFF5E1 0%, #FFE5F0 50%, #FFFACD 100%)'
     }}>
-      {/* 3D Island Scene */}
+      {/* 3D Island Scene - 手機端調整相機參數 */}
       <Canvas
-        camera={{ position: [0, 20, 20], fov: 50 }}
+        camera={{
+          position: isMobile ? [0, 25, 25] : [0, 20, 20],
+          fov: isMobile ? 60 : 50
+        }}
         className="absolute inset-0 w-full h-full"
+        gl={{ preserveDrawingBuffer: true }}
+        dpr={isMobile ? [1, 1.5] : [1, 2]}
       >
         {/* 柔和的光照 - 寶寶粉和鵝黃色溫暖光線 */}
         <ambientLight intensity={0.9} color="#FFF8E7" />
@@ -199,8 +215,17 @@ export default function IslandView() {
           enableZoom={true}
           enableRotate={true}
           maxPolarAngle={Math.PI / 2}
-          minDistance={10}
-          maxDistance={50}
+          minDistance={isMobile ? 15 : 10}
+          maxDistance={isMobile ? 60 : 50}
+          enableDamping={true}
+          dampingFactor={0.05}
+          rotateSpeed={isMobile ? 0.5 : 1}
+          zoomSpeed={isMobile ? 0.5 : 1}
+          panSpeed={isMobile ? 0.5 : 1}
+          touches={{
+            ONE: 2, // TOUCH.ROTATE
+            TWO: 1  // TOUCH.DOLLY_PAN
+          }}
         />
 
         {/* Island Base - 多层次草地 */}
@@ -381,12 +406,13 @@ export default function IslandView() {
         ))}
       </Canvas>
 
-      {/* 島嶼狀態卡片 - 左上角 */}
+      {/* 島嶼狀態卡片 - 左上角，手機端隱藏或改為底部 */}
       {!showChat && !loading && assistant && (
         <motion.div
           initial={{ x: -100, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           transition={{ type: 'spring', stiffness: 200, damping: 25 }}
+          className="hidden md:block"
         >
           <IslandStatusCard
             name={`${assistant.nameChinese}的島嶼`}
@@ -400,17 +426,17 @@ export default function IslandView() {
         </motion.div>
       )}
 
-      {/* 記憶詳情面板 - Memory Detail Panel */}
+      {/* 記憶詳情面板 - Memory Detail Panel，手機端改為底部彈出全寬 */}
       {selectedMemory && !showChat && (
         <motion.div
           initial={{ x: 100, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           exit={{ x: 100, opacity: 0 }}
           transition={{ type: 'spring', stiffness: 200, damping: 25 }}
-          className="absolute top-4 right-4 w-80 z-20"
+          className="absolute md:top-4 md:right-4 md:w-80 bottom-0 left-0 right-0 md:bottom-auto md:left-auto w-full md:max-w-sm z-20"
         >
           <div
-            className="rounded-3xl p-6 shadow-2xl"
+            className="rounded-3xl md:rounded-3xl rounded-t-3xl rounded-b-none p-4 md:p-6 shadow-2xl max-h-[70vh] md:max-h-none overflow-y-auto"
             style={{
               background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 250, 245, 0.9) 100%)',
               backdropFilter: 'blur(20px) saturate(180%)',
@@ -523,13 +549,13 @@ export default function IslandView() {
         </motion.div>
       )}
 
-      {/* Top Navigation Bar - 動森玻璃風格 - 右上角 */}
+      {/* Top Navigation Bar - 動森玻璃風格 - 右上角，手機端改為橫向滾動或堆疊 */}
       {!showChat && (
-        <div className="absolute top-4 right-4 p-0 z-10">
-          <div className="flex items-center gap-3">
+        <div className="absolute top-2 md:top-4 right-2 md:right-4 left-2 md:left-auto p-0 z-10">
+          <div className="flex items-center gap-2 md:gap-3 justify-end flex-wrap md:flex-nowrap">
             <button
               onClick={() => navigate('/')}
-              className="group/btn relative px-5 py-2.5 rounded-[18px] font-bold transition-all duration-300 hover:scale-105 active:scale-95"
+              className="group/btn relative px-3 md:px-5 py-2 md:py-2.5 rounded-[18px] font-bold transition-all duration-300 hover:scale-105 active:scale-95 text-sm md:text-base"
               style={{
                 background: 'linear-gradient(145deg, rgba(255, 250, 240, 0.75) 0%, rgba(255, 245, 230, 0.65) 100%)',
                 backdropFilter: 'blur(16px) saturate(180%)',
@@ -539,7 +565,8 @@ export default function IslandView() {
                 color: '#8B5C2E'
               }}
             >
-              <span className="relative z-10">← 返回</span>
+              <span className="relative z-10 hidden md:inline">← 返回</span>
+              <span className="relative z-10 md:hidden">←</span>
               <div
                 className="absolute inset-0 rounded-[18px] opacity-0 group-hover/btn:opacity-100 transition-opacity"
                 style={{
@@ -549,7 +576,7 @@ export default function IslandView() {
             </button>
             <button
               onClick={() => setShowIslandEditor(true)}
-              className="group/btn relative px-5 py-2.5 rounded-[18px] font-bold transition-all duration-300 hover:scale-105 active:scale-95"
+              className="group/btn relative px-3 md:px-5 py-2 md:py-2.5 rounded-[18px] font-bold transition-all duration-300 hover:scale-105 active:scale-95 text-sm md:text-base"
               style={{
                 background: 'linear-gradient(145deg, rgba(168, 230, 207, 0.75) 0%, rgba(144, 198, 149, 0.65) 100%)',
                 backdropFilter: 'blur(16px) saturate(180%)',
@@ -560,7 +587,8 @@ export default function IslandView() {
               }}
               title="編輯島嶼外觀"
             >
-              <span className="relative z-10">🎨 編輯島嶼</span>
+              <span className="relative z-10 hidden md:inline">🎨 編輯島嶼</span>
+              <span className="relative z-10 md:hidden">🎨</span>
               <div
                 className="absolute inset-0 rounded-[18px] opacity-0 group-hover/btn:opacity-100 transition-opacity"
                 style={{
@@ -570,7 +598,7 @@ export default function IslandView() {
             </button>
             <button
               onClick={() => navigate('/database')}
-              className="group/btn relative px-5 py-2.5 rounded-[18px] font-bold transition-all duration-300 hover:scale-105 active:scale-95"
+              className="group/btn relative px-3 md:px-5 py-2 md:py-2.5 rounded-[18px] font-bold transition-all duration-300 hover:scale-105 active:scale-95 text-sm md:text-base"
               style={{
                 background: 'linear-gradient(145deg, rgba(255, 250, 240, 0.75) 0%, rgba(255, 245, 230, 0.65) 100%)',
                 backdropFilter: 'blur(16px) saturate(180%)',
@@ -580,7 +608,8 @@ export default function IslandView() {
                 color: '#8B5C2E'
               }}
             >
-              <span className="relative z-10">🐾 資料庫</span>
+              <span className="relative z-10 hidden md:inline">🐾 資料庫</span>
+              <span className="relative z-10 md:hidden">🐾</span>
               <div
                 className="absolute inset-0 rounded-[18px] opacity-0 group-hover/btn:opacity-100 transition-opacity"
                 style={{
@@ -598,23 +627,24 @@ export default function IslandView() {
           background: 'linear-gradient(135deg, #FFF5E1 0%, #FFE5F0 50%, #FFFACD 100%)'
         }}>
           <div className="h-full flex flex-col">
-            {/* Chat Header */}
-            <div className="bg-white/90 backdrop-blur-md px-6 py-4" style={{
+            {/* Chat Header - 響應式優化 */}
+            <div className="bg-white/90 backdrop-blur-md px-3 sm:px-4 md:px-6 py-2.5 sm:py-3 md:py-4" style={{
               border: '3px solid #FFE5F0',
               boxShadow: '0 8px 25px rgba(255, 179, 217, 0.15)'
             }}>
               <div className="flex items-center justify-between max-w-7xl mx-auto">
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 sm:gap-3 md:gap-4">
                   <button
                     onClick={() => setShowChat(false)}
-                    className="text-2xl hover:scale-110 transition-transform"
+                    className="text-lg sm:text-xl md:text-2xl hover:scale-110 transition-transform p-1 sm:p-0"
                     style={{ color: '#FF8FB3' }}
+                    aria-label="返回"
                   >
                     ←
                   </button>
-                  <span className="text-4xl animate-bounce-gentle">{assistant.emoji}</span>
-                  <div>
-                    <h2 className="text-cute-xl font-bold" style={{
+                  <span className="text-xl sm:text-2xl md:text-4xl animate-bounce-gentle">{assistant.emoji}</span>
+                  <div className="min-w-0">
+                    <h2 className="text-sm sm:text-base md:text-cute-xl font-bold truncate" style={{
                       background: 'linear-gradient(135deg, #FF8FB3, #FFB3D9)',
                       WebkitBackgroundClip: 'text',
                       WebkitTextFillColor: 'transparent',
@@ -622,13 +652,13 @@ export default function IslandView() {
                     }}>
                       {assistant.nameChinese}
                     </h2>
-                    <p className="text-cute-sm" style={{ color: '#FFB3D9' }}>{assistant.name}</p>
+                    <p className="text-xs md:text-cute-sm hidden md:block truncate" style={{ color: '#FFB3D9' }}>{assistant.name}</p>
                   </div>
                 </div>
-                <div className="flex gap-3">
+                <div className="flex gap-1.5 sm:gap-2 md:gap-3">
                   <button
                     onClick={() => setShowUploadModal(true)}
-                    className="px-4 py-2 rounded-2xl font-medium transition-all duration-300 hover:scale-105"
+                    className="px-2.5 sm:px-3 md:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl font-medium transition-all duration-300 hover:scale-105 active:scale-95 text-xs sm:text-sm md:text-base whitespace-nowrap"
                     style={{
                       background: 'linear-gradient(135deg, #FFF5E1, #FFFACD)',
                       color: '#FF8FB3',
@@ -636,15 +666,16 @@ export default function IslandView() {
                       boxShadow: '0 4px 15px rgba(255, 245, 225, 0.5)'
                     }}
                   >
-                    📎 上傳知識
+                    <span className="hidden sm:inline">📎 上傳</span>
+                    <span className="sm:hidden">📎</span>
                   </button>
                 </div>
               </div>
             </div>
 
-            {/* Chat Messages Area */}
-            <div className="flex-1 overflow-y-auto p-6">
-              <div className="max-w-4xl mx-auto space-y-4">
+            {/* Chat Messages Area - 響應式優化 */}
+            <div className="flex-1 overflow-y-auto p-2 sm:p-3 md:p-6">
+              <div className="max-w-4xl mx-auto space-y-2 sm:space-y-3 md:space-y-4">
                 {messages.map((message) => (
                   <MessageBubble
                     key={message.id}
@@ -657,16 +688,16 @@ export default function IslandView() {
               </div>
             </div>
 
-            {/* Chat Input Area */}
-            <div className="bg-white/90 backdrop-blur-md p-6" style={{
+            {/* Chat Input Area - 響應式優化 */}
+            <div className="bg-white/90 backdrop-blur-md p-2 sm:p-3 md:p-6" style={{
               border: '3px solid #FFE5F0',
               boxShadow: '0 8px 25px rgba(255, 179, 217, 0.15)'
             }}>
               <div className="max-w-4xl mx-auto">
-                <div className="flex gap-3">
+                <div className="flex gap-1.5 sm:gap-2 md:gap-3 items-center">
                   <button
                     onClick={() => setShowUploadModal(true)}
-                    className="px-4 py-3 rounded-2xl font-medium transition-all duration-300 hover:scale-105 active:scale-95"
+                    className="flex-shrink-0 px-2.5 sm:px-3 md:px-4 py-2 sm:py-2.5 md:py-3 rounded-xl sm:rounded-2xl font-medium transition-all duration-300 hover:scale-105 active:scale-95 text-base sm:text-lg md:text-xl"
                     title="上傳文件和鏈接"
                     style={{
                       background: 'linear-gradient(135deg, #FFF5E1, #FFFACD)',
@@ -682,10 +713,10 @@ export default function IslandView() {
                     value={inputText}
                     onChange={(e) => setInputText(e.target.value)}
                     onKeyPress={handleKeyPress}
-                    placeholder="✨ 輸入訊息... (Enter 發送)"
-                    className="flex-1 px-6 py-3 bg-white rounded-2xl font-medium focus:outline-none transition-all focus:scale-105"
+                    placeholder="✨ 輸入訊息..."
+                    className="flex-1 min-w-0 px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 bg-white rounded-xl sm:rounded-2xl font-medium focus:outline-none transition-all text-xs sm:text-sm md:text-base"
                     style={{
-                      border: '3px solid #FFE5F0',
+                      border: '2px sm:border-3 solid #FFE5F0',
                       color: '#666'
                     }}
                     onFocus={(e) => {
@@ -700,14 +731,15 @@ export default function IslandView() {
                   <button
                     onClick={() => handleSendMessage()}
                     disabled={!inputText.trim()}
-                    className="px-6 py-3 rounded-2xl font-bold text-white transition-all duration-300 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-shrink-0 px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 rounded-xl sm:rounded-2xl font-bold text-white transition-all duration-300 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm md:text-base whitespace-nowrap"
                     style={{
                       background: 'linear-gradient(135deg, #FFB3D9, #FF8FB3)',
                       border: '2px solid #FFE5F0',
                       boxShadow: '0 4px 15px rgba(255, 179, 217, 0.4)'
                     }}
                   >
-                    發送 💬
+                    <span className="hidden sm:inline">發送 💬</span>
+                    <span className="sm:hidden">💬</span>
                   </button>
                 </div>
               </div>

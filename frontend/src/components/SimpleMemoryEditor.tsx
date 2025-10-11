@@ -270,43 +270,45 @@ export default function SimpleMemoryEditor({ memoryId, onClose }: SimpleMemoryEd
     <div className="fixed inset-0 z-50 bg-[#1E1E1E] flex flex-col" onKeyDown={handleKeyDown}>
       {/* 頂部工具列 - HackMD 夜間模式 */}
       <div className="sticky top-0 z-10 bg-[#252525] border-b border-gray-800">
-        <div className="px-4 py-2 flex items-center justify-between">
+        <div className="px-2 md:px-4 py-2 flex items-center justify-between gap-2">
           {/* 左側 */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 md:gap-2 min-w-0 flex-1">
             <button
               onClick={handleClose}
-              className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-700 transition-colors text-gray-300 hover:text-white"
+              className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center rounded hover:bg-gray-700 transition-colors text-gray-300 hover:text-white flex-shrink-0"
               title="關閉（會自動保存）"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
 
-            <div className="h-6 w-px bg-gray-600"></div>
+            <div className="h-4 md:h-6 w-px bg-gray-600 flex-shrink-0"></div>
 
             {/* 檔案名稱 */}
-            <div className="flex items-center gap-2 text-gray-300">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="flex items-center gap-1 md:gap-2 text-gray-300 min-w-0 flex-1">
+              <svg className="w-3 h-3 md:w-4 md:h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              <span className="text-sm font-medium">{title || '未命名文件'}</span>
+              <span className="text-xs md:text-sm font-medium truncate">{title || '未命名文件'}</span>
             </div>
 
             {/* 保存狀態指示器 */}
             {memoryId && (
-              <SaveStatusIndicator
-                isSaving={isSaving}
-                saveError={saveError}
-                hasUnsavedChanges={hasUnsavedChanges}
-                lastSaved={lastSaved}
-                onRetry={() => saveImmediately()}
-              />
+              <div className="flex-shrink-0">
+                <SaveStatusIndicator
+                  isSaving={isSaving}
+                  saveError={saveError}
+                  hasUnsavedChanges={hasUnsavedChanges}
+                  lastSaved={lastSaved}
+                  onRetry={() => saveImmediately()}
+                />
+              </div>
             )}
           </div>
 
           {/* 右側工具 */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5 md:gap-1 flex-shrink-0">
             {/* 檢視模式切換 - HackMD 風格 */}
             <ViewModeToggle
               viewMode={viewMode}
@@ -323,14 +325,14 @@ export default function SimpleMemoryEditor({ memoryId, onClose }: SimpleMemoryEd
           <div className="relative flex-1 h-full overflow-hidden">
             {viewMode === 'edit' && (
               <div className="h-full bg-[#1E1E1E]">
-                <div className="max-w-4xl mx-auto h-full p-8">
+                <div className="max-w-4xl mx-auto h-full p-4 md:p-8">
                   {/* 標題 */}
                   <input
                     type="text"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder="# 標題"
-                    className="w-full text-3xl font-bold bg-transparent focus:outline-none placeholder-gray-600 text-gray-100 mb-4 border-none"
+                    className="w-full text-xl md:text-3xl font-bold bg-transparent focus:outline-none placeholder-gray-600 text-gray-100 mb-3 md:mb-4 border-none"
                     style={{
                       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif',
                     }}
@@ -373,9 +375,9 @@ export default function SimpleMemoryEditor({ memoryId, onClose }: SimpleMemoryEd
 
             {viewMode === 'preview' && (
               <div className="h-full bg-[#1E1E1E] overflow-y-auto">
-                <div className="max-w-4xl mx-auto p-8">
+                <div className="max-w-4xl mx-auto p-4 md:p-8">
                   {/* 標題 */}
-                  <h1 className="text-3xl font-bold text-gray-100 mb-4">{title || '未命名文件'}</h1>
+                  <h1 className="text-xl md:text-3xl font-bold text-gray-100 mb-3 md:mb-4">{title || '未命名文件'}</h1>
 
                   {/* 標籤 */}
                   {tags.length > 0 && (
@@ -405,17 +407,17 @@ export default function SimpleMemoryEditor({ memoryId, onClose }: SimpleMemoryEd
             )}
 
             {viewMode === 'split' && (
-              <div className="flex h-full">
+              <div className="flex flex-col md:flex-row h-full">
                 {/* 左側編輯器 */}
-                <div className="flex-1 bg-[#1E1E1E] overflow-y-auto border-r border-gray-800">
-                  <div className="max-w-3xl mx-auto p-8">
+                <div className="flex-1 bg-[#1E1E1E] overflow-y-auto border-b md:border-b-0 md:border-r border-gray-800">
+                  <div className="max-w-3xl mx-auto p-4 md:p-8">
                     {/* 標題 */}
                     <input
                       type="text"
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
                       placeholder="# 標題"
-                      className="w-full text-3xl font-bold bg-transparent focus:outline-none placeholder-gray-600 text-gray-100 mb-4 border-none"
+                      className="w-full text-xl md:text-3xl font-bold bg-transparent focus:outline-none placeholder-gray-600 text-gray-100 mb-3 md:mb-4 border-none"
                       style={{
                         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif',
                       }}
@@ -457,9 +459,9 @@ export default function SimpleMemoryEditor({ memoryId, onClose }: SimpleMemoryEd
 
                 {/* 右側預覽 */}
                 <div className="flex-1 bg-[#1E1E1E] overflow-y-auto">
-                  <div ref={previewRef} className="max-w-3xl mx-auto p-8">
+                  <div ref={previewRef} className="max-w-3xl mx-auto p-4 md:p-8">
                     {/* 標題 */}
-                    <h1 className="text-3xl font-bold text-gray-100 mb-4">{title || '未命名文件'}</h1>
+                    <h1 className="text-xl md:text-3xl font-bold text-gray-100 mb-3 md:mb-4">{title || '未命名文件'}</h1>
 
                     {/* 標籤 */}
                     {tags.length > 0 && (

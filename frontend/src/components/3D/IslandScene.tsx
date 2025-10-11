@@ -54,9 +54,20 @@ export function IslandScene({
   const [cameraTarget, setCameraTarget] = useState<[number, number, number] | null>(null)
   const [selectedMemory, setSelectedMemory] = useState<IslandMemory | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
 
   // 判斷當前是否為總覽視角
   const isOverviewMode = currentIslandId === 'overview'
+
+  // 響應式檢測：監聽螢幕尺寸變化
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
 
   // 監聽 currentIslandId 變化，自動移動相機
@@ -89,27 +100,30 @@ export function IslandScene({
     setTimeout(() => setSelectedMemory(null), 300)
   }
 
-  // 視覺效果設定（固定值，不使用調試面板）
-  const bloomIntensity = 0.2      // 降低發光強度
-  const bloomThreshold = 0.95     // 提高閾值，只有更亮的物體才發光
-  const chromaticOffset = 0.0008  // 稍微降低色差效果
+  // 視覺效果設定（響應式調整 - 手機端降低效果以提升性能）
+  const bloomIntensity = isMobile ? 0.1 : 0.2      // 手機端降低發光強度
+  const bloomThreshold = isMobile ? 0.98 : 0.95    // 手機端提高閾值，減少發光物體
+  const chromaticOffset = isMobile ? 0.0004 : 0.0008  // 手機端降低色差效果
 
   return (
     <>
       <Canvas
         shadows
-        camera={{ position: [0, 120, 0.1], fov: 60 }}
+        camera={{
+          position: isMobile ? [0, 140, 0.1] : [0, 120, 0.1],
+          fov: isMobile ? 70 : 60
+        }}
         className="w-full h-full"
         style={{ pointerEvents: hideLabels ? 'none' : 'auto' }}
         gl={{
           powerPreference: 'high-performance',
-          antialias: true,
+          antialias: !isMobile, // 手機端關閉抗鋸齒以提升性能
           alpha: false,
           stencil: false,
           depth: true,
         }}
-        dpr={[1, 2]}
-        performance={{ min: 0.5 }}
+        dpr={isMobile ? [1, 1.5] : [1, 2]} // 手機端降低像素比以提升性能
+        performance={{ min: isMobile ? 0.3 : 0.5 }} // 手機端更積極的性能優化
         frameloop="always"
       >
       <Suspense fallback={null}>
@@ -126,9 +140,9 @@ export function IslandScene({
         {/* 🌧️ 天氣效果系統 */}
         <WeatherSystem />
 
-        {/* ☁️ 動物森友會風格雲朵 - 覆蓋整個場景 */}
+        {/* ☁️ 動物森友會風格雲朵 - 覆蓋整個場景 (手機端減少雲朵數量以提升性能) */}
         <Suspense fallback={null}>
-          <AnimalCrossingClouds count={40} />
+          <AnimalCrossingClouds count={isMobile ? 20 : 40} />
         </Suspense>
 
         {/* Ocean - 真实海洋（带 fallback） */}

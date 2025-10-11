@@ -33,11 +33,13 @@ export default function CuteDatabaseView() {
   const toast = useToast()
   const { confirmState, confirm } = useConfirm()
 
-  // 響應式：小螢幕預設收起側邊欄
+  // 響應式：小螢幕預設收起側邊欄，中螢幕以上預設打開
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth < 768 && sidebarOpen) {
+      if (window.innerWidth < 768) {
         setSidebarOpen(false)
+      } else {
+        setSidebarOpen(true)
       }
     }
     handleResize()
@@ -227,16 +229,25 @@ export default function CuteDatabaseView() {
     <div className="min-h-screen flex relative" style={{
       background: 'linear-gradient(135deg, #16213e 0%, #1a1a2e 100%)',
     }}>
-      {/* 左側邊欄 - 動森風格夜晚模式 */}
+      {/* 手機端遮罩層 - 提升 z-index 優先級 */}
+      {sidebarOpen && (
+        <div
+          className="md:hidden fixed inset-0 bg-black/60 z-40"
+          onClick={() => setSidebarOpen(false)}
+          style={{ backdropFilter: 'blur(6px)' }}
+        />
+      )}
+
+      {/* 左側邊欄 - 動森風格夜晚模式，手機端改為覆蓋式 */}
       <div
-        className="border-r flex flex-col transition-all duration-300 ease-in-out relative"
+        className="border-r flex flex-col transition-all duration-300 ease-in-out md:relative absolute inset-y-0 left-0 z-50"
         style={{
-          width: sidebarOpen ? '240px' : '0',
-          background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(26, 26, 46, 0.95) 100%)',
+          width: sidebarOpen ? '280px' : '0',
+          background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.98) 0%, rgba(26, 26, 46, 0.98) 100%)',
           backdropFilter: 'blur(16px) saturate(150%)',
           WebkitBackdropFilter: 'blur(16px) saturate(150%)',
           borderColor: 'rgba(251, 191, 36, 0.3)',
-          boxShadow: sidebarOpen ? '2px 0 16px rgba(251, 191, 36, 0.15)' : 'none',
+          boxShadow: sidebarOpen ? '4px 0 24px rgba(251, 191, 36, 0.2), 0 0 60px rgba(251, 191, 36, 0.1)' : 'none',
           overflow: 'hidden',
         }}
       >
@@ -486,20 +497,20 @@ export default function CuteDatabaseView() {
 
       {/* 主內容區 */}
       <div className="flex-1 overflow-auto">
-        {/* 頂部工具列 */}
-        <div className="sticky top-0 z-40 border-b px-4 py-3" style={{
+        {/* 頂部工具列 - 全面響應式優化 */}
+        <div className="sticky top-0 z-40 border-b px-2 sm:px-3 md:px-4 py-2 sm:py-2.5 md:py-3" style={{
           borderColor: 'rgba(251, 191, 36, 0.3)',
           background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(26, 26, 46, 0.95) 100%)',
           backdropFilter: 'blur(24px) saturate(180%)',
           WebkitBackdropFilter: 'blur(24px) saturate(180%)',
           boxShadow: '0 4px 16px rgba(251, 191, 36, 0.15)',
         }}>
-          <div className="flex items-center gap-3 max-w-7xl mx-auto">
-            {/* 展開側邊欄按鈕 */}
+          <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 max-w-7xl mx-auto">
+            {/* 展開側邊欄按鈕 - 響應式尺寸 */}
             {!sidebarOpen && (
               <button
                 onClick={() => setSidebarOpen(true)}
-                className="p-2.5 rounded-xl transition-all flex-shrink-0 hover:scale-110"
+                className="p-2 sm:p-2.5 rounded-lg sm:rounded-xl transition-all flex-shrink-0 hover:scale-110 active:scale-95"
                 style={{
                   color: '#cbd5e1',
                   background: 'rgba(30, 41, 59, 0.6)',
@@ -517,19 +528,19 @@ export default function CuteDatabaseView() {
                   e.currentTarget.style.color = '#cbd5e1'
                 }}
               >
-                <span className="text-base">☰</span>
+                <span className="text-sm sm:text-base">☰</span>
               </button>
             )}
 
-            {/* 搜尋框 */}
-            <div className="flex-1 relative max-w-md">
+            {/* 搜尋框 - 響應式優化 */}
+            <div className="flex-1 relative max-w-xs sm:max-w-sm md:max-w-md">
               <input
                 ref={searchInputRef}
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="搜尋記憶..."
-                className="w-full pl-10 pr-10 py-2.5 rounded-2xl text-sm font-medium focus:outline-none transition-all"
+                placeholder="搜尋..."
+                className="w-full pl-8 sm:pl-9 md:pl-10 pr-8 sm:pr-9 md:pr-10 py-1.5 sm:py-2 md:py-2.5 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-medium focus:outline-none transition-all"
                 style={{
                   border: '2px solid rgba(251, 191, 36, 0.2)',
                   background: 'rgba(30, 41, 59, 0.6)',
@@ -537,20 +548,20 @@ export default function CuteDatabaseView() {
                 }}
                 onFocus={(e) => {
                   e.target.style.borderColor = 'rgba(251, 191, 36, 0.6)'
-                  e.target.style.boxShadow = '0 0 0 4px rgba(251, 191, 36, 0.15)'
+                  e.target.style.boxShadow = '0 0 0 3px rgba(251, 191, 36, 0.15)'
                 }}
                 onBlur={(e) => {
                   e.target.style.borderColor = 'rgba(251, 191, 36, 0.2)'
                   e.target.style.boxShadow = 'none'
                 }}
               />
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-lg">
+              <span className="absolute left-2 sm:left-2.5 md:left-3 top-1/2 -translate-y-1/2 text-sm sm:text-base md:text-lg">
                 🔍
               </span>
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg transition-all hover:scale-110"
+                  className="absolute right-2 sm:right-2.5 md:right-3 top-1/2 -translate-y-1/2 p-0.5 sm:p-1 rounded-md sm:rounded-lg transition-all hover:scale-110 active:scale-95 text-xs sm:text-sm md:text-base"
                   style={{
                     color: '#94a3b8',
                     background: 'rgba(30, 41, 59, 0.8)',
@@ -569,16 +580,16 @@ export default function CuteDatabaseView() {
               )}
             </div>
 
-            {/* 快速操作 */}
-            <div className="flex items-center gap-2">
-              {/* 視圖切換 */}
-              <div className="hidden sm:flex gap-1 p-1 rounded-2xl" style={{
+            {/* 快速操作 - 全面響應式 */}
+            <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2">
+              {/* 視圖切換 - 平板以上顯示 */}
+              <div className="hidden md:flex gap-0.5 p-0.5 sm:p-1 rounded-xl sm:rounded-2xl" style={{
                 background: 'rgba(30, 41, 59, 0.6)',
                 border: '2px solid rgba(251, 191, 36, 0.2)',
               }}>
                 <button
                   onClick={() => setViewMode('gallery')}
-                  className="px-3 py-2 rounded-xl text-sm font-bold transition-all"
+                  className="px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold transition-all hover:scale-105 active:scale-95"
                   style={viewMode === 'gallery' ? {
                     background: 'linear-gradient(135deg, #fbbf24 0%, #fb923c 100%)',
                     color: '#1a1a2e',
@@ -592,7 +603,7 @@ export default function CuteDatabaseView() {
                 </button>
                 <button
                   onClick={() => setViewMode('list')}
-                  className="px-3 py-2 rounded-xl text-sm font-bold transition-all"
+                  className="px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold transition-all hover:scale-105 active:scale-95"
                   style={viewMode === 'list' ? {
                     background: 'linear-gradient(135deg, #fbbf24 0%, #fb923c 100%)',
                     color: '#1a1a2e',
@@ -606,11 +617,11 @@ export default function CuteDatabaseView() {
                 </button>
               </div>
 
-              {/* 排序 */}
+              {/* 排序 - 桌面顯示 */}
               <select
                 value={sortField}
                 onChange={(e) => setSortField(e.target.value as SortField)}
-                className="hidden md:block px-3 py-2 rounded-2xl text-sm font-bold focus:outline-none"
+                className="hidden lg:block px-2 sm:px-3 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-bold focus:outline-none"
                 style={{
                   border: '2px solid rgba(251, 191, 36, 0.2)',
                   background: 'rgba(30, 41, 59, 0.6)',
@@ -621,37 +632,41 @@ export default function CuteDatabaseView() {
                 <option value="title">🔤 標題</option>
               </select>
 
-              {/* 新增按鈕 */}
+              {/* 新增按鈕 - 響應式 */}
               <button
                 onClick={handleCreateNewMemory}
-                className="px-4 py-2 rounded-2xl font-bold transition-all hover:scale-105 text-sm whitespace-nowrap"
+                className="px-2.5 sm:px-3 md:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl font-bold transition-all hover:scale-105 active:scale-95 text-xs sm:text-sm whitespace-nowrap flex-shrink-0"
                 style={{
                   background: 'linear-gradient(135deg, #fbbf24 0%, #fb923c 100%)',
                   color: '#1a1a2e',
-                  boxShadow: '0 4px 12px rgba(251, 191, 36, 0.3)',
+                  boxShadow: '0 3px 10px rgba(251, 191, 36, 0.3)',
                 }}
               >
-                ✨ <span className="hidden sm:inline">新增</span>
+                <span className="sm:hidden">✨</span>
+                <span className="hidden sm:inline md:hidden">新增</span>
+                <span className="hidden md:inline">✨ 新增</span>
               </button>
 
-              {/* 返回按鈕 */}
+              {/* 返回按鈕 - 響應式 */}
               <button
                 onClick={() => window.location.href = '/'}
-                className="hidden sm:block px-4 py-2 rounded-2xl font-bold transition-all hover:scale-105 text-sm"
+                className="px-2.5 sm:px-3 md:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl font-bold transition-all hover:scale-105 active:scale-95 text-xs sm:text-sm whitespace-nowrap flex-shrink-0"
                 style={{
                   background: 'rgba(30, 41, 59, 0.6)',
                   color: '#cbd5e1',
                   border: '2px solid rgba(251, 191, 36, 0.2)',
                 }}
               >
-                🏝️ 返回
+                <span className="sm:hidden">🏝️</span>
+                <span className="hidden sm:inline md:hidden">返回</span>
+                <span className="hidden md:inline">🏝️ 返回</span>
               </button>
             </div>
           </div>
         </div>
 
-        {/* 內容區域 */}
-        <div className="p-4">
+        {/* 內容區域 - 響應式內距 */}
+        <div className="p-2 sm:p-3 md:p-4">
         {error ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <div className="w-32 h-32 mb-6 rounded-3xl flex items-center justify-center" style={{
@@ -823,21 +838,21 @@ function SimpleGalleryView({ memories, onTogglePin, onSelectMemory, onDelete }: 
   }
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 sm:gap-3 md:gap-4">
       {memories.map((memory) => {
         const { date, time } = formatDate(memory.createdAt)
         return (
           <div
             key={memory.id}
             onClick={() => onSelectMemory(memory)}
-            className="group relative rounded-2xl p-5 cursor-pointer transition-all hover:scale-[1.02] flex flex-col"
+            className="group relative rounded-xl sm:rounded-2xl p-3 sm:p-4 md:p-5 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] flex flex-col"
             style={{
               background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(26, 26, 46, 0.6) 100%)',
               backdropFilter: 'blur(12px) saturate(150%)',
               WebkitBackdropFilter: 'blur(12px) saturate(150%)',
               border: '2px solid rgba(251, 191, 36, 0.2)',
               boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
-              minHeight: '280px',
+              minHeight: '200px',
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.boxShadow = '0 8px 24px rgba(251, 191, 36, 0.3)'
@@ -848,12 +863,12 @@ function SimpleGalleryView({ memories, onTogglePin, onSelectMemory, onDelete }: 
               e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.2)'
             }}
           >
-            {/* 釘選按鈕 */}
+            {/* 釘選按鈕 - 響應式 */}
             {memory.isPinned && (
-              <div className="absolute top-3 right-3 z-10">
+              <div className="absolute top-2 sm:top-3 right-2 sm:right-3 z-10">
                 <button
                   onClick={(e) => onTogglePin(memory, e)}
-                  className="p-1.5 rounded-lg transition-all text-sm hover:scale-110"
+                  className="p-1 sm:p-1.5 rounded-md sm:rounded-lg transition-all text-xs sm:text-sm hover:scale-110 active:scale-95"
                   style={{
                     background: 'linear-gradient(135deg, #fbbf24 0%, #fb923c 100%)',
                     color: '#1a1a2e',
@@ -866,23 +881,22 @@ function SimpleGalleryView({ memories, onTogglePin, onSelectMemory, onDelete }: 
               </div>
             )}
 
-            {/* 標題區 - 明顯突出 */}
-            <div className="mb-3">
-              <h3 className="text-base font-black line-clamp-2 leading-snug" style={{
+            {/* 標題區 - 響應式 */}
+            <div className="mb-2 sm:mb-3">
+              <h3 className="text-sm sm:text-base font-black line-clamp-2 leading-snug" style={{
                 color: '#fef3c7',
                 textShadow: '0 2px 4px rgba(0, 0, 0, 0.4)',
-                fontSize: '1.05rem',
-                minHeight: '2.6rem',
+                minHeight: '2.2rem',
               }}>
                 {memory.title || memory.summary || '無標題記憶'}
               </h3>
             </div>
 
-            {/* 分類區 - 顯眼的標籤 */}
+            {/* 分類區 - 響應式標籤 */}
             {(memory as any).subcategory && (
-              <div className="mb-3">
+              <div className="mb-2 sm:mb-3">
                 <span
-                  className="px-3 py-1.5 text-xs font-black rounded-xl inline-flex items-center gap-1.5 shadow-lg"
+                  className="px-2 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-xs font-black rounded-lg sm:rounded-xl inline-flex items-center gap-1 sm:gap-1.5 shadow-lg"
                   style={{
                     background: `${(memory as any).subcategory.color}`,
                     color: '#ffffff',
@@ -891,83 +905,84 @@ function SimpleGalleryView({ memories, onTogglePin, onSelectMemory, onDelete }: 
                     textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)',
                   }}
                 >
-                  <span className="text-sm">{(memory as any).subcategory.emoji}</span>
-                  <span>{(memory as any).subcategory.nameChinese}</span>
+                  <span className="text-xs sm:text-sm">{(memory as any).subcategory.emoji}</span>
+                  <span className="truncate max-w-[120px]">{(memory as any).subcategory.nameChinese}</span>
                 </span>
               </div>
             )}
 
-            {/* 內容預覽區 - 清晰的摘要 */}
-            <div className="flex-1 mb-3">
+            {/* 內容預覽區 - 響應式 */}
+            <div className="flex-1 mb-2 sm:mb-3">
               {memory.rawContent ? (
                 <div className="mb-2">
-                  <div className="text-xs font-bold mb-1" style={{ color: '#94a3b8' }}>
+                  <div className="text-[10px] sm:text-xs font-bold mb-1" style={{ color: '#94a3b8' }}>
                     📝 內容預覽
                   </div>
-                  <p className="text-xs line-clamp-3 font-medium leading-relaxed whitespace-pre-wrap" style={{
+                  <p className="text-[10px] sm:text-xs line-clamp-2 sm:line-clamp-3 font-medium leading-relaxed whitespace-pre-wrap" style={{
                     color: '#e2e8f0',
-                    lineHeight: '1.6',
+                    lineHeight: '1.5',
                   }}>
                     {memory.rawContent}
                   </p>
                 </div>
               ) : (
-                <div className="text-xs italic" style={{ color: '#64748b' }}>
+                <div className="text-[10px] sm:text-xs italic" style={{ color: '#64748b' }}>
                   無內容預覽
                 </div>
               )}
             </div>
 
-            {/* 標籤區 */}
+            {/* 標籤區 - 響應式 */}
             {memory.tags.length > 0 && (
-              <div className="mb-3">
-                <div className="text-xs font-bold mb-1.5" style={{ color: '#94a3b8' }}>
+              <div className="mb-2 sm:mb-3">
+                <div className="text-[10px] sm:text-xs font-bold mb-1 sm:mb-1.5" style={{ color: '#94a3b8' }}>
                   🏷️ 標籤
                 </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {memory.tags.slice(0, 5).map((tag: string) => (
+                <div className="flex flex-wrap gap-1 sm:gap-1.5">
+                  {memory.tags.slice(0, 3).map((tag: string) => (
                     <span
                       key={tag}
-                      className="px-2.5 py-1 text-xs font-bold rounded-lg"
+                      className="px-1.5 sm:px-2.5 py-0.5 sm:py-1 text-[10px] sm:text-xs font-bold rounded-md sm:rounded-lg truncate max-w-[60px] sm:max-w-[80px]"
                       style={{
                         background: 'rgba(251, 191, 36, 0.2)',
                         color: '#fbbf24',
                         border: '1.5px solid rgba(251, 191, 36, 0.4)',
                       }}
+                      title={tag}
                     >
                       #{tag}
                     </span>
                   ))}
-                  {memory.tags.length > 5 && (
-                    <span className="text-xs font-bold px-2 py-1" style={{ color: '#94a3b8' }}>
-                      +{memory.tags.length - 5}
+                  {memory.tags.length > 3 && (
+                    <span className="text-[10px] sm:text-xs font-bold px-1.5 sm:px-2 py-0.5 sm:py-1" style={{ color: '#94a3b8' }}>
+                      +{memory.tags.length - 3}
                     </span>
                   )}
                 </div>
               </div>
             )}
 
-            {/* 日期與時間區 - 底部固定 */}
-            <div className="pt-3 border-t" style={{ borderColor: 'rgba(251, 191, 36, 0.25)' }}>
-              <div className="flex items-center justify-between text-xs font-semibold" style={{
+            {/* 日期與時間區 - 響應式 */}
+            <div className="pt-2 sm:pt-3 border-t" style={{ borderColor: 'rgba(251, 191, 36, 0.25)' }}>
+              <div className="flex items-center justify-between text-[10px] sm:text-xs font-semibold" style={{
                 color: '#94a3b8',
               }}>
-                <div className="flex items-center gap-1">
-                  <span>📅</span>
+                <div className="flex items-center gap-0.5 sm:gap-1">
+                  <span className="text-xs sm:text-sm">📅</span>
                   <span>{date}</span>
                 </div>
-                <div className="flex items-center gap-1">
-                  <span>🕐</span>
+                <div className="flex items-center gap-0.5 sm:gap-1">
+                  <span className="text-xs sm:text-sm">🕐</span>
                   <span>{time}</span>
                 </div>
               </div>
             </div>
 
-            {/* 刪除按鈕（hover 顯示） */}
-            <div className="absolute bottom-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity">
+            {/* 刪除按鈕（hover 顯示）- 響應式 */}
+            <div className="absolute bottom-2 sm:bottom-3 left-2 sm:left-3 opacity-0 group-hover:opacity-100 transition-opacity">
               <button
                 onClick={(e) => onDelete(memory, e)}
-                className="p-1.5 rounded-lg transition-all hover:scale-110 text-sm"
+                className="p-1 sm:p-1.5 rounded-md sm:rounded-lg transition-all hover:scale-110 active:scale-95 text-xs sm:text-sm"
                 style={{
                   background: 'rgba(30, 41, 59, 0.95)',
                   border: '2px solid rgba(251, 146, 60, 0.4)',
@@ -1010,14 +1025,14 @@ function SimpleListView({ memories, onTogglePin, onSelectMemory, onDelete }: Sim
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2 sm:space-y-3">
       {memories.map((memory) => {
         const { date, time } = formatDate(memory.createdAt)
         return (
           <div
             key={memory.id}
             onClick={() => onSelectMemory(memory)}
-            className="group flex items-center gap-4 p-4 rounded-2xl cursor-pointer transition-all hover:scale-[1.01]"
+            className="group flex items-center gap-2 sm:gap-3 md:gap-4 p-3 sm:p-4 rounded-xl sm:rounded-2xl cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99]"
             style={{
               background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(26, 26, 46, 0.6) 100%)',
               backdropFilter: 'blur(12px) saturate(150%)',
@@ -1034,12 +1049,12 @@ function SimpleListView({ memories, onTogglePin, onSelectMemory, onDelete }: Sim
               e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.2)'
             }}
           >
-            {/* 釘選 - 固定寬度 */}
-            <div className="flex-shrink-0 w-10">
+            {/* 釘選 - 響應式寬度 */}
+            <div className="flex-shrink-0 w-6 sm:w-8 md:w-10">
               {memory.isPinned && (
                 <button
                   onClick={(e) => onTogglePin(memory, e)}
-                  className="p-1.5 rounded-lg transition-all hover:scale-110 text-sm"
+                  className="p-1 sm:p-1.5 rounded-md sm:rounded-lg transition-all hover:scale-110 active:scale-95 text-xs sm:text-sm"
                   style={{
                     background: 'linear-gradient(135deg, #fbbf24 0%, #fb923c 100%)',
                     color: '#1a1a2e',
@@ -1051,19 +1066,35 @@ function SimpleListView({ memories, onTogglePin, onSelectMemory, onDelete }: Sim
               )}
             </div>
 
-            {/* 內容 */}
+            {/* 內容 - 響應式 */}
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <h3 className="text-base font-black truncate" style={{
+              <div className="flex items-center gap-1.5 sm:gap-2 mb-0.5 sm:mb-1">
+                <h3 className="text-sm sm:text-base font-black truncate" style={{
                   color: '#fef3c7',
                   textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)',
                 }}>
                   {memory.title || memory.summary || '無標題記憶'}
                 </h3>
-                {/* 自訂分類 (列表視圖顯示在標題旁) */}
+                {/* 自訂分類 (列表視圖顯示在標題旁) - 響應式 */}
                 {(memory as any).subcategory && (
                   <span
-                    className="px-2 py-0.5 text-xs font-bold rounded-lg inline-flex items-center gap-1 flex-shrink-0"
+                    className="hidden sm:inline-flex px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs font-bold rounded-md sm:rounded-lg items-center gap-0.5 sm:gap-1 flex-shrink-0"
+                    style={{
+                      background: `${(memory as any).subcategory.color}20`,
+                      color: (memory as any).subcategory.color,
+                      border: `1px solid ${(memory as any).subcategory.color}50`,
+                    }}
+                  >
+                    <span className="text-xs sm:text-sm">{(memory as any).subcategory.emoji}</span>
+                    <span className="hidden md:inline truncate max-w-[80px]">{(memory as any).subcategory.nameChinese}</span>
+                  </span>
+                )}
+              </div>
+              {/* 手機端顯示分類標籤 */}
+              {(memory as any).subcategory && (
+                <div className="sm:hidden mb-1">
+                  <span
+                    className="inline-flex px-1.5 py-0.5 text-[10px] font-bold rounded-md items-center gap-0.5"
                     style={{
                       background: `${(memory as any).subcategory.color}20`,
                       color: (memory as any).subcategory.color,
@@ -1071,19 +1102,19 @@ function SimpleListView({ memories, onTogglePin, onSelectMemory, onDelete }: Sim
                     }}
                   >
                     <span>{(memory as any).subcategory.emoji}</span>
-                    <span>{(memory as any).subcategory.nameChinese}</span>
+                    <span className="truncate max-w-[100px]">{(memory as any).subcategory.nameChinese}</span>
                   </span>
-                )}
-              </div>
+                </div>
+              )}
               {memory.summary && (
-                <p className="text-sm line-clamp-2 font-medium mb-1" style={{ color: '#cbd5e1' }}>
+                <p className="text-xs sm:text-sm line-clamp-1 sm:line-clamp-2 font-medium mb-0.5 sm:mb-1" style={{ color: '#cbd5e1' }}>
                   {memory.summary}
                 </p>
               )}
             </div>
 
-            {/* 標籤 - 固定寬度區域 */}
-            <div className="flex-shrink-0 hidden md:flex items-center gap-2 w-56">
+            {/* 標籤 - 響應式顯示 */}
+            <div className="flex-shrink-0 hidden lg:flex items-center gap-2 w-40 xl:w-56">
               {memory.tags.slice(0, 5).map((tag: string) => (
                 <span
                   key={tag}
@@ -1105,23 +1136,23 @@ function SimpleListView({ memories, onTogglePin, onSelectMemory, onDelete }: Sim
               )}
             </div>
 
-            {/* 日期時間 - 固定寬度 */}
-            <div className="flex-shrink-0 hidden lg:flex flex-col items-end w-24 text-xs font-semibold" style={{ color: '#94a3b8' }}>
-              <div className="flex items-center gap-1">
-                <span>📅</span>
-                <span>{date}</span>
+            {/* 日期時間 - 響應式顯示 */}
+            <div className="flex-shrink-0 hidden md:flex flex-col items-end w-16 md:w-20 lg:w-24 text-[10px] sm:text-xs font-semibold" style={{ color: '#94a3b8' }}>
+              <div className="flex items-center gap-0.5 sm:gap-1">
+                <span className="text-xs">📅</span>
+                <span className="hidden lg:inline">{date}</span>
               </div>
-              <div className="flex items-center gap-1">
-                <span>🕐</span>
+              <div className="flex items-center gap-0.5 sm:gap-1">
+                <span className="text-xs">🕐</span>
                 <span>{time}</span>
               </div>
             </div>
 
-            {/* 操作 - 固定寬度 */}
-            <div className="flex-shrink-0 flex items-center gap-2 w-20 justify-end">
+            {/* 操作 - 響應式 */}
+            <div className="flex-shrink-0 flex items-center gap-1 sm:gap-2 w-10 sm:w-16 md:w-20 justify-end">
               <button
                 onClick={(e) => onDelete(memory, e)}
-                className="p-1.5 rounded-lg transition-all hover:scale-110 opacity-0 group-hover:opacity-100 text-sm"
+                className="p-1 sm:p-1.5 rounded-md sm:rounded-lg transition-all hover:scale-110 active:scale-95 opacity-0 group-hover:opacity-100 text-xs sm:text-sm"
                 style={{
                   background: 'rgba(30, 41, 59, 0.9)',
                   border: '2px solid rgba(251, 146, 60, 0.3)',
@@ -1138,7 +1169,7 @@ function SimpleListView({ memories, onTogglePin, onSelectMemory, onDelete }: Sim
               >
                 🗑️
               </button>
-              <div className="text-lg opacity-0 group-hover:opacity-100 transition-opacity font-bold" style={{ color: '#fef3c7' }}>
+              <div className="hidden sm:block text-base sm:text-lg opacity-0 group-hover:opacity-100 transition-opacity font-bold" style={{ color: '#fef3c7' }}>
                 →
               </div>
             </div>

@@ -311,27 +311,27 @@ export function IslandEditorModal({
   }
 
   return (
-    <div className={`fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center ${Z_INDEX_CLASSES.MODAL} animate-fade-in`}>
-      <div className="bg-gradient-to-br from-white to-healing-cream rounded-bubble p-8 max-w-6xl w-full m-4 shadow-cute-xl border-4 border-white animate-bounce-in max-h-[90vh] overflow-y-auto">
+    <div className={`fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center ${Z_INDEX_CLASSES.MODAL} animate-fade-in p-2 md:p-4`}>
+      <div className="bg-gradient-to-br from-white to-healing-cream rounded-bubble p-4 md:p-8 max-w-6xl w-full shadow-cute-xl border-4 border-white animate-bounce-in max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-cute-2xl font-bold bg-gradient-to-r from-candy-pink to-candy-purple bg-clip-text text-transparent">
+        <div className="flex items-center justify-between mb-4 md:mb-6">
+          <h2 className="text-base md:text-cute-2xl font-bold bg-gradient-to-r from-candy-pink to-candy-purple bg-clip-text text-transparent truncate mr-2">
             🎨 編輯島嶼 - {islandName}
           </h2>
           <button
             onClick={handleCancel}
-            className="w-10 h-10 rounded-full bg-healing-sunset hover:bg-candy-pink text-white text-2xl font-bold transition-all duration-300 hover:rotate-90 hover:scale-110 shadow-cute"
+            className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-healing-sunset hover:bg-candy-pink text-white text-xl md:text-2xl font-bold transition-all duration-300 hover:rotate-90 hover:scale-110 shadow-cute flex-shrink-0"
           >
             ×
           </button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
           {/* 左側：設置面板 */}
-          <div className="space-y-6">
+          <div className="space-y-4 md:space-y-6">
             {/* 3D 模型上傳 */}
-            <div className="bg-white rounded-cute p-6 shadow-cute">
-              <h3 className="text-cute-lg font-bold mb-4 text-gray-800">📦 3D 模型</h3>
+            <div className="bg-white rounded-cute p-4 md:p-6 shadow-cute">
+              <h3 className="text-base md:text-cute-lg font-bold mb-3 md:mb-4 text-gray-800">📦 3D 模型</h3>
               <div className="space-y-3">
                 {modelFile ? (
                   <div className="bg-healing-gentle rounded-cute p-4">
@@ -384,8 +384,8 @@ export function IslandEditorModal({
             </div>
 
             {/* 顏色選擇 */}
-            <div className="bg-white rounded-cute p-6 shadow-cute">
-              <h3 className="text-cute-lg font-bold mb-4 text-gray-800">🎨 島嶼顏色</h3>
+            <div className="bg-white rounded-cute p-4 md:p-6 shadow-cute">
+              <h3 className="text-base md:text-cute-lg font-bold mb-3 md:mb-4 text-gray-800">🎨 島嶼顏色</h3>
 
               {/* 預設顏色 */}
               <div className="mb-4">
@@ -437,9 +437,9 @@ export function IslandEditorModal({
             </div>
 
             {/* 紋理選擇 */}
-            <div className="bg-white rounded-cute p-6 shadow-cute">
-              <h3 className="text-cute-lg font-bold mb-4 text-gray-800">🖼️ 紋理材質</h3>
-              <div className="grid grid-cols-2 gap-3">
+            <div className="bg-white rounded-cute p-4 md:p-6 shadow-cute">
+              <h3 className="text-base md:text-cute-lg font-bold mb-3 md:mb-4 text-gray-800">🖼️ 紋理材質</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 gap-2 md:gap-3">
                 {TEXTURE_CONFIGS.map((texture) => (
                   <button
                     key={texture.id}
@@ -463,9 +463,9 @@ export function IslandEditorModal({
             </div>
 
             {/* 形狀選擇 */}
-            <div className="bg-white rounded-cute p-6 shadow-cute">
-              <h3 className="text-cute-lg font-bold mb-4 text-gray-800">🔷 島嶼形狀</h3>
-              <div className="grid grid-cols-2 gap-3">
+            <div className="bg-white rounded-cute p-4 md:p-6 shadow-cute">
+              <h3 className="text-base md:text-cute-lg font-bold mb-3 md:mb-4 text-gray-800">🔷 島嶼形狀</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 gap-2 md:gap-3">
                 {SHAPE_OPTIONS.map((shape) => (
                   <button
                     key={shape.id}
@@ -488,9 +488,9 @@ export function IslandEditorModal({
           </div>
 
           {/* 右側：3D 預覽 */}
-          <div className="bg-white rounded-cute p-6 shadow-cute">
-            <h3 className="text-cute-lg font-bold mb-4 text-gray-800">👁️ 即時預覽</h3>
-            <div className="bg-gradient-to-br from-healing-sky to-healing-gentle rounded-cute overflow-hidden" style={{ height: '500px' }}>
+          <div className="bg-white rounded-cute p-4 md:p-6 shadow-cute">
+            <h3 className="text-base md:text-cute-lg font-bold mb-3 md:mb-4 text-gray-800">👁️ 即時預覽</h3>
+            <div className="bg-gradient-to-br from-healing-sky to-healing-gentle rounded-cute overflow-hidden" style={{ height: '300px', minHeight: '300px' }}>
               <Canvas camera={{ position: [5, 5, 5], fov: 50 }}>
                 <ambientLight intensity={0.6} />
                 <directionalLight position={[10, 10, 5]} intensity={1} castShadow />
@@ -534,7 +534,7 @@ export function IslandEditorModal({
         </div>
 
         {/* 操作按鈕 */}
-        <div className="flex gap-3 mt-6">
+        <div className="flex gap-2 md:gap-3 mt-4 md:mt-6">
           <button
             type="button"
             onClick={(e) => {
@@ -544,9 +544,9 @@ export function IslandEditorModal({
               handleSave()
             }}
             disabled={isLoading}
-            className="flex-1 px-6 py-3 bg-gradient-to-r from-candy-pink to-candy-purple text-white rounded-cute font-bold shadow-cute hover:shadow-cute-lg transition-all duration-300 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 px-4 md:px-6 py-2.5 md:py-3 bg-gradient-to-r from-candy-pink to-candy-purple text-white rounded-cute font-bold shadow-cute hover:shadow-cute-lg transition-all duration-300 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed text-sm md:text-base"
           >
-            {isLoading ? '💾 保存中...' : '💾 保存島嶼'}
+            {isLoading ? '💾 保存中...' : <><span className="hidden sm:inline">💾 保存島嶼</span><span className="sm:hidden">💾 保存</span></>}
           </button>
           <button
             type="button"
@@ -556,7 +556,7 @@ export function IslandEditorModal({
               handleCancel()
             }}
             disabled={isLoading}
-            className="px-6 py-3 bg-healing-gentle hover:bg-candy-blue text-gray-700 font-bold rounded-cute shadow-cute hover:shadow-cute-lg transition-all duration-300 hover:scale-105 active:scale-95 disabled:opacity-50"
+            className="px-4 md:px-6 py-2.5 md:py-3 bg-healing-gentle hover:bg-candy-blue text-gray-700 font-bold rounded-cute shadow-cute hover:shadow-cute-lg transition-all duration-300 hover:scale-105 active:scale-95 disabled:opacity-50 text-sm md:text-base"
           >
             取消
           </button>

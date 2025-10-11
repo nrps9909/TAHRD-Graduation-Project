@@ -61,6 +61,19 @@ export interface KnowledgeAnalysis {
   confidence: number
 }
 
+// 優化：分類結果緩存接口
+interface ClassificationCache {
+  result: {
+    category: AssistantType
+    confidence: number
+    warmResponse: string
+    quickSummary: string
+    shouldRecord: boolean
+    recordReason?: string
+  }
+  timestamp: number
+}
+
 /**
  * ChiefAgentService - 智能分配與全局管理服務
  */
@@ -68,6 +81,11 @@ export class ChiefAgentService {
   private mcpUrl: string
   private useGeminiCLI: boolean = true
   private geminiModel: string = 'gemini-2.5-flash'
+
+  // 優化：分類結果緩存（內存緩存，避免重複 API 調用）
+  private classificationCache: Map<string, ClassificationCache> = new Map()
+  private readonly CACHE_TTL = 30 * 60 * 1000 // 30 分鐘過期
+  private readonly MAX_CACHE_SIZE = 1000 // 最多緩存 1000 條
 
   constructor() {
     this.mcpUrl = process.env.MCP_SERVICE_URL || 'http://localhost:8765'
@@ -79,6 +97,88 @@ export class ChiefAgentService {
       logger.info('Gemini CLI initialized successfully')
     } else {
       logger.warn('GEMINI_API_KEY not found, AI features will be limited')
+    }
+
+    // 優化：定期清理過期緩存
+    setInterval(() => this.cleanExpiredCache(), 10 * 60 * 1000) // 每 10 分鐘清理一次
+  }
+
+  /**
+   * 優化：生成內容的快速 hash（用於緩存 key）
+   */
+  private generateContentHash(content: string): string {
+    // 簡單的 hash 函數（實際專案可使用 crypto）
+    let hash = 0
+    for (let i = 0; i < content.length; i++) {
+      const char = content.charCodeAt(i)
+      hash = ((hash << 5) - hash) + char
+      hash = hash & hash // Convert to 32bit integer
+    }
+    return hash.toString(36)
+  }
+
+  /**
+   * 優化：檢查相似內容（簡單的相似度檢測，避免重複 AI 調用）
+   * 使用 Jaccard 相似度（基於詞集）
+   */
+  private findSimilarCachedContent(content: string): ClassificationCache | null {
+    const contentWords = new Set(content.toLowerCase().split(/\s+/).filter(w => w.length > 2))
+    let bestMatch: { key: string; similarity: number; cache: ClassificationCache } | null = null
+
+    for (const [key, cache] of this.classificationCache.entries()) {
+      // 跳過已過期的緩存
+      if (Date.now() - cache.timestamp > this.CACHE_TTL) continue
+
+      // 從 key 重建內容（簡化版，實際可以在緩存中存儲原始內容）
+      // 這裡我們使用一個簡單的啟發式：只對短內容（<100字）做相似度檢測
+      if (content.length > 100) continue
+
+      // 計算相似度（需要原始內容，這裡先跳過複雜實現）
+      // 未來可以在 cache 中存儲 normalized content 用於比對
+    }
+
+    return null // 暫時返回 null，未來可以實現完整的相似度檢測
+  }
+
+  /**
+   * 優化：清理過期緩存
+   */
+  private cleanExpiredCache(): void {
+    const now = Date.now()
+    let cleaned = 0
+
+    for (const [key, cache] of this.classificationCache.entries()) {
+      if (now - cache.timestamp > this.CACHE_TTL) {
+        this.classificationCache.delete(key)
+        cleaned++
+      }
+    }
+
+    if (cleaned > 0) {
+      logger.info(`[Cache] Cleaned ${cleaned} expired entries, remaining: ${this.classificationCache.size}`)
+    }
+  }
+
+  /**
+   * 優化：檢查緩存容量並清理最舊的條目
+   */
+  private ensureCacheCapacity(): void {
+    if (this.classificationCache.size >= this.MAX_CACHE_SIZE) {
+      // 找到最舊的條目並刪除
+      let oldestKey: string | null = null
+      let oldestTime = Date.now()
+
+      for (const [key, cache] of this.classificationCache.entries()) {
+        if (cache.timestamp < oldestTime) {
+          oldestTime = cache.timestamp
+          oldestKey = key
+        }
+      }
+
+      if (oldestKey) {
+        this.classificationCache.delete(oldestKey)
+        logger.debug(`[Cache] Removed oldest entry to free space`)
+      }
     }
   }
 
@@ -479,7 +579,7 @@ ${contextInfo}
     if (this.useGeminiCLI) {
       let retries = 0
       const maxRetries = 3
-      const retryDelays = [2000, 5000, 10000] // 2s, 5s, 10s
+      const retryDelays = [1000, 2000, 3000] // 1s, 2s, 3s（優化：從 2s,5s,10s 縮短）
 
       while (retries < maxRetries) {
         try {
@@ -492,11 +592,11 @@ ${contextInfo}
             .replace(/\$/g, '\\$')
             .replace(/`/g, '\\`')
 
-          // 使用 Gemini CLI 调用，增加超時時間
+          // 使用 Gemini CLI 调用，優化超時時間
           const command = `gemini -m ${this.geminiModel} -p "${escapedPrompt}"`
           const { stdout, stderr } = await execAsync(command, {
             maxBuffer: 10 * 1024 * 1024, // 10MB buffer
-            timeout: 120000, // 增加到 120 秒
+            timeout: 30000, // 優化：從 120 秒縮短到 30 秒（足夠快速分類使用）
             env: {
               ...process.env,
               GEMINI_API_KEY: process.env.GEMINI_API_KEY
@@ -629,6 +729,15 @@ ${contextInfo}
     recordReason?: string // 不記錄的原因（如果有）
   }> {
     try {
+      // 優化：檢查緩存（相同內容直接返回）
+      const cacheKey = this.generateContentHash(input.content)
+      const cached = this.classificationCache.get(cacheKey)
+
+      if (cached && (Date.now() - cached.timestamp) < this.CACHE_TTL) {
+        logger.info(`[白噗噗] 使用緩存結果（命中率提升）`)
+        return cached.result
+      }
+
       const chief = await assistantService.getChiefAssistant()
       if (!chief) {
         throw new Error('Chief assistant not found')
@@ -636,87 +745,48 @@ ${contextInfo}
 
       logger.info(`[白噗噗] 開始快速分類`)
 
-      // 構建簡單的分類 Prompt（新增「是否值得記錄」判斷）
-      const prompt = `你是白噗噗，一隻溫暖可愛的白貓知識助手 ☁️
+      // 構建極簡快速分類 Prompt（優化：強化無意義內容判斷）
+      const prompt = `白噗噗☁️ 智能判斷助手
 
-用戶給了你這些內容：
-"${input.content}"
+📝 用戶輸入：${input.content}
+${input.files && input.files.length > 0 ? `📎 附件：${input.files.length}個文件` : ''}
+${input.links && input.links.length > 0 ? `🔗 連結：${input.links.length}個` : ''}
 
-${input.files && input.files.length > 0 ? `\n附件: ${input.files.map(f => f.name).join(', ')}` : ''}
-${input.links && input.links.length > 0 ? `\n連結: ${input.links.map(l => l.url).join(', ')}` : ''}
+🧠 判斷規則：
+❌ 不記錄（shouldRecord: false）：
+- 純問候語（hi/hello/嗨/你好）
+- 單純表情符號（😊/👍/❤️）
+- 測試文字（test/測試/123）
+- 無實質內容（啊/嗯/哦）
+- 隨意打字（asdf/qwer）
+- 重複字符（哈哈哈/嘻嘻嘻）
 
-**你的任務：**
-1. 判斷這個內容是否值得記錄到知識庫
-2. 如果值得記錄，分類到合適的類別並給予溫暖回應
-3. 如果不值得記錄，給予友善的回應但不存儲
+✅ 必須記錄（shouldRecord: true）：
+- 包含時間/日期（今天/明天/下週）
+- 包含人名/地點（張三/台北/公司）
+- 待辦事項（要做/需要/記得）
+- 學習內容（學習/筆記/課程）
+- 工作事務（會議/報告/專案）
+- 靈感創意（想法/點子/設計）
+- 目標規劃（計劃/目標/達成）
+- 資源連結（網址/文章/影片）
+- 情感記錄（開心/難過/有深度的情緒）
+- 有檔案或連結附件
 
-**不值得記錄的內容類型（只聊天、不存儲）：**
-- 純粹的簡單問候（沒有其他資訊）：早安、晚安、你好、嗨、hi、hello
-- 純粹的日常寒暄（沒有實質內容）：今天天氣真好、吃飯了嗎
-- 純表情符號或單字：😊、👍、好、嗯、哦
-- 無實質內容的測試：測試、test、123
-- 單純的感謝或回應：謝謝、感謝、收到、好的
+📂 分類選項：
+LEARNING(學習) / INSPIRATION(靈感) / WORK(工作) / SOCIAL(社交) / LIFE(生活) / GOALS(目標) / RESOURCES(資源) / MISC(其他)
 
-**⚠️ 重要！一定要記錄的內容：**
-- **待辦事項、行程、約會**：例如「明天晚上要跟XXX吃飯」「下週要交報告」
-- **任何包含時間/日期/人物/地點的資訊**
-- 有學習價值的知識、想法、靈感
-- 工作相關的任務、專案、經驗
-- 個人目標、計劃、反思
-- 有用的資源、連結、文件
-- 任何用戶希望未來查閱的資訊
-
-**判斷原則：**
-- 如果內容包含**時間、日期、人名、地點、具體事項**，一定要記錄（shouldRecord: true）
-- 只有純粹的寒暄問候才跳過記錄（shouldRecord: false）
-
-**分類選項與友善名稱:**
-- LEARNING (學習成長): 學習、知識、技能、課程
-- INSPIRATION (靈感創意): 靈感、創意、想法、設計
-- WORK (工作事務): 工作、任務、專案、職涯
-- SOCIAL (社交人際): 朋友、人際、八卦、社交
-- LIFE (生活記錄): 日常生活、心情、經驗、反思
-- GOALS (目標規劃): 目標、夢想、計劃、里程碑
-- RESOURCES (資源收藏): 文章、連結、影片、參考資料
-- MISC (雜項筆記): 雜項、不屬於其他類別
-
-以 JSON 格式回覆（只回覆 JSON）:
-
-**範例 1 - 值得記錄:**
+🎯 JSON回應格式：
 {
   "shouldRecord": true,
-  "category": "WORK",
-  "confidence": 0.9,
-  "warmResponse": "YouTube 影片欸！這看起來跟你的工作相關～我會放到工作類別喔！💼✨",
-  "quickSummary": "工作相關的影片"
+  "category": "LEARNING",
+  "confidence": 0.85,
+  "warmResponse": "溫暖可愛的回應☁️✨",
+  "quickSummary": "簡短摘要（15字內）",
+  "recordReason": "不記錄時說明原因"
 }
 
-**範例 2 - 不值得記錄（簡單問候）:**
-{
-  "shouldRecord": false,
-  "category": "MISC",
-  "confidence": 0.95,
-  "warmResponse": "早安～今天也要開心喔！☁️✨",
-  "quickSummary": "日常問候",
-  "recordReason": "這是日常問候，我會記住你跟我打招呼，但不會存到知識庫喔～"
-}
-
-**範例 3 - 不值得記錄（純表情）:**
-{
-  "shouldRecord": false,
-  "category": "MISC",
-  "confidence": 0.9,
-  "warmResponse": "😊 我也很開心見到你！有什麼想記錄的嗎？",
-  "quickSummary": "表情符號互動",
-  "recordReason": "純粹的互動不需要存儲～"
-}
-
-**回應風格要求 - 重要！:**
-- 如果 shouldRecord = true：warmResponse 要提到分類類別
-- 如果 shouldRecord = false：warmResponse 要友善回應但不提存儲
-- 溫暖、可愛、鼓勵的語氣
-- 使用可愛的表情符號 ☁️ ✨ 💭 💡 🌟 📚 💼 📺
-- 讓使用者知道哪些會記錄、哪些不會`
+💡 回應風格：像白貓一樣溫柔可愛☁️`
 
       // 使用 Gemini 2.5 Flash (快速模型)
       const oldModel = this.geminiModel
@@ -727,7 +797,7 @@ ${input.links && input.links.length > 0 ? `\n連結: ${input.links.map(l => l.ur
 
       this.geminiModel = oldModel // 恢復原模型
 
-      return {
+      const classificationResult = {
         category: result.category as AssistantType || AssistantType.LIFE,
         confidence: result.confidence || 0.8,
         warmResponse: result.warmResponse || '收到了～ ☁️',
@@ -735,6 +805,16 @@ ${input.links && input.links.length > 0 ? `\n連結: ${input.links.map(l => l.ur
         shouldRecord: result.shouldRecord !== false, // 預設為 true，除非明確為 false
         recordReason: result.recordReason
       }
+
+      // 優化：保存到緩存
+      this.ensureCacheCapacity()
+      this.classificationCache.set(cacheKey, {
+        result: classificationResult,
+        timestamp: Date.now()
+      })
+      logger.debug(`[Cache] Saved classification result, cache size: ${this.classificationCache.size}`)
+
+      return classificationResult
     } catch (error) {
       logger.error('[白噗噗] 快速分類失敗:', error)
 
@@ -770,39 +850,73 @@ ${input.links && input.links.length > 0 ? `\n連結: ${input.links.map(l => l.ur
         throw new Error('Chief assistant not found')
       }
 
-      logger.info(`[Chief Agent] 開始多模態內容分析`)
+      logger.info(`[Chief Agent] 開始多模態內容分析（並行處理）`)
 
-      // === Stage 4: 深度多模態處理 ===
+      // === Stage 4: 深度多模態處理（優化：並行處理所有媒體）===
       const imageAnalyses: any[] = []
       const pdfAnalyses: any[] = []
       const linkAnalyses: any[] = []
 
-      // 1. 處理圖片檔案
+      // 收集所有要處理的任務
+      const processingTasks: Promise<any>[] = []
+
+      // 1. 處理圖片檔案（並行）
       if (input.files && input.files.length > 0) {
         const imageFiles = input.files.filter(f => f.type.startsWith('image/'))
-        for (const file of imageFiles) {
+        imageFiles.forEach(file => {
           logger.info(`[Chief Agent] 分析圖片: ${file.name}`)
-          const analysis = await multimodalProcessor.processImage(file.url, input.content)
-          imageAnalyses.push({ file: file.name, ...analysis })
-        }
+          processingTasks.push(
+            multimodalProcessor.processImage(file.url, input.content)
+              .then(analysis => ({ type: 'image', file: file.name, ...analysis }))
+              .catch(err => {
+                logger.error(`圖片處理失敗 ${file.name}:`, err)
+                return null
+              })
+          )
+        })
 
-        // 2. 處理 PDF 檔案
+        // 2. 處理 PDF 檔案（並行）
         const pdfFiles = input.files.filter(f => f.type.includes('pdf'))
-        for (const file of pdfFiles) {
+        pdfFiles.forEach(file => {
           logger.info(`[Chief Agent] 分析 PDF: ${file.name}`)
-          const analysis = await multimodalProcessor.processPDF(file.url, input.content)
-          pdfAnalyses.push({ file: file.name, ...analysis })
-        }
+          processingTasks.push(
+            multimodalProcessor.processPDF(file.url, input.content)
+              .then(analysis => ({ type: 'pdf', file: file.name, ...analysis }))
+              .catch(err => {
+                logger.error(`PDF處理失敗 ${file.name}:`, err)
+                return null
+              })
+          )
+        })
       }
 
-      // 3. 處理連結
+      // 3. 處理連結（並行）
       if (input.links && input.links.length > 0) {
-        for (const link of input.links) {
+        input.links.forEach(link => {
           logger.info(`[Chief Agent] 分析連結: ${link.url}`)
-          const analysis = await multimodalProcessor.processLink(link.url, input.content)
-          linkAnalyses.push(analysis)
-        }
+          processingTasks.push(
+            multimodalProcessor.processLink(link.url, input.content)
+              .then(analysis => ({ type: 'link', ...analysis }))
+              .catch(err => {
+                logger.error(`連結處理失敗 ${link.url}:`, err)
+                return null
+              })
+          )
+        })
       }
+
+      // 並行執行所有處理任務
+      const results = await Promise.all(processingTasks)
+
+      // 分類結果
+      results.forEach(result => {
+        if (!result) return
+        if (result.type === 'image') imageAnalyses.push(result)
+        else if (result.type === 'pdf') pdfAnalyses.push(result)
+        else if (result.type === 'link') linkAnalyses.push(result)
+      })
+
+      logger.info(`[Chief Agent] 多模態處理完成 - 圖片:${imageAnalyses.length}, PDF:${pdfAnalyses.length}, 連結:${linkAnalyses.length}`)
 
       // 构建增强的分析提示词
       let prompt = `${chief.systemPrompt}
@@ -963,6 +1077,7 @@ ${input.content}
           logger.info(`[Chief Agent] 選擇 SubAgent: ${targetSubAgent.nameChinese} (${targetSubAgent.id})`)
 
           // 創建知識分發記錄（使用 subcategoryId）
+          // 優化：移除 include（不需要立即載入關聯，提升寫入速度）
           const distribution = await prisma.knowledgeDistribution.create({
             data: {
               userId,
@@ -980,10 +1095,6 @@ ${input.content}
               distributedTo: [], // 動態 SubAgent 不使用 Assistant ID
               storedBy: [],
               processingTime: Date.now() - startTime,
-            },
-            include: {
-              agentDecisions: true,
-              memories: true,
             }
           })
 
@@ -1002,7 +1113,11 @@ ${input.content}
 
           // 返回白噗噗的溫暖回應 + SubAgent 資訊
           return {
-            distribution,
+            distribution: {
+              ...distribution,
+              agentDecisions: [], // 補充空陣列（因優化移除了 include）
+              memories: []        // 補充空陣列（因優化移除了 include）
+            },
             tororoResponse: {
               warmMessage: `${quickResult.warmResponse}\n由 ${targetSubAgent.emoji} ${targetSubAgent.nameChinese} 來處理喔！`,
               category: quickResult.category,
@@ -1034,6 +1149,7 @@ ${input.content}
       }
 
       // 4. 創建知識分發記錄（簡化版 - 只記錄基本資訊）
+      // 優化：移除 include（不需要立即載入關聯，提升寫入速度）
       const distribution = await prisma.knowledgeDistribution.create({
         data: {
           userId,
@@ -1051,10 +1167,6 @@ ${input.content}
           distributedTo: [targetAssistant.id],
           storedBy: [], // 等 Sub-Agent 處理後更新
           processingTime: Date.now() - startTime,
-        },
-        include: {
-          agentDecisions: true,
-          memories: true,
         }
       })
 
@@ -1074,7 +1186,11 @@ ${input.content}
 
       // 立即返回白噗噗的溫暖回應給前端
       return {
-        distribution,
+        distribution: {
+          ...distribution,
+          agentDecisions: [], // 補充空陣列（因優化移除了 include）
+          memories: []        // 補充空陣列（因優化移除了 include）
+        },
         // 白噗噗的即時回應
         tororoResponse: {
           warmMessage: quickResult.warmResponse,
@@ -1185,36 +1301,58 @@ ${input.content}
   }
 
   /**
-   * 簡單規則判斷是否為問候語或寒暄（不值得記錄）
-   * 注意：要非常保守，避免誤判！只過濾純粹的寒暄
+   * 增強版：智能判斷是否為無意義內容（不值得記錄）
+   * 注意：保守判斷，避免誤判有價值內容
    */
   private isSimpleGreeting(content: string): boolean {
     const text = content.trim().toLowerCase()
 
-    // 太短的內容（少於 3 個字）才判定為寒暄
-    if (text.length < 3) {
+    // 極短內容（少於 2 個字符）通常無意義
+    if (text.length < 2) {
       return true
     }
 
-    // 檢查是否包含時間、日期、人名等關鍵資訊（這些一定要記錄）
+    // 🔥 重要資訊檢查（這些一定要記錄！）
     const importantPatterns = [
-      /明天|今天|昨天|下週|下周|上週|上周|月|日|號|點|分/i,  // 時間
-      /要|需要|記得|提醒|待辦|todo|任務/i,                    // 任務
-      /跟|和|與|找|約|見面|吃飯|會議|meeting/i,               // 社交/行程
-      /學習|工作|專案|計劃|目標/i,                            // 重要類別
+      /明天|今天|昨天|下週|下周|上週|上周|月|日|號|點|分|am|pm/i,  // 時間
+      /要|需要|記得|提醒|待辦|todo|任務|完成|處理/i,                 // 任務
+      /跟|和|與|找|約|見面|吃飯|會議|meeting|聚會/i,                // 社交/行程
+      /學習|工作|專案|計劃|目標|想法|靈感|創意|心得/i,               // 重要類別
+      /https?:\/\//i,                                              // 包含連結
+      /\d{4}[-/年]\d{1,2}[-/月]\d{1,2}/,                          // 日期格式
+      /[A-Z][a-z]+\s+[A-Z][a-z]+/,                                // 人名（英文）
+      /[開心|難過|生氣|焦慮|興奮|沮喪|感動]/i,                      // 情感記錄
     ]
 
-    // 如果包含重要資訊，一定不是寒暄
+    // 如果包含重要資訊，一定不是無意義內容
     if (importantPatterns.some(pattern => pattern.test(text))) {
       return false
     }
 
-    // 只過濾極短且明確的問候語（整句都是問候語）
-    const strictGreetingPatterns = [
-      /^(早安|晚安|你好|嗨|hi|hello|hey)$/i,           // 完全匹配
-      /^(謝謝|感謝|收到|好的|ok)$/i,                   // 完全匹配
-      /^(測試|test)$/i,                                // 完全匹配
+    // 🚫 無意義內容模式（更嚴格的匹配）
+    const meaninglessPatterns = [
+      // 純問候語（完全匹配）
+      /^(hi|hello|嗨|你好|hey|哈囉|安安|在嗎|在不在|yo|早|午安|晚安|早安)[!！.。?？]*$/i,
+      // 純確認詞（完全匹配）
+      /^(好|ok|嗯|恩|對|是|yes|no|謝謝|感謝|收到)[!！.。?？]*$/i,
+      // 測試文字（完全匹配）
+      /^(test|測試|testing|123|456|test123|試試看|測一下)[!！.。]*$/i,
+      // 無實質內容的感嘆詞（完全匹配）
+      /^(啊|嗯|哦|唉|呃|額|嘿|欸|喔|哇|咦|嗯嗯|啦|呢)[!！.。?？]*$/i,
+      // 隨意打字（完全匹配）
+      /^(asdf|qwer|zxcv|1234|abcd|qqqq|wwww|aaaa|ssss)[!！.。]*$/i,
+      // 重複字符（3個以上相同字符）
+      /^(.)\1{2,}$/,
+      // 純數字（1-3位）
+      /^\d{1,3}$/,
+      // 單詞重複（哈哈哈、嘻嘻嘻等）
+      /^(哈|嘻|呵|嘿){3,}$/,
     ]
+
+    // 檢查是否匹配無意義模式
+    if (meaninglessPatterns.some(pattern => pattern.test(text))) {
+      return true
+    }
 
     // 只包含表情符號
     const emojiOnlyPattern = /^[\p{Emoji}\s]+$/u
@@ -1222,8 +1360,7 @@ ${input.content}
       return true
     }
 
-    // 檢查是否完全匹配問候語（必須是完整的句子，不能有其他內容）
-    return strictGreetingPatterns.some(pattern => pattern.test(text))
+    return false
   }
 }
 

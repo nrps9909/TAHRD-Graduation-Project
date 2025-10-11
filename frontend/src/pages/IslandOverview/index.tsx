@@ -143,9 +143,9 @@ export default function IslandOverview() {
         hideLabels={showLive2D}
       />
 
-      {/* 左上角按鈕組 */}
+      {/* 左上角按鈕組 - 手機端調整位置和大小 */}
       {!showLive2D && (
-        <div className="fixed top-6 left-6 flex gap-3">
+        <div className="fixed top-3 md:top-6 left-3 md:left-6 flex gap-2 md:gap-3">
           {/* 設定按鈕 */}
           <motion.button
             initial={{ x: -100, opacity: 0 }}
@@ -156,9 +156,9 @@ export default function IslandOverview() {
             className={`${Z_INDEX_CLASSES.FIXED_PANEL} group`}
             title="遊戲設定"
           >
-            <div className="relative w-12 h-12 rounded-2xl backdrop-blur-md bg-white/10 border border-white/20 shadow-lg transition-all group-hover:bg-white/20 group-hover:border-white/30">
+            <div className="relative w-10 h-10 md:w-12 md:h-12 rounded-2xl backdrop-blur-md bg-white/10 border border-white/20 shadow-lg transition-all group-hover:bg-white/20 group-hover:border-white/30">
               <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-pink-300/20 to-yellow-300/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              <div className="absolute inset-0 flex items-center justify-center text-white/70 group-hover:text-white text-xl transition-all group-hover:rotate-90 duration-500">
+              <div className="absolute inset-0 flex items-center justify-center text-white/70 group-hover:text-white text-lg md:text-xl transition-all group-hover:rotate-90 duration-500">
                 ⚙️
               </div>
             </div>
@@ -169,13 +169,14 @@ export default function IslandOverview() {
       {/* 設定選單 */}
       <SettingsMenu isOpen={showSettings} onClose={() => setShowSettings(false)} />
 
-      {/* 島嶼狀態卡片 - 左上角 - 當聚焦到某個島嶼時顯示 */}
+      {/* 島嶼狀態卡片 - 左上角 - 當聚焦到某個島嶼時顯示，手機端隱藏 */}
       {!showLive2D && currentIslandId !== 'overview' && getCurrentIsland() && (
         <motion.div
           initial={{ x: -100, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           exit={{ x: -100, opacity: 0 }}
           transition={{ type: 'spring', stiffness: 200, damping: 25 }}
+          className="hidden md:block"
         >
           <IslandStatusCard
             name={getCurrentIsland()!.nameChinese}

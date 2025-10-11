@@ -12,6 +12,9 @@ import { useSound } from '../hooks/useSound'
 import { Z_INDEX_CLASSES } from '../constants/zIndex'
 import { useCatChat } from '../hooks/useCatChat'
 import type { ChatMessage } from '../stores/chatStore'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import rehypeSanitize from 'rehype-sanitize'
 
 // Register PIXI globally for Live2D
 ;(window as any).PIXI = PIXI
@@ -21,15 +24,79 @@ interface Live2DCatProps {
   onClose?: () => void
 }
 
+// 動物森友會風格配色
+const AC_COLORS = {
+  tororo: {
+    // 白天模式 - 溫暖黃色系
+    name: '白噗噗',
+    emoji: '☁️',
+    description: '知識園丁',
+    // 主背景
+    background: 'linear-gradient(135deg, rgba(255, 248, 231, 0.95) 0%, rgba(255, 243, 224, 0.95) 100%)',
+    backdropFilter: 'blur(24px) saturate(180%)',
+    border: '3px solid rgba(251, 191, 36, 0.4)',
+    boxShadow: '0 8px 32px 0 rgba(251, 191, 36, 0.3), inset 0 1px 0 0 rgba(255, 255, 255, 0.8)',
+    // 頭部
+    headerBg: 'linear-gradient(135deg, rgba(251, 191, 36, 0.4) 0%, rgba(245, 158, 11, 0.3) 100%)',
+    headerText: '#8B5C2E',
+    headerTextSecondary: '#A67C52',
+    // 訊息氣泡
+    userBubbleBg: 'linear-gradient(135deg, rgba(251, 191, 36, 0.5) 0%, rgba(245, 158, 11, 0.4) 100%)',
+    userBubbleText: '#5D3A1A',
+    catBubbleBg: 'linear-gradient(135deg, rgba(255, 255, 255, 0.8) 0%, rgba(254, 252, 247, 0.7) 100%)',
+    catBubbleText: '#5D3A1A',
+    // 按鈕
+    buttonBg: 'linear-gradient(135deg, rgba(251, 191, 36, 0.3) 0%, rgba(245, 158, 11, 0.25) 100%)',
+    buttonHoverBg: 'linear-gradient(135deg, rgba(251, 191, 36, 0.5) 0%, rgba(245, 158, 11, 0.4) 100%)',
+    buttonText: '#8B5C2E',
+    // 輸入框
+    inputBorder: 'rgba(251, 191, 36, 0.4)',
+    inputFocusBorder: 'rgba(245, 158, 11, 0.6)',
+    inputBg: 'rgba(255, 255, 255, 0.9)',
+    // 分隔線
+    divider: 'linear-gradient(90deg, transparent, rgba(251, 191, 36, 0.3), transparent)',
+  },
+  hijiki: {
+    // 夜間模式 - 紫藍色系
+    name: '黑噗噗',
+    emoji: '🌙',
+    description: '知識管理員',
+    // 主背景
+    background: 'linear-gradient(135deg, rgba(15, 13, 35, 0.98) 0%, rgba(25, 22, 50, 0.98) 100%)',
+    backdropFilter: 'blur(24px) saturate(180%)',
+    border: '3px solid rgba(139, 92, 246, 0.4)',
+    boxShadow: '0 8px 32px 0 rgba(139, 92, 246, 0.3), inset 0 1px 0 0 rgba(167, 139, 250, 0.3)',
+    // 頭部
+    headerBg: 'linear-gradient(135deg, rgba(139, 92, 246, 0.4) 0%, rgba(99, 102, 241, 0.3) 100%)',
+    headerText: '#FFFFFF',
+    headerTextSecondary: '#E0E7FF',
+    // 訊息氣泡
+    userBubbleBg: 'linear-gradient(135deg, rgba(139, 92, 246, 0.6) 0%, rgba(99, 102, 241, 0.5) 100%)',
+    userBubbleText: '#FFFFFF',
+    catBubbleBg: 'linear-gradient(135deg, rgba(67, 56, 202, 0.5) 0%, rgba(79, 70, 229, 0.4) 100%)',
+    catBubbleText: '#FFFFFF',
+    // 按鈕
+    buttonBg: 'linear-gradient(135deg, rgba(139, 92, 246, 0.3) 0%, rgba(99, 102, 241, 0.25) 100%)',
+    buttonHoverBg: 'linear-gradient(135deg, rgba(139, 92, 246, 0.5) 0%, rgba(99, 102, 241, 0.4) 100%)',
+    buttonText: '#FFFFFF',
+    // 輸入框
+    inputBorder: 'rgba(139, 92, 246, 0.4)',
+    inputFocusBorder: 'rgba(99, 102, 241, 0.6)',
+    inputBg: 'rgba(30, 27, 75, 0.6)',
+    inputText: '#FFFFFF',
+    inputPlaceholder: 'rgba(255, 255, 255, 0.5)',
+    // 分隔線
+    divider: 'linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.4), transparent)',
+  }
+}
+
 export default function Live2DCat({
   modelPath,
   onClose,
 }: Live2DCatProps) {
   // 判断是白猫还是黑猫
   const isBlackCat = modelPath.includes('hijiki')
-  const catName = isBlackCat ? '黑噗噗' : '白噗噗'
-  const catEmoji = isBlackCat ? '🐈‍⬛' : '🐱'
-  const catDescription = isBlackCat ? '你的神秘小夥伴 🌙' : '你的療癒小夥伴 💕'
+  const theme = isBlackCat ? AC_COLORS.hijiki : AC_COLORS.tororo
 
   // === 使用優化的 Hook 管理對話狀態 ===
   const {
@@ -82,7 +149,6 @@ export default function Live2DCat({
 
   // Play greeting sound when component mounts
   useEffect(() => {
-    // Delay to ensure user interaction (browsers require user interaction for audio)
     const timer = setTimeout(() => {
       play('meow_greeting')
     }, 500)
@@ -98,14 +164,11 @@ export default function Live2DCat({
       if (!live2dContainerRef.current) return
 
       try {
-        // Register PIXI ticker
         Live2DModel.registerTicker(PIXI.Ticker)
 
-        // Get container dimensions
         const containerWidth = live2dContainerRef.current.clientWidth
         const containerHeight = live2dContainerRef.current.clientHeight
 
-        // Create PIXI Application with full container size
         const app = new PIXI.Application({
           width: containerWidth,
           height: containerHeight,
@@ -118,23 +181,18 @@ export default function Live2DCat({
         appRef.current = app
         live2dContainerRef.current.appendChild(app.view as HTMLCanvasElement)
 
-        // Load Live2D model
         try {
           const model = await Live2DModel.from(modelPath)
           modelRef.current = model
 
-          // Calculate scale to fit container - use 1.1x to occupy ~80% of the space
           const targetScale = Math.min(containerWidth / 2048, containerHeight / 2048) * 1.1
 
-          // Set scale and position - center horizontally, align to bottom with padding
           model.scale.set(targetScale)
           model.position.set(containerWidth / 2, containerHeight * 0.9)
-          model.anchor.set(0.5, 1) // Anchor at bottom center
+          model.anchor.set(0.5, 1)
 
-          // Add to stage
           app.stage.addChild(model)
 
-          // Update loop
           app.ticker.add(() => {
             if (modelRef.current) {
               const deltaTime = app.ticker.deltaTime
@@ -196,12 +254,11 @@ export default function Live2DCat({
       const internalModel = (modelRef.current as any).internalModel
       if (!internalModel?.motionManager) return
 
-      // Map states to motion groups
       const motionMap: Record<typeof catState, string> = {
-        idle: 'idle',        // 00_idle
-        thinking: 'TapBody', // 思考動作
-        listening: 'Shake',  // 聆聽/注意動作
-        talking: 'idle',     // 說話時的動作
+        idle: 'idle',
+        thinking: 'TapBody',
+        listening: 'Shake',
+        talking: 'idle',
       }
 
       const motionGroup = motionMap[state]
@@ -211,12 +268,10 @@ export default function Live2DCat({
     }
   }
 
-  // Trigger motion when state changes
   useEffect(() => {
     playMotionForState(catState)
   }, [catState])
 
-  // Trigger motion when new message arrives (legacy support)
   useEffect(() => {
     if (modelRef.current && triggerMotion) {
       playMotionForState(catState)
@@ -225,17 +280,14 @@ export default function Live2DCat({
   }, [triggerMotion, catState])
 
   const handleSendMessage = async () => {
-    // Must have either text or attachments
     if (!inputText.trim() && safeAttachments.length === 0) return
-    if (isProcessing) return // Prevent double submission
+    if (isProcessing) return
 
     const userContent = inputText || '上傳了檔案'
     const hasAttachments = safeAttachments.length > 0
 
-    // Play message sent sound
     play('message_sent')
 
-    // Add user message to UI
     const newMessage: ChatMessage = {
       id: Date.now().toString(),
       type: 'user',
@@ -254,21 +306,17 @@ export default function Live2DCat({
     setPendingAttachments([])
     setIsProcessing(true)
 
-    // User is speaking -> cat is listening
     setCatState('listening')
-    play('meow_curious') // Cat is listening
+    play('meow_curious')
 
-    // Start thinking after a brief moment
     setTimeout(() => {
       setCatState('thinking')
-      play('meow_thinking') // Cat starts thinking
-      playTypingSequence() // Simulate AI processing with typing sound
+      play('meow_thinking')
+      playTypingSequence()
     }, 500)
 
     try {
-      // 判断模式：有文件时使用知识上传模式，否则使用对话模式
       if (hasAttachments) {
-        // === 知识上传模式 ===
         const input: UploadKnowledgeInput = {
           content: userContent,
           files: attachments.map(att => ({
@@ -286,7 +334,6 @@ export default function Live2DCat({
         if (data?.uploadKnowledge) {
           const result = data.uploadKnowledge
 
-          // Create response message with AI analysis
           let responseContent = `喵~ 我已經幫你分析並儲存了！✨\n\n`
           responseContent += `📝 **摘要:** ${result.distribution.chiefSummary}\n\n`
 
@@ -308,17 +355,15 @@ export default function Live2DCat({
             timestamp: new Date(),
           }
 
-          // Play success sounds
           play('upload_success')
           setTimeout(() => {
             play('message_received')
-            playRandomMeow() // Happy meow after successful response
+            playRandomMeow()
           }, 300)
 
           addMessage(assistantMessage)
         }
       } else {
-        // === 对话模式 ===
         const chiefId = chiefData?.chiefAssistant?.id
 
         if (!chiefId) {
@@ -345,10 +390,9 @@ export default function Live2DCat({
             timestamp: new Date(),
           }
 
-          // Play success sounds
           setTimeout(() => {
             play('message_received')
-            playRandomMeow() // Happy meow after successful response
+            playRandomMeow()
           }, 300)
 
           addMessage(assistantMessage)
@@ -357,7 +401,6 @@ export default function Live2DCat({
     } catch (error) {
       console.error('處理失敗:', error)
 
-      // Error message
       const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         type: 'assistant',
@@ -368,17 +411,14 @@ export default function Live2DCat({
     } finally {
       setIsProcessing(false)
 
-      // Cat is now talking
       setCatState('talking')
 
-      // Return to idle after speaking
       setTimeout(() => {
         setCatState('idle')
       }, 2000)
     }
   }
 
-  // Helper function to determine content type
   const determineContentType = (attachments: typeof pendingAttachments): 'TEXT' | 'IMAGE' | 'DOCUMENT' | 'MIXED' => {
     if (attachments.length === 0) return 'TEXT'
 
@@ -401,13 +441,11 @@ export default function Live2DCat({
     const files = e.target.files
     if (!files || files.length === 0) return
 
-    // Check if adding these files would exceed the limit
     if (safeAttachments.length + files.length > 10) {
       alert('最多只能上傳 10 個檔案！')
       return
     }
 
-    // Add files to pending attachments
     const newAttachments = Array.from(files).map(file => ({
       type: (type === 'audio' ? 'audio' : type === 'image' ? 'image' : 'file') as 'image' | 'file' | 'audio',
       name: file.name,
@@ -417,15 +455,12 @@ export default function Live2DCat({
 
     newAttachments.forEach(att => addPendingAttachment(att))
 
-    // Play notification sound for successful upload
     play('notification')
 
-    // Reset the file input
     e.target.value = ''
   }
 
   const removeAttachment = (index: number) => {
-    // Revoke the object URL to free memory
     if (safeAttachments[index]) {
       URL.revokeObjectURL(safeAttachments[index].url)
     }
@@ -434,14 +469,11 @@ export default function Live2DCat({
 
   const toggleRecording = () => {
     if (isRecording) {
-      // Stop recording immediately and add to pending attachments
       setIsRecording(false)
       setCatState('idle')
 
-      // Play notification for recording stopped
       play('notification')
 
-      // Create a mock audio file
       const audioBlob = new Blob([], { type: 'audio/mp3' })
       const audioUrl = URL.createObjectURL(audioBlob)
       const audioFileName = `語音訊息_${Date.now()}.mp3`
@@ -453,111 +485,177 @@ export default function Live2DCat({
         file: new File([audioBlob], audioFileName, { type: 'audio/mp3' })
       })
     } else {
-      // Check if we can add more attachments
       if (safeAttachments.length >= 10) {
         alert('最多只能上傳 10 個檔案！')
         return
       }
 
-      // Start recording - cat is listening
       setIsRecording(true)
       setCatState('listening')
 
-      // Play notification for recording started
       play('notification')
-      play('meow_curious') // Cat is curious/listening
+      play('meow_curious')
     }
   }
 
-  // 主题颜色配置
-  const theme = isBlackCat ? {
-    // ChatGPT 同款黑白灰配色
-    bgGradient: 'from-gray-900/60 via-gray-800/60 to-gray-900/60',
-    cardGradient: 'from-[#343541]/95 to-[#202123]/95',
-    headerBorder: 'border-gray-700',
-    avatarGradient: 'from-gray-700 to-gray-800',
-    titleGradient: 'from-gray-300 to-gray-400',
-    buttonGradient: 'from-gray-600 to-gray-700',
-    buttonHover: 'hover:from-gray-700 hover:to-gray-800',
-  } : {
-    bgGradient: 'from-baby-pink/30 via-baby-yellow/30 to-baby-peach/30',
-    cardGradient: 'from-baby-pink/95 to-baby-yellow/95',
-    headerBorder: 'border-baby-blush',
-    avatarGradient: 'from-baby-pink to-baby-blush',
-    titleGradient: 'from-pink-400 to-yellow-400',
-    buttonGradient: 'from-baby-pink to-baby-blush',
-    buttonHover: 'hover:scale-110',
-  }
-
   return (
-    <div className={`fixed inset-0 ${Z_INDEX_CLASSES.FULLSCREEN_CHAT} flex items-center justify-center bg-gradient-to-br ${isBlackCat ? 'from-slate-900/95 via-indigo-950/95 to-purple-950/95' : theme.bgGradient} backdrop-blur-md animate-fadeIn`}>
-      <div className={`relative w-full h-full max-w-7xl max-h-[90vh] mx-4 bg-gradient-to-br ${isBlackCat ? 'from-slate-800/98 via-indigo-900/98 to-purple-900/98' : theme.cardGradient} backdrop-blur-xl rounded-[3rem] ${isBlackCat ? 'shadow-[0_0_60px_rgba(99,102,241,0.3)] border-4 border-indigo-500/40' : 'shadow-cute-xl'} overflow-hidden animate-scale-in`}>
+    <div 
+      className={`fixed inset-0 ${Z_INDEX_CLASSES.FULLSCREEN_CHAT} flex items-center justify-center backdrop-blur-md animate-fadeIn p-2 sm:p-4`}
+      style={{
+        background: isBlackCat 
+          ? 'linear-gradient(to bottom right, rgba(10, 8, 25, 0.98) 0%, rgba(20, 18, 40, 0.98) 50%, rgba(30, 25, 50, 0.98) 100%)'
+          : 'linear-gradient(to bottom right, rgba(255, 248, 231, 0.95) 0%, rgba(255, 243, 224, 0.95) 50%, rgba(255, 237, 213, 0.95) 100%)'
+      }}
+    >
+      {/* 裝飾背景 - 星星/雲朵 - 響應式 */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        {isBlackCat ? (
+          <>
+            <div className="absolute top-10 sm:top-20 left-10 sm:left-20 text-2xl sm:text-4xl animate-pulse" style={{ animationDuration: '3s' }}>⭐</div>
+            <div className="absolute top-20 sm:top-40 right-16 sm:right-32 text-xl sm:text-3xl animate-pulse" style={{ animationDuration: '4s' }}>✨</div>
+            <div className="absolute bottom-16 sm:bottom-32 left-20 sm:left-40 text-3xl sm:text-5xl animate-pulse" style={{ animationDuration: '5s' }}>🌙</div>
+            <div className="absolute top-40 sm:top-60 right-10 sm:right-20 text-lg sm:text-2xl animate-pulse" style={{ animationDuration: '3.5s' }}>⭐</div>
+            <div className="absolute bottom-40 right-32 text-xl sm:text-3xl animate-pulse hidden sm:block" style={{ animationDuration: '4.5s' }}>💫</div>
+          </>
+        ) : (
+          <>
+            <div className="absolute top-10 sm:top-20 left-10 sm:left-20 text-2xl sm:text-4xl animate-bounce" style={{ animationDuration: '3s' }}>☁️</div>
+            <div className="absolute top-20 sm:top-40 right-16 sm:right-32 text-xl sm:text-3xl animate-bounce" style={{ animationDuration: '4s' }}>☀️</div>
+            <div className="absolute bottom-16 sm:bottom-32 left-20 sm:left-40 text-3xl sm:text-5xl animate-bounce" style={{ animationDuration: '5s' }}>🌈</div>
+          </>
+        )}
+      </div>
 
-        {/* Header */}
+      <div 
+        className="relative w-full h-full max-w-7xl rounded-2xl sm:rounded-[3rem] overflow-hidden animate-scale-in"
+        style={{
+          background: theme.background,
+          backdropFilter: theme.backdropFilter,
+          WebkitBackdropFilter: theme.backdropFilter,
+          border: theme.border,
+          boxShadow: theme.boxShadow,
+        }}
+      >
+        {/* 裝飾漸層 */}
         <div
-          className={`relative backdrop-blur-sm border-b-4 px-6 py-4 ${isBlackCat ? 'border-indigo-500/50 bg-gradient-to-r from-slate-800/95 to-indigo-900/95' : `${theme.headerBorder} bg-white/80`}`}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className={`w-14 h-14 bg-gradient-to-br ${isBlackCat ? 'from-indigo-600 to-purple-600' : theme.avatarGradient} rounded-full flex items-center justify-center ${isBlackCat ? 'shadow-[0_0_20px_rgba(99,102,241,0.5)]' : 'shadow-cute'} animate-bounce-gentle border-2 ${isBlackCat ? 'border-indigo-400/40' : ''}`}>
-                <span className="text-3xl">{catEmoji}</span>
-              </div>
-              <div>
-                <h2
-                  className={`text-2xl font-bold ${isBlackCat ? 'bg-gradient-to-r from-indigo-200 to-purple-200 bg-clip-text text-transparent' : 'bg-gradient-to-r bg-clip-text text-transparent'}`}
-                  style={{
-                    backgroundImage: isBlackCat ? undefined : `linear-gradient(to right, ${theme.titleGradient})`
-                  }}
-                >
-                  {catName}
-                </h2>
-                <p className={`text-sm ${isBlackCat ? 'text-indigo-300' : 'text-gray-600'}`}>{catDescription}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              {/* Sound Toggle Button */}
-              <button
-                onClick={() => {
-                  toggleSound()
-                  play('button_click')
-                }}
-                className={`w-12 h-12 ${
-                  soundEnabled
-                    ? isBlackCat ? 'bg-gradient-to-br from-indigo-600 to-purple-600 border-2 border-indigo-400/40' : `bg-gradient-to-br ${theme.buttonGradient}`
-                    : 'bg-gray-600'
-                } hover:scale-110 text-white rounded-xl ${isBlackCat && soundEnabled ? 'shadow-[0_0_20px_rgba(99,102,241,0.4)]' : 'shadow-cute'} flex items-center justify-center transition-all active:scale-95`}
-                title={soundEnabled ? '關閉音效' : '開啟音效'}
-              >
-                <span className="text-xl">{soundEnabled ? '🔊' : '🔇'}</span>
-              </button>
+          className="absolute inset-0 rounded-[3rem] pointer-events-none"
+          style={{
+            background: isBlackCat
+              ? 'linear-gradient(to bottom, rgba(167, 139, 250, 0.2) 0%, transparent 40%, rgba(139, 92, 246, 0.05) 100%)'
+              : 'linear-gradient(to bottom, rgba(255, 255, 255, 0.3) 0%, transparent 40%, rgba(251, 191, 36, 0.05) 100%)'
+          }}
+        />
 
-              {/* Close Button */}
-              <button
-                onClick={() => {
-                  play('button_click')
-                  onClose?.()
-                }}
-                className="w-12 h-12 bg-gradient-to-br from-red-400 to-red-500 hover:from-red-500 hover:to-red-600 text-white rounded-xl shadow-lg border-2 border-red-300 flex items-center justify-center transition-all hover:scale-110 active:scale-95 font-bold"
-              >
-                ✕
-              </button>
+        {/* Header - 動物森友會風格 - 響應式 */}
+        <div
+          className="relative px-3 sm:px-6 py-3 sm:py-5 flex items-center justify-between rounded-t-2xl sm:rounded-t-[3rem]"
+          style={{
+            background: theme.headerBg,
+            boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.05)'
+          }}
+        >
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div
+              className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center text-2xl sm:text-3xl flex-shrink-0"
+              style={{
+                background: isBlackCat
+                  ? 'linear-gradient(135deg, rgba(67, 56, 202, 0.5) 0%, rgba(79, 70, 229, 0.4) 100%)'
+                  : 'linear-gradient(135deg, rgba(255, 255, 255, 0.6) 0%, rgba(254, 252, 247, 0.5) 100%)',
+                boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.1)'
+              }}
+            >
+              {theme.emoji}
             </div>
+            <div>
+              <div 
+                className="font-black text-base sm:text-xl" 
+                style={{ 
+                  color: theme.headerText, 
+                  textShadow: isBlackCat ? '0 2px 4px rgba(0, 0, 0, 0.5)' : '0 1px 2px rgba(255, 255, 255, 0.8)' 
+                }}
+              >
+                {theme.name}
+              </div>
+              <div className="text-xs sm:text-sm font-semibold" style={{ color: theme.headerTextSecondary }}>
+                {theme.description}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            {/* Sound Toggle */}
+            <button
+              onClick={() => {
+                toggleSound()
+                play('button_click')
+              }}
+              className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center text-base sm:text-lg transition-all hover:scale-110 active:scale-95"
+              style={{
+                background: soundEnabled ? theme.buttonBg : 'rgba(156, 163, 175, 0.3)',
+                boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.1)'
+              }}
+              title={soundEnabled ? '關閉音效' : '開啟音效'}
+            >
+              <span>{soundEnabled ? '🔊' : '🔇'}</span>
+            </button>
+
+            {/* Close Button */}
+            <button
+              onClick={() => {
+                play('button_click')
+                onClose?.()
+              }}
+              className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center font-bold transition-all hover:scale-110 active:scale-95 text-sm sm:text-base"
+              style={{
+                background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.9) 0%, rgba(220, 38, 38, 0.9) 100%)',
+                color: '#FFF',
+                boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.1)'
+              }}
+            >
+              ✕
+            </button>
           </div>
         </div>
 
-        {/* Main Content */}
-        <div className="flex h-[calc(100%-88px)]">
-          {/* Live2D Model Area */}
-          <div className={`w-1/3 bg-gradient-to-br ${isBlackCat ? 'from-slate-800/80 to-indigo-900/80 border-r-4 border-indigo-500/30' : 'from-baby-cream/50 to-baby-yellow/50 border-r-4 border-baby-blush/30'} flex flex-col items-center justify-center p-6`}>
+        {/* 分隔線 */}
+        <div className="h-[2px] rounded-full" style={{ background: theme.divider }} />
+
+        {/* Main Content - 響應式 */}
+        <div className="flex flex-col md:flex-row h-[calc(100%-64px)] sm:h-[calc(100%-88px)]">
+          {/* Live2D Model Area - 響應式 */}
+          <div 
+            className="w-full md:w-1/3 h-[150px] sm:h-[200px] md:h-full flex flex-col items-center justify-center p-2 sm:p-3 md:p-6 relative"
+            style={{
+              background: isBlackCat
+                ? 'linear-gradient(135deg, rgba(67, 56, 202, 0.15) 0%, rgba(79, 70, 229, 0.1) 100%)'
+                : 'linear-gradient(135deg, rgba(251, 191, 36, 0.1) 0%, rgba(245, 158, 11, 0.05) 100%)'
+            }}
+          >
+            {/* 裝飾邊框 */}
+            <div 
+              className="absolute right-0 top-0 bottom-0 w-[2px] hidden md:block rounded-full" 
+              style={{ background: theme.divider }} 
+            />
+            <div 
+              className="absolute left-0 right-0 bottom-0 h-[2px] md:hidden rounded-full" 
+              style={{ background: theme.divider }} 
+            />
+
             <div className="relative w-full h-full flex items-center justify-center">
               {showFallback ? (
-                <div className="text-center animate-gentle-float">
-                  <div className="text-9xl mb-4 filter drop-shadow-lg">{catEmoji}</div>
-                  <div className="bg-white/80 backdrop-blur-sm rounded-2xl px-6 py-3 shadow-cute">
-                    <p className={`text-cute-lg font-bold bg-gradient-to-r ${theme.titleGradient} bg-clip-text text-transparent`}>
-                      {catName}在這裡！
+                <div className="text-center animate-bounce-gentle">
+                  <div className="text-9xl mb-4 filter drop-shadow-lg">{theme.emoji}</div>
+                  <div 
+                    className="rounded-2xl px-6 py-3"
+                    style={{
+                      background: theme.catBubbleBg,
+                      boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.05)'
+                    }}
+                  >
+                    <p className="text-lg font-bold" style={{ color: theme.headerText }}>
+                      {theme.name}在這裡！
                     </p>
-                    <p className="text-cute-xs text-gray-500 mt-1">
+                    <p className="text-xs mt-1" style={{ color: theme.headerTextSecondary }}>
                       Live2D 模型載入中...
                     </p>
                   </div>
@@ -566,66 +664,243 @@ export default function Live2DCat({
                 <div
                   ref={live2dContainerRef}
                   className="w-full h-full"
-                  style={{
-                    position: 'relative',
-                  }}
+                  style={{ position: 'relative' }}
                 />
               )}
             </div>
           </div>
 
-          {/* Chat Area */}
-          <div className="flex-1 flex flex-col">
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          {/* Chat Area - 響應式 */}
+          <div className="flex-1 flex flex-col min-h-0">
+            {/* Messages - 響應式 */}
+            <div className="flex-1 overflow-y-auto p-2 sm:p-3 md:p-4 lg:p-6 space-y-2 sm:space-y-3 md:space-y-4">
+              {messages.length === 0 && (
+                <div className="flex flex-col items-center justify-center h-full text-center px-4">
+                  <div className="text-5xl sm:text-6xl md:text-7xl mb-3 sm:mb-4">{theme.emoji}</div>
+                  <p className="font-bold text-sm sm:text-base md:text-lg" style={{ color: theme.headerText }}>
+                    {isBlackCat
+                      ? '喵。需要我幫你找什麼資訊嗎？'
+                      : '喵～今天想種下什麼新想法呢？'
+                    }
+                  </p>
+                </div>
+              )}
+
               {messages.map((message) => (
                 <div
                   key={message.id}
                   className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'} animate-slide-up`}
                 >
-                  <div
-                    className={`max-w-[70%] select-text ${
-                      message.type === 'user'
-                        ? `${isBlackCat ? 'bg-gradient-to-br from-indigo-600/90 to-purple-600/90 text-indigo-50 border-2 border-indigo-400/40 shadow-[0_0_20px_rgba(99,102,241,0.3)]' : 'bg-gradient-to-br from-baby-blush to-baby-pink text-gray-800'}`
-                        : isBlackCat ? 'bg-gradient-to-br from-slate-700/90 to-slate-800/90 text-indigo-100 border-2 border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.2)]' : 'bg-white/90 text-gray-800'
-                    } rounded-2xl px-5 py-3`}
-                  >
-                    {message.attachments && message.attachments.map((att, idx) => (
-                      <div key={idx} className="mb-2">
-                        {att.type === 'image' && (
-                          <img src={att.url} alt={att.name} className="rounded-xl max-w-full h-auto" />
-                        )}
-                        {att.type === 'audio' && (
-                          <div className={`flex items-center gap-2 rounded-xl px-3 py-2 select-text ${isBlackCat ? 'bg-slate-600/50 border border-indigo-400/30' : 'bg-baby-cream/50'}`}>
-                            <span className="text-2xl">🎵</span>
-                            <span className={`text-sm select-text ${isBlackCat ? 'text-indigo-200' : ''}`}>{att.name}</span>
-                          </div>
-                        )}
-                        {att.type === 'file' && (
-                          <div className={`flex items-center gap-2 rounded-xl px-3 py-2 select-text ${isBlackCat ? 'bg-slate-600/50 border border-indigo-400/30' : 'bg-baby-cream/50'}`}>
-                            <span className="text-2xl">📄</span>
-                            <span className={`text-sm select-text ${isBlackCat ? 'text-indigo-200' : ''}`}>{att.name}</span>
-                          </div>
-                        )}
+                  <div className={`flex gap-2 max-w-[85%] ${message.type === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                    {/* 頭像 */}
+                    {message.type === 'assistant' && (
+                      <div
+                        className="w-10 h-10 rounded-2xl flex items-center justify-center text-xl flex-shrink-0"
+                        style={{
+                          background: isBlackCat
+                            ? 'linear-gradient(135deg, rgba(139, 92, 246, 0.4) 0%, rgba(99, 102, 241, 0.3) 100%)'
+                            : 'linear-gradient(135deg, rgba(251, 191, 36, 0.3) 0%, rgba(245, 158, 11, 0.25) 100%)',
+                          boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.1)'
+                        }}
+                      >
+                        {theme.emoji}
                       </div>
-                    ))}
-                    <p className="text-cute-base leading-relaxed select-text">{message.content}</p>
-                    <p className={`text-cute-xs mt-1 select-text ${isBlackCat ? 'text-indigo-300/70' : 'text-gray-400'}`}>
-                      {new Date(message.timestamp).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}
-                    </p>
+                    )}
+
+                    {/* 訊息泡泡 */}
+                    <div
+                      className="px-4 py-3 rounded-2xl select-text"
+                      style={{
+                        background: message.type === 'user' ? theme.userBubbleBg : theme.catBubbleBg,
+                        color: message.type === 'user' ? theme.userBubbleText : theme.catBubbleText,
+                        boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.05)',
+                        userSelect: 'text',
+                        WebkitUserSelect: 'text',
+                      }}
+                    >
+                      {message.attachments && message.attachments.map((att, idx) => (
+                        <div key={idx} className="mb-2">
+                          {att.type === 'image' && (
+                            <img src={att.url} alt={att.name} className="rounded-xl max-w-full h-auto" />
+                          )}
+                          {att.type === 'audio' && (
+                            <div 
+                              className="flex items-center gap-2 rounded-xl px-3 py-2"
+                              style={{
+                                background: isBlackCat ? 'rgba(139, 92, 246, 0.2)' : 'rgba(251, 191, 36, 0.2)'
+                              }}
+                            >
+                              <span className="text-2xl">🎵</span>
+                              <span className="text-sm">{att.name}</span>
+                            </div>
+                          )}
+                          {att.type === 'file' && (
+                            <div 
+                              className="flex items-center gap-2 rounded-xl px-3 py-2"
+                              style={{
+                                background: isBlackCat ? 'rgba(139, 92, 246, 0.2)' : 'rgba(251, 191, 36, 0.2)'
+                              }}
+                            >
+                              <span className="text-2xl">📄</span>
+                              <span className="text-sm">{att.name}</span>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                      
+                      <div className="text-xs sm:text-sm font-medium select-text leading-relaxed prose prose-sm max-w-none">
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          rehypePlugins={[rehypeSanitize]}
+                          components={{
+                            p: ({ children }) => (
+                              <p className="mb-2 last:mb-0" style={{ color: 'inherit' }}>
+                                {children}
+                              </p>
+                            ),
+                            ul: ({ children }) => (
+                              <ul className="list-disc ml-4 mb-2" style={{ color: 'inherit' }}>
+                                {children}
+                              </ul>
+                            ),
+                            ol: ({ children }) => (
+                              <ol className="list-decimal ml-4 mb-2" style={{ color: 'inherit' }}>
+                                {children}
+                              </ol>
+                            ),
+                            li: ({ children }) => (
+                              <li className="mb-1" style={{ color: 'inherit' }}>
+                                {children}
+                              </li>
+                            ),
+                            strong: ({ children }) => (
+                              <strong className="font-bold" style={{ color: 'inherit' }}>
+                                {children}
+                              </strong>
+                            ),
+                            em: ({ children }) => (
+                              <em className="italic" style={{ color: 'inherit' }}>
+                                {children}
+                              </em>
+                            ),
+                            code: ({ children }) => (
+                              <code
+                                className="px-1.5 py-0.5 rounded text-xs font-mono"
+                                style={{
+                                  background: isBlackCat ? 'rgba(139, 92, 246, 0.2)' : 'rgba(251, 191, 36, 0.2)',
+                                  color: 'inherit'
+                                }}
+                              >
+                                {children}
+                              </code>
+                            ),
+                            pre: ({ children }) => (
+                              <pre
+                                className="p-3 rounded-lg overflow-x-auto text-xs font-mono my-2"
+                                style={{
+                                  background: isBlackCat ? 'rgba(139, 92, 246, 0.15)' : 'rgba(251, 191, 36, 0.15)',
+                                  color: 'inherit'
+                                }}
+                              >
+                                {children}
+                              </pre>
+                            ),
+                            blockquote: ({ children }) => (
+                              <blockquote
+                                className="border-l-4 pl-3 py-1 my-2"
+                                style={{
+                                  borderColor: isBlackCat ? 'rgba(139, 92, 246, 0.5)' : 'rgba(251, 191, 36, 0.5)',
+                                  color: 'inherit'
+                                }}
+                              >
+                                {children}
+                              </blockquote>
+                            ),
+                            a: ({ href, children }) => (
+                              <a
+                                href={href}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="underline hover:opacity-80 transition-opacity"
+                                style={{ color: 'inherit' }}
+                              >
+                                {children}
+                              </a>
+                            ),
+                          }}
+                        >
+                          {message.content}
+                        </ReactMarkdown>
+                      </div>
+                      <p className="text-[10px] sm:text-xs mt-1.5 sm:mt-2 opacity-70 select-text font-semibold">
+                        {new Date(message.timestamp).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
                   </div>
                 </div>
               ))}
+
+              {isProcessing && (
+                <div className="flex items-start gap-1.5 sm:gap-2">
+                  <div
+                    className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center text-base sm:text-xl flex-shrink-0"
+                    style={{
+                      background: isBlackCat
+                        ? 'linear-gradient(135deg, rgba(139, 92, 246, 0.4) 0%, rgba(99, 102, 241, 0.3) 100%)'
+                        : 'linear-gradient(135deg, rgba(251, 191, 36, 0.3) 0%, rgba(245, 158, 11, 0.25) 100%)',
+                      boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.1)'
+                    }}
+                  >
+                    {theme.emoji}
+                  </div>
+
+                  <div
+                    className="flex items-center gap-2 sm:gap-3 px-3 py-2 sm:px-4 sm:py-3 rounded-xl sm:rounded-2xl max-w-[80%]"
+                    style={{
+                      background: theme.catBubbleBg,
+                      boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.05)'
+                    }}
+                  >
+                    <div className="flex gap-1">
+                      <span
+                        className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full animate-bounce"
+                        style={{ background: theme.buttonText, animationDelay: '0ms' }}
+                      />
+                      <span
+                        className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full animate-bounce"
+                        style={{ background: theme.buttonText, animationDelay: '150ms' }}
+                      />
+                      <span
+                        className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full animate-bounce"
+                        style={{ background: theme.buttonText, animationDelay: '300ms' }}
+                      />
+                    </div>
+                    <span className="text-xs sm:text-sm font-semibold" style={{ color: theme.catBubbleText }}>
+                      思考中...
+                    </span>
+                  </div>
+                </div>
+              )}
+
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Input Area */}
-            <div className={`border-t-4 ${isBlackCat ? 'border-indigo-500/40' : 'border-baby-blush/30'} ${isBlackCat ? 'bg-gradient-to-r from-slate-800/95 to-indigo-900/95' : 'bg-white/80'} backdrop-blur-sm p-4`}>
-              {/* Pending Attachments Preview */}
+            {/* 分隔線 */}
+            <div className="h-[2px] rounded-full" style={{ background: theme.divider }} />
+
+            {/* Input Area - 響應式 */}
+            <div className="relative p-2 sm:p-3 md:p-4 lg:p-5">
+              {/* Pending Attachments Preview - 響應式 */}
               {safeAttachments.length > 0 && (
-                <div className={`mb-3 p-3 rounded-xl ${isBlackCat ? 'bg-slate-700/50' : 'bg-baby-cream/50'}`}>
+                <div 
+                  className="mb-2 sm:mb-3 p-2 sm:p-3 rounded-xl sm:rounded-2xl"
+                  style={{
+                    background: isBlackCat ? 'rgba(67, 56, 202, 0.15)' : 'rgba(251, 191, 36, 0.1)',
+                    border: `2px solid ${isBlackCat ? 'rgba(139, 92, 246, 0.2)' : 'rgba(251, 191, 36, 0.2)'}`
+                  }}
+                >
                   <div className="flex items-center justify-between mb-2">
-                    <span className={`text-sm font-semibold ${isBlackCat ? 'text-indigo-200' : 'text-gray-700'}`}>
+                    <span className="text-xs sm:text-sm font-semibold" style={{ color: theme.headerText }}>
                       待發送的檔案 ({safeAttachments.length}/10)
                     </span>
                   </div>
@@ -633,18 +908,20 @@ export default function Live2DCat({
                     {safeAttachments.map((att, index) => (
                       <div
                         key={index}
-                        className={`relative group rounded-lg p-2 shadow-sm flex items-center gap-2 max-w-[200px] ${isBlackCat ? 'bg-slate-600/60 border-2 border-indigo-400/30' : 'bg-white'}`}
+                        className="relative group rounded-xl p-2 flex items-center gap-2 max-w-[200px]"
+                        style={{
+                          background: theme.catBubbleBg,
+                          boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.05)'
+                        }}
                       >
                         {att.type === 'image' && (
                           <img src={att.url} alt={att.name} className="w-10 h-10 object-cover rounded" />
                         )}
-                        {att.type === 'audio' && (
-                          <span className="text-2xl">🎵</span>
-                        )}
-                        {att.type === 'file' && (
-                          <span className="text-2xl">📄</span>
-                        )}
-                        <span className={`text-xs truncate flex-1 ${isBlackCat ? 'text-indigo-100' : 'text-gray-600'}`}>{att.name}</span>
+                        {att.type === 'audio' && <span className="text-2xl">🎵</span>}
+                        {att.type === 'file' && <span className="text-2xl">📄</span>}
+                        <span className="text-xs truncate flex-1" style={{ color: theme.catBubbleText }}>
+                          {att.name}
+                        </span>
                         <button
                           onClick={() => removeAttachment(index)}
                           className="w-5 h-5 bg-red-400 hover:bg-red-500 text-white rounded-full flex items-center justify-center text-xs transition-all hover:scale-110"
@@ -658,85 +935,121 @@ export default function Live2DCat({
                 </div>
               )}
 
-              <div className="flex items-end gap-3">
-                {/* Upload Buttons */}
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleFileUpload('image')}
-                    className={`w-12 h-12 bg-gradient-to-br ${isBlackCat ? 'from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 border-2 border-indigo-400/30' : `${theme.buttonGradient} ${theme.buttonHover}`} text-white rounded-xl shadow-cute transition-all hover:scale-105 active:scale-95 flex items-center justify-center`}
-                    title="上傳圖片"
-                  >
-                    <span className="text-xl">🖼️</span>
-                  </button>
-                  <button
-                    onClick={() => handleFileUpload('file')}
-                    className={`w-12 h-12 bg-gradient-to-br ${isBlackCat ? 'from-slate-600 to-slate-700 hover:from-slate-500 hover:to-slate-600 border-2 border-indigo-400/30' : 'from-baby-yellow to-baby-butter hover:from-yellow-300 hover:to-yellow-400'} text-white rounded-xl shadow-cute transition-all hover:scale-105 active:scale-95 flex items-center justify-center`}
-                    title="上傳檔案"
-                  >
-                    <span className="text-xl">📎</span>
-                  </button>
-                  <button
-                    onClick={toggleRecording}
-                    className={`w-12 h-12 bg-gradient-to-br ${
-                      isRecording
-                        ? 'from-red-400 to-red-500 animate-pulse'
-                        : isBlackCat ? 'from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 border-2 border-indigo-400/30' : 'from-baby-peach to-pink-300 hover:from-pink-300 hover:to-pink-400'
-                    } text-white rounded-xl shadow-cute transition-all hover:scale-105 active:scale-95 flex items-center justify-center`}
-                    title={isRecording ? '停止錄音' : '錄音'}
-                  >
-                    <span className="text-xl">{isRecording ? '⏹️' : '🎤'}</span>
-                  </button>
-                </div>
+              {/* 快速操作按鈕 - 響應式 */}
+              <div className="flex gap-1.5 sm:gap-2 mb-2 sm:mb-3 flex-wrap">
+                <button
+                  onClick={() => handleFileUpload('image')}
+                  className="px-2 sm:px-3 py-1.5 sm:py-2 rounded-full text-[10px] sm:text-xs font-bold transition-all hover:scale-105 active:scale-95"
+                  style={{
+                    background: theme.buttonBg,
+                    color: theme.buttonText,
+                    boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.05)'
+                  }}
+                >
+                  <span className="mr-1">🖼️</span><span className="hidden sm:inline">圖片</span>
+                </button>
+                <button
+                  onClick={() => handleFileUpload('file')}
+                  className="px-2 sm:px-3 py-1.5 sm:py-2 rounded-full text-[10px] sm:text-xs font-bold transition-all hover:scale-105 active:scale-95"
+                  style={{
+                    background: theme.buttonBg,
+                    color: theme.buttonText,
+                    boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.05)'
+                  }}
+                >
+                  <span className="mr-1">📎</span><span className="hidden sm:inline">檔案</span>
+                </button>
+                <button
+                  onClick={toggleRecording}
+                  className={`px-2 sm:px-3 py-1.5 sm:py-2 rounded-full text-[10px] sm:text-xs font-bold transition-all hover:scale-105 active:scale-95 ${
+                    isRecording ? 'animate-pulse' : ''
+                  }`}
+                  style={{
+                    background: isRecording 
+                      ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.9) 0%, rgba(220, 38, 38, 0.9) 100%)'
+                      : theme.buttonBg,
+                    color: isRecording ? '#FFF' : theme.buttonText,
+                    boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.05)'
+                  }}
+                >
+                  <span className="mr-1">{isRecording ? '⏹️' : '🎤'}</span>
+                  <span className="hidden sm:inline">{isRecording ? '停止' : '錄音'}</span>
+                </button>
+              </div>
 
-                {/* Text Input */}
-                <div className="flex-1 flex gap-2">
-                  <input
-                    type="text"
-                    value={inputText}
-                    onChange={(e) => setInputText(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && !isProcessing && handleSendMessage()}
-                    disabled={isProcessing}
-                    placeholder={`跟${catName}說些什麼吧... ${isBlackCat ? '🌙' : '💕'}`}
-                    className={`flex-1 px-5 py-3 ${isBlackCat ? 'bg-slate-700/80 text-indigo-50 placeholder-indigo-300/60 border-indigo-400/40 focus:border-indigo-400 focus:ring-indigo-400/30' : 'bg-white/90 text-gray-800 placeholder-gray-400 border-baby-blush/50 focus:border-baby-pink focus:ring-baby-pink/20'} border-2 rounded-xl focus:outline-none focus:ring-2 font-medium transition-all`}
-                  />
-                  <button
-                    onClick={handleSendMessage}
-                    disabled={(!inputText.trim() && safeAttachments.length === 0) || isProcessing}
-                    className={`px-6 py-3 bg-gradient-to-br ${isBlackCat ? 'from-indigo-500 to-purple-500 hover:from-indigo-400 hover:to-purple-400 border-2 border-indigo-300/40' : `${theme.buttonGradient} ${theme.buttonHover}`} disabled:from-gray-300 disabled:to-gray-400 disabled:border-gray-300 text-white rounded-xl font-bold shadow-lg transition-all hover:scale-105 hover:shadow-xl active:scale-95 disabled:cursor-not-allowed disabled:hover:scale-100`}
-                  >
-                    {isProcessing ? '處理中... ⏳' : '發送 ✨'}
-                  </button>
-                </div>
+              {/* 輸入框 - 響應式 */}
+              <div className="flex gap-1.5 sm:gap-2">
+                <input
+                  type="text"
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && !isProcessing && handleSendMessage()}
+                  disabled={isProcessing}
+                  placeholder={`跟 ${theme.name} 說話...`}
+                  className="flex-1 px-3 py-2 sm:px-4 sm:py-3 rounded-xl sm:rounded-2xl font-medium text-xs sm:text-sm focus:outline-none transition-all"
+                  style={{
+                    border: `2px sm:3px solid ${theme.inputBorder}`,
+                    background: theme.inputBg,
+                    color: isBlackCat ? '#FFFFFF' : theme.headerText,
+                    boxShadow: 'inset 0 1px 3px rgba(0, 0, 0, 0.05)'
+                  }}
+                  onFocus={(e) => e.currentTarget.style.borderColor = theme.inputFocusBorder}
+                  onBlur={(e) => e.currentTarget.style.borderColor = theme.inputBorder}
+                />
+                <button
+                  onClick={handleSendMessage}
+                  disabled={(!inputText.trim() && safeAttachments.length === 0) || isProcessing}
+                  className="px-4 sm:px-6 py-2 sm:py-3 rounded-xl sm:rounded-2xl font-bold text-xs sm:text-sm transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{
+                    background: theme.headerBg,
+                    color: theme.headerText,
+                    boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.05)',
+                    textShadow: isBlackCat ? '0 2px 4px rgba(0, 0, 0, 0.5)' : '0 1px 1px rgba(255, 255, 255, 0.5)'
+                  }}
+                >
+                  <span className="hidden sm:inline">傳送</span>
+                  <span className="sm:hidden">✨</span>
+                </button>
               </div>
             </div>
+
+            {/* 底部裝飾光暈 */}
+            <div
+              className="absolute bottom-0 left-0 right-0 h-8 pointer-events-none rounded-b-3xl"
+              style={{
+                background: isBlackCat
+                  ? 'linear-gradient(to top, rgba(139, 92, 246, 0.2), transparent)'
+                  : 'linear-gradient(to top, rgba(251, 191, 36, 0.15), transparent)'
+              }}
+            />
           </div>
         </div>
-
-        {/* Hidden file inputs */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          className="hidden"
-          onChange={(e) => handleFileChange(e, 'file')}
-        />
-        <input
-          ref={imageInputRef}
-          type="file"
-          accept="image/*"
-          multiple
-          className="hidden"
-          onChange={(e) => handleFileChange(e, 'image')}
-        />
-        <input
-          ref={audioInputRef}
-          type="file"
-          accept="audio/*"
-          multiple
-          className="hidden"
-          onChange={(e) => handleFileChange(e, 'audio')}
-        />
       </div>
+
+      {/* Hidden file inputs */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        className="hidden"
+        onChange={(e) => handleFileChange(e, 'file')}
+      />
+      <input
+        ref={imageInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={(e) => handleFileChange(e, 'image')}
+      />
+      <input
+        ref={audioInputRef}
+        type="file"
+        accept="audio/*"
+        multiple
+        className="hidden"
+        onChange={(e) => handleFileChange(e, 'audio')}
+      />
     </div>
   )
 }

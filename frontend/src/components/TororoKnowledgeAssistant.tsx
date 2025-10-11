@@ -20,6 +20,7 @@ import { useSound } from '../hooks/useSound'
 import { motion, AnimatePresence } from 'framer-motion'
 import { generateTororoResponse, detectEmotion, type UserAction } from '../services/tororoAI'
 import { Z_INDEX_CLASSES } from '../constants/zIndex'
+import { useAuthStore } from '../stores/authStore'
 
 // Register PIXI globally for Live2D
 ;(window as any).PIXI = PIXI
@@ -37,6 +38,7 @@ interface HistoryRecord {
   files: { name: string; type: string }[]
   timestamp: Date
   result?: any
+  distributionId?: string  // 儲存 distribution ID 以便後續查詢
 }
 
 const HISTORY_STORAGE_KEY = 'tororo_knowledge_history'
@@ -45,9 +47,11 @@ export default function TororoKnowledgeAssistant({
   modelPath,
   onClose,
 }: TororoKnowledgeAssistantProps) {
+  // 獲取認證 token
+  const { token } = useAuthStore()
+
   const [viewMode, setViewMode] = useState<ViewMode>('main')
   const [inputText, setInputText] = useState('')
-  const [uploadedFiles, setUploadedFiles] = useState<File[]>([])
   const [isRecordingTranscribe, setIsRecordingTranscribe] = useState(false) // 語音轉文字
   const [isRecordingDialog, setIsRecordingDialog] = useState(false) // 語音對話
   const [processingResult, setProcessingResult] = useState<any>(null)
@@ -57,6 +61,18 @@ export default function TororoKnowledgeAssistant({
   const [history, setHistory] = useState<HistoryRecord[]>([])
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [conversationHistory, setConversationHistory] = useState<string[]>([]) // 對話歷史
+
+  // ChatGPT-style 檔案上傳狀態
+  const [uploadedCloudinaryFiles, setUploadedCloudinaryFiles] = useState<Array<{
+    id: string
+    name: string
+    url: string
+    type: string
+    size: number
+    status: 'uploading' | 'completed' | 'error'
+    progress: number
+  }>>([])
+  const [isUploading, setIsUploading] = useState(false)
 
   // Refs
   const live2dContainerRef = useRef<HTMLDivElement | null>(null)
@@ -94,7 +110,7 @@ export default function TororoKnowledgeAssistant({
       const context = {
         action,
         inputText,
-        fileCount: uploadedFiles.length,
+        fileCount: uploadedCloudinaryFiles.length,
         historyCount: history.length,
         emotionDetected: inputText ? detectEmotion(inputText) : undefined,
         previousMessages: conversationHistory.slice(-3),
@@ -120,7 +136,7 @@ export default function TororoKnowledgeAssistant({
         console.error('生成 AI 回應失敗:', error)
       }
     }
-  }, [inputText, uploadedFiles.length, history.length, conversationHistory])
+  }, [inputText, uploadedCloudinaryFiles.length, history.length, conversationHistory])
 
   // 載入歷史紀錄
   useEffect(() => {
@@ -146,7 +162,8 @@ export default function TororoKnowledgeAssistant({
       inputText: input,
       files: files.map(f => ({ name: f.name, type: f.type })),
       timestamp: new Date(),
-      result
+      result,
+      distributionId: result?.distribution?.id  // 儲存 distribution ID
     }
 
     setHistory(prev => {
@@ -216,8 +233,11 @@ export default function TororoKnowledgeAssistant({
           const model = await Live2DModel.from(modelPath)
           modelRef.current = model
 
-          // 縮小到原來的一半：1.8 -> 0.9
-          const targetScale = Math.min(containerWidth / 2048, containerHeight / 2048) * 0.9
+          // 響應式縮放：根據容器寬度自動調整
+          // 小屏幕使用較小的縮放比例，大屏幕使用較大的縮放比例
+          const baseScale = Math.min(containerWidth / 2048, containerHeight / 2048)
+          const responsiveScale = containerWidth < 250 ? 0.5 : containerWidth < 300 ? 0.7 : 0.9
+          const targetScale = baseScale * responsiveScale
           model.scale.set(targetScale)
           model.position.set(containerWidth / 2, containerHeight * 0.95)
           model.anchor.set(0.5, 1)
@@ -283,7 +303,7 @@ export default function TororoKnowledgeAssistant({
   // 監聽輸入變化，生成動態回應（優化：延長延遲時間，減少觸發）
   useEffect(() => {
     if (viewMode !== 'main') return
-    if (!inputText.trim() && uploadedFiles.length === 0) return
+    if (!inputText.trim() && uploadedCloudinaryFiles.length === 0) return
 
     // 清除之前的計時器
     if (inputDebounceTimerRef.current) {
@@ -301,7 +321,7 @@ export default function TororoKnowledgeAssistant({
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inputText, uploadedFiles.length, viewMode])
+  }, [inputText, uploadedCloudinaryFiles.length, viewMode])
 
   // 打字機效果（優化：使用 requestAnimationFrame 提升性能）
   useEffect(() => {
@@ -349,102 +369,189 @@ export default function TororoKnowledgeAssistant({
     }
   }, [audioDialogResponse])
 
-  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
-    if (files && files.length > 0) {
-      setUploadedFiles(prev => {
-        const newFiles = [...prev, ...Array.from(files)]
-        // 生成 AI 回應
-        generateAndDisplayResponse('upload_file', { fileCount: newFiles.length })
-        return newFiles
-      })
-      play('notification')
+    if (!files || files.length === 0) return
+
+    play('notification')
+    setIsUploading(true)
+
+    // 為每個檔案建立初始狀態
+    const newFiles = Array.from(files).map(file => ({
+      id: `file-${Date.now()}-${Math.random()}`,
+      name: file.name,
+      url: '',
+      type: file.type,
+      size: file.size,
+      status: 'uploading' as const,
+      progress: 0
+    }))
+
+    setUploadedCloudinaryFiles(prev => [...prev, ...newFiles])
+
+    // 逐個上傳檔案到 Cloudinary
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i]
+      const fileId = newFiles[i].id
+
+      try {
+        const formData = new FormData()
+        formData.append('files', file)
+
+        // 準備認證標頭
+        const headers: HeadersInit = {}
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`
+        }
+
+        const response = await fetch('http://localhost:4000/api/upload-multiple', {
+          method: 'POST',
+          headers,
+          body: formData
+        })
+
+        if (!response.ok) {
+          throw new Error('上傳失敗')
+        }
+
+        const result = await response.json()
+        const uploadedFile = result.files[0]
+
+        // 更新為上傳完成
+        setUploadedCloudinaryFiles(prev =>
+          prev.map(f =>
+            f.id === fileId
+              ? {
+                  ...f,
+                  url: uploadedFile.url,
+                  status: 'completed' as const,
+                  progress: 100
+                }
+              : f
+          )
+        )
+      } catch (error) {
+        console.error('檔案上傳失敗:', error)
+        // 標記為錯誤
+        setUploadedCloudinaryFiles(prev =>
+          prev.map(f =>
+            f.id === fileId
+              ? { ...f, status: 'error' as const, progress: 0 }
+              : f
+          )
+        )
+      }
     }
+
+    setIsUploading(false)
+    generateAndDisplayResponse('upload_file', { fileCount: files.length })
   }, [play, generateAndDisplayResponse])
 
-  const removeFile = useCallback((index: number) => {
-    setUploadedFiles(prev => prev.filter((_, i) => i !== index))
+  const removeFile = useCallback((fileId: string) => {
+    setUploadedCloudinaryFiles(prev => prev.filter(f => f.id !== fileId))
     play('button_click')
   }, [play])
 
   const handleSubmit = useCallback(async () => {
-    if (!inputText.trim() && uploadedFiles.length === 0) return
+    if (!inputText.trim() && uploadedCloudinaryFiles.length === 0) return
 
-    setViewMode('processing')
-    play('message_sent')
-
-    // 生成處理中的 AI 回應
-    generateAndDisplayResponse('processing')
-
-    try {
-      // 檢查輸入文字中是否包含 URL（YouTube, 文章連結等）
-      const urlRegex = /(https?:\/\/[^\s]+)/g
-      const foundUrls = inputText.match(urlRegex) || []
-
-      // 分離 URL 和純文字
-      const textWithoutUrls = inputText.replace(urlRegex, '').trim()
-      const links = foundUrls.map(url => ({
-        url: url,
-        title: url.includes('youtube.com') || url.includes('youtu.be') ? 'YouTube 影片' : '連結'
-      }))
-
-      const input: UploadKnowledgeInput = {
-        content: textWithoutUrls || (links.length > 0 ? '分享連結' : '快速記錄'),
-        files: uploadedFiles.map(file => ({
-          url: URL.createObjectURL(file),
-          name: file.name,
-          type: file.type.startsWith('image/') ? 'image' : 'file',
-        })),
-        links: links.length > 0 ? links : undefined,
-        contentType: uploadedFiles.some(f => f.type.startsWith('image/')) ? 'IMAGE' : uploadedFiles.length > 0 ? 'DOCUMENT' : links.length > 0 ? 'LINK' : 'TEXT',
-      }
-
-      const { data } = await uploadKnowledge({ variables: { input } })
-
-      if (data?.uploadKnowledge) {
-        const result = data.uploadKnowledge
-        const tororoResponse = result.tororoResponse
-
-        // === 檢查是否為簡單互動（不記錄）===
-        if (result.skipRecording || tororoResponse?.shouldRecord === false) {
-          // 不儲存歷史，只顯示白噗噗的友善回應
-          setDisplayedText(tororoResponse?.warmMessage || '收到了～ ☁️')
-          setIsTyping(false)
-
-          // 回到主畫面，不顯示成功頁面
-          setViewMode('main')
-          setInputText('') // 清空輸入
-          setUploadedFiles([]) // 清空檔案
-          play('notification') // 使用通知音效而非成功音效
-          return
-        }
-
-        // === 正常記錄流程 ===
-        setProcessingResult(result)
-        saveToHistory(inputText, uploadedFiles, result) // 儲存到歷史
-
-        // 立即顯示白噗噗的溫暖回應（只顯示溫馨訊息，不顯示技術性分類）
-        if (tororoResponse) {
-          // 只顯示白噗噗的溫暖回應，不顯示分類和摘要
-          setDisplayedText(tororoResponse.warmMessage)
-          setIsTyping(false)
-        }
-
-        setViewMode('success')
-        play('upload_success')
-        playRandomMeow()
-      }
-    } catch (error) {
-      console.error('上傳失敗:', error)
-      alert('上傳失敗，請稍後再試')
-      setViewMode('main')
+    // 檢查是否還有檔案正在上傳
+    const hasUploadingFiles = uploadedCloudinaryFiles.some(f => f.status === 'uploading')
+    if (hasUploadingFiles || isUploading) {
+      alert('請等待檔案上傳完成')
+      return
     }
-  }, [inputText, uploadedFiles, uploadKnowledge, play, generateAndDisplayResponse, saveToHistory, history.length, playRandomMeow])
+
+    // 🚀 新架構：非阻塞式提交，立即清空輸入框讓用戶繼續輸入
+    // 保存當前輸入狀態
+    const currentInput = inputText
+    const currentFiles = [...uploadedCloudinaryFiles]
+    
+    // 🎯 立即清空輸入，讓用戶可以繼續輸入下一個
+    setInputText('')
+    setUploadedCloudinaryFiles([])
+    play('message_sent')
+    
+    // 顯示簡短的提交確認（不阻塞UI）
+    setAudioDialogResponse('已送出！可以繼續輸入下一個～ ☁️✨')
+    
+    // 🔥 異步處理（不阻塞UI）
+    ;(async () => {
+      try {
+        // 1️⃣ 使用已上傳的 Cloudinary URLs（已經在 handleFileChange 中上傳完成）
+        const uploadedFileUrls = currentFiles
+          .filter(f => f.status === 'completed')
+          .map(f => ({
+            url: f.url,
+            name: f.name,
+            type: f.type.startsWith('image/') ? 'image' : 'file'
+          }))
+
+        // 2️⃣ 檢查輸入文字中是否包含 URL（YouTube, 文章連結等）
+        const urlRegex = /(https?:\/\/[^\s]+)/g
+        const foundUrls = currentInput.match(urlRegex) || []
+
+        // 分離 URL 和純文字
+        const textWithoutUrls = currentInput.replace(urlRegex, '').trim()
+        const links = foundUrls.map(url => ({
+          url: url,
+          title: url.includes('youtube.com') || url.includes('youtu.be') ? 'YouTube 影片' : '連結'
+        }))
+
+        // 3️⃣ 準備 GraphQL 輸入
+        const input: UploadKnowledgeInput = {
+          content: textWithoutUrls || (links.length > 0 ? '分享連結' : '快速記錄'),
+          files: uploadedFileUrls,  // ✅ 使用 Cloudinary URLs
+          links: links.length > 0 ? links : undefined,
+          contentType: uploadedFileUrls.some(f => f.type === 'image') ? 'IMAGE' : uploadedFileUrls.length > 0 ? 'DOCUMENT' : links.length > 0 ? 'LINK' : 'TEXT',
+        }
+
+        const { data } = await uploadKnowledge({ variables: { input } })
+
+        if (data?.uploadKnowledge) {
+          const result = data.uploadKnowledge
+          const tororoResponse = result.tororoResponse
+
+          // === 檢查是否為簡單互動（不記錄）===
+          if (result.skipRecording || tororoResponse?.shouldRecord === false) {
+            // 不儲存歷史，顯示白噗噗的友善回應
+            setAudioDialogResponse(tororoResponse?.warmMessage || '這個就不記錄囉～ ☁️')
+            play('notification')
+            return
+          }
+
+          // === 正常記錄流程 ===
+          // 將 Cloudinary 檔案轉換為 File 格式供歷史記錄使用
+          const filesForHistory = currentFiles
+            .filter(f => f.status === 'completed')
+            .map(f => ({ name: f.name, type: f.type } as any))
+          saveToHistory(currentInput, filesForHistory, result) // 儲存到歷史
+
+          // 顯示白噗噗的溫暖回應
+          if (tororoResponse?.warmMessage) {
+            setAudioDialogResponse(tororoResponse.warmMessage)
+          }
+
+          play('notification')
+          playRandomMeow()
+          
+          console.log('✅ 知識已加入處理隊列:', result.distribution?.id)
+        }
+      } catch (error) {
+        console.error('❌ 上傳失敗:', error)
+        // 失敗時恢復輸入（可選）
+        // setInputText(currentInput)
+        // setUploadedCloudinaryFiles(currentFiles)
+        setAudioDialogResponse('哎呀，出錯了！可以再試一次～ ☁️')
+        play('notification')
+      }
+    })()
+  }, [inputText, uploadedCloudinaryFiles, uploadKnowledge, play, saveToHistory, playRandomMeow, isUploading])
 
   const handleReset = useCallback(() => {
     setViewMode('main')
     setInputText('')
-    setUploadedFiles([])
+    setUploadedCloudinaryFiles([])
     setProcessingResult(null)
     play('button_click')
   }, [play])
@@ -649,10 +756,44 @@ export default function TororoKnowledgeAssistant({
           const ctx = canvas.getContext('2d')
           ctx?.drawImage(videoRef.current!, 0, 0)
 
-          canvas.toBlob((blob) => {
+          canvas.toBlob(async (blob) => {
             if (blob) {
               const photoFile = new File([blob], `照片_${Date.now()}.jpg`, { type: 'image/jpeg' })
-              setUploadedFiles(prev => [...prev, photoFile])
+              
+              // 上傳照片到 Cloudinary
+              const formData = new FormData()
+              formData.append('files', photoFile)
+              
+              try {
+                const headers: HeadersInit = {}
+                if (token) {
+                  headers['Authorization'] = `Bearer ${token}`
+                }
+                
+                const response = await fetch('http://localhost:4000/api/upload-multiple', {
+                  method: 'POST',
+                  headers,
+                  body: formData
+                })
+                
+                if (response.ok) {
+                  const result = await response.json()
+                  const uploadedFile = result.files[0]
+                  
+                  setUploadedCloudinaryFiles(prev => [...prev, {
+                    id: `file-${Date.now()}`,
+                    name: photoFile.name,
+                    url: uploadedFile.url,
+                    type: photoFile.type,
+                    size: photoFile.size,
+                    status: 'completed',
+                    progress: 100
+                  }])
+                }
+              } catch (error) {
+                console.error('照片上傳失敗:', error)
+              }
+              
               play('notification')
               generateAndDisplayResponse('take_photo')
             }
@@ -677,18 +818,18 @@ export default function TororoKnowledgeAssistant({
         transition={{ type: 'spring', stiffness: 200, damping: 20 }}
         className="relative w-[95vw] h-[95vh] max-w-7xl bg-gradient-to-br from-amber-50/98 via-yellow-50/98 to-orange-50/98 backdrop-blur-xl rounded-[3rem] shadow-2xl border-4 border-amber-200/60 overflow-hidden"
       >
-        {/* 頂部標題區 - 白噗噗名稱 - 動物森友會白天風格 */}
-        <div className="absolute top-8 left-8 z-50">
-          <div className="flex items-center gap-3 bg-gradient-to-r from-amber-100/80 to-yellow-100/80 backdrop-blur-md rounded-2xl px-5 py-3 shadow-lg border-2 border-amber-200/60">
+        {/* 頂部標題區 - 白噗噗名稱 - 動物森友會白天風格 - 響應式 */}
+        <div className="absolute top-4 sm:top-6 lg:top-8 left-4 sm:left-6 lg:left-8 z-50">
+          <div className="flex items-center gap-2 sm:gap-3 bg-gradient-to-r from-amber-100/80 to-yellow-100/80 backdrop-blur-md rounded-xl sm:rounded-2xl px-3 py-2 sm:px-5 sm:py-3 shadow-lg border-2 border-amber-200/60">
             <div>
-              <h1 className="text-2xl font-bold text-amber-800">白噗噗</h1>
-              <p className="text-sm text-amber-600">甚麼都可以跟我說!</p>
+              <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-amber-800">白噗噗</h1>
+              <p className="text-xs sm:text-sm text-amber-600">甚麼都可以跟我說!</p>
             </div>
           </div>
         </div>
 
-        {/* Top Right Buttons */}
-        <div className="absolute top-8 right-8 z-50 flex items-center gap-2">
+        {/* Top Right Buttons - 響應式 */}
+        <div className="absolute top-4 sm:top-6 lg:top-8 right-4 sm:right-6 lg:right-8 z-50 flex items-center gap-2">
           {/* History Button */}
           <button
             onClick={() => {
@@ -701,12 +842,12 @@ export default function TororoKnowledgeAssistant({
                 generateAndDisplayResponse('open_panel')
               }
             }}
-            className="relative w-12 h-12 bg-white/70 hover:bg-white/90 text-amber-600 hover:text-amber-700 rounded-xl shadow-lg border-2 border-amber-200/60 flex items-center justify-center transition-all duration-200 hover:shadow-xl active:scale-95 hover:scale-105 text-xl"
+            className="relative w-10 h-10 sm:w-12 sm:h-12 bg-white/70 hover:bg-white/90 text-amber-600 hover:text-amber-700 rounded-lg sm:rounded-xl shadow-lg border-2 border-amber-200/60 flex items-center justify-center transition-all duration-200 hover:shadow-xl active:scale-95 hover:scale-105 text-lg sm:text-xl"
             title="查看歷史紀錄"
           >
             📋
             {history.length > 0 && (
-              <span className="absolute -top-1 -right-1 bg-amber-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold shadow-md">
+              <span className="absolute -top-1 -right-1 bg-amber-500 text-white text-xs rounded-full w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center font-bold shadow-md">
                 {history.length}
               </span>
             )}
@@ -718,22 +859,22 @@ export default function TororoKnowledgeAssistant({
               play('button_click')
               onClose?.()
             }}
-            className="w-12 h-12 bg-gradient-to-br from-red-400 to-red-500 hover:from-red-500 hover:to-red-600 text-white rounded-xl shadow-lg border-2 border-red-300 flex items-center justify-center transition-all duration-200 hover:shadow-xl active:scale-95 hover:scale-105 text-lg font-bold"
+            className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-red-400 to-red-500 hover:from-red-500 hover:to-red-600 text-white rounded-lg sm:rounded-xl shadow-lg border-2 border-red-300 flex items-center justify-center transition-all duration-200 hover:shadow-xl active:scale-95 hover:scale-105 text-base sm:text-lg font-bold"
           >
             ✕
           </button>
         </div>
 
-        {/* Live2D Tororo + 對話框容器 - 左側中間偏下 */}
-        <div className="absolute left-12 bottom-16 w-[350px] h-[450px] pointer-events-none z-20">
+        {/* Live2D Tororo + 對話框容器 - 左側中間偏下 - 響應式設計 */}
+        <div className="absolute left-4 sm:left-8 lg:left-12 bottom-8 sm:bottom-12 lg:bottom-16 w-[200px] h-[300px] sm:w-[250px] sm:h-[350px] lg:w-[350px] lg:h-[450px] pointer-events-none z-20">
           {/* Live2D 模型 */}
           <div
             ref={live2dContainerRef}
             className="w-full h-full"
           />
 
-          {/* Tororo Speech Bubble - 在貓咪頭上 */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 pointer-events-none max-w-[1200px]">
+          {/* Tororo Speech Bubble - 在貓咪頭上 - 響應式寬度 */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 pointer-events-none max-w-[180px] sm:max-w-[250px] md:max-w-[350px] lg:max-w-[500px] xl:max-w-[700px]">
             <motion.div
               initial={{ opacity: 0, y: 10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -741,14 +882,14 @@ export default function TororoKnowledgeAssistant({
               className="relative"
             >
               {/* 外層光暈效果 */}
-              <div className="absolute inset-0 bg-gradient-to-br from-amber-300/30 to-yellow-300/30 rounded-3xl blur-xl"></div>
+              <div className="absolute inset-0 bg-gradient-to-br from-amber-300/30 to-yellow-300/30 rounded-2xl sm:rounded-3xl blur-xl"></div>
 
               {/* 對話框主體 - 動物森友會白天風格 */}
-              <div className="relative bg-gradient-to-br from-amber-50/98 via-yellow-50/98 to-white/98 backdrop-blur-xl rounded-3xl px-6 py-5 shadow-2xl border-3 border-amber-200/70 inline-block min-w-[200px] max-w-[1200px]">
+              <div className="relative bg-gradient-to-br from-amber-50/98 via-yellow-50/98 to-white/98 backdrop-blur-xl rounded-2xl sm:rounded-3xl px-3 py-3 sm:px-6 sm:py-5 shadow-2xl border-2 sm:border-3 border-amber-200/70 inline-block min-w-[150px]">
 
-                {/* 主要文字內容 */}
+                {/* 主要文字內容 - 響應式字體 */}
                 <div className="relative">
-                  <p className="text-sm font-medium text-amber-900 leading-relaxed break-words"
+                  <p className="text-xs sm:text-sm font-medium text-amber-900 leading-relaxed break-words"
                      style={{
                        textShadow: '0 1px 3px rgba(255,255,255,0.9)',
                        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", sans-serif'
@@ -756,7 +897,7 @@ export default function TororoKnowledgeAssistant({
                     {displayedText || '\u00A0'}
                     {isTyping && (
                       <motion.span
-                        className="inline-block w-0.5 h-4 bg-amber-400 ml-1 rounded-full"
+                        className="inline-block w-0.5 h-3 sm:h-4 bg-amber-400 ml-1 rounded-full"
                         animate={{ opacity: [1, 0, 1] }}
                         transition={{ duration: 0.8, repeat: Infinity }}
                       />
@@ -791,53 +932,62 @@ export default function TororoKnowledgeAssistant({
           </div>
         </div>
 
-        {/* Center Content Area - 右側置中 */}
-        <div className="relative z-10 h-full w-full flex items-center justify-end pr-32">
+        {/* Center Content Area - 右側置中 - 響應式間距 */}
+        <div className="relative z-10 h-full w-full flex items-center justify-end pr-4 sm:pr-8 md:pr-16 lg:pr-24 xl:pr-32">
 
           <AnimatePresence mode="wait">
-            {/* Main Input Screen - 全新簡約設計 */}
+            {/* Main Input Screen - 全新簡約設計 - 響應式寬度 */}
             {viewMode === 'main' && (
               <motion.div
                 key="main"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                className="w-full max-w-2xl"
+                className="w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl px-4 sm:px-0"
               >
                 {/* 輸入框主體 - 動物森友會白天風格 */}
                 <div className="relative">
-                  {/* 文字輸入區 */}
-                  <div className="bg-gradient-to-br from-amber-50/95 to-yellow-50/95 rounded-3xl shadow-2xl border-4 border-amber-200/80 overflow-hidden transition-all duration-300 focus-within:border-amber-300 focus-within:shadow-[0_20px_60px_rgba(245,158,11,0.25)]">
+                  {/* 文字輸入區 - 響應式 */}
+                  <div className="bg-gradient-to-br from-amber-50/95 to-yellow-50/95 rounded-2xl sm:rounded-3xl shadow-2xl border-2 sm:border-4 border-amber-200/80 overflow-hidden transition-all duration-300 focus-within:border-amber-300 focus-within:shadow-[0_20px_60px_rgba(245,158,11,0.25)]">
                     <textarea
                       value={inputText}
                       onChange={(e) => setInputText(e.target.value)}
                       onKeyPress={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey && (inputText.trim() || uploadedFiles.length > 0)) {
+                        if (e.key === 'Enter' && !e.shiftKey && (inputText.trim() || uploadedCloudinaryFiles.length > 0) && !isUploading) {
                           e.preventDefault()
                           handleSubmit()
                         }
                       }}
                       placeholder="想記錄什麼呢？✨"
-                      className="w-full px-6 py-5 bg-white/30 focus:bg-white/50 border-none focus:outline-none text-base resize-none placeholder-amber-400/70 text-amber-900 font-medium selection:bg-amber-200/50 selection:text-amber-900"
+                      className="w-full px-4 py-3 sm:px-6 sm:py-5 bg-white/30 focus:bg-white/50 border-none focus:outline-none text-sm sm:text-base resize-none placeholder-amber-400/70 text-amber-900 font-medium selection:bg-amber-200/50 selection:text-amber-900"
                       style={{
-                        minHeight: '120px',
-                        maxHeight: '300px',
+                        minHeight: '80px',
+                        maxHeight: '200px',
                         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", sans-serif',
                         WebkitTapHighlightColor: 'transparent'
                       }}
                       autoFocus
                     />
 
-                    {/* 文件預覽 */}
-                    {uploadedFiles.length > 0 && (
+                    {/* 文件預覽 - ChatGPT 風格 */}
+                    {uploadedCloudinaryFiles.length > 0 && (
                       <div className="px-6 pb-4 flex flex-wrap gap-2">
-                        {uploadedFiles.map((file, index) => (
-                          <div key={index} className="inline-flex items-center gap-2 px-3 py-2 bg-white/60 backdrop-blur-sm rounded-xl group hover:bg-white/80 transition-all shadow-sm border-2 border-amber-200/50">
+                        {uploadedCloudinaryFiles.map((file) => (
+                          <div key={file.id} className="inline-flex items-center gap-2 px-3 py-2 bg-white/60 backdrop-blur-sm rounded-xl group hover:bg-white/80 transition-all shadow-sm border-2 border-amber-200/50">
                             <span className="text-xs text-amber-800 font-medium max-w-[120px] truncate">
                               {file.name}
                             </span>
+                            {file.status === 'uploading' && (
+                              <span className="text-xs text-blue-500 animate-pulse">上傳中...</span>
+                            )}
+                            {file.status === 'error' && (
+                              <span className="text-xs text-red-500">❌</span>
+                            )}
+                            {file.status === 'completed' && (
+                              <span className="text-xs text-green-500">✅</span>
+                            )}
                             <button
-                              onClick={() => removeFile(index)}
+                              onClick={() => removeFile(file.id)}
                               className="w-5 h-5 flex items-center justify-center text-amber-400 hover:text-red-500 transition-colors text-xs font-bold bg-white/50 rounded-full hover:bg-red-50"
                             >
                               ✕
@@ -847,13 +997,13 @@ export default function TororoKnowledgeAssistant({
                       </div>
                     )}
 
-                    {/* 底部工具欄 */}
-                    <div className="px-5 py-4 bg-gradient-to-r from-amber-100/80 to-yellow-100/80 backdrop-blur-sm border-t-2 border-amber-200/60 flex items-center justify-between">
+                    {/* 底部工具欄 - 響應式 */}
+                    <div className="px-3 py-3 sm:px-5 sm:py-4 bg-gradient-to-r from-amber-100/80 to-yellow-100/80 backdrop-blur-sm border-t-2 border-amber-200/60 flex items-center justify-between gap-2">
                       {/* 左側工具按鈕 */}
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5 sm:gap-2">
                         <button
                           onClick={() => fileInputRef.current?.click()}
-                          className="p-2.5 text-xl bg-white/60 hover:bg-white/90 text-amber-600 hover:text-amber-700 rounded-xl transition-all shadow-sm hover:shadow-md hover:scale-105 active:scale-95 border-2 border-amber-200/50"
+                          className="p-2 sm:p-2.5 text-base sm:text-xl bg-white/60 hover:bg-white/90 text-amber-600 hover:text-amber-700 rounded-lg sm:rounded-xl transition-all shadow-sm hover:shadow-md hover:scale-105 active:scale-95 border-2 border-amber-200/50"
                           title="上傳檔案"
                         >
                           📎
@@ -861,7 +1011,7 @@ export default function TororoKnowledgeAssistant({
 
                         <button
                           onClick={toggleTranscribeRecording}
-                          className={`p-2.5 text-xl rounded-xl transition-all shadow-sm hover:shadow-md border-2 ${
+                          className={`p-2 sm:p-2.5 text-base sm:text-xl rounded-lg sm:rounded-xl transition-all shadow-sm hover:shadow-md border-2 ${
                             isRecordingTranscribe
                               ? 'text-red-500 bg-red-100 border-red-300 animate-pulse'
                               : 'bg-white/60 hover:bg-white/90 text-amber-600 hover:text-amber-700 border-amber-200/50 hover:scale-105 active:scale-95'
@@ -873,7 +1023,7 @@ export default function TororoKnowledgeAssistant({
 
                         <button
                           onClick={toggleDialogRecording}
-                          className={`p-2.5 text-xl rounded-xl transition-all shadow-sm hover:shadow-md border-2 ${
+                          className={`p-2 sm:p-2.5 text-base sm:text-xl rounded-lg sm:rounded-xl transition-all shadow-sm hover:shadow-md border-2 ${
                             isRecordingDialog
                               ? 'text-green-500 bg-green-100 border-green-300 animate-pulse'
                               : 'bg-white/60 hover:bg-white/90 text-amber-600 hover:text-amber-700 border-amber-200/50 hover:scale-105 active:scale-95'
@@ -885,7 +1035,7 @@ export default function TororoKnowledgeAssistant({
 
                         <button
                           onClick={takePhoto}
-                          className="p-2.5 text-xl bg-white/60 hover:bg-white/90 text-amber-600 hover:text-amber-700 rounded-xl transition-all shadow-sm hover:shadow-md hover:scale-105 active:scale-95 border-2 border-amber-200/50"
+                          className="p-2 sm:p-2.5 text-base sm:text-xl bg-white/60 hover:bg-white/90 text-amber-600 hover:text-amber-700 rounded-lg sm:rounded-xl transition-all shadow-sm hover:shadow-md hover:scale-105 active:scale-95 border-2 border-amber-200/50"
                           title="拍照"
                         >
                           📷
@@ -895,10 +1045,10 @@ export default function TororoKnowledgeAssistant({
                       {/* 右側提交按鈕 */}
                       <button
                         onClick={handleSubmit}
-                        disabled={!inputText.trim() && uploadedFiles.length === 0}
-                        className="px-6 py-2.5 bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-500 hover:to-yellow-500 disabled:from-gray-200 disabled:to-gray-300 text-white disabled:text-gray-400 rounded-xl font-bold transition-all duration-200 active:scale-95 disabled:cursor-not-allowed shadow-lg hover:shadow-xl border-2 border-amber-300 disabled:border-gray-300"
+                        disabled={(!inputText.trim() && uploadedCloudinaryFiles.length === 0) || isUploading}
+                        className="px-4 py-2 sm:px-6 sm:py-2.5 bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-500 hover:to-yellow-500 disabled:from-gray-200 disabled:to-gray-300 text-white disabled:text-gray-400 rounded-lg sm:rounded-xl font-bold transition-all duration-200 active:scale-95 disabled:cursor-not-allowed shadow-lg hover:shadow-xl border-2 border-amber-300 disabled:border-gray-300"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 sm:w-5 sm:h-5">
                           <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
                         </svg>
                       </button>
@@ -908,7 +1058,7 @@ export default function TororoKnowledgeAssistant({
               </motion.div>
             )}
 
-            {/* Processing Screen */}
+            {/* Processing Screen - 優化：更友善的等待提示 */}
             {viewMode === 'processing' && (
               <motion.div
                 key="processing"
@@ -917,14 +1067,27 @@ export default function TororoKnowledgeAssistant({
                 exit={{ opacity: 0, scale: 0.9 }}
                 className="text-center w-full max-w-2xl"
               >
-                <h2 className="text-3xl font-bold text-amber-700 mb-6">
-                  處理中...
+                <h2 className="text-3xl font-bold text-amber-700 mb-4">
+                  白噗噗正在分類中... 🤔
                 </h2>
+                <p className="text-amber-600 mb-6">
+                  預計只需要 3-5 秒就完成囉！☁️✨
+                </p>
                 <div className="flex items-center justify-center gap-3 mt-6">
                   <div className="w-4 h-4 bg-amber-400 rounded-full animate-bounce shadow-lg" style={{ animationDelay: '0s' }} />
                   <div className="w-4 h-4 bg-yellow-400 rounded-full animate-bounce shadow-lg" style={{ animationDelay: '0.2s' }} />
                   <div className="w-4 h-4 bg-orange-400 rounded-full animate-bounce shadow-lg" style={{ animationDelay: '0.4s' }} />
                 </div>
+
+                {/* 優化：顯示提示訊息 */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 2 }}
+                  className="mt-8 text-sm text-amber-500"
+                >
+                  <p>💡 小提示：後台會持續深度分析，不會影響你的使用喔～</p>
+                </motion.div>
               </motion.div>
             )}
 
@@ -1002,9 +1165,31 @@ export default function TororoKnowledgeAssistant({
                             )}
 
                             {/* 結果摘要 */}
-                            {record.result?.memoriesCreated && (
-                              <div className="text-xs text-amber-600 font-medium">
-                                已創建 {record.result.memoriesCreated.length} 個記憶
+                            {record.result && (
+                              <div className="text-xs font-medium">
+                                {record.result.backgroundProcessing ? (
+                                  <div className="space-y-1">
+                                    <span className="flex items-center gap-1 text-blue-600">
+                                      <span className="inline-block w-2 h-2 bg-blue-400 rounded-full animate-pulse"></span>
+                                      後台處理中...
+                                    </span>
+                                    <p className="text-[10px] text-gray-500">
+                                      💡 記憶正在後台創建，請稍後在知識庫查看
+                                    </p>
+                                  </div>
+                                ) : record.result.memoriesCreated && record.result.memoriesCreated.length > 0 ? (
+                                  <span className="text-green-600">
+                                    ✅ 已創建 {record.result.memoriesCreated.length} 個記憶
+                                  </span>
+                                ) : record.result.skipRecording ? (
+                                  <span className="text-gray-500">
+                                    💬 簡單互動（未記錄）
+                                  </span>
+                                ) : (
+                                  <span className="text-amber-600">
+                                    ✨ 處理完成
+                                  </span>
+                                )}
                               </div>
                             )}
                           </div>
@@ -1084,24 +1269,65 @@ export default function TororoKnowledgeAssistant({
 
                 {/* Result Cards */}
                 <div className="bg-gradient-to-br from-amber-50/95 to-yellow-50/95 backdrop-blur-sm rounded-3xl p-8 shadow-xl border-2 border-amber-200/70 mb-6 space-y-4">
-                  {/* 記錄內容摘要（對話框顯示） */}
-                  {processingResult.tororoResponse?.recordSummary && (
-                    <p className="text-base text-amber-800 leading-relaxed font-medium">
-                      {processingResult.tororoResponse.recordSummary}
-                    </p>
+                  {/* 顯示分類類別 */}
+                  {processingResult.tororoResponse?.category && (
+                    <div className="text-center mb-4">
+                      <div className="inline-flex items-center gap-2 px-5 py-2.5 bg-amber-100/70 rounded-xl border-2 border-amber-200/50">
+                        <span className="text-sm font-bold text-amber-700">分類到</span>
+                        <span className="text-base font-bold text-amber-900">{processingResult.tororoResponse.category}</span>
+                      </div>
+                    </div>
                   )}
 
+                  {/* 顯示記憶標題和詳細資訊 */}
                   {processingResult.memoriesCreated.length > 0 && (
-                    <div className="flex flex-wrap gap-3 justify-center">
+                    <div className="space-y-3">
                       {processingResult.memoriesCreated.map((memory: any, index: number) => (
                         <motion.div
                           key={memory.id}
                           initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: index * 0.1 }}
-                          className="px-5 py-2.5 bg-white/70 rounded-xl shadow-md border-2 border-amber-200/60 hover:shadow-lg hover:scale-105 transition-all"
+                          className="bg-white/60 rounded-2xl p-5 border-2 border-amber-200/50 hover:shadow-lg transition-all"
                         >
-                          <span className="text-base font-bold text-amber-700">{memory.assistant.nameChinese}</span>
+                          <div className="flex items-start gap-3">
+                            {memory.emoji && (
+                              <span className="text-3xl flex-shrink-0">{memory.emoji}</span>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              {/* 標題 */}
+                              <h3 className="text-lg font-bold text-amber-900 mb-2">{memory.title}</h3>
+
+                              {/* 助手標籤 */}
+                              <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-100/60 rounded-lg mb-2">
+                                {memory.assistant.emoji && <span>{memory.assistant.emoji}</span>}
+                                <span className="text-sm font-medium text-amber-700">{memory.assistant.nameChinese}</span>
+                              </div>
+
+                              {/* 類別 */}
+                              {memory.category && (
+                                <p className="text-sm text-amber-700 font-medium mb-2">
+                                  <span className="font-bold">類別：</span>{memory.category}
+                                </p>
+                              )}
+
+                              {/* 摘要 */}
+                              {memory.summary && (
+                                <p className="text-sm text-amber-800 leading-relaxed mb-2">{memory.summary}</p>
+                              )}
+
+                              {/* 標籤 */}
+                              {memory.tags && memory.tags.length > 0 && (
+                                <div className="flex flex-wrap gap-2 mt-2">
+                                  {memory.tags.map((tag: string, i: number) => (
+                                    <span key={i} className="px-2.5 py-1 text-xs font-medium bg-amber-100 text-amber-700 rounded-lg border border-amber-200/50">
+                                      #{tag}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </motion.div>
                       ))}
                     </div>

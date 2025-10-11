@@ -73,7 +73,7 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: -400, opacity: 0 }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className={`fixed left-0 top-0 bottom-0 w-[500px] shadow-2xl ${Z_INDEX_CLASSES.SIDEBAR} overflow-hidden`}
+            className={`fixed left-0 top-0 bottom-0 w-full sm:w-[400px] md:w-[500px] max-w-[90vw] shadow-2xl ${Z_INDEX_CLASSES.SIDEBAR} overflow-hidden`}
             style={{
               background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(26, 26, 46, 0.95) 100%)',
               backdropFilter: 'blur(16px) saturate(150%)',
@@ -83,25 +83,25 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
             }}
           >
             {/* 標題區域 - 深色優雅 */}
-            <div className="p-6" style={{
+            <div className="p-4 md:p-6" style={{
               background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(251, 146, 60, 0.15) 100%)',
               borderBottom: '2px solid rgba(251, 191, 36, 0.3)',
             }}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-2xl font-black" style={{
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-lg md:text-2xl font-black truncate" style={{
                     color: '#fef3c7',
                     textShadow: '0 2px 8px rgba(251, 191, 36, 0.3)',
                   }}>
                     ⚙️ 遊戲設定
                   </h2>
-                  <p className="text-sm mt-1 font-semibold" style={{ color: '#94a3b8' }}>
+                  <p className="text-xs md:text-sm mt-1 font-semibold truncate" style={{ color: '#94a3b8' }}>
                     心語小鎮設定選單
                   </p>
                 </div>
                 <button
                   onClick={onClose}
-                  className="w-12 h-12 rounded-2xl flex items-center justify-center transition-all hover:scale-110"
+                  className="w-10 h-10 md:w-12 md:h-12 rounded-2xl flex items-center justify-center transition-all hover:scale-110 flex-shrink-0"
                   style={{
                     background: 'rgba(30, 41, 59, 0.6)',
                     border: '2px solid rgba(251, 191, 36, 0.3)',
@@ -132,7 +132,7 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className="flex-1 py-3 px-2 text-sm font-bold transition-all"
+                  className="flex-1 py-2 md:py-3 px-1 md:px-2 text-xs md:text-sm font-bold transition-all"
                   style={activeTab === tab.id ? {
                     background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.25) 0%, rgba(251, 146, 60, 0.25) 100%)',
                     color: '#fef3c7',
@@ -154,14 +154,14 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
                     }
                   }}
                 >
-                  <div className="text-lg mb-1">{tab.icon}</div>
-                  <div className="text-xs">{tab.label}</div>
+                  <div className="text-base md:text-lg mb-0.5 md:mb-1">{tab.icon}</div>
+                  <div className="text-[10px] md:text-xs leading-tight">{tab.label}</div>
                 </button>
               ))}
             </div>
 
             {/* 內容區域 */}
-            <div className="overflow-y-auto h-[calc(100vh-200px)] p-6 space-y-4">
+            <div className="overflow-y-auto h-[calc(100vh-180px)] md:h-[calc(100vh-200px)] p-3 md:p-6 space-y-3 md:space-y-4">
               {/* 遊戲設定 */}
               {activeTab === 'game' && (
                 <motion.div

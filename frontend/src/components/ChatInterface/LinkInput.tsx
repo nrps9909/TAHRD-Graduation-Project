@@ -66,29 +66,30 @@ export default function LinkInput({ onLinkAdded }: LinkInputProps) {
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex gap-3">
+    <div className="space-y-2 sm:space-y-3">
+      <div className="flex gap-1.5 sm:gap-2 md:gap-3">
         <input
           type="text"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           onKeyPress={handleKeyPress}
-          placeholder="輸入網址... (例如: example.com)"
-          className="flex-1 px-4 py-3 bg-white border-3 border-transparent rounded-cute focus:border-candy-blue focus:shadow-glow-blue transition-all duration-300"
+          placeholder="輸入網址..."
+          className="flex-1 min-w-0 px-3 sm:px-4 py-2 sm:py-2.5 md:py-3 bg-white border-2 sm:border-3 border-transparent rounded-xl sm:rounded-2xl md:rounded-cute focus:border-candy-blue focus:shadow-glow-blue transition-all duration-300 text-xs sm:text-sm md:text-base"
           disabled={isLoading}
         />
         <button
           onClick={handleAddLink}
           disabled={isLoading || !url.trim()}
-          className="px-6 py-3 bg-gradient-to-r from-candy-blue to-candy-purple text-white rounded-cute font-bold shadow-cute hover:shadow-cute-lg transition-all duration-300 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-shrink-0 px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 bg-gradient-to-r from-candy-blue to-candy-purple text-white rounded-xl sm:rounded-2xl md:rounded-cute font-bold shadow-cute hover:shadow-cute-lg transition-all duration-300 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm md:text-base whitespace-nowrap"
         >
-          {isLoading ? '⏳' : '🔗 添加'}
+          {isLoading ? '⏳' : <><span className="hidden sm:inline">🔗 添加</span><span className="sm:hidden">🔗</span></>}
         </button>
       </div>
 
-      <div className="flex gap-2 text-cute-xs text-gray-500">
-        <span>💡 提示:</span>
-        <span>支持網頁、文章、視頻等鏈接</span>
+      <div className="flex gap-1.5 sm:gap-2 text-[10px] sm:text-xs md:text-cute-xs text-gray-500">
+        <span>💡</span>
+        <span className="hidden sm:inline">提示: 支持網頁、文章、視頻等鏈接</span>
+        <span className="sm:hidden">支持網頁、文章、視頻等</span>
       </div>
     </div>
   )

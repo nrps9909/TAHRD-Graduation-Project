@@ -2,6 +2,26 @@
 @import './styles/index.css';
 @import './styles/cute-theme.css';
 
+/* Custom scrollbar for ProcessingQueuePanel - Animal Crossing style */
+.processing-queue-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.processing-queue-scrollbar::-webkit-scrollbar-track {
+  background: #fef3c7;
+  border-radius: 10px;
+}
+
+.processing-queue-scrollbar::-webkit-scrollbar-thumb {
+  background: #fbbf24;
+  border-radius: 10px;
+  border: 2px solid #fef3c7;
+}
+
+.processing-queue-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #f59e0b;
+}
+
 /* Global font override - Apply GameFont to all elements */
 *, *::before, *::after {
   font-family: 'GameFont', 'Inter', 'Noto Sans TC', sans-serif !important;

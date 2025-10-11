@@ -21,6 +21,7 @@ import { createContext } from './context'
 import { socketHandler } from './socket'
 import { logger } from './utils/logger'
 // import trackingRoutes from './routes/trackingRoutes' // Removed - old tracking system
+import uploadRoutes from './routes/upload'
 import { connectRedis } from './utils/redis'
 import { PrismaClient } from '@prisma/client'
 import { taskQueueService } from './services/taskQueueService'
@@ -150,7 +151,10 @@ async function startServer() {
     
     // 追蹤 API 路由 - Removed old tracking system
     // app.use(trackingRoutes)
-    
+
+    // 檔案上傳路由
+    app.use('/api', uploadRoutes)
+
     // 啟動服務器
     httpServer.listen(PORT, () => {
       logger.info(`🌸 心語小鎮服務器啟動成功！`)

@@ -5,6 +5,9 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import rehypeSanitize from 'rehype-sanitize'
 
 export enum CatAgent {
   TORORO = 'tororo',
@@ -320,19 +323,7 @@ export default function ChatBubble({
                   )}
 
                   {isLoading && (
-                    <div className="flex items-center gap-2 px-4 py-3 rounded-2xl max-w-[80%]"
-                      style={{
-                        background: theme.catBubbleBg,
-                        boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.05)'
-                      }}
-                    >
-                      <div className="flex gap-1">
-                        <span className="w-2 h-2 rounded-full animate-bounce" style={{ background: theme.buttonText, animationDelay: '0ms' }} />
-                        <span className="w-2 h-2 rounded-full animate-bounce" style={{ background: theme.buttonText, animationDelay: '150ms' }} />
-                        <span className="w-2 h-2 rounded-full animate-bounce" style={{ background: theme.buttonText, animationDelay: '300ms' }} />
-                      </div>
-                      <span className="text-sm font-semibold" style={{ color: theme.catBubbleText }}>思考中...</span>
-                    </div>
+                    <ThinkingIndicator theme={theme} currentCat={currentCat} />
                   )}
 
                   <div ref={messagesEndRef} />
@@ -414,6 +405,83 @@ export default function ChatBubble({
 
 // ============ 子組件 ============
 
+// 思考指示器組件（帶計時器）
+interface ThinkingIndicatorProps {
+  theme: typeof AC_COLORS.tororo
+  currentCat: CatAgent
+}
+
+function ThinkingIndicator({ theme, currentCat }: ThinkingIndicatorProps) {
+  const [seconds, setSeconds] = useState(0)
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setSeconds(s => s + 1)
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [])
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="flex items-start gap-2"
+    >
+      {/* 貓咪頭像 */}
+      <div
+        className="w-10 h-10 rounded-2xl flex items-center justify-center text-xl flex-shrink-0"
+        style={{
+          background: currentCat === CatAgent.TORORO
+            ? 'linear-gradient(135deg, rgba(251, 191, 36, 0.3) 0%, rgba(245, 158, 11, 0.25) 100%)'
+            : 'linear-gradient(135deg, rgba(139, 92, 246, 0.4) 0%, rgba(99, 102, 241, 0.3) 100%)',
+          boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.1)'
+        }}
+      >
+        {theme.emoji}
+      </div>
+
+      {/* 思考泡泡 */}
+      <div
+        className="flex items-center gap-3 px-4 py-3 rounded-2xl max-w-[80%]"
+        style={{
+          background: theme.catBubbleBg,
+          boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.05)'
+        }}
+      >
+        <div className="flex gap-1">
+          <span
+            className="w-2 h-2 rounded-full animate-bounce"
+            style={{ background: theme.buttonText, animationDelay: '0ms' }}
+          />
+          <span
+            className="w-2 h-2 rounded-full animate-bounce"
+            style={{ background: theme.buttonText, animationDelay: '150ms' }}
+          />
+          <span
+            className="w-2 h-2 rounded-full animate-bounce"
+            style={{ background: theme.buttonText, animationDelay: '300ms' }}
+          />
+        </div>
+        <span className="text-sm font-semibold" style={{ color: theme.catBubbleText }}>
+          思考中...
+        </span>
+        <span
+          className="text-xs font-bold px-2 py-1 rounded-full"
+          style={{
+            background: currentCat === CatAgent.TORORO
+              ? 'rgba(251, 191, 36, 0.2)'
+              : 'rgba(139, 92, 246, 0.3)',
+            color: theme.buttonText
+          }}
+        >
+          {seconds}秒
+        </span>
+      </div>
+    </motion.div>
+  )
+}
+
 interface MessageBubbleProps {
   message: ChatMessage
   theme: typeof AC_COLORS.tororo
@@ -457,9 +525,99 @@ function MessageBubble({ message, theme, currentCat }: MessageBubbleProps) {
             textShadow: currentCat === CatAgent.TORORO && isUser ? '0 1px 1px rgba(255, 255, 255, 0.5)' : 'none'
           }}
         >
-          <p className="text-sm font-medium whitespace-pre-wrap select-text leading-relaxed">
-            {message.message}
-          </p>
+          <div className="text-sm font-medium select-text leading-relaxed prose prose-sm max-w-none"
+            style={{ color: isUser ? theme.userBubbleText : theme.catBubbleText }}
+          >
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              rehypePlugins={[rehypeSanitize]}
+              components={{
+                // 自訂樣式以符合主題
+                p: ({ children }) => (
+                  <p className="mb-2 last:mb-0" style={{ color: isUser ? theme.userBubbleText : theme.catBubbleText }}>
+                    {children}
+                  </p>
+                ),
+                ul: ({ children }) => (
+                  <ul className="list-disc ml-4 mb-2" style={{ color: isUser ? theme.userBubbleText : theme.catBubbleText }}>
+                    {children}
+                  </ul>
+                ),
+                ol: ({ children }) => (
+                  <ol className="list-decimal ml-4 mb-2" style={{ color: isUser ? theme.userBubbleText : theme.catBubbleText }}>
+                    {children}
+                  </ol>
+                ),
+                li: ({ children }) => (
+                  <li className="mb-1" style={{ color: isUser ? theme.userBubbleText : theme.catBubbleText }}>
+                    {children}
+                  </li>
+                ),
+                strong: ({ children }) => (
+                  <strong className="font-bold" style={{ color: isUser ? theme.userBubbleText : theme.catBubbleText }}>
+                    {children}
+                  </strong>
+                ),
+                em: ({ children }) => (
+                  <em className="italic" style={{ color: isUser ? theme.userBubbleText : theme.catBubbleText }}>
+                    {children}
+                  </em>
+                ),
+                code: ({ children }) => (
+                  <code
+                    className="px-1.5 py-0.5 rounded text-xs font-mono"
+                    style={{
+                      background: currentCat === CatAgent.TORORO
+                        ? 'rgba(251, 191, 36, 0.2)'
+                        : 'rgba(139, 92, 246, 0.2)',
+                      color: isUser ? theme.userBubbleText : theme.catBubbleText
+                    }}
+                  >
+                    {children}
+                  </code>
+                ),
+                pre: ({ children }) => (
+                  <pre
+                    className="p-3 rounded-lg overflow-x-auto text-xs font-mono my-2"
+                    style={{
+                      background: currentCat === CatAgent.TORORO
+                        ? 'rgba(251, 191, 36, 0.15)'
+                        : 'rgba(139, 92, 246, 0.15)',
+                      color: isUser ? theme.userBubbleText : theme.catBubbleText
+                    }}
+                  >
+                    {children}
+                  </pre>
+                ),
+                blockquote: ({ children }) => (
+                  <blockquote
+                    className="border-l-4 pl-3 py-1 my-2"
+                    style={{
+                      borderColor: currentCat === CatAgent.TORORO
+                        ? 'rgba(251, 191, 36, 0.5)'
+                        : 'rgba(139, 92, 246, 0.5)',
+                      color: isUser ? theme.userBubbleText : theme.catBubbleText
+                    }}
+                  >
+                    {children}
+                  </blockquote>
+                ),
+                a: ({ href, children }) => (
+                  <a
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline hover:opacity-80 transition-opacity"
+                    style={{ color: isUser ? theme.userBubbleText : theme.catBubbleText }}
+                  >
+                    {children}
+                  </a>
+                ),
+              }}
+            >
+              {message.message}
+            </ReactMarkdown>
+          </div>
           <p className="text-xs mt-2 opacity-70 select-text font-semibold">
             {message.timestamp.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}
           </p>

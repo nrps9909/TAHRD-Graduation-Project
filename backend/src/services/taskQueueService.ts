@@ -52,7 +52,7 @@ export interface QueueTask {
 export class TaskQueueService extends EventEmitter {
   private queue: QueueTask[] = []
   private processing: Map<string, QueueTask> = new Map()
-  private maxConcurrent: number = 1 // 一次只處理 1 個任務
+  private maxConcurrent: number = 6 // 優化：從 3 提升到 6（進一步提升多用戶並發處理能力）
   private io?: SocketIOServer
   private intervalId?: NodeJS.Timeout
 

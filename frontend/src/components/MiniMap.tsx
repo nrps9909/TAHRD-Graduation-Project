@@ -72,17 +72,19 @@ export function MiniMap({ onIslandClick }: MiniMapProps) {
   const { islands, currentIslandId } = useIslandStore()
   const [hoveredIslandId, setHoveredIslandId] = useState<string | null>(null)
 
-  const mapSize = 180 // 縮小尺寸
+  // 根據螢幕大小動態調整尺寸
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
+  const mapSize = isMobile ? 140 : 180 // 手機端更小
   const viewBox = 100
   const viewBoxHeight = 110 // 增加高度以避免底部裁切
-  const islandRadius = 10 // 縮小島嶼
+  const islandRadius = isMobile ? 8 : 10 // 手機端島嶼更小
 
   // 計算海洋容器的實際高度，根據 viewBox 比例
-  const mapContainerWidth = mapSize - 24 // 減去左右 padding (px-3 = 12px * 2)
+  const mapContainerWidth = mapSize - (isMobile ? 16 : 24) // 手機端更少 padding
   const oceanHeight = (mapContainerWidth * viewBoxHeight) / viewBox // 保持與 viewBox 相同比例
 
   return (
-    <div className={`fixed bottom-6 right-6 ${Z_INDEX_CLASSES.MINIMAP}`}>
+    <div className={`fixed bottom-3 right-3 md:bottom-6 md:right-6 ${Z_INDEX_CLASSES.MINIMAP}`}>
       {/* 主容器 - 動森玻璃卡片 */}
       <div
         className="relative rounded-[28px] overflow-hidden transition-all duration-300 hover:scale-[1.02]"
@@ -109,7 +111,7 @@ export function MiniMap({ onIslandClick }: MiniMapProps) {
         />
 
         {/* 地圖區域 */}
-        <div className="relative px-3 pt-3 pb-3">
+        <div className="relative px-2 md:px-3 pt-2 md:pt-3 pb-2 md:pb-3">
           {/* 海洋背景容器 */}
           <div
             className="relative rounded-[20px] overflow-hidden"
