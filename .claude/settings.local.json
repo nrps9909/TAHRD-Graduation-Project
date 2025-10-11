@@ -39,7 +39,10 @@
       "Bash(sed:*)",
       "Bash(git checkout:*)",
       "Bash(redis-cli ping:*)",
-      "Bash(docker inspect:*)"
+      "Bash(docker inspect:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "additionalDirectories": [
