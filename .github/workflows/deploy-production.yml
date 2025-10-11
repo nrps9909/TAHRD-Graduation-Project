@@ -94,7 +94,8 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd /home/jesse/heart-whisper-town
-            git pull origin production
+            git fetch origin
+            git reset --hard origin/production
             export GITHUB_REPOSITORY="${{ env.IMAGE_NAME }}"
             chmod +x quick-deploy.sh
             sudo ./quick-deploy.sh
