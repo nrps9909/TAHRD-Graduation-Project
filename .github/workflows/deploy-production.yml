@@ -93,7 +93,7 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd /opt/heart-whisper-town
+            cd /home/jesse/heart-whisper-town
             git pull origin production
             export GITHUB_REPOSITORY="${{ env.IMAGE_NAME }}"
             chmod +x quick-deploy.sh

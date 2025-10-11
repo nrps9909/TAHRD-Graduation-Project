@@ -325,7 +325,7 @@ cd frontend && npm run test
 2. **服務器端準備**（首次）
    ```bash
    # SSH 到服務器
-   cd /opt/heart-whisper-town
+   cd /home/jesse/heart-whisper-town
    git pull origin production
    chmod +x quick-deploy.sh
    

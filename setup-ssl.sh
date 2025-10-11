@@ -45,7 +45,7 @@ apt-get install -y certbot python3-certbot-nginx
 
 # 停止 Nginx（讓 Certbot 使用 80 端口）
 echo -e "${YELLOW}🛑 暫時停止 Nginx...${NC}"
-cd /opt/heart-whisper-town
+cd /home/jesse/heart-whisper-town
 docker-compose -f docker-compose.production.yml stop nginx
 
 # 獲取 SSL 證書
@@ -59,13 +59,13 @@ certbot certonly --standalone \
 
 # 複製證書到專案目錄
 echo -e "${YELLOW}📋 複製證書...${NC}"
-mkdir -p /opt/heart-whisper-town/nginx/ssl
-cp /etc/letsencrypt/live/$DOMAIN/fullchain.pem /opt/heart-whisper-town/nginx/ssl/
-cp /etc/letsencrypt/live/$DOMAIN/privkey.pem /opt/heart-whisper-town/nginx/ssl/
+mkdir -p /home/jesse/heart-whisper-town/nginx/ssl
+cp /etc/letsencrypt/live/$DOMAIN/fullchain.pem /home/jesse/heart-whisper-town/nginx/ssl/
+cp /etc/letsencrypt/live/$DOMAIN/privkey.pem /home/jesse/heart-whisper-town/nginx/ssl/
 
 # 創建 SSL Nginx 配置
 echo -e "${YELLOW}⚙️  創建 SSL 配置...${NC}"
-cat > /opt/heart-whisper-town/nginx/conf.d/ssl.conf << EOF
+cat > /home/jesse/heart-whisper-town/nginx/conf.d/ssl.conf << EOF
 upstream backend {
     server backend:4000;
 }
@@ -161,16 +161,16 @@ server {
 EOF
 
 # 刪除舊的 HTTP-only 配置
-rm -f /opt/heart-whisper-town/nginx/conf.d/default.conf
+rm -f /home/jesse/heart-whisper-town/nginx/conf.d/default.conf
 
 # 重啟服務
 echo -e "${YELLOW}🔄 重啟服務...${NC}"
-cd /opt/heart-whisper-town
+cd /home/jesse/heart-whisper-town
 docker-compose -f docker-compose.production.yml up -d
 
 # 設置自動續期
 echo -e "${YELLOW}⏰ 設置證書自動續期...${NC}"
-(crontab -l 2>/dev/null; echo "0 3 * * * certbot renew --quiet && cp /etc/letsencrypt/live/$DOMAIN/*.pem /opt/heart-whisper-town/nginx/ssl/ && cd /opt/heart-whisper-town && docker-compose -f docker-compose.production.yml restart nginx") | crontab -
+(crontab -l 2>/dev/null; echo "0 3 * * * certbot renew --quiet && cp /etc/letsencrypt/live/$DOMAIN/*.pem /home/jesse/heart-whisper-town/nginx/ssl/ && cd /home/jesse/heart-whisper-town && docker-compose -f docker-compose.production.yml restart nginx") | crontab -
 
 echo ""
 echo -e "${GREEN}=========================================="

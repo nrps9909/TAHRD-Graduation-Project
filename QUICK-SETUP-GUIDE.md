@@ -48,7 +48,7 @@ ssh root@152.42.204.18
 
 ```bash
 # 1. 進入專案目錄
-cd /opt/heart-whisper-town
+cd /home/jesse/heart-whisper-town
 
 # 2. 拉取最新代碼
 git pull origin production
@@ -97,7 +97,7 @@ git push origin production
 ssh root@152.42.204.18
 
 # 執行快速部署
-cd /opt/heart-whisper-town
+cd /home/jesse/heart-whisper-town
 sudo ./quick-deploy.sh
 
 # 完成時間：~30 秒！
@@ -143,7 +143,7 @@ curl http://localhost/health
 
 ```bash
 # 在服務器上手動觸發一次構建
-cd /opt/heart-whisper-town
+cd /home/jesse/heart-whisper-town
 docker-compose -f docker-compose.production.yml up -d --build
 ```
 
@@ -153,7 +153,7 @@ docker-compose -f docker-compose.production.yml up -d --build
 
 ```bash
 # 在服務器上
-cd /opt/heart-whisper-town
+cd /home/jesse/heart-whisper-town
 
 # 查看可用的映像版本
 docker images | grep ghcr.io

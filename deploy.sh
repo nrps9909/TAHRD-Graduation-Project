@@ -60,7 +60,7 @@ fi
 
 # 步驟 5: 克隆專案（如果不存在）
 echo -e "${YELLOW}📂 步驟 5/6: 準備專案...${NC}"
-PROJECT_DIR="/opt/heart-whisper-town"
+PROJECT_DIR="/home/jesse/heart-whisper-town"
 
 if [ ! -d "$PROJECT_DIR" ]; then
     echo "請輸入 GitHub 專案 URL:"

@@ -49,7 +49,7 @@ GitHub Container Registry (GHCR) 是免費的，無需額外配置！
 ssh root@152.42.204.18
 
 # 進入專案目錄
-cd /opt/heart-whisper-town
+cd /home/jesse/heart-whisper-town
 
 # 拉取最新代碼（包含新的部署配置）
 git pull origin production
@@ -98,7 +98,7 @@ git push origin production
 ssh root@152.42.204.18
 
 # 執行快速部署腳本
-cd /opt/heart-whisper-town
+cd /home/jesse/heart-whisper-town
 sudo ./quick-deploy.sh
 ```
 
