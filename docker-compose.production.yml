@@ -68,6 +68,11 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        # 在生產環境中，前端通過 nginx 代理訪問後端，所以不需要指定完整 URL
+        # 留空以使用相對路徑，nginx 會處理路由
+        VITE_BACKEND_URL: ""
+        VITE_GRAPHQL_URL: ""
     container_name: heart-whisper-frontend
     restart: unless-stopped
     env_file:

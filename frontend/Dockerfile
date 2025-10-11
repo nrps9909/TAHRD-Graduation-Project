@@ -12,6 +12,13 @@ COPY . .
 
 # 構建應用（增加 Node.js 記憶體限制到 4GB）
 ENV NODE_OPTIONS="--max-old-space-size=4096"
+
+# 設置構建時的環境變量（使用 ARG 允許在構建時傳入）
+ARG VITE_BACKEND_URL
+ARG VITE_GRAPHQL_URL
+ENV VITE_BACKEND_URL=$VITE_BACKEND_URL
+ENV VITE_GRAPHQL_URL=$VITE_GRAPHQL_URL
+
 RUN npm run build
 
 # 生產階段
