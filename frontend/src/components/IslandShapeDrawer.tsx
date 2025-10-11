@@ -3,7 +3,7 @@
  * 讓玩家自由繪製島嶼的形狀
  */
 
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState, useEffect, useCallback } from 'react'
 
 interface IslandShapeDrawerProps {
   onShapeChange: (shapeData: string) => void
@@ -22,6 +22,29 @@ export function IslandShapeDrawer({
   const [isDrawing, setIsDrawing] = useState(false)
   const [brushSize, setBrushSize] = useState(20)
   const [tool, setTool] = useState<'brush' | 'eraser'>('brush')
+
+  // 繪製中心參考線
+  const drawCenterGuide = useCallback((ctx: CanvasRenderingContext2D) => {
+    ctx.save()
+    ctx.strokeStyle = '#CCCCCC'
+    ctx.setLineDash([5, 5])
+    ctx.lineWidth = 1
+
+    // 十字線
+    ctx.beginPath()
+    ctx.moveTo(width / 2, 0)
+    ctx.lineTo(width / 2, height)
+    ctx.moveTo(0, height / 2)
+    ctx.lineTo(width, height / 2)
+    ctx.stroke()
+
+    // 中心圓
+    ctx.beginPath()
+    ctx.arc(width / 2, height / 2, 50, 0, Math.PI * 2)
+    ctx.stroke()
+
+    ctx.restore()
+  }, [width, height])
 
   // 初始化畫布
   useEffect(() => {
@@ -46,30 +69,7 @@ export function IslandShapeDrawer({
       // 繪製中心點參考
       drawCenterGuide(ctx)
     }
-  }, [initialShape, width, height])
-
-  // 繪製中心參考線
-  const drawCenterGuide = (ctx: CanvasRenderingContext2D) => {
-    ctx.save()
-    ctx.strokeStyle = '#CCCCCC'
-    ctx.setLineDash([5, 5])
-    ctx.lineWidth = 1
-
-    // 十字線
-    ctx.beginPath()
-    ctx.moveTo(width / 2, 0)
-    ctx.lineTo(width / 2, height)
-    ctx.moveTo(0, height / 2)
-    ctx.lineTo(width, height / 2)
-    ctx.stroke()
-
-    // 中心圓
-    ctx.beginPath()
-    ctx.arc(width / 2, height / 2, 50, 0, Math.PI * 2)
-    ctx.stroke()
-
-    ctx.restore()
-  }
+  }, [initialShape, width, height, drawCenterGuide])
 
   // 開始繪製
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {

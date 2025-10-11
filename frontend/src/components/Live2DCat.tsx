@@ -2,6 +2,7 @@ import {
   useEffect,
   useRef,
   useState,
+  useCallback,
 } from 'react'
 import * as PIXI from 'pixi.js'
 import { Live2DModel } from 'pixi-live2d-display/cubism4'
@@ -17,11 +18,30 @@ import remarkGfm from 'remark-gfm'
 import rehypeSanitize from 'rehype-sanitize'
 
 // Register PIXI globally for Live2D
-;(window as any).PIXI = PIXI
+;(window as Window & typeof globalThis & { PIXI: typeof PIXI }).PIXI = PIXI
 
 interface Live2DCatProps {
   modelPath: string
   onClose?: () => void
+}
+
+// Type for Live2D internal model with motion manager
+interface Live2DInternalModel {
+  motionManager?: {
+    startMotion: (group: string, index: number) => void
+  }
+}
+
+interface Live2DModelWithInternal extends Live2DModel {
+  internalModel?: Live2DInternalModel
+}
+
+// Type for memory created result from GraphQL
+interface MemoryCreated {
+  assistant: {
+    emoji: string
+    nameChinese: string
+  }
 }
 
 // 動物森友會風格配色
@@ -247,11 +267,12 @@ export default function Live2DCat({
   }, [modelPath])
 
   // Helper function to play motion based on state
-  const playMotionForState = (state: typeof catState) => {
+  const playMotionForState = useCallback((state: typeof catState) => {
     if (!modelRef.current) return
 
     try {
-      const internalModel = (modelRef.current as any).internalModel
+      const model = modelRef.current as Live2DModelWithInternal
+      const internalModel = model.internalModel
       if (!internalModel?.motionManager) return
 
       const motionMap: Record<typeof catState, string> = {
@@ -266,18 +287,18 @@ export default function Live2DCat({
     } catch (e) {
       console.log('Motion trigger error:', e)
     }
-  }
+  }, [])
 
   useEffect(() => {
     playMotionForState(catState)
-  }, [catState])
+  }, [catState, playMotionForState])
 
   useEffect(() => {
     if (modelRef.current && triggerMotion) {
       playMotionForState(catState)
       setTriggerMotion(false)
     }
-  }, [triggerMotion, catState])
+  }, [triggerMotion, catState, playMotionForState])
 
   const handleSendMessage = async () => {
     if (!inputText.trim() && safeAttachments.length === 0) return
@@ -339,7 +360,7 @@ export default function Live2DCat({
 
           if (result.memoriesCreated.length > 0) {
             responseContent += `💾 **已儲存到 ${result.memoriesCreated.length} 個知識庫:**\n`
-            result.memoriesCreated.forEach((memory: any) => {
+            result.memoriesCreated.forEach((memory: MemoryCreated) => {
               responseContent += `  ${memory.assistant.emoji} ${memory.assistant.nameChinese}\n`
             })
           }

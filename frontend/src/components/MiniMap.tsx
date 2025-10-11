@@ -6,6 +6,7 @@
 import { useState } from 'react'
 import { useIslandStore } from '../stores/islandStore'
 import { Z_INDEX_CLASSES } from '../constants/zIndex'
+import type { Island } from '../types/island'
 
 interface MiniMapProps {
   onIslandClick: (islandId: string) => void
@@ -40,7 +41,7 @@ function getIslandPosition(
  */
 function convertTo2DMapPosition(
   position3D: [number, number, number],
-  islands: any[]
+  islands: Island[]
 ): [number, number] {
   // 計算所有島嶼的邊界來自動縮放
   const allPositions = islands.map((_, i) => getIslandPosition(i, islands.length))
