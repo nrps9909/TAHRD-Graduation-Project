@@ -32,8 +32,10 @@ interface Live2DInternalModel {
   }
 }
 
-interface Live2DModelWithInternal extends Live2DModel {
+// Type assertion helper - 不繼承，只用於類型斷言
+interface Live2DModelWithInternal {
   internalModel?: Live2DInternalModel
+  [key: string]: unknown
 }
 
 // Type for memory created result from GraphQL
