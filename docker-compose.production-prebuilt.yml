@@ -1,7 +1,6 @@
-version: '3.8'
-
 # 使用預構建映像的生產環境配置（快速部署）
 # 映像由 GitHub Actions 自動構建並推送到 GHCR
+# Note: Docker Compose V2 不再需要 version 屬性
 
 services:
   # 使用 MongoDB Atlas 雲端資料庫，不需要本地 MongoDB 容器

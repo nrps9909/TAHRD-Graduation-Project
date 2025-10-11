@@ -63,6 +63,20 @@ jobs:
 
       - name: Validate Docker Compose
         run: |
+          # 創建臨時 .env.production 用於驗證（不含敏感信息）
+          cat > .env.production << EOF
+          NODE_ENV=production
+          PORT=4000
+          FRONTEND_PORT=3000
+          DATABASE_URL="mongodb://localhost:27017/test"
+          REDIS_URL=redis://redis:6379
+          REDIS_HOST=redis
+          REDIS_PORT=6379
+          JWT_SECRET=test_secret
+          GEMINI_API_KEY=test_key
+          FRONTEND_URL=https://example.com
+          EOF
+
           docker compose -f docker-compose.production-prebuilt.yml config > /dev/null
           echo "✅ Docker Compose 配置驗證通過"
 

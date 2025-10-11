@@ -1,4 +1,4 @@
-version: '3.8'
+# Docker Compose V2 不再需要 version 屬性
 
 services:
   # 使用 MongoDB Atlas 雲端資料庫，不需要本地 MongoDB 容器
