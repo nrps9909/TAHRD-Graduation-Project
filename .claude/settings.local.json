@@ -46,7 +46,8 @@
       "Bash(mongosh:*)",
       "Bash(npx ts-node:*)",
       "Bash(docker ps:*)",
-      "Bash(docker-compose:*)"
+      "Bash(docker-compose:*)",
+      "Bash(git log:*)"
     ],
     "deny": [],
     "additionalDirectories": [
