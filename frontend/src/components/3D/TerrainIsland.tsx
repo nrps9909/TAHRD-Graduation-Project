@@ -13,6 +13,9 @@ import * as TerrainUtils from './TerrainIsland/terrainUtils'
 // 使用從 terrainUtils 導入的函數
 const { getTerrainHeight, getTerrainType, perlinNoise } = TerrainUtils
 
+// Re-export getTerrainHeight for other components to use
+export { getTerrainHeight }
+
 // 根据地形类型获取颜色（马卡龙配色）
 function getColorByTerrain(terrainType: TerrainType, height: number, x: number, z: number): THREE.Color {
   const noise = perlinNoise(x * 0.5, z * 0.5) * 0.08
