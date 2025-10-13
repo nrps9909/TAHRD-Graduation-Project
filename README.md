@@ -230,7 +230,6 @@ TAHRD-Graduation-Project/
    - 與 Tororo 分享心情
    - 獲得溫暖的回應與建議
 
-## 🚧 未來功能規劃
 
 ### 📊 聊天紀錄分析功能（Chat History Analysis）
 
