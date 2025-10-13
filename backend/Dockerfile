@@ -38,7 +38,7 @@ WORKDIR /app
 RUN apk add --no-cache curl openssl
 
 # 安裝 Gemini CLI
-RUN npm install -g gemini-cli
+RUN npm install -g @google/gemini-cli
 
 # 複製 package files
 COPY --from=builder /app/package.json ./package.json

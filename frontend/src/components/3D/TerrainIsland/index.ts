@@ -2,7 +2,7 @@
  * TerrainIsland - Module exports
  */
 
-export { default as TerrainIsland } from '../TerrainIsland'
+export { TerrainIsland } from '../TerrainIsland'
 export { getTerrainHeight } from './terrainUtils'
 export { REGIONS } from './constants'
 export { TerrainType } from './types'
