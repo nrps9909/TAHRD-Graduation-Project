@@ -2,8 +2,6 @@
  * CatChat - Constants and theme configurations
  */
 
-import type { CatAgent } from './types'
-
 // 動物森友會風格配色
 export const AC_COLORS = {
   tororo: {
