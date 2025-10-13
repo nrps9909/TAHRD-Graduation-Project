@@ -6,7 +6,7 @@
 import { useRef } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
-import { getTerrainHeight } from './TerrainIsland'
+import { getTerrainHeight } from './TerrainIsland/'
 
 // 7个分区的配置 - 自动匹配地形高度
 const ZONES = [

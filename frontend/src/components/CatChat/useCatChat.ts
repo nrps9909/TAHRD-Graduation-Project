@@ -4,7 +4,8 @@
  */
 
 import { useState, useCallback, useEffect } from 'react'
-import { CatAgent, ChatMessage } from './ChatBubble'
+import { CatAgent } from './types'
+import type { ChatMessage } from './types'
 
 interface SearchResult {
   length?: number

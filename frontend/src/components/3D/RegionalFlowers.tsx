@@ -7,7 +7,7 @@ import { useRef, useState } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
-import { getTerrainHeight } from './TerrainIsland'
+import { getTerrainHeight } from './TerrainIsland/'
 
 export interface RegionalFlowerData {
   id: string

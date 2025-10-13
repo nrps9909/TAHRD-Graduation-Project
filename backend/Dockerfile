@@ -34,9 +34,11 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# 安裝運行時依賴和 Gemini CLI
-RUN apk add --no-cache curl openssl npm && \
-    npm install -g @google/generative-ai-cli
+# 安裝運行時依賴
+RUN apk add --no-cache curl openssl
+
+# 安裝 Gemini CLI
+RUN npm install -g gemini-cli
 
 # 複製 package files
 COPY --from=builder /app/package.json ./package.json
