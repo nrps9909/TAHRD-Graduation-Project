@@ -573,13 +573,13 @@ ${contextInfo}
 
   /**
    * 調用 AI 服務（使用 Gemini CLI）
+   * 優化：快速失敗 + 智能重試
    */
   private async callMCP(prompt: string, assistantId: string): Promise<string> {
     // 優先使用 Gemini CLI
     if (this.useGeminiCLI) {
       let retries = 0
-      const maxRetries = 3
-      const retryDelays = [1000, 2000, 3000] // 1s, 2s, 3s（優化：從 2s,5s,10s 縮短）
+      const maxRetries = 1 // 優化：只嘗試 1 次，快速失敗
 
       while (retries < maxRetries) {
         try {
@@ -592,11 +592,11 @@ ${contextInfo}
             .replace(/\$/g, '\\$')
             .replace(/`/g, '\\`')
 
-          // 使用 Gemini CLI 调用，優化超時時間
+          // 使用 Gemini CLI 调用，優化：大幅縮短超時時間
           const command = `gemini -m ${this.geminiModel} -p "${escapedPrompt}"`
           const { stdout, stderr } = await execAsync(command, {
             maxBuffer: 10 * 1024 * 1024, // 10MB buffer
-            timeout: 30000, // 優化：從 120 秒縮短到 30 秒（足夠快速分類使用）
+            timeout: 10000, // 優化：從 30 秒縮短到 10 秒（快速失敗）
             env: {
               ...process.env,
               GEMINI_API_KEY: process.env.GEMINI_API_KEY
@@ -628,30 +628,17 @@ ${contextInfo}
         } catch (error: any) {
           retries++
 
-          const isRateLimitError =
-            error.message?.includes('429') ||
-            error.message?.includes('RATE_LIMIT') ||
-            error.message?.includes('quota') ||
-            error.message?.includes('rate limit')
-
+          // 記錄錯誤但快速放棄（優化：不再區分速率限制，直接 fallback）
           logger.error(`[Chief Agent] Gemini CLI error (attempt ${retries}):`, error.message)
 
-          // 如果不是速率限制錯誤或已達最大重試次數，拋出錯誤
-          if (!isRateLimitError || retries >= maxRetries) {
-            logger.error('[Chief Agent] Max retries reached or non-retryable error')
-            // 不拋出錯誤，改為使用降級方案（fallback）
-            break
-          }
-
-          // 速率限制錯誤，等待後重試
-          const delay = retryDelays[retries - 1] || 10000
-          logger.info(`[Chief Agent] Rate limit detected, waiting ${delay/1000}s before retry...`)
-          await new Promise(resolve => setTimeout(resolve, delay))
+          // 快速失敗，立即使用 fallback
+          logger.warn('[Chief Agent] Gemini CLI failed, switching to fallback immediately')
+          break
         }
       }
 
-      // 如果所有重試都失敗，記錄錯誤但不拋出，讓 fallback 接手
-      logger.warn('[Chief Agent] Gemini CLI failed after retries, will try fallback method')
+      // 如果失敗，記錄錯誤但不拋出，讓 fallback 接手
+      logger.warn('[Chief Agent] Using fallback method due to Gemini CLI unavailable')
     }
 
     // Fallback: 使用 MCP Server
