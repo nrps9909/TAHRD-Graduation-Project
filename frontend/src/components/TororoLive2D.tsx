@@ -9,7 +9,8 @@ import * as PIXI from 'pixi.js'
 import { Live2DModel } from 'pixi-live2d-display/cubism4'
 
 // Register PIXI globally for Live2D
-;(window as any).PIXI = PIXI
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+;(window as Window & typeof globalThis & { PIXI: typeof PIXI }).PIXI = PIXI
 
 interface TororoLive2DProps {
   modelPath?: string
@@ -41,12 +42,20 @@ const TororoLive2D = forwardRef<TororoLive2DRef, TororoLive2DProps>(
     const [showFallback, setShowFallback] = useState(false)
     const [isLoading, setIsLoading] = useState(true)
 
+    // 定義內部模型介面（Live2D 內部 API）
+    interface Live2DInternalModel {
+      motionManager?: {
+        startRandomMotion: (motionGroup: string) => void
+      }
+      expression?: (expression: string) => void
+    }
+
     // 暴露給父組件的方法
     useImperativeHandle(ref, () => ({
       triggerMotion: (motion?: string) => {
         if (!modelRef.current) return
         try {
-          const internalModel = (modelRef.current as any).internalModel
+          const internalModel = (modelRef.current as unknown as { internalModel: Live2DInternalModel }).internalModel
           if (internalModel && internalModel.motionManager) {
             const motionGroup = motion || 'idle'
             internalModel.motionManager.startRandomMotion(motionGroup)
@@ -58,7 +67,7 @@ const TororoLive2D = forwardRef<TororoLive2DRef, TororoLive2DProps>(
       triggerExpression: (expression?: string) => {
         if (!modelRef.current) return
         try {
-          const internalModel = (modelRef.current as any).internalModel
+          const internalModel = (modelRef.current as unknown as { internalModel: Live2DInternalModel }).internalModel
           if (internalModel && internalModel.expression) {
             const exp = expression || 'f01'
             internalModel.expression(exp)
@@ -92,7 +101,7 @@ const TororoLive2D = forwardRef<TororoLive2DRef, TororoLive2DProps>(
             return
           }
 
-          containerRef.current?.appendChild(app.view as any)
+          containerRef.current?.appendChild(app.view as HTMLCanvasElement)
           appRef.current = app
 
           // 載入 Live2D 模型
@@ -115,12 +124,12 @@ const TororoLive2D = forwardRef<TororoLive2DRef, TororoLive2DProps>(
           model.y = height / 2
           model.anchor.set(0.5, 0.5)
 
-          app.stage.addChild(model as any)
+          app.stage.addChild(model as unknown as PIXI.DisplayObject)
 
           // 添加互動效果
           model.on('hit', (hitAreas: string[]) => {
             if (hitAreas.includes('body') || hitAreas.includes('head')) {
-              const internalModel = (model as any).internalModel
+              const internalModel = (model as unknown as { internalModel: Live2DInternalModel }).internalModel
               if (internalModel && internalModel.motionManager) {
                 internalModel.motionManager.startRandomMotion('tap_body')
               }
@@ -131,7 +140,7 @@ const TororoLive2D = forwardRef<TororoLive2DRef, TororoLive2DProps>(
           setShowFallback(false)
 
           // 自動播放 idle 動畫
-          const internalModel = (model as any).internalModel
+          const internalModel = (model as unknown as { internalModel: Live2DInternalModel }).internalModel
           if (internalModel && internalModel.motionManager) {
             internalModel.motionManager.startRandomMotion('idle')
           }

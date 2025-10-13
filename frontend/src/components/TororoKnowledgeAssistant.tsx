@@ -181,7 +181,7 @@ export default function TororoKnowledgeAssistant({
   }, [])
 
   // 儲存歷史紀錄
-  const saveToHistory = (input: string, files: File[], result?: UploadResult) => {
+  const saveToHistory = useCallback((input: string, files: File[], result?: UploadResult) => {
     const record: HistoryRecord = {
       id: `history_${Date.now()}`,
       inputText: input,
@@ -200,7 +200,7 @@ export default function TororoKnowledgeAssistant({
       }
       return updated
     })
-  }
+  }, [])
 
   // 刪除歷史紀錄
   const deleteHistory = (id: string) => {
@@ -470,7 +470,7 @@ export default function TororoKnowledgeAssistant({
 
     setIsUploading(false)
     generateAndDisplayResponse('upload_file', { fileCount: files.length })
-  }, [play, generateAndDisplayResponse])
+  }, [play, generateAndDisplayResponse, token])
 
   const removeFile = useCallback((fileId: string) => {
     setUploadedCloudinaryFiles(prev => prev.filter(f => f.id !== fileId))
@@ -549,7 +549,7 @@ export default function TororoKnowledgeAssistant({
           // 將 Cloudinary 檔案轉換為 File 格式供歷史記錄使用
           const filesForHistory = currentFiles
             .filter(f => f.status === 'completed')
-            .map(f => ({ name: f.name, type: f.type } as any))
+            .map(f => ({ name: f.name, type: f.type })) as unknown as File[]
           saveToHistory(currentInput, filesForHistory, result) // 儲存到歷史
 
           // 顯示白噗噗的溫暖回應

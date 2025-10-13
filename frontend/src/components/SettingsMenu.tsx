@@ -370,7 +370,7 @@ export default function SettingsMenu({ isOpen, onClose }: SettingsMenuProps) {
                         <label className="text-sm font-bold block mb-2" style={{ color: '#fef3c7' }}>圖形品質</label>
                         <select
                           value={settings.quality}
-                          onChange={(e) => setSettings({ ...settings, quality: e.target.value as any })}
+                          onChange={(e) => setSettings({ ...settings, quality: e.target.value as 'low' | 'medium' | 'high' })}
                           className="w-full px-4 py-3 rounded-xl font-bold focus:outline-none"
                           style={{
                             border: '2px solid rgba(251, 191, 36, 0.3)',
