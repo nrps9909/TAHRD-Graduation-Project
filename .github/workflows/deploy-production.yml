@@ -133,8 +133,13 @@ jobs:
           cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.component }}:buildcache
           cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.component }}:buildcache,mode=max
           build-args: |
-            VITE_BACKEND_URL=${{ matrix.component == 'frontend' && '' || '' }}
-            VITE_GRAPHQL_URL=${{ matrix.component == 'frontend' && '' || '' }}
+            VITE_BACKEND_URL=${{ matrix.component == 'frontend' && 'https://jesse-chen.com' || '' }}
+            VITE_GRAPHQL_URL=${{ matrix.component == 'frontend' && 'https://jesse-chen.com/graphql' || '' }}
+            VITE_API_URL=${{ matrix.component == 'frontend' && 'https://jesse-chen.com/api' || '' }}
+            VITE_WS_URL=${{ matrix.component == 'frontend' && 'wss://jesse-chen.com/socket.io' || '' }}
+            VITE_GEMINI_API_KEY=${{ matrix.component == 'frontend' && secrets.VITE_GEMINI_API_KEY || '' }}
+            VITE_OPENWEATHER_API_KEY=${{ matrix.component == 'frontend' && secrets.VITE_OPENWEATHER_API_KEY || '' }}
+            VITE_DEBUG=${{ matrix.component == 'frontend' && 'false' || '' }}
 
   # 第三階段：部署（帶有回滾機制）
   deploy:
