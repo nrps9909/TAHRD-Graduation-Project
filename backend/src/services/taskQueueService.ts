@@ -337,6 +337,7 @@ export class TaskQueueService extends EventEmitter {
     this.io.to(task.userId).emit('task-complete', {
       taskId: task.id,
       distributionId: task.distributionId,
+      progress: task.progress, // 添加 progress 資訊供前端顯示
       result: {
         memoriesCreated: result.memoriesCreated.length,
         agentDecisions: result.agentDecisions.length
