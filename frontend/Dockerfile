@@ -3,12 +3,16 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# 複製 package files
-COPY package.json ./
+# 設置為 development 以確保安裝 devDependencies
+ENV NODE_ENV=development
+
+# 複製 package files (包含 package-lock.json 如果存在)
+COPY package*.json ./
 
 # 安裝依賴
 # 注意：此項目使用 npm workspaces，子目錄沒有 package-lock.json
 # 因此使用 npm install 而不是 npm ci
+# NODE_ENV=development 確保安裝 devDependencies（包含 TypeScript、Vite 等構建工具）
 RUN npm install && npm cache clean --force
 
 # 複製源代碼
