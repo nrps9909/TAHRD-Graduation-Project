@@ -543,6 +543,39 @@ export default function MemoryEditor({ memory, onClose, onUpdate }: MemoryEditor
                     </div>
                   )}
 
+                  {/* AI 深度分析結果 */}
+                  {(memory.detailedSummary || memory.actionableAdvice) && (
+                    <div className="mb-8 rounded-lg bg-gradient-to-br from-purple-900/20 to-blue-900/20 border border-purple-500/30 overflow-hidden">
+                      <div className="px-4 py-3 bg-purple-900/30 border-b border-purple-500/30">
+                        <h3 className="text-sm font-semibold text-purple-300 flex items-center gap-2">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                          </svg>
+                          AI 深度分析
+                        </h3>
+                      </div>
+                      <div className="p-4 space-y-4">
+                        {memory.detailedSummary && (
+                          <div>
+                            <h4 className="text-xs font-medium text-gray-400 mb-2 uppercase tracking-wide">詳細摘要</h4>
+                            <p className="text-sm text-gray-300 leading-relaxed">{memory.detailedSummary}</p>
+                          </div>
+                        )}
+                        {memory.actionableAdvice && (
+                          <div>
+                            <h4 className="text-xs font-medium text-gray-400 mb-2 uppercase tracking-wide flex items-center gap-1">
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                              </svg>
+                              行動建議
+                            </h4>
+                            <p className="text-sm text-gray-300 leading-relaxed">{memory.actionableAdvice}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Markdown 預覽 */}
                   <div className="prose prose-lg prose-invert max-w-none markdown-preview-dark">
                     <ReactMarkdown
@@ -628,6 +661,39 @@ export default function MemoryEditor({ memory, onClose, onUpdate }: MemoryEditor
                             #{tag}
                           </span>
                         ))}
+                      </div>
+                    )}
+
+                    {/* AI 深度分析結果 */}
+                    {(memory.detailedSummary || memory.actionableAdvice) && (
+                      <div className="mb-8 rounded-lg bg-gradient-to-br from-purple-900/20 to-blue-900/20 border border-purple-500/30 overflow-hidden">
+                        <div className="px-4 py-3 bg-purple-900/30 border-b border-purple-500/30">
+                          <h3 className="text-sm font-semibold text-purple-300 flex items-center gap-2">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                            </svg>
+                            AI 深度分析
+                          </h3>
+                        </div>
+                        <div className="p-4 space-y-4">
+                          {memory.detailedSummary && (
+                            <div>
+                              <h4 className="text-xs font-medium text-gray-400 mb-2 uppercase tracking-wide">詳細摘要</h4>
+                              <p className="text-sm text-gray-300 leading-relaxed">{memory.detailedSummary}</p>
+                            </div>
+                          )}
+                          {memory.actionableAdvice && (
+                            <div>
+                              <h4 className="text-xs font-medium text-gray-400 mb-2 uppercase tracking-wide flex items-center gap-1">
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                </svg>
+                                行動建議
+                              </h4>
+                              <p className="text-sm text-gray-300 leading-relaxed">{memory.actionableAdvice}</p>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
 

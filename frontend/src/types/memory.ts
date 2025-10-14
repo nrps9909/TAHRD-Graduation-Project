@@ -10,7 +10,7 @@ export type MemoryCategory =
 export interface Memory {
   id: string
   rawContent: string
-  summary?: string  // 標題
+  summary?: string  // Chief 的簡要摘要
   title: string
   emoji: string
   category: MemoryCategory  // 類別
@@ -18,7 +18,12 @@ export interface Memory {
   tags: string[]  // Hashtags
   keyPoints?: string[]  // 重點分析
   aiSentiment?: string
+  aiAnalysis?: string  // SubAgent 的評估說明
   rawData?: string  // 原始對話記錄
+  // SubAgent 深度分析結果（新增）
+  detailedSummary?: string  // SubAgent 的詳細摘要（2-3句話）
+  importanceScore?: number  // 1-10 重要性評分
+  actionableAdvice?: string  // 行動建議
   isPinned: boolean
   isArchived: boolean
   createdAt: string

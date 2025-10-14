@@ -258,7 +258,7 @@ export class SubAgentService {
           },
           rawContent: distribution.rawContent,
           title: suggestedTitle, // 使用 Sub-Agent 建議的標題
-          summary: detailedSummary, // 使用詳細摘要
+          summary: distribution.chiefSummary, // Chief 的簡要摘要
           contentType: distribution.contentType,
           fileUrls: distribution.fileUrls,
           fileNames: distribution.fileNames,
@@ -267,19 +267,19 @@ export class SubAgentService {
           linkTitles: distribution.linkTitles,
           keyPoints: evaluation.keyInsights,
           aiSentiment: sentiment, // 使用情感分析結果
-          aiAnalysis: evaluation.reasoning, // 使用 Sub-Agent 的詳細分析
+          aiAnalysis: evaluation.reasoning, // 使用 Sub-Agent 的評估說明
           category: evaluation.suggestedCategory || assistant.type,
           tags: [...new Set([...distribution.suggestedTags, ...evaluation.suggestedTags])].slice(0, 5), // 合併並去重標籤，最多5個
+
+          // === 新增：SubAgent 深度分析結果 ===
+          detailedSummary: detailedSummary, // SubAgent 的詳細摘要（2-3句話）
+          importanceScore: importanceScore, // 1-10 重要性評分
+          actionableAdvice: actionableAdvice, // 行動建議
+
           distribution: {
             connect: { id: distributionId }
           },
           relevanceScore: evaluation.relevanceScore,
-          // 如果有行動建議，存儲在 metadata 中
-          ...(actionableAdvice && {
-            metadata: {
-              actionableAdvice
-            }
-          })
         },
       })
 
@@ -928,7 +928,7 @@ ${distribution.chiefSummary}
           },
           rawContent: distribution.rawContent,
           title: suggestedTitle,
-          summary: detailedSummary,
+          summary: distribution.chiefSummary, // Chief 的簡要摘要
           contentType: distribution.contentType,
           fileUrls: distribution.fileUrls,
           fileNames: distribution.fileNames,
@@ -940,17 +940,16 @@ ${distribution.chiefSummary}
           aiAnalysis: evaluation.reasoning,
           category: AssistantType.RESOURCES, // 動態 SubAgent 使用 RESOURCES 作為預設
           tags: [...new Set([...distribution.suggestedTags, ...evaluation.suggestedTags, ...subAgent.keywords])].slice(0, 5), // 最多5個標籤
+
+          // === 新增：SubAgent 深度分析結果 ===
+          detailedSummary: detailedSummary, // SubAgent 的詳細摘要（2-3句話）
+          importanceScore: importanceScore, // 1-10 重要性評分
+          actionableAdvice: actionableAdvice, // 行動建議
+
           distribution: {
             connect: { id: distributionId }
           },
           relevanceScore: evaluation.relevanceScore,
-          ...(actionableAdvice && {
-            metadata: {
-              actionableAdvice,
-              subAgentName: subAgent.nameChinese,
-              islandName: subAgent.island?.nameChinese
-            }
-          })
         },
       })
 

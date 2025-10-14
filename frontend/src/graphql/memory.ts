@@ -17,7 +17,12 @@ export const MEMORY_FRAGMENT = gql`
     tags
     keyPoints
     aiSentiment
+    aiAnalysis
     rawData
+    # SubAgent 深度分析結果
+    detailedSummary
+    importanceScore
+    actionableAdvice
     fileUrls
     fileNames
     fileTypes

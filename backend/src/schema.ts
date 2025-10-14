@@ -128,6 +128,11 @@ const baseTypeDefs = gql`
     aiAnalysis: String
     rawData: String
 
+    # SubAgent Deep Analysis (新增)
+    detailedSummary: String   # SubAgent 的詳細摘要（2-3句話）
+    importanceScore: Int      # 1-10 重要性評分
+    actionableAdvice: String  # 行動建議
+
     # Classification
     category: AssistantType!
     tags: [String!]!

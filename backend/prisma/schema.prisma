@@ -167,6 +167,11 @@ model Memory {
   aiAnalysis       String?  @map("ai_analysis") @db.String // Gemini's analysis
   rawData          String?  @map("raw_data") @db.String // Original user-AI conversation
 
+  // SubAgent 深度分析結果 (新增)
+  detailedSummary  String?  @map("detailed_summary") @db.String // SubAgent 的詳細摘要
+  importanceScore  Int?     @map("importance_score") // 1-10 重要性評分
+  actionableAdvice String?  @map("actionable_advice") @db.String // 行動建議
+
   // Classification
   category         AssistantType
   tags             String[] // 自動生成的標籤
