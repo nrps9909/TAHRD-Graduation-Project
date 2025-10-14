@@ -5,7 +5,7 @@
  */
 
 import { logger } from '../utils/logger'
-import { spawn } from 'child_process'
+import { spawn, ChildProcessWithoutNullStreams } from 'child_process'
 
 export const tororoResolvers = {
   Mutation: {
@@ -52,7 +52,7 @@ async function callGeminiCLI(prompt: string): Promise<string> {
 
       // 使用 spawn + stdin（正確方式）
       const result = await new Promise<string>((resolve, reject) => {
-        const gemini = spawn('gemini', ['-m', model], {
+        const gemini: ChildProcessWithoutNullStreams = spawn('gemini', ['-m', model], {
           env: {
             ...process.env,
             GEMINI_API_KEY: process.env.GEMINI_API_KEY

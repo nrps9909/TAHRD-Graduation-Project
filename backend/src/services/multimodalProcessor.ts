@@ -10,7 +10,7 @@
 
 import axios from 'axios'
 import { logger } from '../utils/logger'
-import { spawn } from 'child_process'
+import { spawn, ChildProcessWithoutNullStreams } from 'child_process'
 
 export interface ImageAnalysis {
   description: string
@@ -281,7 +281,7 @@ ${context ? `\n用户备注: ${context}` : ''}
     try {
       // 使用 spawn + stdin（正確方式）
       return await new Promise<string>((resolve, reject) => {
-        const gemini = spawn('gemini', ['-m', this.geminiModel], {
+        const gemini: ChildProcessWithoutNullStreams = spawn('gemini', ['-m', this.geminiModel], {
           env: {
             ...process.env,
             GEMINI_API_KEY: process.env.GEMINI_API_KEY

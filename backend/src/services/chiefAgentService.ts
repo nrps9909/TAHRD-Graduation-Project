@@ -1,7 +1,7 @@
 import { PrismaClient, AssistantType, ChatContextType, ContentType } from '@prisma/client'
 import { logger } from '../utils/logger'
 import axios from 'axios'
-import { spawn } from 'child_process'
+import { spawn, ChildProcessWithoutNullStreams } from 'child_process'
 import { assistantService } from './assistantService'
 import { memoryService } from './memoryService'
 import { subAgentService } from './subAgentService'
@@ -584,7 +584,7 @@ ${contextInfo}
 
           // 使用 spawn + stdin（正確方式）
           const result = await new Promise<string>((resolve, reject) => {
-            const gemini = spawn('gemini', ['-m', this.geminiModel], {
+            const gemini: ChildProcessWithoutNullStreams = spawn('gemini', ['-m', this.geminiModel], {
               env: {
                 ...process.env,
                 GEMINI_API_KEY: process.env.GEMINI_API_KEY

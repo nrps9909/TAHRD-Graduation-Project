@@ -5,7 +5,7 @@
 
 import { PrismaClient } from '@prisma/client'
 import { logger } from '../utils/logger'
-import { spawn } from 'child_process'
+import { spawn, ChildProcessWithoutNullStreams } from 'child_process'
 import * as fs from 'fs/promises'
 import * as path from 'path'
 
@@ -221,7 +221,7 @@ export class VectorService {
 
       // 使用 spawn 調用 Gemini CLI 的 embed 功能
       const result = await new Promise<string>((resolve, reject) => {
-        const gemini = spawn('gemini', ['embed', '-f', tempFile!, '-m', this.embeddingModel], {
+        const gemini: ChildProcessWithoutNullStreams = spawn('gemini', ['embed', '-f', tempFile!, '-m', this.embeddingModel], {
           env: {
             ...process.env,
             GEMINI_API_KEY: process.env.GEMINI_API_KEY

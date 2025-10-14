@@ -12,7 +12,7 @@
 import { PrismaClient, AssistantType, ContentType } from '@prisma/client'
 import { logger } from '../utils/logger'
 import axios from 'axios'
-import { spawn } from 'child_process'
+import { spawn, ChildProcessWithoutNullStreams } from 'child_process'
 import { assistantService } from './assistantService'
 import { multimodalProcessor } from './multimodalProcessor'
 import { dynamicSubAgentService, DynamicSubAgent } from './dynamicSubAgentService'
@@ -477,13 +477,12 @@ ${distribution.chiefSummary}
 
         // 使用 stdin 傳遞 prompt（根據 Gemini CLI 文檔的推薦方式）
         // 使用 child_process spawn 以避免 shell 轉義問題
-        return new Promise((resolve, reject) => {
-          const gemini = spawn('gemini', ['-m', this.geminiModel], {
+        return new Promise<string>((resolve, reject) => {
+          const gemini: ChildProcessWithoutNullStreams = spawn('gemini', ['-m', this.geminiModel], {
             env: {
               ...process.env,
               GEMINI_API_KEY: process.env.GEMINI_API_KEY
-            },
-            maxBuffer: 10 * 1024 * 1024
+            }
           })
 
           let stdout = ''

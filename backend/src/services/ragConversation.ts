@@ -6,7 +6,7 @@
 import { PrismaClient } from '@prisma/client'
 import { logger } from '../utils/logger'
 import { vectorService } from './vectorService'
-import { spawn } from 'child_process'
+import { spawn, ChildProcessWithoutNullStreams } from 'child_process'
 
 const prisma = new PrismaClient()
 
@@ -208,7 +208,7 @@ ${query}
     try {
       // 使用 spawn + stdin（正確方式）
       return await new Promise<string>((resolve, reject) => {
-        const gemini = spawn('gemini', ['-m', this.model], {
+        const gemini: ChildProcessWithoutNullStreams = spawn('gemini', ['-m', this.model], {
           env: {
             ...process.env,
             GEMINI_API_KEY: process.env.GEMINI_API_KEY
