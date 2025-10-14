@@ -5,10 +5,7 @@
  */
 
 import { logger } from '../utils/logger'
-import { exec } from 'child_process'
-import { promisify } from 'util'
-
-const execAsync = promisify(exec)
+import { spawn } from 'child_process'
 
 export const tororoResolvers = {
   Mutation: {
@@ -53,45 +50,67 @@ async function callGeminiCLI(prompt: string): Promise<string> {
     try {
       logger.info(`[Tororo] 調用 Gemini CLI (嘗試 ${attempt + 1}/${maxRetries})`)
 
-      // 轉義 prompt 中的特殊字符
-      const escapedPrompt = prompt
-        .replace(/\\/g, '\\\\')
-        .replace(/"/g, '\\"')
-        .replace(/\$/g, '\\$')
-        .replace(/`/g, '\\`')
+      // 使用 spawn + stdin（正確方式）
+      const result = await new Promise<string>((resolve, reject) => {
+        const gemini = spawn('gemini', ['-m', model], {
+          env: {
+            ...process.env,
+            GEMINI_API_KEY: process.env.GEMINI_API_KEY
+          }
+        })
 
-      // 使用 Gemini CLI
-      const command = `gemini -m ${model} -p "${escapedPrompt}"`
-      const { stdout, stderr } = await execAsync(command, {
-        maxBuffer: 10 * 1024 * 1024, // 10MB buffer
-        timeout: 60000, // 60 秒超時
-        env: {
-          ...process.env,
-          GEMINI_API_KEY: process.env.GEMINI_API_KEY
-        }
+        let stdout = ''
+        let stderr = ''
+        let timeoutId: NodeJS.Timeout
+
+        gemini.stdout.on('data', (data: Buffer) => {
+          stdout += data.toString()
+        })
+
+        gemini.stderr.on('data', (data: Buffer) => {
+          stderr += data.toString()
+        })
+
+        gemini.on('close', (code: number) => {
+          clearTimeout(timeoutId)
+          if (code === 0) {
+            const response = stdout.trim()
+            if (!response) {
+              reject(new Error('Empty response from Gemini CLI'))
+              return
+            }
+            logger.info(`[Tororo] Gemini CLI 回應成功 (${response.length} chars)`)
+            resolve(response)
+          } else {
+            if (stderr) {
+              logger.warn('[Tororo] Gemini CLI stderr:', stderr)
+              // 檢查是否為速率限制錯誤
+              if (stderr.includes('429') || stderr.includes('quota') || stderr.includes('rate limit')) {
+                reject(new Error('RATE_LIMIT'))
+                return
+              }
+            }
+            reject(new Error(`Gemini CLI exited with code ${code}: ${stderr}`))
+          }
+        })
+
+        gemini.on('error', (err: Error) => {
+          clearTimeout(timeoutId)
+          reject(err)
+        })
+
+        // 設置超時（60秒）
+        timeoutId = setTimeout(() => {
+          gemini.kill()
+          reject(new Error('Gemini CLI timeout'))
+        }, 60000)
+
+        // 將 prompt 寫入 stdin
+        gemini.stdin.write(prompt)
+        gemini.stdin.end()
       })
 
-      if (stderr) {
-        logger.warn('[Tororo] Gemini CLI stderr:', stderr)
-
-        // 檢查是否為速率限制錯誤
-        if (stderr.includes('429') || stderr.includes('quota') || stderr.includes('rate limit')) {
-          throw new Error('RATE_LIMIT')
-        }
-
-        // 如果是其他錯誤但有輸出，仍然嘗試使用
-        if (!stdout) {
-          throw new Error(stderr)
-        }
-      }
-
-      const response = stdout.trim()
-      if (!response) {
-        throw new Error('Empty response from Gemini CLI')
-      }
-
-      logger.info(`[Tororo] Gemini CLI 回應成功 (${response.length} chars)`)
-      return response
+      return result
 
     } catch (error: any) {
       const isRateLimitError =

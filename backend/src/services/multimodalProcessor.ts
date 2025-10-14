@@ -10,10 +10,7 @@
 
 import axios from 'axios'
 import { logger } from '../utils/logger'
-import { exec } from 'child_process'
-import { promisify } from 'util'
-
-const execAsync = promisify(exec)
+import { spawn } from 'child_process'
 
 export interface ImageAnalysis {
   description: string
@@ -282,32 +279,56 @@ ${context ? `\n用户备注: ${context}` : ''}
    */
   private async callGeminiCLI(prompt: string): Promise<string> {
     try {
-      // 转义特殊字符
-      const escapedPrompt = prompt
-        .replace(/\\/g, '\\\\')
-        .replace(/"/g, '\\"')
-        .replace(/\$/g, '\\$')
-        .replace(/`/g, '\\`')
+      // 使用 spawn + stdin（正確方式）
+      return await new Promise<string>((resolve, reject) => {
+        const gemini = spawn('gemini', ['-m', this.geminiModel], {
+          env: {
+            ...process.env,
+            GEMINI_API_KEY: process.env.GEMINI_API_KEY
+          }
+        })
 
-      const command = `gemini -m ${this.geminiModel} -p "${escapedPrompt}"`
+        let stdout = ''
+        let stderr = ''
+        let timeoutId: NodeJS.Timeout
 
-      const { stdout, stderr } = await execAsync(command, {
-        maxBuffer: 10 * 1024 * 1024, // 10MB
-        timeout: 60000, // 60秒超时
-        env: {
-          ...process.env,
-          GEMINI_API_KEY: process.env.GEMINI_API_KEY
-        }
+        gemini.stdout.on('data', (data: Buffer) => {
+          stdout += data.toString()
+        })
+
+        gemini.stderr.on('data', (data: Buffer) => {
+          stderr += data.toString()
+        })
+
+        gemini.on('close', (code: number) => {
+          clearTimeout(timeoutId)
+          if (code === 0) {
+            const response = stdout.trim()
+            logger.debug(`[MultimodalProcessor] Gemini response: ${response.substring(0, 200)}...`)
+            resolve(response)
+          } else {
+            if (stderr && stderr.includes('Error')) {
+              logger.warn('[MultimodalProcessor] Gemini CLI stderr:', stderr)
+            }
+            reject(new Error(`Gemini CLI exited with code ${code}: ${stderr}`))
+          }
+        })
+
+        gemini.on('error', (err: Error) => {
+          clearTimeout(timeoutId)
+          reject(err)
+        })
+
+        // 設置超時（60秒）
+        timeoutId = setTimeout(() => {
+          gemini.kill()
+          reject(new Error('Gemini CLI timeout'))
+        }, 60000)
+
+        // 將 prompt 寫入 stdin
+        gemini.stdin.write(prompt)
+        gemini.stdin.end()
       })
-
-      if (stderr && stderr.includes('Error')) {
-        logger.warn('[MultimodalProcessor] Gemini CLI stderr:', stderr)
-      }
-
-      const response = stdout.trim()
-      logger.debug(`[MultimodalProcessor] Gemini response: ${response.substring(0, 200)}...`)
-
-      return response
     } catch (error: any) {
       logger.error('[MultimodalProcessor] Gemini CLI 调用失败:', error.message)
       throw new Error('Gemini CLI 调用失败')

@@ -5,12 +5,10 @@
 
 import { PrismaClient } from '@prisma/client'
 import { logger } from '../utils/logger'
-import { exec } from 'child_process'
-import { promisify } from 'util'
+import { spawn } from 'child_process'
 import * as fs from 'fs/promises'
 import * as path from 'path'
 
-const execAsync = promisify(exec)
 const prisma = new PrismaClient()
 
 interface EmbeddingResult {
@@ -213,35 +211,68 @@ export class VectorService {
    * 使用 Gemini CLI 生成向量
    */
   private async callGeminiCLIEmbed(text: string): Promise<EmbeddingResult> {
+    let tempFile: string | null = null
     try {
       // 創建臨時文件
       const tempDir = '/tmp/embeddings'
       await fs.mkdir(tempDir, { recursive: true })
-      const tempFile = path.join(tempDir, `embed_${Date.now()}.txt`)
+      tempFile = path.join(tempDir, `embed_${Date.now()}.txt`)
       await fs.writeFile(tempFile, text)
 
-      // 調用 Gemini CLI 的 embed 功能
-      const command = `gemini embed -f "${tempFile}" -m ${this.embeddingModel}`
+      // 使用 spawn 調用 Gemini CLI 的 embed 功能
+      const result = await new Promise<string>((resolve, reject) => {
+        const gemini = spawn('gemini', ['embed', '-f', tempFile!, '-m', this.embeddingModel], {
+          env: {
+            ...process.env,
+            GEMINI_API_KEY: process.env.GEMINI_API_KEY
+          }
+        })
 
-      const { stdout, stderr } = await execAsync(command, {
-        maxBuffer: 50 * 1024 * 1024, // 50MB
-        timeout: 30000,
-        env: {
-          ...process.env,
-          GEMINI_API_KEY: process.env.GEMINI_API_KEY,
-        },
+        let stdout = ''
+        let stderr = ''
+        let timeoutId: NodeJS.Timeout
+
+        gemini.stdout.on('data', (data: Buffer) => {
+          stdout += data.toString()
+        })
+
+        gemini.stderr.on('data', (data: Buffer) => {
+          stderr += data.toString()
+        })
+
+        gemini.on('close', (code: number) => {
+          clearTimeout(timeoutId)
+          if (code === 0) {
+            resolve(stdout.trim())
+          } else {
+            if (stderr && stderr.includes('Error')) {
+              reject(new Error(stderr))
+            } else {
+              reject(new Error(`Gemini embed exited with code ${code}`))
+            }
+          }
+        })
+
+        gemini.on('error', (err: Error) => {
+          clearTimeout(timeoutId)
+          reject(err)
+        })
+
+        // 設置超時（30秒）
+        timeoutId = setTimeout(() => {
+          gemini.kill()
+          reject(new Error('Gemini embed timeout'))
+        }, 30000)
       })
 
-      if (stderr && stderr.includes('Error')) {
-        throw new Error(stderr)
-      }
-
       // 解析輸出 (Gemini CLI 返回 JSON 格式的向量)
-      const parsed = JSON.parse(stdout.trim())
+      const parsed = JSON.parse(result)
       const embedding = parsed.embedding || parsed.values || parsed
 
       // 清理臨時文件
-      await fs.unlink(tempFile).catch(() => {})
+      if (tempFile) {
+        await fs.unlink(tempFile).catch(() => {})
+      }
 
       return {
         embedding: Array.isArray(embedding) ? embedding : Object.values(embedding),
@@ -249,6 +280,10 @@ export class VectorService {
         dimension: this.dimension,
       }
     } catch (error: any) {
+      // 清理臨時文件
+      if (tempFile) {
+        await fs.unlink(tempFile).catch(() => {})
+      }
       logger.error('[Vector] Gemini CLI embed error:', error.message)
       throw new Error(`向量化失敗: ${error.message}`)
     }

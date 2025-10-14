@@ -1,8 +1,7 @@
 import { PrismaClient, AssistantType, ChatContextType, ContentType } from '@prisma/client'
 import { logger } from '../utils/logger'
 import axios from 'axios'
-import { exec } from 'child_process'
-import { promisify } from 'util'
+import { spawn } from 'child_process'
 import { assistantService } from './assistantService'
 import { memoryService } from './memoryService'
 import { subAgentService } from './subAgentService'
@@ -10,8 +9,6 @@ import { multimodalProcessor } from './multimodalProcessor'
 import { chatSessionService } from './chatSessionService'
 import { taskQueueService, TaskPriority } from './taskQueueService'
 import { dynamicSubAgentService } from './dynamicSubAgentService'
-
-const execAsync = promisify(exec)
 
 const prisma = new PrismaClient()
 
@@ -585,45 +582,67 @@ ${contextInfo}
         try {
           logger.info(`[Chief Agent] Calling Gemini CLI (attempt ${retries + 1}/${maxRetries})`)
 
-          // 转义 prompt 中的特殊字符
-          const escapedPrompt = prompt
-            .replace(/\\/g, '\\\\')
-            .replace(/"/g, '\\"')
-            .replace(/\$/g, '\\$')
-            .replace(/`/g, '\\`')
+          // 使用 spawn + stdin（正確方式）
+          const result = await new Promise<string>((resolve, reject) => {
+            const gemini = spawn('gemini', ['-m', this.geminiModel], {
+              env: {
+                ...process.env,
+                GEMINI_API_KEY: process.env.GEMINI_API_KEY
+              }
+            })
 
-          // 使用 Gemini CLI 调用，優化：大幅縮短超時時間
-          const command = `gemini -m ${this.geminiModel} -p "${escapedPrompt}"`
-          const { stdout, stderr } = await execAsync(command, {
-            maxBuffer: 10 * 1024 * 1024, // 10MB buffer
-            timeout: 10000, // 優化：從 30 秒縮短到 10 秒（快速失敗）
-            env: {
-              ...process.env,
-              GEMINI_API_KEY: process.env.GEMINI_API_KEY
-            }
+            let stdout = ''
+            let stderr = ''
+            let timeoutId: NodeJS.Timeout
+
+            gemini.stdout.on('data', (data: Buffer) => {
+              stdout += data.toString()
+            })
+
+            gemini.stderr.on('data', (data: Buffer) => {
+              stderr += data.toString()
+            })
+
+            gemini.on('close', (code: number) => {
+              clearTimeout(timeoutId)
+              if (code === 0) {
+                const response = stdout.trim()
+                if (!response) {
+                  reject(new Error('Empty response from Gemini CLI'))
+                  return
+                }
+                logger.info(`[Chief Agent] Gemini CLI response received (${response.length} chars)`)
+                resolve(response)
+              } else {
+                if (stderr) {
+                  logger.error('[Chief Agent] Gemini CLI stderr:', stderr)
+                  // 檢查是否為速率限制錯誤
+                  if (stderr.includes('429') || stderr.includes('quota') || stderr.includes('rate limit')) {
+                    reject(new Error('RATE_LIMIT'))
+                    return
+                  }
+                }
+                reject(new Error(`Gemini CLI exited with code ${code}: ${stderr}`))
+              }
+            })
+
+            gemini.on('error', (err: Error) => {
+              clearTimeout(timeoutId)
+              reject(err)
+            })
+
+            // 設置超時（Chief Agent 使用 10 秒）
+            timeoutId = setTimeout(() => {
+              gemini.kill()
+              reject(new Error('Gemini CLI timeout'))
+            }, 10000)
+
+            // 將 prompt 寫入 stdin
+            gemini.stdin.write(prompt)
+            gemini.stdin.end()
           })
 
-          if (stderr) {
-            logger.warn('[Chief Agent] Gemini CLI stderr:', stderr)
-
-            // 檢查是否為速率限制錯誤
-            if (stderr.includes('429') || stderr.includes('quota') || stderr.includes('rate limit')) {
-              throw new Error('RATE_LIMIT')
-            }
-
-            // 如果是其他錯誤但有輸出，仍然嘗試使用
-            if (!stdout) {
-              throw new Error(stderr)
-            }
-          }
-
-          const response = stdout.trim()
-          if (!response) {
-            throw new Error('Empty response from Gemini CLI')
-          }
-
-          logger.info(`[Chief Agent] Gemini CLI response received (${response.length} chars)`)
-          return response
+          return result
 
         } catch (error: any) {
           retries++

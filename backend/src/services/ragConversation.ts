@@ -6,10 +6,8 @@
 import { PrismaClient } from '@prisma/client'
 import { logger } from '../utils/logger'
 import { vectorService } from './vectorService'
-import { exec } from 'child_process'
-import { promisify } from 'util'
+import { spawn } from 'child_process'
 
-const execAsync = promisify(exec)
 const prisma = new PrismaClient()
 
 interface RAGChatInput {
@@ -208,32 +206,56 @@ ${query}
    */
   private async callGemini(prompt: string): Promise<string> {
     try {
-      // 轉義特殊字符
-      const escapedPrompt = prompt
-        .replace(/\\/g, '\\\\')
-        .replace(/"/g, '\\"')
-        .replace(/\$/g, '\\$')
-        .replace(/`/g, '\\`')
+      // 使用 spawn + stdin（正確方式）
+      return await new Promise<string>((resolve, reject) => {
+        const gemini = spawn('gemini', ['-m', this.model], {
+          env: {
+            ...process.env,
+            GEMINI_API_KEY: process.env.GEMINI_API_KEY
+          }
+        })
 
-      const command = `gemini -m ${this.model} -p "${escapedPrompt}"`
+        let stdout = ''
+        let stderr = ''
+        let timeoutId: NodeJS.Timeout
 
-      const { stdout, stderr } = await execAsync(command, {
-        maxBuffer: 10 * 1024 * 1024,
-        timeout: 30000,
-        env: {
-          ...process.env,
-          GEMINI_API_KEY: process.env.GEMINI_API_KEY,
-        },
+        gemini.stdout.on('data', (data: Buffer) => {
+          stdout += data.toString()
+        })
+
+        gemini.stderr.on('data', (data: Buffer) => {
+          stderr += data.toString()
+        })
+
+        gemini.on('close', (code: number) => {
+          clearTimeout(timeoutId)
+          if (code === 0) {
+            const response = stdout.trim()
+            logger.info(`[RAG] Gemini response generated (${response.length} chars)`)
+            resolve(response)
+          } else {
+            if (stderr && stderr.includes('Error')) {
+              logger.error('[RAG] Gemini error:', stderr)
+            }
+            reject(new Error(`Gemini CLI exited with code ${code}: ${stderr}`))
+          }
+        })
+
+        gemini.on('error', (err: Error) => {
+          clearTimeout(timeoutId)
+          reject(err)
+        })
+
+        // 設置超時（30秒）
+        timeoutId = setTimeout(() => {
+          gemini.kill()
+          reject(new Error('Gemini CLI timeout'))
+        }, 30000)
+
+        // 將 prompt 寫入 stdin
+        gemini.stdin.write(prompt)
+        gemini.stdin.end()
       })
-
-      if (stderr && stderr.includes('Error')) {
-        logger.error('[RAG] Gemini error:', stderr)
-      }
-
-      const response = stdout.trim()
-      logger.info(`[RAG] Gemini response generated (${response.length} chars)`)
-
-      return response
     } catch (error: any) {
       logger.error('[RAG] Gemini call failed:', error.message)
       throw new Error('生成回答失敗')
