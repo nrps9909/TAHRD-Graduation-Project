@@ -49,7 +49,7 @@ interface DistributionInput {
 export class SubAgentService {
   private mcpUrl: string
   private useGeminiCLI: boolean = true
-  private geminiModel: string = 'gemini-2.0-flash-exp' // 使用 Gemini 2.0 Flash Experimental
+  private geminiModel: string = 'gemini-2.5-flash' // 使用 Gemini 2.5 Flash 進行深度分析
 
   constructor() {
     this.mcpUrl = process.env.MCP_SERVICE_URL || 'http://localhost:8765'
@@ -463,30 +463,65 @@ ${distribution.chiefSummary}
     // 優先使用 Gemini CLI Pro（深度分析）
     if (this.useGeminiCLI) {
       try {
-        logger.info(`[Sub-Agent] Calling Gemini CLI Pro for deep analysis`)
+        logger.info(`[Sub-Agent] Calling Gemini CLI for deep analysis`)
 
-        // 使用 stdin 傳遞 prompt（更可靠，避免特殊字符問題）
-        // 使用 echo + pipe 方式傳遞完整的 prompt
-        const command = `echo ${JSON.stringify(prompt)} | gemini -m ${this.geminiModel}`
-        const { stdout, stderr } = await execAsync(command, {
-          maxBuffer: 10 * 1024 * 1024, // 10MB buffer
-          timeout: 90000, // 90 seconds timeout (Pro 需要更長時間)
-          env: {
-            ...process.env,
-            GEMINI_API_KEY: process.env.GEMINI_API_KEY
-          }
+        // 使用 stdin 傳遞 prompt（根據 Gemini CLI 文檔的推薦方式）
+        // 使用 child_process spawn 以避免 shell 轉義問題
+        const { spawn } = require('child_process')
+
+        return new Promise((resolve, reject) => {
+          const gemini = spawn('gemini', ['-m', this.geminiModel], {
+            env: {
+              ...process.env,
+              GEMINI_API_KEY: process.env.GEMINI_API_KEY
+            },
+            maxBuffer: 10 * 1024 * 1024
+          })
+
+          let stdout = ''
+          let stderr = ''
+          let timeoutId: NodeJS.Timeout
+
+          gemini.stdout.on('data', (data: Buffer) => {
+            stdout += data.toString()
+          })
+
+          gemini.stderr.on('data', (data: Buffer) => {
+            stderr += data.toString()
+          })
+
+          gemini.on('close', (code: number) => {
+            clearTimeout(timeoutId)
+            if (code === 0) {
+              const response = stdout.trim()
+              logger.info(`[Sub-Agent] Gemini CLI response received (${response.length} chars)`)
+              logger.info(`[Sub-Agent] Response preview: ${response.substring(0, 500)}...`)
+              resolve(response)
+            } else {
+              if (stderr && stderr.includes('Error')) {
+                logger.error('[Sub-Agent] Gemini CLI stderr:', stderr)
+              }
+              reject(new Error(`Gemini CLI exited with code ${code}: ${stderr}`))
+            }
+          })
+
+          gemini.on('error', (err: Error) => {
+            clearTimeout(timeoutId)
+            reject(err)
+          })
+
+          // 設置 90 秒超時
+          timeoutId = setTimeout(() => {
+            gemini.kill()
+            reject(new Error('Gemini CLI timeout after 90 seconds'))
+          }, 90000)
+
+          // 將 prompt 寫入 stdin
+          gemini.stdin.write(prompt)
+          gemini.stdin.end()
         })
-
-        if (stderr && stderr.includes('Error')) {
-          logger.error('[Sub-Agent] Gemini CLI Pro stderr:', stderr)
-        }
-
-        const response = stdout.trim()
-        logger.info(`[Sub-Agent] Gemini CLI Pro response received (${response.length} chars)`)
-        logger.info(`[Sub-Agent] Response preview: ${response.substring(0, 500)}...`)
-        return response
       } catch (error: any) {
-        logger.error('[Sub-Agent] Gemini CLI Pro error:', error.message)
+        logger.error('[Sub-Agent] Gemini CLI error:', error.message)
         logger.error('[Sub-Agent] Error details:', error)
         throw new Error('AI 深度分析服務暫時無法使用')
       }
