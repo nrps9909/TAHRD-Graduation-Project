@@ -585,6 +585,12 @@ ${distribution.chiefSummary}
         confidence: 0.1,
         suggestedTags: [],
         keyInsights: [],
+        // 深度分析欄位也需要在 fallback 中定義
+        detailedSummary: undefined,
+        suggestedTitle: undefined,
+        sentiment: undefined,
+        importanceScore: undefined,
+        actionableAdvice: undefined,
       }
     }
   }
