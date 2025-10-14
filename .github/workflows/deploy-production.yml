@@ -196,11 +196,37 @@ jobs:
 
             # 4. 重新創建容器
             echo "🔄 重新創建容器..."
-            docker compose -f docker-compose.production-prebuilt.yml up -d --force-recreate
+            if ! docker compose -f docker-compose.production-prebuilt.yml up -d --force-recreate; then
+              echo "❌ 容器啟動失敗！"
+              echo "📋 查看容器狀態："
+              docker compose -f docker-compose.production-prebuilt.yml ps -a
+              echo ""
+              echo "📋 後端日誌："
+              docker compose -f docker-compose.production-prebuilt.yml logs --tail=100 backend
+              exit 1
+            fi
 
-            # 5. 等待服務啟動
+            # 5. 等待服務啟動並監控容器狀態
             echo "⏳ 等待服務啟動..."
-            sleep 20
+            sleep 10
+
+            # 檢查容器是否還在運行
+            echo "🔍 檢查容器狀態..."
+            BACKEND_STATUS=$(docker inspect -f '{{.State.Status}}' heart-whisper-backend 2>/dev/null || echo "not_found")
+            if [ "$BACKEND_STATUS" != "running" ]; then
+              echo "❌ 後端容器未運行！狀態: $BACKEND_STATUS"
+              echo "📋 容器詳細信息："
+              docker inspect heart-whisper-backend 2>/dev/null || echo "無法獲取容器信息"
+              echo ""
+              echo "📋 後端日誌："
+              docker compose -f docker-compose.production-prebuilt.yml logs --tail=100 backend
+              echo ""
+              echo "📋 系統資源使用情況："
+              free -h
+              docker stats --no-stream
+              exit 1
+            fi
+            echo "✅ 後端容器正在運行"
 
             # 6. 健康檢查
             echo "🏥 執行健康檢查..."
@@ -212,6 +238,15 @@ jobs:
             while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
               RETRY_COUNT=$((RETRY_COUNT + 1))
               echo "嘗試 $RETRY_COUNT/$MAX_RETRIES..."
+
+              # 再次檢查容器是否還在運行
+              BACKEND_STATUS=$(docker inspect -f '{{.State.Status}}' heart-whisper-backend 2>/dev/null || echo "not_found")
+              if [ "$BACKEND_STATUS" != "running" ]; then
+                echo "❌ 後端容器在健康檢查期間停止了！"
+                echo "📋 後端日誌："
+                docker compose -f docker-compose.production-prebuilt.yml logs --tail=100 backend
+                exit 1
+              fi
 
               # 檢查後端健康
               if curl -f -s http://localhost/health > /dev/null; then
@@ -227,7 +262,10 @@ jobs:
             if [ "$BACKEND_HEALTHY" = false ]; then
               echo "❌ 後端健康檢查失敗！"
               echo "📋 後端日誌："
-              docker compose -f docker-compose.production-prebuilt.yml logs --tail=50 backend
+              docker compose -f docker-compose.production-prebuilt.yml logs --tail=100 backend
+              echo ""
+              echo "📋 Nginx 日誌："
+              docker compose -f docker-compose.production-prebuilt.yml logs --tail=50 nginx
               exit 1
             fi
 
