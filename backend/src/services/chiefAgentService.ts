@@ -703,6 +703,7 @@ ${contextInfo}
   /**
    * 白噗噗快速分類（輕量級 - 使用 Gemini 2.5 Flash）
    * 只做：1. 快速分類 2. 溫暖回應 3. 簡單摘要 4. 判斷是否值得記錄
+   * 新增：5. 提取連結元數據（標題、描述）- 幫助 SubAgent 更好地評估
    */
   async quickClassifyForTororo(
     userId: string,
@@ -714,6 +715,8 @@ ${contextInfo}
     quickSummary: string  // 一句話摘要
     shouldRecord: boolean // 是否值得記錄到知識庫
     recordReason?: string // 不記錄的原因（如果有）
+    enrichedContent?: string // 豐富化的內容（包含連結元數據）
+    linkMetadata?: Array<{ url: string, title: string, description: string }> // 連結元數據
   }> {
     try {
       // 優化：檢查緩存（相同內容直接返回）
@@ -732,12 +735,89 @@ ${contextInfo}
 
       logger.info(`[白噗噗] 開始快速分類`)
 
-      // 構建極簡快速分類 Prompt（優化：強化無意義內容判斷）
+      // === 新增：快速提取連結標題（輕量級）===
+      let enrichedContent = input.content
+      const linkMetadata: Array<{ url: string, title: string, description: string }> = []
+
+      // 檢測連結並快速提取標題
+      if (input.links && input.links.length > 0) {
+        logger.info(`[白噗噗] 檢測到 ${input.links.length} 個連結，快速提取標題...`)
+
+        const metadataPromises = input.links.map(async (link) => {
+          try {
+            // 快速提取標題（不做詳細分析，由 SubAgent 處理）
+            const metadata = await this.quickExtractLinkTitle(link.url)
+            return {
+              url: link.url,
+              title: metadata.title || link.title || link.url,
+              description: metadata.description || '等待詳細分析...'
+            }
+          } catch (error) {
+            logger.warn(`[白噗噗] 連結標題提取失敗: ${link.url}`, error)
+            return {
+              url: link.url,
+              title: link.title || link.url,
+              description: '等待詳細分析...'
+            }
+          }
+        })
+
+        const extractedMetadata = await Promise.all(metadataPromises)
+        linkMetadata.push(...extractedMetadata)
+
+        // 豐富化內容：只添加標題（簡單）
+        if (linkMetadata.length > 0) {
+          enrichedContent += `\n\n📎 連結：\n`
+          linkMetadata.forEach((meta, idx) => {
+            enrichedContent += `${idx + 1}. ${meta.title}\n   🔗 ${meta.url}\n`
+          })
+          logger.info(`[白噗噗] 連結標題提取完成（${linkMetadata.length}個）`)
+        }
+      }
+
+      // 檢測文本中的 URL（即使沒有在 links 參數中）
+      const urlPattern = /(https?:\/\/[^\s]+)/gi
+      const urlsInText = input.content.match(urlPattern)
+
+      if (urlsInText && urlsInText.length > 0 && linkMetadata.length === 0) {
+        logger.info(`[白噗噗] 檢測到文本中的 ${urlsInText.length} 個 URL，快速提取標題...`)
+
+        const metadataPromises = urlsInText.map(async (url) => {
+          try {
+            const metadata = await this.quickExtractLinkTitle(url)
+            return {
+              url,
+              title: metadata.title || url,
+              description: '等待詳細分析...'
+            }
+          } catch (error) {
+            logger.warn(`[白噗噗] URL 標題提取失敗: ${url}`, error)
+            return {
+              url,
+              title: url,
+              description: '等待詳細分析...'
+            }
+          }
+        })
+
+        const extractedMetadata = await Promise.all(metadataPromises)
+        linkMetadata.push(...extractedMetadata)
+
+        // 豐富化內容
+        if (linkMetadata.length > 0) {
+          enrichedContent += `\n\n📎 連結：\n`
+          linkMetadata.forEach((meta, idx) => {
+            enrichedContent += `${idx + 1}. ${meta.title}\n   🔗 ${meta.url}\n`
+          })
+          logger.info(`[白噗噗] URL 標題提取完成（${linkMetadata.length}個）`)
+        }
+      }
+
+      // 構建極簡快速分類 Prompt（優化：使用豐富化內容）
       const prompt = `白噗噗☁️ 智能判斷助手
 
-📝 用戶輸入：${input.content}
+📝 用戶輸入：${enrichedContent}
 ${input.files && input.files.length > 0 ? `📎 附件：${input.files.length}個文件` : ''}
-${input.links && input.links.length > 0 ? `🔗 連結：${input.links.length}個` : ''}
 
 🧠 判斷規則：
 ❌ 不記錄（shouldRecord: false）：
@@ -790,7 +870,9 @@ LEARNING(學習) / INSPIRATION(靈感) / WORK(工作) / SOCIAL(社交) / LIFE(�
         warmResponse: result.warmResponse || '收到了～ ☁️',
         quickSummary: result.quickSummary || input.content.substring(0, 30),
         shouldRecord: result.shouldRecord !== false, // 預設為 true，除非明確為 false
-        recordReason: result.recordReason
+        recordReason: result.recordReason,
+        enrichedContent: linkMetadata.length > 0 ? enrichedContent : undefined, // 只在有連結時返回
+        linkMetadata: linkMetadata.length > 0 ? linkMetadata : undefined // 只在有連結時返回
       }
 
       // 優化：保存到緩存
@@ -1063,19 +1145,27 @@ ${input.content}
           const targetSubAgent = relevantSubAgents[0]
           logger.info(`[Chief Agent] 選擇 SubAgent: ${targetSubAgent.nameChinese} (${targetSubAgent.id})`)
 
+          // 優化：如果有豐富化內容，使用豐富化內容
+          const contentForDistribution = quickResult.enrichedContent || input.content
+
+          // 優化：將連結元數據添加到 linkTitles
+          const enrichedLinkTitles = quickResult.linkMetadata
+            ? quickResult.linkMetadata.map(meta => meta.title)
+            : (input.links?.map(l => l.title || l.url) || [])
+
           // 創建知識分發記錄（使用 subcategoryId）
           // 優化：移除 include（不需要立即載入關聯，提升寫入速度）
           const distribution = await prisma.knowledgeDistribution.create({
             data: {
               userId,
-              rawContent: input.content,
+              rawContent: contentForDistribution, // 使用豐富化內容
               contentType,
               fileUrls: input.files?.map(f => f.url) || [],
               fileNames: input.files?.map(f => f.name) || [],
               fileTypes: input.files?.map(f => f.type) || [],
               links: input.links?.map(l => l.url) || [],
-              linkTitles: input.links?.map(l => l.title || l.url) || [],
-              chiefAnalysis: `白噗噗快速分類 → 動態 SubAgent: ${targetSubAgent.nameChinese}`,
+              linkTitles: enrichedLinkTitles, // 使用提取的標題
+              chiefAnalysis: `白噗噗快速分類 → 動態 SubAgent: ${targetSubAgent.nameChinese}${quickResult.linkMetadata ? `\n已提取 ${quickResult.linkMetadata.length} 個連結元數據` : ''}`,
               chiefSummary: quickResult.quickSummary,
               identifiedTopics: [targetSubAgent.nameChinese],
               suggestedTags: targetSubAgent.keywords,
@@ -1136,18 +1226,26 @@ ${input.content}
       }
 
       // 4. 創建知識分發記錄（簡化版 - 只記錄基本資訊）
+      // 優化：如果有豐富化內容，使用豐富化內容替代原始內容
+      const contentForDistribution = quickResult.enrichedContent || input.content
+
+      // 優化：將連結元數據添加到 linkTitles
+      const enrichedLinkTitles = quickResult.linkMetadata
+        ? quickResult.linkMetadata.map(meta => meta.title)
+        : (input.links?.map(l => l.title || l.url) || [])
+
       // 優化：移除 include（不需要立即載入關聯，提升寫入速度）
       const distribution = await prisma.knowledgeDistribution.create({
         data: {
           userId,
-          rawContent: input.content,
+          rawContent: contentForDistribution, // 使用豐富化內容
           contentType,
           fileUrls: input.files?.map(f => f.url) || [],
           fileNames: input.files?.map(f => f.name) || [],
           fileTypes: input.files?.map(f => f.type) || [],
           links: input.links?.map(l => l.url) || [],
-          linkTitles: input.links?.map(l => l.title || l.url) || [],
-          chiefAnalysis: `白噗噗快速分類: ${quickResult.category}`, // 簡單記錄
+          linkTitles: enrichedLinkTitles, // 使用提取的標題
+          chiefAnalysis: `白噗噗快速分類: ${quickResult.category}${quickResult.linkMetadata ? `\n已提取 ${quickResult.linkMetadata.length} 個連結元數據` : ''}`, // 簡單記錄
           chiefSummary: quickResult.quickSummary,
           identifiedTopics: [quickResult.category],
           suggestedTags: [],
@@ -1285,6 +1383,42 @@ ${input.content}
    */
   private isValidAssistantType(type: string): boolean {
     return Object.values(AssistantType).includes(type as AssistantType)
+  }
+
+  /**
+   * 快速提取連結標題（輕量級 - 不做詳細分析）
+   * 只用於 Chief Agent 階段，讓 SubAgent 做深度分析
+   */
+  private async quickExtractLinkTitle(url: string): Promise<{ title: string, description?: string }> {
+    try {
+      // 檢查是否為 YouTube 連結
+      if (url.includes('youtube.com') || url.includes('youtu.be')) {
+        // 使用 YouTube oEmbed API（無需 API Key，速度快）
+        const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`
+        const response = await axios.get(oembedUrl, { timeout: 5000 })
+        const title = response.data.title || url
+        const author = response.data.author_name || ''
+
+        logger.info(`[白噗噗] YouTube 標題提取成功: ${title}`)
+
+        return {
+          title,
+          description: author ? `作者: ${author}` : undefined
+        }
+      }
+
+      // 其他連結類型：返回 URL（由 SubAgent 詳細分析）
+      return {
+        title: url,
+        description: undefined
+      }
+    } catch (error) {
+      logger.warn(`[白噗噗] 快速提取連結標題失敗: ${url}`, error)
+      return {
+        title: url,
+        description: undefined
+      }
+    }
   }
 
   /**

@@ -91,7 +91,8 @@ export class SubAgentService {
       const shouldStore = this.shouldStoreKnowledge(
         relevanceScore,
         confidence,
-        parsed.shouldStore
+        parsed.shouldStore,
+        distributionInput // 傳入 distribution 用於檢查是否為資源連結
       )
 
       const evaluation: EvaluationResult = {
@@ -302,33 +303,48 @@ export class SubAgentService {
    * 構建評估提示詞
    */
   /**
-   * 構建深度評估 Prompt（使用 Gemini 2.5 Pro）
+   * 構建深度評估 Prompt（使用 Gemini 2.5 Flash + @url 直接分析）
    */
   private buildEvaluationPrompt(
     assistant: any,
     distribution: DistributionInput
   ): string {
+    // 檢查是否有連結，如果有，使用 @url 語法讓 Gemini 直接存取
+    let linkAnalysisSection = ''
+    if (distribution.links.length > 0) {
+      linkAnalysisSection = `\n**🔗 連結深度分析（請直接存取以下網址）:**\n`
+      distribution.links.forEach((link, i) => {
+        const title = distribution.linkTitles[i] || link
+        linkAnalysisSection += `${i + 1}. ${title}\n   @${link}\n   ↑ 請直接存取此網址，分析內容、提取關鍵資訊\n\n`
+      })
+    }
+
     return `${assistant.systemPrompt}
 
 你是 ${assistant.nameChinese} (${assistant.name})，一個專注於 ${assistant.type} 領域的知識管理專家。
 
 **你的任務：**
-作為 Gemini 2.5 Pro，你需要對以下知識進行深度分析和整理，決定是否存儲並生成完整的知識結構。
+作為 Gemini 2.5 Flash，你需要對以下知識進行深度分析和整理，決定是否存儲並生成完整的知識結構。
+
+**重要：如果內容包含連結，請使用 @url 語法直接存取網址內容進行分析！**
 
 **用戶的原始內容:**
 ${distribution.rawContent}
 
 ${distribution.fileUrls.length > 0 ? `\n**附加文件 (${distribution.fileUrls.length}個):**\n${distribution.fileNames.map((name, i) => `- ${name} (${distribution.fileTypes[i]})`).join('\n')}` : ''}
 
-${distribution.links.length > 0 ? `\n**相關連結 (${distribution.links.length}個):**\n${distribution.linkTitles.map((title, i) => `- ${title || distribution.links[i]}`).join('\n')}` : ''}
+${linkAnalysisSection}
 
 **白噗噗的初步分類:**
 ${distribution.chiefSummary}
 
 **你需要提供深度分析，包括：**
 1. **相關性評估** - 這個知識與 ${assistant.type} 領域的關聯程度
+   ${distribution.links.length > 0 ? '   ⚠️ 如果有連結，請直接存取網址內容進行評估（使用 @url）' : ''}
 2. **詳細摘要** - 用 2-3 句話總結核心內容和價值
+   ${distribution.links.length > 0 ? '   ⚠️ 對於連結內容，請基於實際存取的內容撰寫摘要' : ''}
 3. **關鍵洞察** - 提取 3-5 個重要的知識點或洞察
+   ${distribution.links.length > 0 ? '   ⚠️ 如果是影片/文章，請提取內容中的關鍵要點' : ''}
 4. **精準標籤** - 產生 3-5 個描述性標籤
 5. **標題建議** - 為這個記憶創建一個清晰的標題（10字以內）
 6. **情感分析** - 判斷內容的情感傾向
@@ -360,10 +376,18 @@ ${distribution.chiefSummary}
 - **中度相關 (0.4-0.7)**: 部分內容與領域相關，有參考價值
 - **低相關 (<0.4)**: 與領域關聯較弱，不建議存儲
 
+**🔗 特別注意 - 資源連結評估：**
+- 如果內容包含連結（URL、文章、影片等），**重點評估連結本身的價值**
+- 連結標題和描述是關鍵資訊，比純 URL 更重要
+- 用戶分享連結通常表示想要收藏和記錄，應給予較高評分
+- YouTube、文章、教學資源等應該被視為有價值的知識來源
+- 即使用戶只提供了 URL，如果連結內容有價值，也應該存儲
+
 **深度分析要求：**
 - 仔細理解用戶的真實意圖和需求
 - 識別隱含的知識價值和長期意義
 - 考慮這個知識在未來可能的應用場景
+- 對於資源連結，重點看連結內容的實用性和相關性
 - 提供有洞察力和可執行的建議
 `
   }
@@ -536,26 +560,41 @@ ${distribution.chiefSummary}
    * 1. 相關性評分 (relevanceScore)
    * 2. 置信度 (confidence)
    * 3. AI 的建議 (shouldStore)
+   * 4. 內容類型（資源連結有特殊處理）
    *
    * 決策規則：
    * - 高相關性 (>0.7) + 高置信度 (>0.7) → 一定儲存
    * - 中相關性 (0.4-0.7) → 參考 AI 建議
-   * - 低相關性 (<0.4) → 一定不儲存
+   * - 低相關性 (<0.4) → 一定不儲存（資源連結除外）
    * - 低置信度 (<0.5) → 更保守，需要更高的相關性
+   * - 資源連結：降低門檻到 0.3（用戶分享連結通常想要保存）
    */
   private shouldStoreKnowledge(
     relevanceScore: number,
     confidence: number,
-    aiSuggestion: boolean
+    aiSuggestion: boolean,
+    distribution?: any // 可選：用於檢查是否為資源連結
   ): boolean {
+    // 檢查是否為資源連結（有 links 或 linkTitles）
+    const isResourceLink = distribution && (
+      (Array.isArray(distribution.links) && distribution.links.length > 0) ||
+      (Array.isArray(distribution.linkTitles) && distribution.linkTitles.length > 0)
+    )
+
     // 規則 1: 高相關性且高置信度 → 強制儲存
     if (relevanceScore >= 0.7 && confidence >= 0.7) {
       logger.info(`[Storage Decision] 高相關性 (${relevanceScore.toFixed(2)}) + 高置信度 (${confidence.toFixed(2)}) → 儲存`)
       return true
     }
 
-    // 規則 2: 低相關性 → 強制不儲存
+    // 規則 2: 低相關性 → 檢查是否為資源連結
     if (relevanceScore < 0.4) {
+      // 🔗 特殊處理：資源連結降低門檻到 0.3
+      if (isResourceLink && relevanceScore >= 0.3) {
+        logger.info(`[Storage Decision] 資源連結特殊處理 - 相關性 (${relevanceScore.toFixed(2)}) ≥ 0.3 → 儲存`)
+        return true
+      }
+
       logger.info(`[Storage Decision] 低相關性 (${relevanceScore.toFixed(2)}) → 不儲存`)
       return false
     }
@@ -736,7 +775,8 @@ ${distribution.chiefSummary}
       const shouldStore = this.shouldStoreKnowledge(
         relevanceScore,
         confidence,
-        parsed.shouldStore
+        parsed.shouldStore,
+        distributionInput // 傳入 distribution 用於檢查是否為資源連結
       )
 
       const evaluation: EvaluationResult = {
@@ -761,12 +801,22 @@ ${distribution.chiefSummary}
   }
 
   /**
-   * 構建動態評估提示詞（使用 Subcategory 的 systemPrompt）
+   * 構建動態評估提示詞（使用 Subcategory 的 systemPrompt + @url）
    */
   private buildDynamicEvaluationPrompt(
     subAgent: DynamicSubAgent,
     distribution: DistributionInput
   ): string {
+    // 檢查是否有連結，如果有，使用 @url 語法讓 Gemini 直接存取
+    let linkAnalysisSection = ''
+    if (distribution.links.length > 0) {
+      linkAnalysisSection = `\n**🔗 連結深度分析（請直接存取以下網址）:**\n`
+      distribution.links.forEach((link, i) => {
+        const title = distribution.linkTitles[i] || link
+        linkAnalysisSection += `${i + 1}. ${title}\n   @${link}\n   ↑ 請直接存取此網址，分析內容、提取關鍵資訊\n\n`
+      })
+    }
+
     return `${subAgent.systemPrompt}
 
 你是 ${subAgent.nameChinese} (${subAgent.name})，專注於 ${subAgent.island?.nameChinese || '知識管理'} 領域。
@@ -781,22 +831,27 @@ ${subAgent.chatStyle}
 ${subAgent.keywords.join('、')}
 
 **你的任務：**
-作為 Gemini 2.5 Pro，你需要對以下知識進行深度分析和整理，決定是否存儲並生成完整的知識結構。
+作為 Gemini 2.5 Flash，你需要對以下知識進行深度分析和整理，決定是否存儲並生成完整的知識結構。
+
+**重要：如果內容包含連結，請使用 @url 語法直接存取網址內容進行分析！**
 
 **用戶的原始內容:**
 ${distribution.rawContent}
 
 ${distribution.fileUrls.length > 0 ? `\n**附加文件 (${distribution.fileUrls.length}個):**\n${distribution.fileNames.map((name, i) => `- ${name} (${distribution.fileTypes[i]})`).join('\n')}` : ''}
 
-${distribution.links.length > 0 ? `\n**相關連結 (${distribution.links.length}個):**\n${distribution.linkTitles.map((title, i) => `- ${title || distribution.links[i]}`).join('\n')}` : ''}
+${linkAnalysisSection}
 
 **白噗噗的初步分類:**
 ${distribution.chiefSummary}
 
 **你需要提供深度分析，包括：**
 1. **相關性評估** - 這個知識與你的專長領域的關聯程度
+   ${distribution.links.length > 0 ? '   ⚠️ 如果有連結，請直接存取網址內容進行評估（使用 @url）' : ''}
 2. **詳細摘要** - 用 2-3 句話總結核心內容和價值
+   ${distribution.links.length > 0 ? '   ⚠️ 對於連結內容，請基於實際存取的內容撰寫摘要' : ''}
 3. **關鍵洞察** - 提取 3-5 個重要的知識點或洞察
+   ${distribution.links.length > 0 ? '   ⚠️ 如果是影片/文章，請提取內容中的關鍵要點' : ''}
 4. **精準標籤** - 產生 3-5 個描述性標籤
 5. **標題建議** - 為這個記憶創建一個清晰的標題（10字以內）
 6. **情感分析** - 判斷內容的情感傾向
@@ -827,10 +882,18 @@ ${distribution.chiefSummary}
 - **中度相關 (0.4-0.7)**: 部分內容與領域相關，有參考價值
 - **低相關 (<0.4)**: 與領域關聯較弱，不建議存儲
 
+**🔗 特別注意 - 資源連結評估：**
+- 如果內容包含連結（URL、文章、影片等），**重點評估連結本身的價值**
+- 連結標題和描述是關鍵資訊，比純 URL 更重要
+- 用戶分享連結通常表示想要收藏和記錄，應給予較高評分
+- YouTube、文章、教學資源等應該被視為有價值的知識來源
+- 即使用戶只提供了 URL，如果連結內容有價值，也應該存儲
+
 **深度分析要求：**
 - 仔細理解用戶的真實意圖和需求
 - 識別隱含的知識價值和長期意義
 - 考慮這個知識在未來可能的應用場景
+- 對於資源連結，重點看連結內容的實用性和相關性
 - 根據你的個性和對話風格提供有洞察力和可執行的建議
 `
   }
