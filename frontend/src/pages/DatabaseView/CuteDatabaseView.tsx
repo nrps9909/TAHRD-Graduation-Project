@@ -935,18 +935,18 @@ function SimpleGalleryView({ memories, onTogglePin, onSelectMemory, onDelete }: 
               </div>
             )}
 
-            {/* 內容預覽區 - 響應式 */}
+            {/* 內容預覽區 - 響應式，優先顯示 AI 深度分析 */}
             <div className="flex-1 mb-2 sm:mb-3">
-              {memory.rawContent ? (
+              {((memory as any).detailedSummary || memory.rawContent) ? (
                 <div className="mb-2">
                   <div className="text-[10px] sm:text-xs font-bold mb-1" style={{ color: '#94a3b8' }}>
-                    📝 內容預覽
+                    {(memory as any).detailedSummary ? '💡 AI 深度分析' : '📝 內容預覽'}
                   </div>
                   <p className="text-[10px] sm:text-xs line-clamp-2 sm:line-clamp-3 font-medium leading-relaxed whitespace-pre-wrap" style={{
                     color: '#e2e8f0',
                     lineHeight: '1.5',
                   }}>
-                    {memory.rawContent}
+                    {(memory as any).detailedSummary || memory.rawContent}
                   </p>
                 </div>
               ) : (
