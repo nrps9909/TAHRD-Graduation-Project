@@ -196,10 +196,26 @@ export class SubAgentService {
 
       logger.info(`[Sub-Agents] 分發處理完成 - 決策數: ${agentDecisions.length}, 創建記憶數: ${memoriesCreated.length}`)
 
+      // 獲取記憶的分類信息（Assistant 名稱）
+      const categoriesInfo = await Promise.all(
+        memoriesCreated.map(async (memory) => {
+          if (memory.assistantId) {
+            const assistant = await assistantService.getAssistantById(memory.assistantId)
+            return {
+              memoryId: memory.id,
+              categoryName: assistant?.nameChinese || '未知分類',
+              categoryEmoji: assistant?.emoji || '📝'
+            }
+          }
+          return null
+        })
+      ).then(results => results.filter(r => r !== null))
+
       return {
         agentDecisions,
         memoriesCreated,
         storedByCount: storedByIds.length,
+        categoriesInfo, // 新增：記憶的分類信息
       }
     } catch (error) {
       logger.error('[Sub-Agents] 處理知識分發失敗:', error)
@@ -663,10 +679,27 @@ ${distribution.chiefSummary}
 
       logger.info(`[Dynamic Sub-Agents] 分發處理完成 - 決策數: ${agentDecisions.length}, 創建記憶數: ${memoriesCreated.length}`)
 
+      // 獲取記憶的分類信息（Subcategory 名稱）
+      const categoriesInfo = await Promise.all(
+        memoriesCreated.map(async (memory) => {
+          if (memory.subcategoryId) {
+            const subAgent = await dynamicSubAgentService.getSubAgentById(memory.subcategoryId)
+            return {
+              memoryId: memory.id,
+              categoryName: subAgent?.nameChinese || '未知分類',
+              categoryEmoji: subAgent?.emoji || '📝',
+              islandName: subAgent?.island?.nameChinese
+            }
+          }
+          return null
+        })
+      ).then(results => results.filter(r => r !== null))
+
       return {
         agentDecisions,
         memoriesCreated,
         storedByCount: storedByIds.length,
+        categoriesInfo, // 新增：記憶的分類信息
       }
     } catch (error) {
       logger.error('[Dynamic Sub-Agents] 處理知識分發失敗:', error)

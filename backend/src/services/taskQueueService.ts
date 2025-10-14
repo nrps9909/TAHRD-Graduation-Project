@@ -342,6 +342,7 @@ export class TaskQueueService extends EventEmitter {
         memoriesCreated: result.memoriesCreated.length,
         agentDecisions: result.agentDecisions.length
       },
+      categoriesInfo: result.categoriesInfo || [], // 新增：記憶的分類信息
       processingTime: task.processingTime
     })
 
@@ -384,6 +385,29 @@ export class TaskQueueService extends EventEmitter {
       clearInterval(this.intervalId)
       this.intervalId = undefined
       logger.info('[TaskQueue] Progress timer stopped')
+    }
+  }
+
+  /**
+   * 等待所有正在處理的任務完成
+   */
+  async waitForCompletion(timeout: number = 30000): Promise<void> {
+    const startTime = Date.now()
+    logger.info(`[TaskQueue] Waiting for ${this.processing.size} tasks to complete...`)
+
+    while (this.processing.size > 0) {
+      // 檢查是否超時
+      if (Date.now() - startTime > timeout) {
+        logger.warn(`[TaskQueue] Timeout waiting for tasks, ${this.processing.size} tasks still processing`)
+        break
+      }
+
+      // 等待 500ms 後再檢查
+      await new Promise(resolve => setTimeout(resolve, 500))
+    }
+
+    if (this.processing.size === 0) {
+      logger.info('[TaskQueue] All tasks completed successfully')
     }
   }
 

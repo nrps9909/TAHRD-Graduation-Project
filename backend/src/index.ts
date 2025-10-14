@@ -167,15 +167,39 @@ async function startServer() {
     const shutdown = async (signal: string) => {
       logger.info(`Received ${signal}, shutting down gracefully...`)
 
+      // 先停止接受新請求
       httpServer.close(async () => {
-        await server.stop()
-        await prisma.$disconnect()
-        redis.disconnect()
-        taskQueueService.cleanup() // 清理任務隊列
-        process.exit(0)
+        try {
+          // 等待所有正在處理的任務完成（最多等待 30 秒）
+          await taskQueueService.waitForCompletion(30000)
+
+          // 停止 Apollo Server
+          await server.stop()
+
+          // 清理任務隊列
+          taskQueueService.cleanup()
+
+          // 關閉資料庫連接
+          await prisma.$disconnect()
+
+          // 關閉 Redis 連接
+          redis.disconnect()
+
+          logger.info('Server shutdown completed')
+          process.exit(0)
+        } catch (error) {
+          logger.error('Error during shutdown:', error)
+          process.exit(1)
+        }
       })
+
+      // 設置強制退出的超時（35 秒）
+      setTimeout(() => {
+        logger.error('Forced shutdown after timeout')
+        process.exit(1)
+      }, 35000)
     }
-    
+
     process.on('SIGTERM', () => shutdown('SIGTERM'))
     process.on('SIGINT', () => shutdown('SIGINT'))
     

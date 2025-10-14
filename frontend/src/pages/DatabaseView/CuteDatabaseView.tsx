@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { useQuery, useMutation } from '@apollo/client'
+import { useNavigate } from 'react-router-dom'
 import { GET_MEMORIES, PIN_MEMORY, UNPIN_MEMORY, DELETE_MEMORY, CREATE_MEMORY_DIRECT } from '../../graphql/memory'
 import { Memory, MemoryCategory } from '../../types/memory'
 import SimpleMemoryEditor from '../../components/SimpleMemoryEditor'
@@ -16,6 +17,7 @@ type ViewMode = 'gallery' | 'list'
 type SortField = 'createdAt' | 'title'
 
 export default function CuteDatabaseView() {
+  const navigate = useNavigate()
   const [viewMode, setViewMode] = useState<ViewMode>('gallery')
   const [selectedCategory, setSelectedCategory] = useState<MemoryCategory | null>(null)
   const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<string | null>(null)
@@ -649,13 +651,14 @@ export default function CuteDatabaseView() {
 
               {/* 返回按鈕 - 響應式 */}
               <button
-                onClick={() => window.location.href = '/'}
+                onClick={() => navigate('/')}
                 className="px-2.5 sm:px-3 md:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl font-bold transition-all hover:scale-105 active:scale-95 text-xs sm:text-sm whitespace-nowrap flex-shrink-0"
                 style={{
                   background: 'rgba(30, 41, 59, 0.6)',
                   color: '#cbd5e1',
                   border: '2px solid rgba(251, 191, 36, 0.2)',
                 }}
+                title="返回島嶼總覽"
               >
                 <span className="sm:hidden">🏝️</span>
                 <span className="hidden sm:inline md:hidden">返回</span>
