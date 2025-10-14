@@ -49,7 +49,7 @@ interface DistributionInput {
 export class SubAgentService {
   private mcpUrl: string
   private useGeminiCLI: boolean = true
-  private geminiModel: string = 'gemini-2.5-flash' // 暫時使用 Flash (Pro 目前過載 503)
+  private geminiModel: string = 'gemini-2.0-flash-exp' // 使用 Gemini 2.0 Flash Experimental
 
   constructor() {
     this.mcpUrl = process.env.MCP_SERVICE_URL || 'http://localhost:8765'
