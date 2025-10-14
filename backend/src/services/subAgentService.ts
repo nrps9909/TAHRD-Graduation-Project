@@ -27,6 +27,12 @@ interface EvaluationResult {
   suggestedCategory?: AssistantType
   suggestedTags: string[]
   keyInsights: string[]
+  // SubAgent 深度分析結果（新增）
+  detailedSummary?: string    // 詳細摘要（2-3句話）
+  suggestedTitle?: string     // 建議的標題
+  sentiment?: string          // 情感分析（positive|neutral|negative）
+  importanceScore?: number    // 重要性評分（1-10）
+  actionableAdvice?: string   // 行動建議
 }
 
 interface DistributionInput {
@@ -103,6 +109,12 @@ export class SubAgentService {
           : assistant.type,
         suggestedTags: Array.isArray(parsed.suggestedTags) ? parsed.suggestedTags : [],
         keyInsights: Array.isArray(parsed.keyInsights) ? parsed.keyInsights : [],
+        // SubAgent 深度分析結果
+        detailedSummary: parsed.detailedSummary,
+        suggestedTitle: parsed.suggestedTitle,
+        sentiment: parsed.sentiment,
+        importanceScore: typeof parsed.importanceScore === 'number' ? parsed.importanceScore : undefined,
+        actionableAdvice: parsed.actionableAdvice,
       }
 
       logger.info(`[${assistant.name}] 評估完成 - 相關性: ${evaluation.relevanceScore.toFixed(2)}, 是否儲存: ${evaluation.shouldStore}`)
@@ -239,11 +251,11 @@ export class SubAgentService {
       }
 
       // 解析 Sub-Agent 的深度分析結果
-      const detailedSummary = (evaluation as any).detailedSummary || distribution.chiefSummary
-      const suggestedTitle = (evaluation as any).suggestedTitle || `${assistant.nameChinese}的記憶`
-      const sentiment = (evaluation as any).sentiment || 'neutral'
-      const importanceScore = (evaluation as any).importanceScore || Math.round(evaluation.relevanceScore * 10)
-      const actionableAdvice = (evaluation as any).actionableAdvice
+      const detailedSummary = evaluation.detailedSummary || distribution.chiefSummary
+      const suggestedTitle = evaluation.suggestedTitle || `${assistant.nameChinese}的記憶`
+      const sentiment = evaluation.sentiment || 'neutral'
+      const importanceScore = evaluation.importanceScore || Math.round(evaluation.relevanceScore * 10)
+      const actionableAdvice = evaluation.actionableAdvice
 
       // 創建完整的記憶記錄（包含 Sub-Agent 的深度分析）
       const memory = await prisma.memory.create({
@@ -818,6 +830,12 @@ ${distribution.chiefSummary}
         suggestedCategory: AssistantType.RESOURCES, // 動態 SubAgent 使用 RESOURCES 作為預設
         suggestedTags: Array.isArray(parsed.suggestedTags) ? parsed.suggestedTags : [],
         keyInsights: Array.isArray(parsed.keyInsights) ? parsed.keyInsights : [],
+        // SubAgent 深度分析結果
+        detailedSummary: parsed.detailedSummary,
+        suggestedTitle: parsed.suggestedTitle,
+        sentiment: parsed.sentiment,
+        importanceScore: typeof parsed.importanceScore === 'number' ? parsed.importanceScore : undefined,
+        actionableAdvice: parsed.actionableAdvice,
       }
 
       logger.info(`[${subAgent.nameChinese}] 評估完成 - 相關性: ${evaluation.relevanceScore.toFixed(2)}, 是否儲存: ${evaluation.shouldStore}`)
@@ -942,11 +960,11 @@ ${distribution.chiefSummary}
   ) {
     try {
       // 解析深度分析結果
-      const detailedSummary = (evaluation as any).detailedSummary || distribution.chiefSummary
-      const suggestedTitle = (evaluation as any).suggestedTitle || `${subAgent.nameChinese}的記憶`
-      const sentiment = (evaluation as any).sentiment || 'neutral'
-      const importanceScore = (evaluation as any).importanceScore || Math.round(evaluation.relevanceScore * 10)
-      const actionableAdvice = (evaluation as any).actionableAdvice
+      const detailedSummary = evaluation.detailedSummary || distribution.chiefSummary
+      const suggestedTitle = evaluation.suggestedTitle || `${subAgent.nameChinese}的記憶`
+      const sentiment = evaluation.sentiment || 'neutral'
+      const importanceScore = evaluation.importanceScore || Math.round(evaluation.relevanceScore * 10)
+      const actionableAdvice = evaluation.actionableAdvice
 
       // 創建完整的記憶記錄（使用 subcategoryId）
       const memory = await prisma.memory.create({
