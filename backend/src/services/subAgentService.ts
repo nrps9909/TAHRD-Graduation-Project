@@ -629,17 +629,35 @@ ${distribution.chiefSummary}
       (Array.isArray(distribution.linkTitles) && distribution.linkTitles.length > 0)
     )
 
+    // 檢查是否為社交對話/聊天記錄（包含對話格式或社交關鍵字）
+    const isSocialContent = distribution && (
+      distribution.rawContent.includes('You sent') ||
+      distribution.rawContent.includes('xhh.') ||
+      /\n.+\n.+\n.+/.test(distribution.rawContent) || // 多行對話格式
+      distribution.identifiedTopics?.some((topic: string) =>
+        topic.toLowerCase().includes('social') ||
+        topic.toLowerCase().includes('friend') ||
+        topic.toLowerCase().includes('chat')
+      )
+    )
+
     // 規則 1: 高相關性且高置信度 → 強制儲存
     if (relevanceScore >= 0.7 && confidence >= 0.7) {
       logger.info(`[Storage Decision] 高相關性 (${relevanceScore.toFixed(2)}) + 高置信度 (${confidence.toFixed(2)}) → 儲存`)
       return true
     }
 
-    // 規則 2: 低相關性 → 檢查是否為資源連結
+    // 規則 2: 低相關性 → 檢查是否為特殊內容類型
     if (relevanceScore < 0.4) {
       // 🔗 特殊處理：資源連結降低門檻到 0.3
       if (isResourceLink && relevanceScore >= 0.3) {
         logger.info(`[Storage Decision] 資源連結特殊處理 - 相關性 (${relevanceScore.toFixed(2)}) ≥ 0.3 → 儲存`)
+        return true
+      }
+
+      // 💬 特殊處理：社交對話/聊天記錄降低門檻到 0.25
+      if (isSocialContent && relevanceScore >= 0.25) {
+        logger.info(`[Storage Decision] 社交對話特殊處理 - 相關性 (${relevanceScore.toFixed(2)}) ≥ 0.25 → 儲存`)
         return true
       }
 
