@@ -77,12 +77,19 @@ export function ProcessingQueuePanel() {
     console.log('[Queue] 連接到 Socket.IO:', backendUrl, '用戶ID:', userId)
 
     const newSocket = io(backendUrl, {
+      // 優先 WebSocket，失敗時回退到 polling
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionAttempts: 10,
       reconnectionDelayMax: 5000,
-      timeout: 20000
+      timeout: 20000,
+      // 心跳檢測 - 每 25 秒發送 ping，30 秒無響應視為斷線
+      pingInterval: 25000,
+      pingTimeout: 30000,
+      // 連接升級配置
+      upgrade: true,
+      rememberUpgrade: true
     })
 
     newSocket.on('connect', () => {
@@ -97,6 +104,30 @@ export function ProcessingQueuePanel() {
 
     newSocket.on('disconnect', (reason) => {
       console.warn('[Queue] WebSocket 斷線:', reason)
+      // 如果是伺服器主動斷開或傳輸關閉，嘗試立即重連
+      if (reason === 'io server disconnect' || reason === 'transport close') {
+        console.log('[Queue] 嘗試立即重新連接...')
+        newSocket.connect()
+      }
+    })
+
+    newSocket.on('reconnect', (attemptNumber) => {
+      console.log(`[Queue] 重連成功 (第 ${attemptNumber} 次嘗試)`)
+      // 重連後重新加入房間和獲取狀態
+      newSocket.emit('join-room', { roomId: userId })
+      newSocket.emit('get-queue-stats')
+    })
+
+    newSocket.on('reconnect_attempt', (attemptNumber) => {
+      console.log(`[Queue] 嘗試重連... (第 ${attemptNumber} 次)`)
+    })
+
+    newSocket.on('reconnect_error', (error) => {
+      console.error('[Queue] 重連失敗:', error)
+    })
+
+    newSocket.on('reconnect_failed', () => {
+      console.error('[Queue] 重連失敗，已達最大重試次數')
     })
 
     // 監聽隊列統計
