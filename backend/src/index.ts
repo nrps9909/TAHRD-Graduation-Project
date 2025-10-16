@@ -53,7 +53,7 @@ async function startServer() {
             'http://localhost:5173', // Vite 預設端口
             process.env.FRONTEND_URL
           ].filter(Boolean)
-          
+
           // 開發環境允許任何 localhost
           if (process.env.NODE_ENV === 'development' && origin && origin.includes('localhost')) {
             callback(null, true)
@@ -66,7 +66,10 @@ async function startServer() {
         methods: ["GET", "POST"],
         credentials: true
       },
-      transports: ['websocket', 'polling']
+      transports: ['websocket', 'polling'],
+      // 心跳檢測配置 - 每 25 秒發送 ping，30 秒無響應視為斷線
+      pingInterval: 25000,
+      pingTimeout: 30000
     })
     
     // Socket.IO 事件處理

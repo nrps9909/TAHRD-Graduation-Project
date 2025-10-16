@@ -84,9 +84,6 @@ export function ProcessingQueuePanel() {
       reconnectionAttempts: 10,
       reconnectionDelayMax: 5000,
       timeout: 20000,
-      // 心跳檢測 - 每 25 秒發送 ping，30 秒無響應視為斷線
-      pingInterval: 25000,
-      pingTimeout: 30000,
       // 連接升級配置
       upgrade: true,
       rememberUpgrade: true
