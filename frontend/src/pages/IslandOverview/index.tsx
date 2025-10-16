@@ -9,6 +9,7 @@ import TororoKnowledgeAssistant from '../../components/TororoKnowledgeAssistant'
 import { MiniMap } from '../../components/MiniMap'
 import SettingsMenu from '../../components/SettingsMenu'
 import { IslandStatusCard } from '../../components/IslandStatusCard'
+import { QueueFloatingButton } from '../../components/QueueFloatingButton'
 import { useIslandStore } from '../../stores/islandStore'
 import { convertGraphQLIslandsToIslands } from '../../utils/islandDataConverter'
 import { Memory } from '../../types/memory'
@@ -196,6 +197,9 @@ export default function IslandOverview() {
       {!showLive2D && (
         <MiniMap onIslandClick={handleMiniMapIslandClick} />
       )}
+
+      {/* 隊列狀態按鈕 - 右下角 */}
+      {!showLive2D && <QueueFloatingButton />}
 
       {/* Live2D Cat Modal - 沉浸式全屏對話界面 */}
       {showLive2D && currentLive2DModel && (

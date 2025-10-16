@@ -12,6 +12,7 @@ import ConfirmDialog from '../../components/ConfirmDialog'
 import { useConfirm } from '../../hooks/useConfirm'
 import { CategoryManagementModal } from '../../components/CategoryManagementModal'
 import { GET_ISLANDS, Island } from '../../graphql/category'
+import { QueueFloatingButton } from '../../components/QueueFloatingButton'
 
 type ViewMode = 'gallery' | 'list'
 type SortField = 'createdAt' | 'title'
@@ -819,6 +820,9 @@ export default function CuteDatabaseView() {
           onCancel={confirmState.onCancel}
         />
       )}
+
+      {/* 隊列狀態按鈕 - 右下角 */}
+      <QueueFloatingButton />
     </div>
   )
 }
