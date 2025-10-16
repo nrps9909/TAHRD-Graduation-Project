@@ -70,8 +70,8 @@ export function ProcessingQueuePanel() {
     console.log('[Queue] 連接到 Socket.IO:', backendUrl, '用戶ID:', userId)
 
     const newSocket = io(backendUrl, {
-      // 優先 WebSocket，失敗時回退到 polling
-      transports: ['websocket', 'polling'],
+      // Cloudflare 免費版不支持 WebSocket，優先使用 polling，成功後會自動升級到 WebSocket
+      transports: ['polling', 'websocket'],
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,

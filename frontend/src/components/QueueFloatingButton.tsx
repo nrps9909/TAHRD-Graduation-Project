@@ -52,12 +52,14 @@ export function QueueFloatingButton() {
     const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000'
 
     const newSocket = io(backendUrl, {
-      transports: ['websocket', 'polling'],
+      // Cloudflare 免費版不支持 WebSocket，優先使用 polling，成功後會自動升級到 WebSocket
+      transports: ['polling', 'websocket'],
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
       reconnectionAttempts: Infinity, // 無限重試
       timeout: 20000,
+      upgrade: true, // 允許從 polling 升級到 websocket
     })
 
     newSocket.on('connect', () => {
