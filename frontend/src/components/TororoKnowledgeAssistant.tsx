@@ -414,10 +414,9 @@ export default function TororoKnowledgeAssistant({
 
     setUploadedCloudinaryFiles(prev => [...prev, ...newFiles])
 
-    // 逐個上傳檔案到 Cloudinary
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i]
-      const fileId = newFiles[i].id
+    // ⚡ 優化：並發上傳所有檔案
+    const uploadPromises = Array.from(files).map(async (file, index) => {
+      const fileId = newFiles[index].id
 
       try {
         const formData = new FormData()
@@ -455,6 +454,8 @@ export default function TororoKnowledgeAssistant({
               : f
           )
         )
+
+        return { success: true, fileId }
       } catch (error) {
         console.error('檔案上傳失敗:', error)
         // 標記為錯誤
@@ -465,8 +466,13 @@ export default function TororoKnowledgeAssistant({
               : f
           )
         )
+
+        return { success: false, fileId }
       }
-    }
+    })
+
+    // 等待所有上傳完成（Promise.allSettled 允許部分失敗）
+    await Promise.allSettled(uploadPromises)
 
     setIsUploading(false)
     generateAndDisplayResponse('upload_file', { fileCount: files.length })

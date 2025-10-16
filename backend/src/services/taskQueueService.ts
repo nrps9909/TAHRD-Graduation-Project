@@ -55,15 +55,25 @@ export interface QueueTask {
 export class TaskQueueService extends EventEmitter {
   private queue: QueueTask[] = []
   private processing: Map<string, QueueTask> = new Map()
-  private maxConcurrent: number = 6 // 優化：從 3 提升到 6（進一步提升多用戶並發處理能力）
+  private maxConcurrent: number = 6 // ⚡ 優化：動態並發控制（基準值）
+  private minConcurrent: number = 3 // 最小並發數
+  private maxConcurrentLimit: number = 10 // 最大並發數上限
   private io?: SocketIOServer
   private intervalId?: NodeJS.Timeout
+  private adjustmentIntervalId?: NodeJS.Timeout
+
+  // ⚡ 優化：動態並發控制 - 性能指標
+  private recentTaskTimes: number[] = [] // 最近完成任務的處理時間
+  private maxRecentTimes: number = 10 // 記錄最近 10 個任務的時間
 
   constructor() {
     super()
 
     // 啟動定期更新進度的定時器
     this.startProgressTimer()
+
+    // ⚡ 優化：啟動動態並發控制定時器（每 30 秒調整一次）
+    this.startConcurrencyAdjustment()
   }
 
   /**
@@ -157,6 +167,9 @@ export class TaskQueueService extends EventEmitter {
       task.status = TaskStatus.COMPLETED
       task.completedAt = new Date()
       task.processingTime = task.completedAt.getTime() - task.startedAt!.getTime()
+
+      // ⚡ 優化：記錄處理時間（用於動態並發控制）
+      this.recordTaskTime(task.processingTime)
 
       // 根據實際結果設置完成訊息
       const memoriesCount = result.memoriesCreated.length
@@ -439,6 +452,112 @@ export class TaskQueueService extends EventEmitter {
   }
 
   /**
+   * ⚡ 優化：記錄任務處理時間
+   */
+  private recordTaskTime(processingTime: number) {
+    this.recentTaskTimes.push(processingTime)
+    if (this.recentTaskTimes.length > this.maxRecentTimes) {
+      this.recentTaskTimes.shift() // 移除最舊的記錄
+    }
+  }
+
+  /**
+   * ⚡ 優化：計算平均處理時間
+   */
+  private getAverageTaskTime(): number {
+    if (this.recentTaskTimes.length === 0) return 0
+    const sum = this.recentTaskTimes.reduce((a, b) => a + b, 0)
+    return sum / this.recentTaskTimes.length
+  }
+
+  /**
+   * ⚡ 優化：啟動動態並發控制（根據性能自動調整並發數）
+   */
+  private startConcurrencyAdjustment() {
+    this.adjustmentIntervalId = setInterval(() => {
+      this.adjustConcurrency()
+    }, 30000) // 每 30 秒調整一次
+
+    logger.info('[TaskQueue] Dynamic concurrency adjustment started')
+  }
+
+  /**
+   * ⚡ 優化：停止動態並發控制
+   */
+  private stopConcurrencyAdjustment() {
+    if (this.adjustmentIntervalId) {
+      clearInterval(this.adjustmentIntervalId)
+      this.adjustmentIntervalId = undefined
+      logger.info('[TaskQueue] Dynamic concurrency adjustment stopped')
+    }
+  }
+
+  /**
+   * ⚡ 優化：動態調整並發數
+   * 策略：
+   * - 如果平均處理時間 < 10 秒 且 隊列有等待任務 → 增加並發
+   * - 如果平均處理時間 > 30 秒 → 降低並發（系統負載過高）
+   * - 如果隊列為空 → 降低到基準值
+   */
+  private adjustConcurrency() {
+    // 沒有足夠的數據時不調整
+    if (this.recentTaskTimes.length < 3) {
+      return
+    }
+
+    const avgTime = this.getAverageTaskTime()
+    const avgTimeSeconds = avgTime / 1000
+    const currentConcurrent = this.maxConcurrent
+    const queueSize = this.queue.length
+    const processingSize = this.processing.size
+
+    // 策略 1: 隊列為空且沒有處理中任務 → 降低到基準值 6
+    if (queueSize === 0 && processingSize === 0) {
+      if (this.maxConcurrent > 6) {
+        this.maxConcurrent = 6
+        logger.info(`[TaskQueue] 🔄 調整並發數: ${currentConcurrent} → ${this.maxConcurrent} (隊列空閒，降到基準值)`)
+      }
+      return
+    }
+
+    // 策略 2: 處理快速且有等待任務 → 增加並發
+    if (avgTimeSeconds < 10 && queueSize > 0) {
+      if (this.maxConcurrent < this.maxConcurrentLimit) {
+        this.maxConcurrent = Math.min(this.maxConcurrent + 1, this.maxConcurrentLimit)
+        logger.info(`[TaskQueue] 🔄 調整並發數: ${currentConcurrent} → ${this.maxConcurrent} (處理快速 ${avgTimeSeconds.toFixed(1)}s, 增加並發)`)
+
+        // 立即嘗試處理更多任務
+        this.processNext()
+      }
+      return
+    }
+
+    // 策略 3: 處理過慢 → 降低並發（避免系統過載）
+    if (avgTimeSeconds > 30) {
+      if (this.maxConcurrent > this.minConcurrent) {
+        this.maxConcurrent = Math.max(this.maxConcurrent - 1, this.minConcurrent)
+        logger.info(`[TaskQueue] 🔄 調整並發數: ${currentConcurrent} → ${this.maxConcurrent} (處理過慢 ${avgTimeSeconds.toFixed(1)}s, 降低並發)`)
+      }
+      return
+    }
+
+    // 策略 4: 隊列積壓嚴重 → 適度增加並發
+    if (queueSize > 5 && avgTimeSeconds < 20) {
+      if (this.maxConcurrent < this.maxConcurrentLimit) {
+        this.maxConcurrent = Math.min(this.maxConcurrent + 1, this.maxConcurrentLimit)
+        logger.info(`[TaskQueue] 🔄 調整並發數: ${currentConcurrent} → ${this.maxConcurrent} (隊列積壓 ${queueSize}個任務, 增加並發)`)
+
+        // 立即嘗試處理更多任務
+        this.processNext()
+      }
+      return
+    }
+
+    // 保持當前並發數
+    logger.debug(`[TaskQueue] 🔄 維持並發數: ${this.maxConcurrent} (平均處理時間: ${avgTimeSeconds.toFixed(1)}s, 隊列: ${queueSize}, 處理中: ${processingSize})`)
+  }
+
+  /**
    * 等待所有正在處理的任務完成
    */
   async waitForCompletion(timeout: number = 30000): Promise<void> {
@@ -466,8 +585,10 @@ export class TaskQueueService extends EventEmitter {
    */
   cleanup() {
     this.stopProgressTimer()
+    this.stopConcurrencyAdjustment() // ⚡ 優化：停止動態並發控制
     this.queue = []
     this.processing.clear()
+    this.recentTaskTimes = [] // 清空性能記錄
     logger.info('[TaskQueue] Cleanup completed')
   }
 }

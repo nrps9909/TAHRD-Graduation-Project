@@ -203,12 +203,17 @@ model Memory {
   chatMessages     ChatMessage[]
   distribution     KnowledgeDistribution? @relation(fields: [distributionId], references: [id])
 
+  // 🚀 優化索引：按查詢頻率和組合查詢優化
   @@index([userId, category])
-  @@index([userId, createdAt])
+  @@index([userId, createdAt(sort: Desc)])  // 時間倒序查詢
   @@index([userId, assistantId])
   @@index([userId, subcategoryId])
-  @@index([tags])
-  @@index([distributionId])
+  @@index([userId, assistantId, createdAt(sort: Desc)])  // 複合索引：特定助手的最新記憶
+  @@index([userId, category, createdAt(sort: Desc)])  // 複合索引：特定分類的最新記憶
+  @@index([tags])  // 標籤搜索
+  @@index([distributionId])  // 分發關聯查詢
+  @@index([userId, isPinned, createdAt(sort: Desc)])  // 置頂記憶優先
+  @@index([userId, isArchived])  // 歸檔狀態過濾
   @@map("memories")
 }
 
@@ -354,7 +359,9 @@ model KnowledgeDistribution {
   agentDecisions   AgentDecision[]
   memories         Memory[]
 
-  @@index([userId, createdAt])
+  // 🚀 優化索引
+  @@index([userId, createdAt(sort: Desc)])  // 用戶最新分發記錄
+  @@index([distributedTo])  // 按助手查詢分發記錄
   @@map("knowledge_distributions")
 }
 
@@ -383,8 +390,11 @@ model AgentDecision {
   // Relations
   distribution     KnowledgeDistribution @relation(fields: [distributionId], references: [id], onDelete: Cascade)
 
-  @@index([distributionId])
-  @@index([assistantId])
+  // 🚀 優化索引
+  @@index([distributionId])  // 查詢特定分發的所有決策
+  @@index([assistantId])  // 查詢特定助手的所有決策
+  @@index([distributionId, shouldStore])  // 複合索引：查詢儲存決策
+  @@index([distributionId, relevanceScore(sort: Desc)])  // 複合索引：按相關性排序
   @@map("agent_decisions")
 }
 

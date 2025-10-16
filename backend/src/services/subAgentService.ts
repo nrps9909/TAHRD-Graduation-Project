@@ -151,49 +151,116 @@ export class SubAgentService {
       const agentDecisions: any[] = []
       const memoriesCreated: any[] = []
 
-      // 並發評估所有相關助手
-      const evaluations = await Promise.all(
-        assistantIds.map(async (assistantId) => {
-          try {
-            // 評估相關性
-            const evaluation = await this.evaluateKnowledge(assistantId, distribution)
+      // ⚡ 優化：智能優先級評估
+      // 1. 先評估 Chief 推薦的主要助手（distributedTo[0]）
+      const primaryAssistantId = distribution.distributedTo[0]
+      const otherAssistantIds = assistantIds.filter(id => id !== primaryAssistantId)
 
-            // 創建決策記錄
-            const decision = await prisma.agentDecision.create({
-              data: {
-                distributionId,
-                assistantId,
-                relevanceScore: evaluation.relevanceScore,
-                shouldStore: evaluation.shouldStore,
-                reasoning: evaluation.reasoning,
-                confidence: evaluation.confidence,
-                suggestedCategory: evaluation.suggestedCategory,
-                suggestedTags: evaluation.suggestedTags,
-                keyInsights: evaluation.keyInsights,
-              },
-            })
+      let primaryEvaluation: any = null
 
-            agentDecisions.push(decision)
+      // 評估主要助手
+      if (primaryAssistantId && assistantIds.includes(primaryAssistantId)) {
+        try {
+          logger.info(`[Sub-Agents] 優先評估主要助手: ${primaryAssistantId}`)
+          const evaluation = await this.evaluateKnowledge(primaryAssistantId, distribution)
 
-            // 如果決定儲存，創建記憶
-            if (evaluation.shouldStore) {
-              const memory = await this.createMemory(
-                userId,
-                assistantId,
-                distribution,
-                evaluation,
-                distributionId
-              )
-              memoriesCreated.push(memory)
-            }
+          // 創建決策記錄
+          const decision = await prisma.agentDecision.create({
+            data: {
+              distributionId,
+              assistantId: primaryAssistantId,
+              relevanceScore: evaluation.relevanceScore,
+              shouldStore: evaluation.shouldStore,
+              reasoning: evaluation.reasoning,
+              confidence: evaluation.confidence,
+              suggestedCategory: evaluation.suggestedCategory,
+              suggestedTags: evaluation.suggestedTags,
+              keyInsights: evaluation.keyInsights,
+            },
+          })
 
-            return { assistantId, decision, memory: evaluation.shouldStore }
-          } catch (error) {
-            logger.error(`[Sub-Agent] 處理助手 ${assistantId} 失敗:`, error)
-            return null
+          agentDecisions.push(decision)
+
+          // 如果決定儲存，創建記憶
+          if (evaluation.shouldStore) {
+            const memory = await this.createMemory(
+              userId,
+              primaryAssistantId,
+              distribution,
+              evaluation,
+              distributionId
+            )
+            memoriesCreated.push(memory)
           }
-        })
-      )
+
+          primaryEvaluation = { assistantId: primaryAssistantId, decision, memory: evaluation.shouldStore, evaluation }
+        } catch (error) {
+          logger.error(`[Sub-Agent] 處理主要助手 ${primaryAssistantId} 失敗:`, error)
+        }
+      }
+
+      // 2. 判斷是否需要評估其他助手
+      // 如果主要助手的相關性很高 (>0.9) 且置信度很高 (>0.9)，跳過其他助手
+      const shouldSkipOthers = primaryEvaluation &&
+        primaryEvaluation.evaluation.relevanceScore >= 0.9 &&
+        primaryEvaluation.evaluation.confidence >= 0.9
+
+      let otherEvaluations: any[] = []
+
+      if (shouldSkipOthers) {
+        logger.info(`[Sub-Agents] 主要助手高相關性 (${primaryEvaluation.evaluation.relevanceScore.toFixed(2)}) + 高置信度 (${primaryEvaluation.evaluation.confidence.toFixed(2)})，跳過其他助手評估`)
+      } else if (otherAssistantIds.length > 0) {
+        // 3. 並發評估其他助手
+        logger.info(`[Sub-Agents] 評估其他 ${otherAssistantIds.length} 個助手`)
+        otherEvaluations = await Promise.all(
+          otherAssistantIds.map(async (assistantId) => {
+            try {
+              // 評估相關性
+              const evaluation = await this.evaluateKnowledge(assistantId, distribution)
+
+              // 創建決策記錄
+              const decision = await prisma.agentDecision.create({
+                data: {
+                  distributionId,
+                  assistantId,
+                  relevanceScore: evaluation.relevanceScore,
+                  shouldStore: evaluation.shouldStore,
+                  reasoning: evaluation.reasoning,
+                  confidence: evaluation.confidence,
+                  suggestedCategory: evaluation.suggestedCategory,
+                  suggestedTags: evaluation.suggestedTags,
+                  keyInsights: evaluation.keyInsights,
+                },
+              })
+
+              agentDecisions.push(decision)
+
+              // 如果決定儲存，創建記憶
+              if (evaluation.shouldStore) {
+                const memory = await this.createMemory(
+                  userId,
+                  assistantId,
+                  distribution,
+                  evaluation,
+                  distributionId
+                )
+                memoriesCreated.push(memory)
+              }
+
+              return { assistantId, decision, memory: evaluation.shouldStore }
+            } catch (error) {
+              logger.error(`[Sub-Agent] 處理助手 ${assistantId} 失敗:`, error)
+              return null
+            }
+          })
+        )
+      }
+
+      // 合併所有評估結果（主要助手 + 其他助手）
+      const evaluations = [
+        ...(primaryEvaluation ? [primaryEvaluation] : []),
+        ...otherEvaluations.filter(e => e !== null)
+      ]
 
       // 更新分發記錄的 storedBy 列表
       const storedByIds = evaluations
