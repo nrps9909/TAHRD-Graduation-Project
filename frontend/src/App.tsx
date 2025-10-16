@@ -10,7 +10,6 @@ const IslandView = lazy(() => import('./pages/IslandView'))
 const CuteDatabaseView = lazy(() => import('./pages/DatabaseView/CuteDatabaseView'))
 const IslandCreator = lazy(() => import('./pages/IslandCreator'))
 const AuthPage = lazy(() => import('./pages/Auth').then(module => ({ default: module.AuthPage })))
-const ProcessingQueuePanel = lazy(() => import('./components/ProcessingQueuePanel').then(module => ({ default: module.ProcessingQueuePanel })))
 
 // Loading fallback component
 const PageLoader = () => (
@@ -97,9 +96,6 @@ function App() {
             element={<Navigate to={isAuthenticated ? "/" : "/login"} replace />}
           />
         </Routes>
-
-        {/* 全局處理隊列面板 - 僅在已登入時顯示 */}
-        {isAuthenticated && <ProcessingQueuePanel />}
       </Suspense>
     </>
   )
