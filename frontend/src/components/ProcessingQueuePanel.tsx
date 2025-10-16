@@ -226,23 +226,48 @@ export function ProcessingQueuePanel() {
 
   return (
     <>
-      {/* 主隊列面板 */}
+      {/* 主隊列面板 - 響應式設計 */}
       <motion.div
         initial={{ opacity: 0, x: -100 }}
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: -100 }}
-        className="fixed bottom-6 left-6 z-[35] w-[360px]"
+        className="fixed bottom-4 left-4 sm:bottom-6 sm:left-6 z-[35] w-[calc(100vw-2rem)] sm:w-[360px] max-w-[360px]"
       >
-        {/* 摺疊/展開按鈕 */}
-        <button
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="absolute -right-12 top-4 bg-gradient-to-br from-amber-50 to-yellow-50 backdrop-blur-md rounded-r-2xl px-3 py-4 shadow-xl hover:shadow-2xl transition-all border-2 border-l-0 border-amber-200/80 group"
-          title={isExpanded ? '收起隊列' : '展開隊列'}
-        >
-          <span className={`text-lg transition-transform duration-300 block ${isExpanded ? 'rotate-180' : 'rotate-0'}`}>
-            ◀
-          </span>
-        </button>
+        {/* 摺疊/展開按鈕 - 優化設計，確保在畫面內 */}
+        {!isExpanded && (
+          <motion.button
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            exit={{ scale: 0 }}
+            onClick={() => setIsExpanded(true)}
+            className="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-amber-400 to-orange-400 rounded-2xl shadow-xl hover:shadow-2xl transition-all border-3 border-white/50 group flex items-center justify-center backdrop-blur-md"
+            title="展開隊列"
+            style={{
+              background: 'linear-gradient(135deg, #fbbf24 0%, #fb923c 100%)',
+            }}
+          >
+            <div className="relative flex flex-col items-center justify-center">
+              <motion.span
+                animate={{ rotate: [0, 10, -10, 0] }}
+                transition={{ duration: 2, repeat: Infinity }}
+                className="text-2xl sm:text-3xl"
+              >
+                ⚙️
+              </motion.span>
+              {hasActiveTasks && (
+                <motion.div
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ duration: 1.5, repeat: Infinity }}
+                  className="absolute -top-1 -right-1 w-5 h-5 sm:w-6 sm:h-6 bg-red-500 rounded-full border-2 border-white shadow-lg flex items-center justify-center"
+                >
+                  <span className="text-white text-xs font-bold">
+                    {(stats?.queueSize || 0) + (stats?.processing || 0)}
+                  </span>
+                </motion.div>
+              )}
+            </div>
+          </motion.button>
+        )}
 
         {/* 主面板 */}
         <AnimatePresence>
@@ -252,37 +277,52 @@ export function ProcessingQueuePanel() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ type: 'spring', stiffness: 200, damping: 20 }}
-              className="bg-gradient-to-br from-amber-50/98 via-yellow-50/98 to-orange-50/98 backdrop-blur-xl rounded-3xl shadow-2xl border-4 border-amber-200/70 overflow-hidden"
+              className="bg-gradient-to-br from-amber-50/98 via-yellow-50/98 to-orange-50/98 backdrop-blur-xl rounded-2xl sm:rounded-3xl shadow-2xl border-3 sm:border-4 border-amber-200/70 overflow-hidden"
             >
-              {/* 頭部 */}
-              <div className="relative bg-gradient-to-r from-amber-300/90 to-yellow-300/90 p-5 border-b-4 border-amber-200/70">
-                <div className="flex items-center gap-3">
-                  {/* 狀態指示燈 */}
-                  <div className="relative">
-                    <div className="w-4 h-4 bg-gradient-to-br from-green-400 to-green-500 rounded-full shadow-lg border-2 border-green-300 animate-pulse"></div>
-                    <div className="absolute inset-0 w-4 h-4 bg-green-400 rounded-full animate-ping opacity-75"></div>
+              {/* 頭部 - 響應式設計 */}
+              <div className="relative bg-gradient-to-r from-amber-300/90 to-yellow-300/90 p-3 sm:p-5 border-b-3 sm:border-b-4 border-amber-200/70">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                    {/* 狀態指示燈 */}
+                    {hasActiveTasks && (
+                      <div className="relative flex-shrink-0">
+                        <div className="w-3 h-3 sm:w-4 sm:h-4 bg-gradient-to-br from-green-400 to-green-500 rounded-full shadow-lg border-2 border-green-300 animate-pulse"></div>
+                        <div className="absolute inset-0 w-3 h-3 sm:w-4 sm:h-4 bg-green-400 rounded-full animate-ping opacity-75"></div>
+                      </div>
+                    )}
+
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-base sm:text-xl font-bold text-amber-900 truncate" style={{
+                        textShadow: '0 2px 4px rgba(255,255,255,0.8)',
+                        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", sans-serif'
+                      }}>
+                        {hasActiveTasks ? '🐱 白噗噗思考中' : '📜 處理歷史'}
+                      </h3>
+                      <p className="text-xs sm:text-sm text-amber-700 font-medium truncate">
+                        {stats.processing > 0
+                          ? `正在處理 ${stats.processing} 個記憶`
+                          : dbHistories.length > 0
+                          ? `最近 ${dbHistories.length} 條記錄`
+                          : '等待中...'}
+                      </p>
+                    </div>
                   </div>
 
-                  <div className="flex-1">
-                    <h3 className="text-xl font-bold text-amber-900" style={{
-                      textShadow: '0 2px 4px rgba(255,255,255,0.8)',
-                      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", sans-serif'
-                    }}>
-                      {hasActiveTasks ? '白噗噗思考中' : '處理歷史'}
-                    </h3>
-                    <p className="text-sm text-amber-700 font-medium">
-                      {stats.processing > 0
-                        ? `正在處理 ${stats.processing} 個記憶`
-                        : dbHistories.length > 0
-                        ? `最近 ${dbHistories.length} 條記錄`
-                        : '等待中...'}
-                    </p>
-                  </div>
+                  {/* 收起按鈕 */}
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => setIsExpanded(false)}
+                    className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-white/30 hover:bg-white/50 transition-all flex items-center justify-center text-amber-900 font-bold border-2 border-white/50"
+                    title="收起隊列"
+                  >
+                    <span className="text-lg sm:text-xl">✕</span>
+                  </motion.button>
                 </div>
               </div>
 
-              {/* 內容區域 */}
-              <div className="p-4 space-y-3 max-h-[400px] overflow-y-auto" style={{
+              {/* 內容區域 - 響應式設計 */}
+              <div className="p-3 sm:p-4 space-y-2 sm:space-y-3 max-h-[50vh] sm:max-h-[400px] overflow-y-auto" style={{
                 scrollbarWidth: 'thin',
                 scrollbarColor: '#fbbf24 #fef3c7'
               }}>
@@ -298,27 +338,27 @@ export function ProcessingQueuePanel() {
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, x: -20 }}
-                          className="bg-gradient-to-br from-white to-amber-50 border-3 border-amber-200/70 rounded-2xl p-4 shadow-lg"
+                          className="bg-gradient-to-br from-white to-amber-50 border-2 sm:border-3 border-amber-200/70 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-lg"
                         >
-                          <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center justify-between gap-2 sm:gap-3">
                             {/* 左側：脈衝指示器 + 訊息 */}
-                            <div className="flex items-center gap-3 flex-1 min-w-0">
-                              <div className="flex-shrink-0 w-3 h-3 bg-blue-400 rounded-full animate-pulse shadow-lg"></div>
-                              <p className="text-sm font-bold text-amber-900 truncate">
+                            <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                              <div className="flex-shrink-0 w-2 h-2 sm:w-3 sm:h-3 bg-blue-400 rounded-full animate-pulse shadow-lg"></div>
+                              <p className="text-xs sm:text-sm font-bold text-amber-900 truncate">
                                 {task.progress.message}
                               </p>
                             </div>
 
                             {/* 右側：時間 */}
                             <div className="flex-shrink-0">
-                              <span className="text-lg font-mono font-bold text-blue-700 bg-blue-50 px-3 py-1.5 rounded-xl border-2 border-blue-200/70 shadow-sm">
+                              <span className="text-sm sm:text-lg font-mono font-bold text-blue-700 bg-blue-50 px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl border-1 sm:border-2 border-blue-200/70 shadow-sm">
                                 {taskInfo ? formatElapsedTime(taskInfo.elapsedTime) : '0秒'}
                               </span>
                             </div>
                           </div>
 
                           {/* 進度條 */}
-                          <div className="mt-3 h-2 bg-white/70 rounded-full overflow-hidden border-2 border-amber-200/50 shadow-inner">
+                          <div className="mt-2 sm:mt-3 h-1.5 sm:h-2 bg-white/70 rounded-full overflow-hidden border-1 sm:border-2 border-amber-200/50 shadow-inner">
                             <motion.div
                               initial={{ width: 0 }}
                               animate={{ width: `${(task.progress.current / task.progress.total) * 100}%` }}
@@ -335,28 +375,28 @@ export function ProcessingQueuePanel() {
                   )}
                 </AnimatePresence>
 
-                {/* 等待中的任務數量 */}
+                {/* 等待中的任務數量 - 響應式 */}
                 {stats.queueSize > 0 && (
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="text-center py-3"
+                    className="text-center py-2 sm:py-3"
                   >
-                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-amber-100/70 rounded-xl border-2 border-amber-200/50">
-                      <span className="w-2 h-2 bg-amber-400 rounded-full"></span>
-                      <span className="text-sm font-bold text-amber-700">
+                    <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-amber-100/70 rounded-lg sm:rounded-xl border-1 sm:border-2 border-amber-200/50">
+                      <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-amber-400 rounded-full"></span>
+                      <span className="text-xs sm:text-sm font-bold text-amber-700">
                         還有 {stats.queueSize} 個記憶在等待
                       </span>
                     </div>
                   </motion.div>
                 )}
 
-                {/* 沒有任務時顯示歷史記錄 */}
+                {/* 沒有任務時顯示歷史記錄 - 響應式 */}
                 {stats.processing === 0 && stats.queueSize === 0 && (
-                  <div className="space-y-2">
+                  <div className="space-y-1.5 sm:space-y-2">
                     {dbHistories.length === 0 ? (
-                      <div className="text-center py-6">
-                        <p className="text-sm text-amber-600 font-medium">
+                      <div className="text-center py-4 sm:py-6">
+                        <p className="text-xs sm:text-sm text-amber-600 font-medium">
                           ✨ 尚無處理記錄
                         </p>
                       </div>
@@ -370,11 +410,11 @@ export function ProcessingQueuePanel() {
                             key={history.id}
                             initial={{ opacity: 0, y: 5 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="bg-white/60 border-2 border-amber-200/50 rounded-xl p-3 hover:bg-white/80 transition-all"
+                            className="bg-white/60 border-1 sm:border-2 border-amber-200/50 rounded-lg sm:rounded-xl p-2 sm:p-3 hover:bg-white/80 transition-all"
                           >
-                            <div className="flex items-center justify-between gap-2 mb-1">
-                              <div className="flex items-center gap-2 flex-1 min-w-0">
-                                <span className="flex-shrink-0 text-lg">
+                            <div className="flex items-center justify-between gap-1.5 sm:gap-2 mb-1">
+                              <div className="flex items-center gap-1.5 sm:gap-2 flex-1 min-w-0">
+                                <span className="flex-shrink-0 text-base sm:text-lg">
                                   {history.status === 'COMPLETED' ? '✅' : '❌'}
                                 </span>
                                 <p className="text-xs font-bold text-amber-900 truncate">
@@ -382,17 +422,17 @@ export function ProcessingQueuePanel() {
                                 </p>
                               </div>
                               {history.processingTime && (
-                                <span className="text-xs font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-lg">
+                                <span className="text-xs font-semibold text-amber-600 bg-amber-50 px-1.5 py-0.5 sm:px-2 rounded-md sm:rounded-lg">
                                   {(history.processingTime / 1000).toFixed(1)}s
                                 </span>
                               )}
                             </div>
                             {history.categoriesInfo && history.categoriesInfo.length > 0 && (
-                              <div className="flex items-center gap-1 mt-2 flex-wrap">
+                              <div className="flex items-center gap-1 mt-1.5 sm:mt-2 flex-wrap">
                                 {history.categoriesInfo.map((cat: CategoryInfo, idx: number) => (
                                   <span
                                     key={idx}
-                                    className="text-xs bg-amber-100/70 px-2 py-0.5 rounded-lg border border-amber-200/50"
+                                    className="text-xs bg-amber-100/70 px-1.5 py-0.5 sm:px-2 rounded-md sm:rounded-lg border border-amber-200/50"
                                   >
                                     {cat.categoryEmoji} {cat.categoryName}
                                   </span>
@@ -414,9 +454,9 @@ export function ProcessingQueuePanel() {
                   </div>
                 )}
 
-                {/* 連接狀態 */}
-                <div className="flex items-center justify-center gap-2 pt-2">
-                  <div className={`w-2 h-2 rounded-full ${socket?.connected ? 'bg-green-400 animate-pulse' : 'bg-gray-400'}`}></div>
+                {/* 連接狀態 - 響應式 */}
+                <div className="flex items-center justify-center gap-1.5 sm:gap-2 pt-2">
+                  <div className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${socket?.connected ? 'bg-green-400 animate-pulse' : 'bg-gray-400'}`}></div>
                   <span className="text-xs text-amber-600 font-medium">
                     {socket?.connected ? '即時連線中' : '連接中...'}
                   </span>
@@ -427,46 +467,46 @@ export function ProcessingQueuePanel() {
         </AnimatePresence>
       </motion.div>
 
-      {/* 完成通知浮窗 */}
+      {/* 完成通知浮窗 - 響應式 */}
       <AnimatePresence>
         {showCompleted && completedTasks.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 50, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -50, scale: 0.9 }}
-            className="fixed bottom-6 left-[420px] z-[36] w-[380px]"
+            className="fixed bottom-4 left-4 sm:bottom-6 sm:left-[420px] z-[36] w-[calc(100vw-2rem)] sm:w-[380px] max-w-[380px]"
           >
-            <div className="bg-gradient-to-br from-green-50 to-emerald-50 backdrop-blur-xl rounded-2xl p-5 shadow-2xl border-3 border-green-200/70">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-green-400 to-emerald-400 rounded-full flex items-center justify-center text-2xl shadow-lg">
+            <div className="bg-gradient-to-br from-green-50 to-emerald-50 backdrop-blur-xl rounded-xl sm:rounded-2xl p-3 sm:p-5 shadow-2xl border-2 sm:border-3 border-green-200/70">
+              <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+                <div className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-green-400 to-emerald-400 rounded-full flex items-center justify-center text-xl sm:text-2xl shadow-lg">
                   ✓
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h4 className="text-lg font-bold text-green-900 mb-1">
+                  <h4 className="text-base sm:text-lg font-bold text-green-900 mb-0.5 sm:mb-1">
                     知識整理完成！
                   </h4>
-                  <p className="text-sm text-green-700 font-medium truncate">
+                  <p className="text-xs sm:text-sm text-green-700 font-medium truncate">
                     {completedTasks[0].message}
                   </p>
                 </div>
               </div>
 
-              {/* 分類信息列表 */}
+              {/* 分類信息列表 - 響應式 */}
               {completedTasks[0].categoriesInfo.length > 0 && (
-                <div className="mt-3 pt-3 border-t-2 border-green-200/50">
-                  <p className="text-xs font-bold text-green-800 mb-2">已歸類到：</p>
-                  <div className="space-y-1.5">
+                <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t-1 sm:border-t-2 border-green-200/50">
+                  <p className="text-xs font-bold text-green-800 mb-1.5 sm:mb-2">已歸類到：</p>
+                  <div className="space-y-1 sm:space-y-1.5">
                     {completedTasks[0].categoriesInfo.map((category, idx) => (
                       <motion.div
                         key={idx}
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: idx * 0.1 }}
-                        className="flex items-center gap-2 bg-white/60 rounded-xl px-3 py-2 border border-green-200/50"
+                        className="flex items-center gap-1.5 sm:gap-2 bg-white/60 rounded-lg sm:rounded-xl px-2 py-1.5 sm:px-3 sm:py-2 border border-green-200/50"
                       >
-                        <span className="text-lg">{category.categoryEmoji}</span>
+                        <span className="text-base sm:text-lg">{category.categoryEmoji}</span>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-green-900 truncate">
+                          <p className="text-xs sm:text-sm font-bold text-green-900 truncate">
                             {category.categoryName}
                           </p>
                           {category.islandName && (
