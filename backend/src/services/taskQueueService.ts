@@ -12,7 +12,9 @@ import { EventEmitter } from 'events'
 import { logger } from '../utils/logger'
 import { subAgentService } from './subAgentService'
 import { Server as SocketIOServer } from 'socket.io'
-import { prisma } from '../context'
+import { PrismaClient } from '@prisma/client'
+
+const prisma = new PrismaClient()
 
 export enum TaskStatus {
   PENDING = 'PENDING',
