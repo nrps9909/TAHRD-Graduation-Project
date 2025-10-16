@@ -55,23 +55,47 @@ export function QueueFloatingButton() {
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionDelay: 1000,
-      reconnectionAttempts: 10,
+      reconnectionDelayMax: 5000,
+      reconnectionAttempts: Infinity, // 無限重試
+      timeout: 20000,
     })
 
     newSocket.on('connect', () => {
+      console.log('[Queue] WebSocket connected ✅')
       newSocket.emit('join-room', { roomId: userId })
       newSocket.emit('get-queue-stats')
     })
 
     newSocket.on('disconnect', (reason) => {
-      if (reason === 'io server disconnect' || reason === 'transport close') {
-        newSocket.connect()
+      console.log('[Queue] WebSocket disconnected:', reason)
+      if (reason === 'io server disconnect') {
+        // 服務器主動斷開，需要手動重連
+        setTimeout(() => newSocket.connect(), 1000)
       }
+      // 其他原因會自動重連
     })
 
-    newSocket.on('reconnect', () => {
+    newSocket.on('reconnect', (attemptNumber) => {
+      console.log('[Queue] WebSocket reconnected after', attemptNumber, 'attempts')
       newSocket.emit('join-room', { roomId: userId })
       newSocket.emit('get-queue-stats')
+    })
+
+    newSocket.on('reconnect_attempt', (attemptNumber) => {
+      console.log('[Queue] Reconnecting... attempt', attemptNumber)
+    })
+
+    newSocket.on('reconnect_error', (error) => {
+      console.error('[Queue] Reconnection error:', error.message)
+    })
+
+    newSocket.on('reconnect_failed', () => {
+      console.error('[Queue] Reconnection failed after all attempts')
+    })
+
+    // 處理連接錯誤
+    newSocket.on('connect_error', (error) => {
+      console.error('[Queue] Connection error:', error.message)
     })
 
     newSocket.on('queue-stats', (data: QueueStats) => setStats(data))
@@ -104,14 +128,29 @@ export function QueueFloatingButton() {
 
     setSocket(newSocket)
 
-    const intervalId = setInterval(() => {
+    // 定期查詢隊列狀態（每 5 秒）
+    const statsIntervalId = setInterval(() => {
       if (newSocket.connected) {
         newSocket.emit('get-queue-stats')
       }
     }, 5000)
 
+    // 客戶端心跳機制（每 20 秒發送 ping，確保連接保持活躍）
+    // 這比後端的 25 秒 ping 間隔更頻繁，確保連接不會因超時而斷開
+    const heartbeatIntervalId = setInterval(() => {
+      if (newSocket.connected) {
+        newSocket.emit('ping')
+      }
+    }, 20000)
+
+    // 監聽 pong 回應（可選，用於監控連接健康）
+    newSocket.on('pong', () => {
+      // 心跳正常，連接健康
+    })
+
     return () => {
-      clearInterval(intervalId)
+      clearInterval(statsIntervalId)
+      clearInterval(heartbeatIntervalId)
       newSocket.disconnect()
     }
   }, [userId, refetchHistories])

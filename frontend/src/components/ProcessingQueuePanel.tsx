@@ -74,8 +74,8 @@ export function ProcessingQueuePanel() {
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionDelay: 1000,
-      reconnectionAttempts: 10,
       reconnectionDelayMax: 5000,
+      reconnectionAttempts: Infinity, // 無限重試，確保長時間穩定連接
       timeout: 20000,
       // 連接升級配置
       upgrade: true,
@@ -192,15 +192,29 @@ export function ProcessingQueuePanel() {
 
     setSocket(newSocket)
 
-    // 定期請求狀態更新
-    const intervalId = setInterval(() => {
+    // 定期請求狀態更新（每 5 秒）
+    const statsIntervalId = setInterval(() => {
       if (newSocket.connected) {
         newSocket.emit('get-queue-stats')
       }
     }, 5000)
 
+    // 客戶端心跳機制（每 20 秒發送 ping，確保連接保持活躍）
+    // 這比後端的 25 秒 ping 間隔更頻繁，確保連接不會因超時而斷開
+    const heartbeatIntervalId = setInterval(() => {
+      if (newSocket.connected) {
+        newSocket.emit('ping')
+      }
+    }, 20000)
+
+    // 監聽 pong 回應（可選，用於監控連接健康）
+    newSocket.on('pong', () => {
+      // 心跳正常，連接健康
+    })
+
     return () => {
-      clearInterval(intervalId)
+      clearInterval(statsIntervalId)
+      clearInterval(heartbeatIntervalId)
       newSocket.disconnect()
     }
   }, [userId, refetchHistories])
