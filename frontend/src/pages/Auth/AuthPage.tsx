@@ -72,7 +72,7 @@ export default function AuthPage() {
   const [login, { loading: loginLoading }] = useMutation(LOGIN_MUTATION, {
     onCompleted: (data) => {
       setAuth(data.login.token, data.login.user)
-      const from = (location.state as any)?.from?.pathname || '/'
+      const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/'
       navigate(from, { replace: true })
     },
     onError: (error) => {

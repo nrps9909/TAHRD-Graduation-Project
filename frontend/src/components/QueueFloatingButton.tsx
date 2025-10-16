@@ -13,7 +13,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { io, Socket } from 'socket.io-client'
 import { useAuthStore } from '../stores/authStore'
 import { useQuery } from '@apollo/client'
-import { GET_TASK_HISTORIES, TaskHistory } from '../graphql/taskHistory'
+import { GET_TASK_HISTORIES, TaskHistory, CategoryInfo } from '../graphql/taskHistory'
 
 interface TaskProgress {
   current: number
@@ -34,13 +34,6 @@ interface QueueStats {
   processing: number
   maxConcurrent: number
   processingTasks: ProcessingTaskInfo[]
-}
-
-interface CategoryInfo {
-  memoryId: string
-  categoryName: string
-  categoryEmoji: string
-  islandName?: string
 }
 
 export function QueueFloatingButton() {
@@ -125,7 +118,7 @@ export function QueueFloatingButton() {
       clearInterval(intervalId)
       newSocket.disconnect()
     }
-  }, [userId])
+  }, [userId, refetchHistories])
 
   // 格式化時間
   const formatElapsedTime = (seconds: number): string => {
@@ -136,7 +129,7 @@ export function QueueFloatingButton() {
   }
 
   const dbHistories = historiesData?.taskHistories || []
-  const hasActiveTasks = stats && (stats.queueSize > 0 || stats.processing > 0)
+  const hasActiveTasks = stats && (stats.queueSize > 0 || (stats.processing ?? 0) > 0)
   const totalTasks = (stats?.queueSize || 0) + (stats?.processing || 0)
 
   return (
@@ -223,8 +216,8 @@ export function QueueFloatingButton() {
                         {hasActiveTasks ? '🐱 白噗噗思考中' : '📜 處理歷史'}
                       </h3>
                       <p className="text-xs text-amber-700 font-medium">
-                        {stats?.processing > 0
-                          ? `正在處理 ${stats.processing} 個 | 等待 ${stats.queueSize} 個`
+                        {(stats?.processing ?? 0) > 0
+                          ? `正在處理 ${stats?.processing ?? 0} 個 | 等待 ${stats?.queueSize ?? 0} 個`
                           : dbHistories.length > 0
                           ? `最近 ${dbHistories.length} 條記錄`
                           : '無任務'}
@@ -248,9 +241,9 @@ export function QueueFloatingButton() {
                 scrollbarColor: '#fbbf24 #fef3c7'
               }}>
                 {/* 處理中的任務 */}
-                {stats?.processingTasks && stats.processingTasks.length > 0 ? (
+                {stats?.processingTasks && stats?.processingTasks.length > 0 ? (
                   <AnimatePresence>
-                    {stats.processingTasks.map((task) => {
+                    {stats?.processingTasks.map((task) => {
                       const taskInfo = processingTasks.get(task.id)
                       return (
                         <motion.div
@@ -319,7 +312,7 @@ export function QueueFloatingButton() {
                             </div>
                             {history.categoriesInfo && history.categoriesInfo.length > 0 && (
                               <div className="flex items-center gap-1 mt-2 flex-wrap">
-                                {history.categoriesInfo.map((cat: any, idx: number) => (
+                                {history.categoriesInfo.map((cat: CategoryInfo, idx: number) => (
                                   <span
                                     key={idx}
                                     className="text-xs bg-amber-100/70 px-2 py-0.5 rounded-lg"

@@ -10,7 +10,7 @@ import './index.css'
 // 配置 Troika 不使用 Web Workers 來避免 CSP 問題
 if (typeof window !== 'undefined') {
   // 設置環境變量來禁用 Troika workers
-  (window as any).__troika_text_no_workers__ = true
+  (window as Window & { __troika_text_no_workers__?: boolean }).__troika_text_no_workers__ = true
 }
 
 // 🚀 全局启用 BVH 加速 - 大幅提升射线检测性能（点击、hover等）

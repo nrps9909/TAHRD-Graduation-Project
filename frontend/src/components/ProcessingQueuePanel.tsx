@@ -13,7 +13,7 @@ import { io, Socket } from 'socket.io-client'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuthStore } from '../stores/authStore'
 import { useQuery } from '@apollo/client'
-import { GET_TASK_HISTORIES, TaskHistory } from '../graphql/taskHistory'
+import { GET_TASK_HISTORIES, TaskHistory, CategoryInfo } from '../graphql/taskHistory'
 
 interface TaskProgress {
   current: number
@@ -34,13 +34,6 @@ interface QueueStats {
   processing: number
   maxConcurrent: number
   processingTasks: ProcessingTaskInfo[]
-}
-
-interface CategoryInfo {
-  memoryId: string
-  categoryName: string
-  categoryEmoji: string
-  islandName?: string
 }
 
 interface CompletedTask {
@@ -210,7 +203,7 @@ export function ProcessingQueuePanel() {
       clearInterval(intervalId)
       newSocket.disconnect()
     }
-  }, [userId])
+  }, [userId, refetchHistories])
 
   // 格式化時間
   const formatElapsedTime = useCallback((seconds: number): string => {
@@ -396,7 +389,7 @@ export function ProcessingQueuePanel() {
                             </div>
                             {history.categoriesInfo && history.categoriesInfo.length > 0 && (
                               <div className="flex items-center gap-1 mt-2 flex-wrap">
-                                {history.categoriesInfo.map((cat: any, idx: number) => (
+                                {history.categoriesInfo.map((cat: CategoryInfo, idx: number) => (
                                   <span
                                     key={idx}
                                     className="text-xs bg-amber-100/70 px-2 py-0.5 rounded-lg border border-amber-200/50"

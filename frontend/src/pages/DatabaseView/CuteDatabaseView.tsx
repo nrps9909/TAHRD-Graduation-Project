@@ -74,7 +74,7 @@ export default function CuteDatabaseView() {
   const [deleteMemory] = useMutation(DELETE_MEMORY)
   const [createMemoryDirect] = useMutation(CREATE_MEMORY_DIRECT)
 
-  const islands: Island[] = islandsData?.islands || []
+  const islands: Island[] = useMemo(() => islandsData?.islands || [], [islandsData?.islands])
 
   // 鍵盤快捷鍵
   useEffect(() => {
