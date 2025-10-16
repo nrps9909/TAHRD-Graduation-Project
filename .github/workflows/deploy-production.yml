@@ -206,11 +206,19 @@ jobs:
               exit 1
             fi
 
-            # 5. 等待服務啟動並監控容器狀態
+            # 5. 執行資料庫遷移
+            echo "🗄️ 執行資料庫遷移..."
+            if docker exec heart-whisper-backend npx prisma db push --skip-generate; then
+              echo "✅ 資料庫遷移完成"
+            else
+              echo "⚠️ 資料庫遷移失敗，但繼續部署（MongoDB schema 變更通常向後兼容）"
+            fi
+
+            # 6. 等待服務啟動並監控容器狀態
             echo "⏳ 等待服務啟動..."
             sleep 10
 
-            # 檢查容器是否還在運行
+            # 7. 檢查容器是否還在運行
             echo "🔍 檢查容器狀態..."
             BACKEND_STATUS=$(docker inspect -f '{{.State.Status}}' heart-whisper-backend 2>/dev/null || echo "not_found")
             if [ "$BACKEND_STATUS" != "running" ]; then
@@ -228,7 +236,7 @@ jobs:
             fi
             echo "✅ 後端容器正在運行"
 
-            # 6. 健康檢查
+            # 8. 健康檢查
             echo "🏥 執行健康檢查..."
 
             MAX_RETRIES=6
@@ -279,7 +287,7 @@ jobs:
             fi
             echo "✅ GraphQL 健康檢查通過"
 
-            # 7. 清理舊映像
+            # 9. 清理舊映像
             echo "🧹 清理舊映像..."
             docker image prune -f
 

@@ -11,7 +11,7 @@
 本項目已配置完整的 CI/CD 流程，使用 GitHub Actions 實現自動化部署。
 
 #### 🔧 配置文件
-- **路徑**: `.github/workflows/deploy.yml`
+- **路徑**: `.github/workflows/deploy-production.yml`
 - **觸發分支**: `production`
 - **部署目標**: VPS 伺服器
 
@@ -25,9 +25,11 @@
 2. **GitHub Actions 執行**
    - 連接到 VPS 伺服器
    - 拉取最新代碼
-   - 安裝依賴
-   - 構建應用
-   - 重啟服務
+   - 拉取最新 Docker 映像
+   - 重新創建容器
+   - **執行資料庫遷移** (新增)
+   - 健康檢查
+   - 清理舊映像
 
 3. **服務管理**
    - Frontend: PM2 管理（npm run preview）
@@ -315,29 +317,45 @@ private async quickExtractLinkTitle(url: string) {
 
 ## 🔧 部署步驟
 
-### 1. 資料庫遷移
+### 自動部署（推薦）✅
+
+資料庫遷移已整合到 CI/CD 流程中，只需推送代碼：
+
 ```bash
+git push origin production
+```
+
+CI/CD 會自動執行：
+1. 測試和驗證
+2. 構建 Docker 映像
+3. 部署到生產環境
+4. **自動執行資料庫遷移** 🆕
+5. 健康檢查
+6. 失敗時自動回滾
+
+### 手動部署（備用）
+
+如需手動執行資料庫遷移：
+
+```bash
+# 方式 1: 在 Docker 容器內執行
+docker exec heart-whisper-backend npx prisma db push --skip-generate
+
+# 方式 2: 在本地後端目錄執行
 cd backend
 npx prisma db push
-# 或
-npx prisma migrate dev --name add_performance_indexes
 ```
 
-### 2. 重啟服務（自動通過 CI/CD）
+### 驗證部署
 ```bash
-# CI/CD 會自動執行以下命令：
-pm2 restart heart-whisper-backend
-pm2 restart heart-whisper-frontend
-```
+# 檢查容器狀態
+docker ps
 
-### 3. 驗證部署
-```bash
-# 檢查服務狀態
-pm2 status
+# 查看部署日誌
+docker compose -f docker-compose.production-prebuilt.yml logs --tail=100 backend
 
-# 查看日誌
-pm2 logs heart-whisper-backend --lines 50
-pm2 logs heart-whisper-frontend --lines 50
+# 驗證資料庫索引已創建
+docker exec heart-whisper-backend npx prisma db push --skip-generate
 ```
 
 ---
