@@ -71,6 +71,9 @@ export default function IslandView() {
         summary: memory.summary,
         // 保留 subcategory 資訊用於顯示
         subcategory: (memory as any).subcategory,
+        // AI 深度分析欄位
+        detailedSummary: (memory as any).detailedSummary,
+        actionableAdvice: (memory as any).actionableAdvice,
       })
     })
 
@@ -516,6 +519,69 @@ export default function IslandView() {
                 day: 'numeric'
               })}
             </div>
+
+            {/* AI 深度分析 */}
+            {(selectedMemory.detailedSummary || selectedMemory.actionableAdvice) && (
+              <div className="mb-4 rounded-2xl overflow-hidden" style={{
+                background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.1) 0%, rgba(147, 51, 234, 0.1) 100%)',
+                border: '2px solid rgba(168, 85, 247, 0.3)',
+              }}>
+                <div className="px-4 py-3" style={{
+                  background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.2) 0%, rgba(147, 51, 234, 0.2) 100%)',
+                  borderBottom: '1px solid rgba(168, 85, 247, 0.3)',
+                }}>
+                  <h4 className="text-sm font-bold flex items-center gap-2" style={{ color: '#7c3aed' }}>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    </svg>
+                    AI 深度分析
+                  </h4>
+                </div>
+                <div className="px-4 py-3 space-y-3">
+                  {selectedMemory.detailedSummary && (
+                    <div>
+                      <div className="text-xs font-semibold mb-1 uppercase tracking-wide" style={{ color: '#9333ea' }}>
+                        詳細摘要
+                      </div>
+                      <p className="text-sm leading-relaxed" style={{ color: '#444' }}>
+                        {selectedMemory.detailedSummary}
+                      </p>
+                    </div>
+                  )}
+                  {selectedMemory.actionableAdvice && (
+                    <div>
+                      <div className="text-xs font-semibold mb-1 uppercase tracking-wide flex items-center gap-1" style={{ color: '#9333ea' }}>
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                        行動建議
+                      </div>
+                      <p className="text-sm leading-relaxed" style={{ color: '#444' }}>
+                        {selectedMemory.actionableAdvice}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* 內容預覽 */}
+            {selectedMemory.content && !selectedMemory.detailedSummary && (
+              <div className="mb-4">
+                <div className="text-xs font-semibold mb-2" style={{ color: '#666' }}>
+                  📝 內容預覽
+                </div>
+                <div className="text-sm leading-relaxed line-clamp-4" style={{
+                  color: '#555',
+                  background: 'rgba(0, 0, 0, 0.02)',
+                  padding: '12px',
+                  borderRadius: '12px',
+                  border: '1px solid rgba(0, 0, 0, 0.1)',
+                }}>
+                  {selectedMemory.content}
+                </div>
+              </div>
+            )}
 
             {/* Action buttons */}
             <div className="flex gap-2">

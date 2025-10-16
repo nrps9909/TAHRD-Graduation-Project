@@ -884,27 +884,6 @@ function SimpleGalleryView({ memories, onTogglePin, onSelectMemory, onDelete }: 
               </div>
             )}
 
-            {/* AI 深度分析標章 */}
-            {(memory.detailedSummary || memory.actionableAdvice) && (
-              <div className="absolute top-2 sm:top-3 left-2 sm:left-3 z-10">
-                <div
-                  className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md sm:rounded-lg text-[10px] sm:text-xs font-bold flex items-center gap-0.5 sm:gap-1 shadow-lg"
-                  style={{
-                    background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.9) 0%, rgba(147, 51, 234, 0.9) 100%)',
-                    color: '#ffffff',
-                    border: '1px solid rgba(168, 85, 247, 0.5)',
-                    boxShadow: '0 2px 8px rgba(168, 85, 247, 0.4)',
-                  }}
-                  title="此記憶包含 AI 深度分析"
-                >
-                  <svg className="w-2.5 h-2.5 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                  </svg>
-                  <span className="hidden sm:inline">AI</span>
-                </div>
-              </div>
-            )}
-
             {/* 標題區 - 響應式 */}
             <div className="mb-2 sm:mb-3">
               <h3 className="text-sm sm:text-base font-black line-clamp-2 leading-snug" style={{

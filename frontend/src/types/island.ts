@@ -37,6 +37,10 @@ export interface Memory {
   // 新增：關聯到自訂小類別
   subcategoryId?: string | null
   subcategory?: Subcategory | null
+
+  // AI 深度分析
+  detailedSummary?: string
+  actionableAdvice?: string
 }
 
 // 小類別（SubAgent）- 與資料庫 schema 一致

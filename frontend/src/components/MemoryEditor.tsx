@@ -29,7 +29,7 @@ export default function MemoryEditor({ memory, onClose, onUpdate }: MemoryEditor
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [attachments, setAttachments] = useState<Array<{url: string, name: string, type: string}>>([])
-  const [viewMode, setViewMode] = useState<ViewMode>('edit')
+  const [viewMode, setViewMode] = useState<ViewMode>('preview')
 
   // 載入自訂分類
   const { data: subcategoriesData } = useQuery(GET_SUBCATEGORIES)
