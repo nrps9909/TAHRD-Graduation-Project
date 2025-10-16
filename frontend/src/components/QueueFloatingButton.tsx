@@ -134,18 +134,14 @@ export function QueueFloatingButton() {
 
   return (
     <>
-      {/* 浮動按鈕 */}
+      {/* 浮動按鈕 - 響應式設計 */}
       <motion.button
         initial={{ opacity: 0, scale: 0 }}
         animate={{ opacity: 1, scale: 1 }}
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => setIsExpanded(!isExpanded)}
-        className="fixed bottom-6 right-6 z-40 group"
-        style={{
-          width: '64px',
-          height: '64px',
-        }}
+        className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 group w-14 h-14 sm:w-16 sm:h-16"
       >
         {/* 按鈕主體 */}
         <div className="relative w-full h-full">
@@ -155,7 +151,7 @@ export function QueueFloatingButton() {
           )}
 
           {/* 主按鈕 */}
-          <div className="relative w-full h-full rounded-full bg-gradient-to-br from-amber-300 to-yellow-400 shadow-2xl border-4 border-white/80 flex items-center justify-center transition-all group-hover:shadow-amber-300/50">
+          <div className="relative w-full h-full rounded-full bg-gradient-to-br from-amber-300 to-yellow-400 shadow-2xl border-3 sm:border-4 border-white/80 flex items-center justify-center transition-all group-hover:shadow-amber-300/50">
             {/* 內部圖標 */}
             <div className="relative">
               {hasActiveTasks ? (
@@ -164,29 +160,29 @@ export function QueueFloatingButton() {
                   <motion.div
                     animate={{ rotate: 360 }}
                     transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-                    className="text-2xl"
+                    className="text-xl sm:text-2xl"
                   >
                     ⚙️
                   </motion.div>
-                  {/* 數量徽章 */}
-                  <div className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center border-2 border-white shadow-lg">
+                  {/* 數量徽章 - 響應式 */}
+                  <div className="absolute -top-1.5 -right-1.5 sm:-top-2 sm:-right-2 w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center border-2 border-white shadow-lg">
                     {totalTasks > 9 ? '9+' : totalTasks}
                   </div>
                 </>
               ) : (
-                <div className="text-2xl">📋</div>
+                <div className="text-xl sm:text-2xl">📋</div>
               )}
             </div>
           </div>
 
-          {/* 連接狀態指示器 */}
-          <div className={`absolute bottom-0 right-0 w-4 h-4 rounded-full border-2 border-white shadow-lg ${
+          {/* 連接狀態指示器 - 響應式 */}
+          <div className={`absolute bottom-0 right-0 w-3 h-3 sm:w-4 sm:h-4 rounded-full border-2 border-white shadow-lg ${
             socket?.connected ? 'bg-green-400' : 'bg-gray-400'
           }`} />
         </div>
       </motion.button>
 
-      {/* 展開的隊列面板 */}
+      {/* 展開的隊列面板 - 響應式設計 */}
       <AnimatePresence>
         {isExpanded && (
           <motion.div
@@ -194,28 +190,28 @@ export function QueueFloatingButton() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.8, y: 20 }}
             transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-            className="fixed bottom-24 right-6 z-40 w-[420px]"
+            className="fixed bottom-20 right-4 sm:bottom-24 sm:right-6 z-40 w-[calc(100vw-2rem)] sm:w-[420px] max-w-[420px]"
           >
-            <div className="bg-gradient-to-br from-amber-50/98 via-yellow-50/98 to-orange-50/98 backdrop-blur-xl rounded-3xl shadow-2xl border-4 border-amber-200/70 overflow-hidden">
-              {/* 頭部 */}
-              <div className="relative bg-gradient-to-r from-amber-300/90 to-yellow-300/90 p-5 border-b-4 border-amber-200/70">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    {/* 狀態指示燈 */}
+            <div className="bg-gradient-to-br from-amber-50/98 via-yellow-50/98 to-orange-50/98 backdrop-blur-xl rounded-2xl sm:rounded-3xl shadow-2xl border-3 sm:border-4 border-amber-200/70 overflow-hidden">
+              {/* 頭部 - 響應式 */}
+              <div className="relative bg-gradient-to-r from-amber-300/90 to-yellow-300/90 p-3 sm:p-5 border-b-3 sm:border-b-4 border-amber-200/70">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                    {/* 狀態指示燈 - 響應式 */}
                     {hasActiveTasks && (
-                      <div className="relative">
-                        <div className="w-4 h-4 bg-gradient-to-br from-green-400 to-green-500 rounded-full shadow-lg border-2 border-green-300 animate-pulse"></div>
-                        <div className="absolute inset-0 w-4 h-4 bg-green-400 rounded-full animate-ping opacity-75"></div>
+                      <div className="relative flex-shrink-0">
+                        <div className="w-3 h-3 sm:w-4 sm:h-4 bg-gradient-to-br from-green-400 to-green-500 rounded-full shadow-lg border-2 border-green-300 animate-pulse"></div>
+                        <div className="absolute inset-0 w-3 h-3 sm:w-4 sm:h-4 bg-green-400 rounded-full animate-ping opacity-75"></div>
                       </div>
                     )}
 
-                    <div>
-                      <h3 className="text-lg font-bold text-amber-900" style={{
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-base sm:text-lg font-bold text-amber-900 truncate" style={{
                         textShadow: '0 2px 4px rgba(255,255,255,0.8)',
                       }}>
                         {hasActiveTasks ? '🐱 白噗噗思考中' : '📜 處理歷史'}
                       </h3>
-                      <p className="text-xs text-amber-700 font-medium">
+                      <p className="text-xs text-amber-700 font-medium truncate">
                         {(stats?.processing ?? 0) > 0
                           ? `正在處理 ${stats?.processing ?? 0} 個 | 等待 ${stats?.queueSize ?? 0} 個`
                           : dbHistories.length > 0
@@ -225,22 +221,24 @@ export function QueueFloatingButton() {
                     </div>
                   </div>
 
-                  {/* 關閉按鈕 */}
-                  <button
+                  {/* 關閉按鈕 - 響應式 */}
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
                     onClick={() => setIsExpanded(false)}
-                    className="text-amber-900 hover:text-amber-700 transition-colors text-xl"
+                    className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-white/30 hover:bg-white/50 transition-all flex items-center justify-center text-amber-900 font-bold border-2 border-white/50"
                   >
-                    ✕
-                  </button>
+                    <span className="text-lg sm:text-xl">✕</span>
+                  </motion.button>
                 </div>
               </div>
 
-              {/* 內容區域 */}
-              <div className="p-4 space-y-3 max-h-[400px] overflow-y-auto" style={{
+              {/* 內容區域 - 響應式 */}
+              <div className="p-3 sm:p-4 space-y-2 sm:space-y-3 max-h-[50vh] sm:max-h-[400px] overflow-y-auto" style={{
                 scrollbarWidth: 'thin',
                 scrollbarColor: '#fbbf24 #fef3c7'
               }}>
-                {/* 處理中的任務 */}
+                {/* 處理中的任務 - 響應式 */}
                 {stats?.processingTasks && stats?.processingTasks.length > 0 ? (
                   <AnimatePresence>
                     {stats?.processingTasks.map((task) => {
@@ -251,22 +249,22 @@ export function QueueFloatingButton() {
                           initial={{ opacity: 0, x: -20 }}
                           animate={{ opacity: 1, x: 0 }}
                           exit={{ opacity: 0, x: 20 }}
-                          className="bg-gradient-to-br from-white to-blue-50 border-3 border-blue-200/70 rounded-2xl p-4 shadow-lg"
+                          className="bg-gradient-to-br from-white to-blue-50 border-2 sm:border-3 border-blue-200/70 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-lg"
                         >
-                          <div className="flex items-center justify-between gap-3 mb-2">
+                          <div className="flex items-center justify-between gap-2 sm:gap-3 mb-2">
                             <div className="flex items-center gap-2 flex-1 min-w-0">
-                              <div className="flex-shrink-0 w-3 h-3 bg-blue-400 rounded-full animate-pulse"></div>
-                              <p className="text-sm font-bold text-blue-900 truncate">
+                              <div className="flex-shrink-0 w-2 h-2 sm:w-3 sm:h-3 bg-blue-400 rounded-full animate-pulse"></div>
+                              <p className="text-xs sm:text-sm font-bold text-blue-900 truncate">
                                 {task.progress.message}
                               </p>
                             </div>
-                            <span className="text-sm font-mono font-bold text-blue-700 bg-blue-100 px-2 py-1 rounded-lg">
+                            <span className="text-xs sm:text-sm font-mono font-bold text-blue-700 bg-blue-100 px-2 py-1 rounded-lg flex-shrink-0">
                               {taskInfo ? formatElapsedTime(taskInfo.elapsedTime) : '0秒'}
                             </span>
                           </div>
 
-                          {/* 進度條 */}
-                          <div className="h-2 bg-white/70 rounded-full overflow-hidden border border-blue-200/50">
+                          {/* 進度條 - 響應式 */}
+                          <div className="h-1.5 sm:h-2 bg-white/70 rounded-full overflow-hidden border border-blue-200/50">
                             <motion.div
                               initial={{ width: 0 }}
                               animate={{ width: `${(task.progress.current / task.progress.total) * 100}%` }}
@@ -281,8 +279,8 @@ export function QueueFloatingButton() {
                   /* 歷史記錄 */
                   <div className="space-y-2">
                     {dbHistories.length === 0 ? (
-                      <div className="text-center py-8">
-                        <p className="text-sm text-amber-600 font-medium">
+                      <div className="text-center py-6 sm:py-8">
+                        <p className="text-xs sm:text-sm text-amber-600 font-medium">
                           ✨ 尚無處理記錄
                         </p>
                       </div>
@@ -293,29 +291,29 @@ export function QueueFloatingButton() {
                             key={history.id}
                             initial={{ opacity: 0, y: 5 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="bg-white/60 border-2 border-amber-200/50 rounded-xl p-3 hover:bg-white/80 transition-all"
+                            className="bg-white/60 border-2 border-amber-200/50 rounded-xl sm:rounded-2xl p-2.5 sm:p-3 hover:bg-white/80 transition-all"
                           >
                             <div className="flex items-center justify-between gap-2 mb-1">
-                              <div className="flex items-center gap-2 flex-1 min-w-0">
-                                <span className="flex-shrink-0 text-base">
+                              <div className="flex items-center gap-1.5 sm:gap-2 flex-1 min-w-0">
+                                <span className="flex-shrink-0 text-sm sm:text-base">
                                   {history.status === 'COMPLETED' ? '✅' : '❌'}
                                 </span>
-                                <p className="text-xs font-bold text-amber-900 truncate">
+                                <p className="text-xs sm:text-sm font-bold text-amber-900 truncate">
                                   {history.message}
                                 </p>
                               </div>
                               {history.processingTime && (
-                                <span className="text-xs font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-lg">
+                                <span className="text-xs font-semibold text-amber-600 bg-amber-50 px-1.5 sm:px-2 py-0.5 rounded-lg flex-shrink-0">
                                   {(history.processingTime / 1000).toFixed(1)}s
                                 </span>
                               )}
                             </div>
                             {history.categoriesInfo && history.categoriesInfo.length > 0 && (
-                              <div className="flex items-center gap-1 mt-2 flex-wrap">
+                              <div className="flex items-center gap-1 mt-1.5 sm:mt-2 flex-wrap">
                                 {history.categoriesInfo.map((cat: CategoryInfo, idx: number) => (
                                   <span
                                     key={idx}
-                                    className="text-xs bg-amber-100/70 px-2 py-0.5 rounded-lg"
+                                    className="text-xs bg-amber-100/70 px-1.5 sm:px-2 py-0.5 rounded-lg"
                                   >
                                     {cat.categoryEmoji} {cat.categoryName}
                                   </span>
@@ -337,10 +335,10 @@ export function QueueFloatingButton() {
                   </div>
                 )}
 
-                {/* 連接狀態 */}
-                <div className="flex items-center justify-center gap-2 pt-2 border-t border-amber-200/50">
-                  <div className={`w-2 h-2 rounded-full ${socket?.connected ? 'bg-green-400 animate-pulse' : 'bg-gray-400'}`}></div>
-                  <span className="text-xs text-amber-600 font-medium">
+                {/* 連接狀態 - 響應式 */}
+                <div className="flex items-center justify-center gap-1.5 sm:gap-2 pt-2 border-t border-amber-200/50">
+                  <div className={`w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full ${socket?.connected ? 'bg-green-400 animate-pulse' : 'bg-gray-400'}`}></div>
+                  <span className="text-xs sm:text-sm text-amber-600 font-medium">
                     {socket?.connected ? '即時連線中' : '連接中...'}
                   </span>
                 </div>
