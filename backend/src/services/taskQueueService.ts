@@ -157,9 +157,16 @@ export class TaskQueueService extends EventEmitter {
       task.status = TaskStatus.COMPLETED
       task.completedAt = new Date()
       task.processingTime = task.completedAt.getTime() - task.startedAt!.getTime()
-      task.progress.message = '處理完成！'
 
-      logger.info(`[TaskQueue] Task completed: ${task.id}, Time: ${task.processingTime}ms`)
+      // 根據實際結果設置完成訊息
+      const memoriesCount = result.memoriesCreated.length
+      if (memoriesCount > 0) {
+        task.progress.message = `處理完成！已創建 ${memoriesCount} 條記憶`
+      } else {
+        task.progress.message = '⚠️ 此內容相關性較低，未保存記憶'
+      }
+
+      logger.info(`[TaskQueue] Task completed: ${task.id}, Time: ${task.processingTime}ms, Memories: ${memoriesCount}`)
 
       // 寫入資料庫歷史記錄
       await this.saveTaskHistory(task, result)
@@ -230,7 +237,12 @@ export class TaskQueueService extends EventEmitter {
 
     // 更新進度：完成
     task.progress.current = task.progress.total
-    task.progress.message = `已創建 ${result.memoriesCreated.length} 條記憶`
+    const memoriesCount = result.memoriesCreated.length
+    if (memoriesCount > 0) {
+      task.progress.message = `已創建 ${memoriesCount} 條記憶`
+    } else {
+      task.progress.message = '⚠️ 此內容相關性較低，未保存記憶'
+    }
     this.notifyTaskProgress(task)
 
     return result
