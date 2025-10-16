@@ -137,7 +137,7 @@ export function QueueFloatingButton() {
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => setIsExpanded(!isExpanded)}
-        className="fixed bottom-4 right-4 sm:bottom-5 sm:right-5 z-40 w-11 h-11 sm:w-12 sm:h-12"
+        className="fixed bottom-4 left-4 sm:bottom-5 sm:left-5 z-40 w-11 h-11 sm:w-12 sm:h-12"
       >
         <div className="relative w-full h-full">
           {/* 外圈光暈 */}
@@ -183,7 +183,7 @@ export function QueueFloatingButton() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 10 }}
             transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-            className="fixed bottom-16 right-4 sm:bottom-[4.5rem] sm:right-5 z-40 w-[calc(100vw-2rem)] sm:w-80 max-w-80"
+            className="fixed bottom-16 left-4 sm:bottom-[4.5rem] sm:left-5 z-40 w-[calc(100vw-2rem)] sm:w-80 max-w-80"
           >
             <div className="bg-white/95 backdrop-blur-md rounded-xl shadow-xl border border-amber-200/50 overflow-hidden">
               {/* 頭部 - 精簡 */}
