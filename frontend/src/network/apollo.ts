@@ -42,11 +42,12 @@ export const apolloClient = new ApolloClient({
     typePolicies: {
       Query: {
         fields: {
-          // 記憶列表的分頁策略
+          // 記憶列表的合併策略
           memories: {
             keyArgs: ['filter'],
-            merge(_existing = [], incoming) {
-              return [..._existing, ...incoming]
+            merge(_existing, incoming) {
+              // 直接使用新數據替換舊數據,避免重複
+              return incoming
             },
           },
         },

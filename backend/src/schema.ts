@@ -499,6 +499,32 @@ const baseTypeDefs = gql`
     isArchived: Boolean
   }
 
+  # ============ Task Queue History ============
+
+  type TaskHistory {
+    id: ID!
+    userId: ID!
+    taskId: String!
+    distributionId: ID
+    status: String!
+    priority: String!
+    message: String!
+    processingTime: Int
+    memoriesCreated: Int!
+    categoriesInfo: [CategoryInfo!]!
+    errorMessage: String
+    startedAt: DateTime!
+    completedAt: DateTime!
+    createdAt: DateTime!
+  }
+
+  type CategoryInfo {
+    memoryId: ID!
+    categoryName: String!
+    categoryEmoji: String!
+    islandName: String
+  }
+
   # ============ RAG System Types (小黑知識庫) ============
 
   type HijikiChatResponse {
@@ -718,6 +744,10 @@ const baseTypeDefs = gql`
     semanticSearch(query: String!, limit: Int, minSimilarity: Float): SemanticSearchResponse!
     getKnowledgeAnalytics(period: String): KnowledgeAnalyticsResponse!
     getHijikiSessions: [HijikiSessionInfo!]!
+
+    # ===== Task History Queries =====
+    taskHistories(limit: Int = 50, offset: Int = 0): [TaskHistory!]!
+    taskHistory(id: ID!): TaskHistory
   }
 
   # ============ Mutations ============

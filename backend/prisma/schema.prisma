@@ -524,6 +524,42 @@ model LegacyConversation {
   @@map("legacy_conversations")
 }
 
+// ============ Task Queue History ============
+
+// TaskHistory - 任務處理歷史記錄
+model TaskHistory {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId           String   @map("user_id") @db.ObjectId
+
+  // Task Info
+  taskId           String   @map("task_id") // 原始任務 ID
+  distributionId   String?  @map("distribution_id") @db.ObjectId
+
+  // Task Status
+  status           String   // COMPLETED, FAILED
+  priority         String   @default("NORMAL")
+
+  // Processing Info
+  message          String   @db.String // 處理訊息
+  processingTime   Int?     @map("processing_time") // ms
+
+  // Results
+  memoriesCreated  Int      @default(0) @map("memories_created")
+  categoriesInfo   Json[]   @default([]) @map("categories_info") // [{memoryId, categoryName, categoryEmoji, islandName}]
+
+  // Error Info (if failed)
+  errorMessage     String?  @map("error_message") @db.String
+
+  // Timestamps
+  startedAt        DateTime @map("started_at")
+  completedAt      DateTime @map("completed_at")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  @@index([userId, completedAt(sort: Desc)])
+  @@index([userId, status])
+  @@map("task_histories")
+}
+
 // ============ Custom Category System ============
 
 // Island - 代表大類別（島嶼，建議5個左右）

@@ -12,6 +12,7 @@ import { EventEmitter } from 'events'
 import { logger } from '../utils/logger'
 import { subAgentService } from './subAgentService'
 import { Server as SocketIOServer } from 'socket.io'
+import { prisma } from '../context'
 
 export enum TaskStatus {
   PENDING = 'PENDING',
@@ -158,6 +159,9 @@ export class TaskQueueService extends EventEmitter {
 
       logger.info(`[TaskQueue] Task completed: ${task.id}, Time: ${task.processingTime}ms`)
 
+      // 寫入資料庫歷史記錄
+      await this.saveTaskHistory(task, result)
+
       // 通知前端任務完成
       this.notifyTaskComplete(task, result)
 
@@ -169,6 +173,9 @@ export class TaskQueueService extends EventEmitter {
       task.progress.message = `處理失敗: ${error.message}`
 
       logger.error(`[TaskQueue] Task failed: ${task.id}`, error)
+
+      // 寫入資料庫歷史記錄 (失敗記錄)
+      await this.saveTaskHistory(task, null, error)
 
       // 通知前端任務失敗
       this.notifyTaskError(task, error)
@@ -272,6 +279,35 @@ export class TaskQueueService extends EventEmitter {
         progress: t.progress,
         elapsedTime: Date.now() - (t.startedAt?.getTime() || Date.now())
       }))
+    }
+  }
+
+  /**
+   * 保存任務歷史到資料庫
+   */
+  private async saveTaskHistory(task: QueueTask, result: any | null, error?: Error) {
+    try {
+      await prisma.taskHistory.create({
+        data: {
+          userId: task.userId,
+          taskId: task.id,
+          distributionId: task.distributionId,
+          status: task.status,
+          priority: task.priority,
+          message: task.progress.message,
+          processingTime: task.processingTime || null,
+          memoriesCreated: result?.memoriesCreated?.length || 0,
+          categoriesInfo: result?.categoriesInfo || [],
+          errorMessage: error?.message || null,
+          startedAt: task.startedAt || new Date(),
+          completedAt: task.completedAt || new Date(),
+        },
+      })
+
+      logger.info(`[TaskQueue] Task history saved: ${task.id}`)
+    } catch (err: any) {
+      logger.error(`[TaskQueue] Failed to save task history: ${task.id}`, err)
+      // 不拋出錯誤,避免影響主流程
     }
   }
 

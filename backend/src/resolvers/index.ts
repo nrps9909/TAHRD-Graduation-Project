@@ -14,6 +14,7 @@ import { catAgentResolvers } from './catAgentResolvers'
 import { tororoResolvers } from './tororoResolvers'
 import { hijikiRagResolvers } from './hijikiRagResolvers'
 import { categoryResolvers } from './categoryResolvers'
+import { taskHistoryResolvers } from './taskHistoryResolvers'
 
 export const resolvers = {
   ...scalarResolvers,
@@ -30,6 +31,8 @@ export const resolvers = {
     ...hijikiRagResolvers.Query,
     // Category System (自訂分類系統)
     ...categoryResolvers.Query,
+    // Task History System (任務歷史記錄)
+    ...taskHistoryResolvers.Query,
   },
 
   Mutation: {

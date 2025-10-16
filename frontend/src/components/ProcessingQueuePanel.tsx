@@ -12,6 +12,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { io, Socket } from 'socket.io-client'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuthStore } from '../stores/authStore'
+import { useQuery } from '@apollo/client'
+import { GET_TASK_HISTORIES, TaskHistory } from '../graphql/taskHistory'
 
 interface TaskProgress {
   current: number
@@ -56,6 +58,15 @@ export function ProcessingQueuePanel() {
   const [processingTasks, setProcessingTasks] = useState<Map<string, { elapsedTime: number }>>(new Map())
   const [completedTasks, setCompletedTasks] = useState<CompletedTask[]>([])
   const [showCompleted, setShowCompleted] = useState(false)
+
+  // 從資料庫載入歷史記錄(最近10條)
+  const { data: historiesData, refetch: refetchHistories } = useQuery<{ taskHistories: TaskHistory[] }>(GET_TASK_HISTORIES, {
+    variables: { limit: 10, offset: 0 },
+    fetchPolicy: 'network-only',
+    onError: (error) => {
+      console.error('[TaskHistory] 載入歷史失敗:', error)
+    },
+  })
 
   // 獲取用戶 ID
   const userId = user?.id || 'guest-user-id'
@@ -120,16 +131,16 @@ export function ProcessingQueuePanel() {
     newSocket.on('task-complete', (data: { taskId: string, progress?: TaskProgress, categoriesInfo?: CategoryInfo[] }) => {
       console.log('[Queue] 任務完成 ✅:', data)
 
-      // 添加到完成列表
+      // 添加到臨時完成列表(用於顯示通知)
       const completedTask: CompletedTask = {
         id: data.taskId,
         message: data.progress?.message || '知識處理',
         completedAt: new Date(),
         categoriesInfo: data.categoriesInfo || []
       }
-      setCompletedTasks(prev => [completedTask, ...prev].slice(0, 10)) // 只保留最近 10 個
+      setCompletedTasks(prev => [completedTask, ...prev].slice(0, 10))
 
-      // 顯示完成通知 5 秒（延長以便查看分類信息）
+      // 顯示完成通知 5 秒
       setShowCompleted(true)
       setTimeout(() => setShowCompleted(false), 5000)
 
@@ -140,8 +151,9 @@ export function ProcessingQueuePanel() {
         return newMap
       })
 
-      // 請求更新狀態
+      // 重新載入資料庫歷史記錄
       setTimeout(() => {
+        refetchHistories()
         newSocket.emit('get-queue-stats')
       }, 500)
     })
@@ -180,10 +192,16 @@ export function ProcessingQueuePanel() {
     return `${minutes}分${secs}秒`
   }, [])
 
-  // 如果沒有任務，不顯示面板
-  if (!stats || (stats.queueSize === 0 && stats.processing === 0 && completedTasks.length === 0)) {
+  // 獲取資料庫歷史記錄
+  const dbHistories = historiesData?.taskHistories || []
+
+  // 如果沒有任務且沒有歷史記錄，不顯示面板
+  if (!stats || (stats.queueSize === 0 && stats.processing === 0 && completedTasks.length === 0 && dbHistories.length === 0)) {
     return null
   }
+
+  // 判斷是否有處理中的任務
+  const hasActiveTasks = stats && (stats.queueSize > 0 || stats.processing > 0)
 
   return (
     <>
@@ -229,10 +247,14 @@ export function ProcessingQueuePanel() {
                       textShadow: '0 2px 4px rgba(255,255,255,0.8)',
                       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", sans-serif'
                     }}>
-                      白噗噗思考中
+                      {hasActiveTasks ? '白噗噗思考中' : '處理歷史'}
                     </h3>
                     <p className="text-sm text-amber-700 font-medium">
-                      {stats.processing > 0 ? `正在處理 ${stats.processing} 個記憶` : '等待中...'}
+                      {stats.processing > 0
+                        ? `正在處理 ${stats.processing} 個記憶`
+                        : dbHistories.length > 0
+                        ? `最近 ${dbHistories.length} 條記錄`
+                        : '等待中...'}
                     </p>
                   </div>
                 </div>
@@ -308,12 +330,66 @@ export function ProcessingQueuePanel() {
                   </motion.div>
                 )}
 
-                {/* 沒有任務時的提示 */}
+                {/* 沒有任務時顯示歷史記錄 */}
                 {stats.processing === 0 && stats.queueSize === 0 && (
-                  <div className="text-center py-6">
-                    <p className="text-sm text-amber-600 font-medium">
-                      ✨ 所有記憶都處理完畢了！
-                    </p>
+                  <div className="space-y-2">
+                    {dbHistories.length === 0 ? (
+                      <div className="text-center py-6">
+                        <p className="text-sm text-amber-600 font-medium">
+                          ✨ 尚無處理記錄
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="text-xs font-bold text-amber-700 px-1">
+                          📜 處理歷史
+                        </div>
+                        {dbHistories.slice(0, 5).map((history) => (
+                          <motion.div
+                            key={history.id}
+                            initial={{ opacity: 0, y: 5 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="bg-white/60 border-2 border-amber-200/50 rounded-xl p-3 hover:bg-white/80 transition-all"
+                          >
+                            <div className="flex items-center justify-between gap-2 mb-1">
+                              <div className="flex items-center gap-2 flex-1 min-w-0">
+                                <span className="flex-shrink-0 text-lg">
+                                  {history.status === 'COMPLETED' ? '✅' : '❌'}
+                                </span>
+                                <p className="text-xs font-bold text-amber-900 truncate">
+                                  {history.message}
+                                </p>
+                              </div>
+                              {history.processingTime && (
+                                <span className="text-xs font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-lg">
+                                  {(history.processingTime / 1000).toFixed(1)}s
+                                </span>
+                              )}
+                            </div>
+                            {history.categoriesInfo && history.categoriesInfo.length > 0 && (
+                              <div className="flex items-center gap-1 mt-2 flex-wrap">
+                                {history.categoriesInfo.map((cat: any, idx: number) => (
+                                  <span
+                                    key={idx}
+                                    className="text-xs bg-amber-100/70 px-2 py-0.5 rounded-lg border border-amber-200/50"
+                                  >
+                                    {cat.categoryEmoji} {cat.categoryName}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                            <div className="text-xs text-amber-600 mt-1">
+                              {new Date(history.completedAt).toLocaleString('zh-TW', {
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </div>
+                          </motion.div>
+                        ))}
+                      </>
+                    )}
                   </div>
                 )}
 
