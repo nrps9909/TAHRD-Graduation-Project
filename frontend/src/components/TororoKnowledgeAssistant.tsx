@@ -67,6 +67,8 @@ interface HistoryRecord {
   distributionId?: string  // 儲存 distribution ID 以便後續查詢
   processingStatus?: 'pending' | 'processing' | 'completed' | 'error' // 處理狀態
   memoriesCount?: number // 創建的記憶數量
+  progressMessage?: string // 進度訊息
+  elapsedTime?: number // 已處理時間（秒）
 }
 
 const HISTORY_STORAGE_KEY = 'tororo_knowledge_history'
@@ -209,6 +211,71 @@ export default function TororoKnowledgeAssistant({
 
     newSocket.on('disconnect', (reason) => {
       console.log('[Tororo] WebSocket disconnected:', reason)
+    })
+
+    // 監聽任務開始事件
+    newSocket.on('task-start', (data: {
+      taskId: string
+      distributionId: string
+      progress: { message: string }
+    }) => {
+      console.log('[Tororo] 收到 task-start 事件:', data)
+
+      // 更新對應的歷史記錄狀態為 processing
+      setHistory(prev => {
+        const updated = prev.map(record => {
+          if (record.distributionId === data.distributionId && record.processingStatus !== 'completed') {
+            return {
+              ...record,
+              processingStatus: 'processing' as const,
+              progressMessage: data.progress.message
+            }
+          }
+          return record
+        })
+
+        // 保存到 localStorage
+        try {
+          localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(updated))
+        } catch (error) {
+          console.error('更新歷史紀錄失敗:', error)
+        }
+
+        return updated
+      })
+    })
+
+    // 監聽任務進度更新事件
+    newSocket.on('task-progress', (data: {
+      taskId: string
+      distributionId: string
+      progress: { current: number; total: number; message: string }
+      elapsedTime: number
+    }) => {
+      console.log('[Tororo] 收到 task-progress 事件:', data)
+
+      // 更新對應的歷史記錄進度資訊
+      setHistory(prev => {
+        const updated = prev.map(record => {
+          if (record.distributionId === data.distributionId && record.processingStatus === 'processing') {
+            return {
+              ...record,
+              progressMessage: data.progress.message,
+              elapsedTime: data.elapsedTime
+            }
+          }
+          return record
+        })
+
+        // 保存到 localStorage
+        try {
+          localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(updated))
+        } catch (error) {
+          console.error('更新歷史紀錄失敗:', error)
+        }
+
+        return updated
+      })
     })
 
     // 監聽任務完成事件
@@ -1305,10 +1372,22 @@ export default function TororoKnowledgeAssistant({
                             <div className="text-xs font-medium">
                               {record.processingStatus === 'processing' ? (
                                 <div className="space-y-1">
-                                  <span className="flex items-center gap-1 text-blue-600">
-                                    <span className="inline-block w-2 h-2 bg-blue-400 rounded-full animate-pulse"></span>
-                                    後台處理中...
-                                  </span>
+                                  <div className="flex items-center gap-2">
+                                    <span className="flex items-center gap-1 text-blue-600">
+                                      <span className="inline-block w-2 h-2 bg-blue-400 rounded-full animate-pulse"></span>
+                                      後台處理中...
+                                    </span>
+                                    {record.elapsedTime !== undefined && record.elapsedTime > 0 && (
+                                      <span className="text-[10px] font-mono text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded">
+                                        {record.elapsedTime}秒
+                                      </span>
+                                    )}
+                                  </div>
+                                  {record.progressMessage && (
+                                    <p className="text-[10px] text-blue-500">
+                                      {record.progressMessage}
+                                    </p>
+                                  )}
                                   <p className="text-[10px] text-gray-500">
                                     💡 記憶正在後台創建，請稍後在知識庫查看
                                   </p>
