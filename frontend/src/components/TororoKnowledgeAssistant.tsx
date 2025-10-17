@@ -75,8 +75,8 @@ export default function TororoKnowledgeAssistant({
   modelPath,
   onClose,
 }: TororoKnowledgeAssistantProps) {
-  // 獲取認證 token
-  const { token } = useAuthStore()
+  // 獲取認證 token 和用戶資訊
+  const { token, user } = useAuthStore()
 
   const [viewMode, setViewMode] = useState<ViewMode>('main')
   const [inputText, setInputText] = useState('')
@@ -89,7 +89,8 @@ export default function TororoKnowledgeAssistant({
   const [history, setHistory] = useState<HistoryRecord[]>([])
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [conversationHistory, setConversationHistory] = useState<string[]>([]) // 對話歷史
-  const [socket, setSocket] = useState<Socket | null>(null) // WebSocket 連接
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [socket, setSocket] = useState<Socket | null>(null) // WebSocket 連接（保持連接活躍）
 
   // ChatGPT-style 檔案上傳狀態
   const [uploadedCloudinaryFiles, setUploadedCloudinaryFiles] = useState<Array<{
