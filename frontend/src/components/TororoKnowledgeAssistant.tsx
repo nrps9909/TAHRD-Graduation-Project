@@ -65,10 +65,12 @@ interface HistoryRecord {
   timestamp: Date
   result?: UploadResult
   distributionId?: string  // 儲存 distribution ID 以便後續查詢
-  processingStatus?: 'pending' | 'processing' | 'completed' | 'error' // 處理狀態
+  processingStatus?: 'pending' | 'processing' | 'completed' | 'error' | 'rejected' // 處理狀態
   memoriesCount?: number // 創建的記憶數量
   progressMessage?: string // 進度訊息
   elapsedTime?: number // 已處理時間（秒）
+  errorMessage?: string // 錯誤訊息
+  rejectionReason?: string // Chief Agent 拒絕原因
 }
 
 const HISTORY_STORAGE_KEY = 'tororo_knowledge_history'
@@ -667,22 +669,46 @@ export default function TororoKnowledgeAssistant({
     }
 
     // 🚀 新架構：非阻塞式提交，立即清空輸入框讓用戶繼續輸入
-    // 保存當前輸入狀態
     const currentInput = inputText
     const currentFiles = [...uploadedCloudinaryFiles]
-    
-    // 🎯 立即清空輸入，讓用戶可以繼續輸入下一個
+
+    // 🎯 1. 立即創建歷史記錄（pending 狀態）- 優先考慮用戶體驗
+    const recordId = `record-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    const filesForHistory = currentFiles
+      .filter(f => f.status === 'completed')
+      .map(f => ({ name: f.name, type: f.type }))
+
+    const newRecord: HistoryRecord = {
+      id: recordId,
+      inputText: currentInput,
+      files: filesForHistory,
+      timestamp: new Date(),
+      processingStatus: 'pending' // 初始狀態：等待處理
+    }
+
+    // 立即顯示在歷史記錄中
+    setHistory(prev => {
+      const updated = [newRecord, ...prev].slice(0, 50) // 只保留最近 50 筆
+      try {
+        localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(updated))
+      } catch (error) {
+        console.error('保存歷史記錄失敗:', error)
+      }
+      return updated
+    })
+
+    // 🎯 2. 立即清空輸入，讓用戶可以繼續輸入下一個
     setInputText('')
     setUploadedCloudinaryFiles([])
     play('message_sent')
-    
+
     // 顯示簡短的提交確認（不阻塞UI）
     setAudioDialogResponse('已送出！可以繼續輸入下一個～ ☁️✨')
-    
-    // 🔥 異步處理（不阻塞UI）
+
+    // 🔥 3. 異步處理（不阻塞UI）
     ;(async () => {
       try {
-        // 1️⃣ 使用已上傳的 Cloudinary URLs（已經在 handleFileChange 中上傳完成）
+        // 1️⃣ 使用已上傳的 Cloudinary URLs
         const uploadedFileUrls = currentFiles
           .filter(f => f.status === 'completed')
           .map(f => ({
@@ -691,11 +717,9 @@ export default function TororoKnowledgeAssistant({
             type: f.type.startsWith('image/') ? 'image' : 'file'
           }))
 
-        // 2️⃣ 檢查輸入文字中是否包含 URL（YouTube, 文章連結等）
+        // 2️⃣ 檢查輸入文字中是否包含 URL
         const urlRegex = /(https?:\/\/[^\s]+)/g
         const foundUrls = currentInput.match(urlRegex) || []
-
-        // 分離 URL 和純文字
         const textWithoutUrls = currentInput.replace(urlRegex, '').trim()
         const links = foundUrls.map(url => ({
           url: url,
@@ -705,7 +729,7 @@ export default function TororoKnowledgeAssistant({
         // 3️⃣ 準備 GraphQL 輸入
         const input: UploadKnowledgeInput = {
           content: textWithoutUrls || (links.length > 0 ? '分享連結' : '快速記錄'),
-          files: uploadedFileUrls,  // ✅ 使用 Cloudinary URLs
+          files: uploadedFileUrls,
           links: links.length > 0 ? links : undefined,
           contentType: uploadedFileUrls.some(f => f.type === 'image') ? 'IMAGE' : uploadedFileUrls.length > 0 ? 'DOCUMENT' : links.length > 0 ? 'LINK' : 'TEXT',
         }
@@ -716,41 +740,94 @@ export default function TororoKnowledgeAssistant({
           const result = data.uploadKnowledge
           const tororoResponse = result.tororoResponse
 
-          // === 檢查是否為簡單互動（不記錄）===
+          // === 處理 Chief Agent 拒絕的情況 ===
           if (result.skipRecording || tororoResponse?.shouldRecord === false) {
-            // 不儲存歷史，顯示白噗噗的友善回應
             setAudioDialogResponse(tororoResponse?.warmMessage || '這個就不記錄囉～ ☁️')
             play('notification')
+
+            // 更新歷史記錄狀態為 rejected
+            setHistory(prev => {
+              const updated = prev.map(record => {
+                if (record.id === recordId) {
+                  return {
+                    ...record,
+                    processingStatus: 'rejected' as const,
+                    rejectionReason: tororoResponse?.warmMessage || '此內容不需要記錄'
+                  }
+                }
+                return record
+              })
+              try {
+                localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(updated))
+              } catch (error) {
+                console.error('更新歷史紀錄失敗:', error)
+              }
+              return updated
+            })
             return
           }
 
           // === 正常記錄流程 ===
-          // 將 Cloudinary 檔案轉換為 File 格式供歷史記錄使用
-          const filesForHistory = currentFiles
-            .filter(f => f.status === 'completed')
-            .map(f => ({ name: f.name, type: f.type })) as unknown as File[]
-          saveToHistory(currentInput, filesForHistory, result) // 儲存到歷史
+          // 更新歷史記錄，添加 distributionId 和結果
+          setHistory(prev => {
+            const updated = prev.map(record => {
+              if (record.id === recordId) {
+                return {
+                  ...record,
+                  result,
+                  distributionId: result.distribution?.id,
+                  // 如果是同步處理（無背景任務），直接設為 completed
+                  processingStatus: result.backgroundProcessing ? 'pending' : 'completed',
+                  memoriesCount: result.backgroundProcessing ? undefined : result.createdMemories?.length || 0
+                }
+              }
+              return record
+            })
+            try {
+              localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(updated))
+            } catch (error) {
+              console.error('更新歷史紀錄失敗:', error)
+            }
+            return updated
+          })
 
-          // 顯示白噗噗的溫暖回應
+          playRandomMeow()
+          // 顯示 Tororo 的溫暖回應
           if (tororoResponse?.warmMessage) {
             setAudioDialogResponse(tororoResponse.warmMessage)
           }
 
           play('notification')
-          playRandomMeow()
-          
           console.log('✅ 知識已加入處理隊列:', result.distribution?.id)
         }
       } catch (error) {
         console.error('❌ 上傳失敗:', error)
-        // 失敗時恢復輸入（可選）
-        // setInputText(currentInput)
-        // setUploadedCloudinaryFiles(currentFiles)
+        const errorMessage = error instanceof Error ? error.message : '未知錯誤'
         setAudioDialogResponse('哎呀，出錯了！可以再試一次～ ☁️')
         play('notification')
+
+        // 更新歷史記錄狀態為 error，並記錄錯誤原因
+        setHistory(prev => {
+          const updated = prev.map(record => {
+            if (record.id === recordId) {
+              return {
+                ...record,
+                processingStatus: 'error' as const,
+                errorMessage: errorMessage
+              }
+            }
+            return record
+          })
+          try {
+            localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(updated))
+          } catch (error) {
+            console.error('更新歷史紀錄失敗:', error)
+          }
+          return updated
+        })
       }
     })()
-  }, [inputText, uploadedCloudinaryFiles, uploadKnowledge, play, saveToHistory, playRandomMeow, isUploading])
+  }, [inputText, uploadedCloudinaryFiles, uploadKnowledge, play, playRandomMeow, isUploading])
 
   const handleReset = useCallback(() => {
     setViewMode('main')
@@ -1370,7 +1447,19 @@ export default function TororoKnowledgeAssistant({
 
                             {/* 結果摘要 - 根據 processingStatus 顯示 */}
                             <div className="text-xs font-medium">
-                              {record.processingStatus === 'processing' ? (
+                              {record.processingStatus === 'pending' ? (
+                                <div className="space-y-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="flex items-center gap-1 text-gray-600">
+                                      <span className="inline-block w-2 h-2 bg-gray-400 rounded-full animate-pulse"></span>
+                                      等待處理...
+                                    </span>
+                                  </div>
+                                  <p className="text-[10px] text-gray-500">
+                                    📋 已送出，等待後台開始處理
+                                  </p>
+                                </div>
+                              ) : record.processingStatus === 'processing' ? (
                                 <div className="space-y-1">
                                   <div className="flex items-center gap-2">
                                     <span className="flex items-center gap-1 text-blue-600">
@@ -1396,10 +1485,28 @@ export default function TororoKnowledgeAssistant({
                                 <span className="text-green-600">
                                   ✅ 已創建 {record.memoriesCount || 0} 個記憶
                                 </span>
+                              ) : record.processingStatus === 'rejected' ? (
+                                <div className="space-y-1">
+                                  <span className="text-orange-600">
+                                    🚫 不需要記錄
+                                  </span>
+                                  {record.rejectionReason && (
+                                    <p className="text-[10px] text-orange-500 mt-1">
+                                      {record.rejectionReason}
+                                    </p>
+                                  )}
+                                </div>
                               ) : record.processingStatus === 'error' ? (
-                                <span className="text-red-500">
-                                  ❌ 處理失敗
-                                </span>
+                                <div className="space-y-1">
+                                  <span className="text-red-500">
+                                    ❌ 處理失敗
+                                  </span>
+                                  {record.errorMessage && (
+                                    <p className="text-[10px] text-red-500 mt-1">
+                                      {record.errorMessage}
+                                    </p>
+                                  )}
+                                </div>
                               ) : record.result?.skipRecording ? (
                                 <span className="text-gray-500">
                                   💬 簡單互動（未記錄）
