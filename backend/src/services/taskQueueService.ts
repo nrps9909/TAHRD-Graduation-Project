@@ -314,6 +314,17 @@ export class TaskQueueService extends EventEmitter {
    */
   private async saveTaskHistory(task: QueueTask, result: any | null, error?: Error) {
     try {
+      const categoriesInfo = result?.categoriesInfo || []
+      const memoriesCreated = result?.memoriesCreated?.length || 0
+
+      // 詳細日誌記錄,方便調試
+      logger.info(`[TaskQueue] 準備保存任務歷史:`)
+      logger.info(`  - taskId: ${task.id}`)
+      logger.info(`  - status: ${task.status}`)
+      logger.info(`  - memoriesCreated: ${memoriesCreated}`)
+      logger.info(`  - categoriesInfo.length: ${categoriesInfo.length}`)
+      logger.info(`  - categoriesInfo detail: ${JSON.stringify(categoriesInfo)}`)
+
       await prisma.taskHistory.create({
         data: {
           userId: task.userId,
@@ -323,17 +334,23 @@ export class TaskQueueService extends EventEmitter {
           priority: task.priority,
           message: task.progress.message,
           processingTime: task.processingTime || null,
-          memoriesCreated: result?.memoriesCreated?.length || 0,
-          categoriesInfo: result?.categoriesInfo || [],
+          memoriesCreated,
+          categoriesInfo,
           errorMessage: error?.message || null,
           startedAt: task.startedAt || new Date(),
           completedAt: task.completedAt || new Date(),
         },
       })
 
-      logger.info(`[TaskQueue] Task history saved: ${task.id}`)
+      logger.info(`[TaskQueue] ✅ Task history saved successfully: ${task.id}`)
     } catch (err: any) {
-      logger.error(`[TaskQueue] Failed to save task history: ${task.id}`, err)
+      logger.error(`[TaskQueue] ❌ Failed to save task history: ${task.id}`, err)
+      logger.error(`[TaskQueue] Error details:`, {
+        error: err.message,
+        stack: err.stack,
+        taskId: task.id,
+        resultKeys: result ? Object.keys(result) : 'null'
+      })
       // 不拋出錯誤,避免影響主流程
     }
   }

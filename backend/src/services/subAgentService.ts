@@ -279,15 +279,25 @@ export class SubAgentService {
         memoriesCreated.map(async (memory) => {
           if (memory.assistantId) {
             const assistant = await assistantService.getAssistantById(memory.assistantId)
-            return {
+            const categoryInfo = {
               memoryId: memory.id,
               categoryName: assistant?.nameChinese || '未知分類',
               categoryEmoji: assistant?.emoji || '📝'
             }
+            logger.info(`[Sub-Agents] 生成分類信息: ${JSON.stringify(categoryInfo)}`)
+            return categoryInfo
           }
+          logger.warn(`[Sub-Agents] 記憶 ${memory.id} 缺少 assistantId`)
           return null
         })
       ).then(results => results.filter(r => r !== null))
+
+      logger.info(`[Sub-Agents] 🎯 返回結果摘要:`)
+      logger.info(`  - agentDecisions: ${agentDecisions.length}`)
+      logger.info(`  - memoriesCreated: ${memoriesCreated.length}`)
+      logger.info(`  - storedByCount: ${storedByIds.length}`)
+      logger.info(`  - categoriesInfo: ${categoriesInfo.length} 項`)
+      logger.info(`  - categoriesInfo detail: ${JSON.stringify(categoriesInfo)}`)
 
       return {
         agentDecisions,
