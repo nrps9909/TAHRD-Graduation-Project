@@ -13,8 +13,11 @@ import { useConfirm } from '../../hooks/useConfirm'
 import { CategoryManagementModal } from '../../components/CategoryManagementModal'
 import { GET_ISLANDS, Island } from '../../graphql/category'
 import { QueueFloatingButton } from '../../components/QueueFloatingButton'
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core'
+import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
-type SortField = 'createdAt' | 'title'
+type SortField = 'createdAt' | 'title' | 'custom'
 
 export default function CuteDatabaseView() {
   const navigate = useNavigate()
@@ -25,6 +28,7 @@ export default function CuteDatabaseView() {
   const [searchQuery, setSearchQuery] = useState('')
   const debouncedSearch = useDebounce(searchQuery, 300)
   const [sortField, setSortField] = useState<SortField>('createdAt')
+  const [customOrder, setCustomOrder] = useState<string[]>([]) // 儲存自定義排序
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -147,6 +151,16 @@ export default function CuteDatabaseView() {
       }
 
       // 再按選擇的排序方式
+      if (sortField === 'custom' && customOrder.length > 0) {
+        const indexA = customOrder.indexOf(a.id)
+        const indexB = customOrder.indexOf(b.id)
+        if (indexA !== -1 && indexB !== -1) {
+          return indexA - indexB
+        }
+        if (indexA !== -1) return -1
+        if (indexB !== -1) return 1
+      }
+
       if (sortField === 'createdAt') {
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       } else if (sortField === 'title') {
@@ -156,7 +170,7 @@ export default function CuteDatabaseView() {
     })
 
     return filtered
-  }, [memoriesData?.memories, selectedCategory, selectedSubcategoryId, selectedIslandId, debouncedSearch, sortField, islands])
+  }, [memoriesData?.memories, selectedCategory, selectedSubcategoryId, selectedIslandId, debouncedSearch, sortField, customOrder, islands])
 
   const handleTogglePin = async (memory: Memory, e?: React.MouseEvent) => {
     e?.stopPropagation()
@@ -498,136 +512,157 @@ export default function CuteDatabaseView() {
 
       {/* 主內容區 */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* 頂部工具列 - 全面響應式優化 */}
-        <div className="sticky top-0 z-40 border-b px-2 sm:px-3 md:px-4 py-2 sm:py-2.5 md:py-3" style={{
+        {/* 頂部工具列 - 優化排版 */}
+        <div className="sticky top-0 z-40 border-b px-4 md:px-6 py-3 md:py-4" style={{
           borderColor: 'rgba(251, 191, 36, 0.3)',
-          background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(26, 26, 46, 0.95) 100%)',
+          background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.98) 0%, rgba(26, 26, 46, 0.98) 100%)',
           backdropFilter: 'blur(24px) saturate(180%)',
           WebkitBackdropFilter: 'blur(24px) saturate(180%)',
-          boxShadow: '0 4px 16px rgba(251, 191, 36, 0.15)',
+          boxShadow: '0 4px 20px rgba(251, 191, 36, 0.2)',
         }}>
-          <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 max-w-7xl mx-auto">
-            {/* 展開側邊欄按鈕 - 響應式尺寸 */}
-            {!sidebarOpen && (
-              <button
-                onClick={() => setSidebarOpen(true)}
-                className="p-2 sm:p-2.5 rounded-lg sm:rounded-xl transition-all flex-shrink-0 hover:scale-110 active:scale-95"
-                style={{
-                  color: '#cbd5e1',
-                  background: 'rgba(30, 41, 59, 0.6)',
-                  border: '2px solid rgba(251, 191, 36, 0.2)',
-                }}
-                title="展開側邊欄"
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(251, 191, 36, 0.3)'
-                  e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.5)'
-                  e.currentTarget.style.color = '#fef3c7'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'rgba(30, 41, 59, 0.6)'
-                  e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.2)'
-                  e.currentTarget.style.color = '#cbd5e1'
-                }}
-              >
-                <span className="text-sm sm:text-base">☰</span>
-              </button>
-            )}
-
-            {/* 搜尋框 - 響應式優化 */}
-            <div className="flex-1 relative max-w-xs sm:max-w-sm md:max-w-md">
-              <input
-                ref={searchInputRef}
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="搜尋..."
-                className="w-full pl-8 sm:pl-9 md:pl-10 pr-8 sm:pr-9 md:pr-10 py-1.5 sm:py-2 md:py-2.5 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-medium focus:outline-none transition-all"
-                style={{
-                  border: '2px solid rgba(251, 191, 36, 0.2)',
-                  background: 'rgba(30, 41, 59, 0.6)',
-                  color: '#fef3c7',
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = 'rgba(251, 191, 36, 0.6)'
-                  e.target.style.boxShadow = '0 0 0 3px rgba(251, 191, 36, 0.15)'
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = 'rgba(251, 191, 36, 0.2)'
-                  e.target.style.boxShadow = 'none'
-                }}
-              />
-              <span className="absolute left-2 sm:left-2.5 md:left-3 top-1/2 -translate-y-1/2 text-sm sm:text-base md:text-lg">
-                🔍
-              </span>
-              {searchQuery && (
+          <div className="max-w-7xl mx-auto">
+            {/* 第一行：側邊欄按鈕 + 搜尋框 */}
+            <div className="flex items-center gap-3 mb-3">
+              {/* 展開側邊欄按鈕 */}
+              {!sidebarOpen && (
                 <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-2 sm:right-2.5 md:right-3 top-1/2 -translate-y-1/2 p-0.5 sm:p-1 rounded-md sm:rounded-lg transition-all hover:scale-110 active:scale-95 text-xs sm:text-sm md:text-base"
+                  onClick={() => setSidebarOpen(true)}
+                  className="p-2.5 rounded-xl transition-all flex-shrink-0 hover:scale-110 active:scale-95"
                   style={{
-                    color: '#94a3b8',
+                    color: '#cbd5e1',
                     background: 'rgba(30, 41, 59, 0.8)',
+                    border: '2px solid rgba(251, 191, 36, 0.3)',
                   }}
+                  title="展開側邊欄"
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.color = '#fef3c7'
                     e.currentTarget.style.background = 'rgba(251, 191, 36, 0.3)'
+                    e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.6)'
+                    e.currentTarget.style.color = '#fef3c7'
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.color = '#94a3b8'
                     e.currentTarget.style.background = 'rgba(30, 41, 59, 0.8)'
+                    e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.3)'
+                    e.currentTarget.style.color = '#cbd5e1'
                   }}
                 >
-                  ✕
+                  <span className="text-base">☰</span>
                 </button>
               )}
+
+              {/* 搜尋框 */}
+              <div className="flex-1 relative max-w-2xl">
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="搜尋知識..."
+                  className="w-full pl-11 pr-10 py-2.5 rounded-2xl text-sm font-medium focus:outline-none transition-all"
+                  style={{
+                    border: '2px solid rgba(251, 191, 36, 0.25)',
+                    background: 'rgba(30, 41, 59, 0.7)',
+                    color: '#fef3c7',
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = 'rgba(251, 191, 36, 0.6)'
+                    e.target.style.boxShadow = '0 0 0 4px rgba(251, 191, 36, 0.15)'
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = 'rgba(251, 191, 36, 0.25)'
+                    e.target.style.boxShadow = 'none'
+                  }}
+                />
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-lg">
+                  🔍
+                </span>
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg transition-all hover:scale-110 active:scale-95"
+                    style={{
+                      color: '#94a3b8',
+                      background: 'rgba(30, 41, 59, 0.8)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = '#fef3c7'
+                      e.currentTarget.style.background = 'rgba(251, 191, 36, 0.3)'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = '#94a3b8'
+                      e.currentTarget.style.background = 'rgba(30, 41, 59, 0.8)'
+                    }}
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
             </div>
 
-            {/* 快速操作 - 全面響應式 */}
-            <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2">
-              {/* 排序 - 桌面顯示 */}
-              <select
-                value={sortField}
-                onChange={(e) => setSortField(e.target.value as SortField)}
-                className="hidden lg:block px-2 sm:px-3 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-bold focus:outline-none"
-                style={{
-                  border: '2px solid rgba(251, 191, 36, 0.2)',
-                  background: 'rgba(30, 41, 59, 0.6)',
-                  color: '#cbd5e1',
-                }}
-              >
-                <option value="createdAt">⏰ 最新</option>
-                <option value="title">🔤 標題</option>
-              </select>
+            {/* 第二行：功能按鈕 */}
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                {/* 排序選擇 */}
+                <select
+                  value={sortField}
+                  onChange={(e) => {
+                    const newSort = e.target.value as SortField
+                    setSortField(newSort)
+                    // 切換到自定義排序時，初始化順序
+                    if (newSort === 'custom' && customOrder.length === 0) {
+                      setCustomOrder(filteredMemories.map(m => m.id))
+                    }
+                  }}
+                  className="px-4 py-2 rounded-xl text-sm font-bold focus:outline-none transition-all cursor-pointer"
+                  style={{
+                    border: '2px solid rgba(251, 191, 36, 0.3)',
+                    background: 'rgba(30, 41, 59, 0.7)',
+                    color: '#cbd5e1',
+                  }}
+                >
+                  <option value="createdAt">⏰ 最新優先</option>
+                  <option value="title">🔤 標題排序</option>
+                  <option value="custom">✋ 自訂排序（可拖動）</option>
+                </select>
+              </div>
 
-              {/* 新增按鈕 - 響應式 */}
-              <button
-                onClick={handleCreateNewMemory}
-                className="px-2.5 sm:px-3 md:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl font-bold transition-all hover:scale-105 active:scale-95 text-xs sm:text-sm whitespace-nowrap flex-shrink-0"
-                style={{
-                  background: 'linear-gradient(135deg, #fbbf24 0%, #fb923c 100%)',
-                  color: '#1a1a2e',
-                  boxShadow: '0 3px 10px rgba(251, 191, 36, 0.3)',
-                }}
-              >
-                <span className="sm:hidden">✨</span>
-                <span className="hidden sm:inline md:hidden">新增</span>
-                <span className="hidden md:inline">✨ 新增</span>
-              </button>
+              <div className="flex items-center gap-2">
+                {/* 新增按鈕 */}
+                <button
+                  onClick={handleCreateNewMemory}
+                  className="px-5 py-2 rounded-xl font-bold transition-all hover:scale-105 active:scale-95 text-sm flex items-center gap-2"
+                  style={{
+                    background: 'linear-gradient(135deg, #fbbf24 0%, #fb923c 100%)',
+                    color: '#1a1a2e',
+                    boxShadow: '0 4px 12px rgba(251, 191, 36, 0.4)',
+                  }}
+                >
+                  <span>✨</span>
+                  <span className="hidden sm:inline">新增知識</span>
+                </button>
 
-              {/* 返回按鈕 - 響應式 */}
-              <button
-                onClick={() => navigate('/')}
-                className="px-2.5 sm:px-3 md:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl font-bold transition-all hover:scale-105 active:scale-95 text-xs sm:text-sm whitespace-nowrap flex-shrink-0"
-                style={{
-                  background: 'rgba(30, 41, 59, 0.6)',
-                  color: '#cbd5e1',
-                  border: '2px solid rgba(251, 191, 36, 0.2)',
-                }}
-                title="返回島嶼總覽"
-              >
-                <span className="sm:hidden">🏝️</span>
-                <span className="hidden sm:inline md:hidden">返回</span>
-                <span className="hidden md:inline">🏝️ 返回</span>
-              </button>
+                {/* 返回按鈕 */}
+                <button
+                  onClick={() => navigate('/')}
+                  className="px-5 py-2 rounded-xl font-bold transition-all hover:scale-105 active:scale-95 text-sm flex items-center gap-2"
+                  style={{
+                    background: 'rgba(30, 41, 59, 0.7)',
+                    color: '#cbd5e1',
+                    border: '2px solid rgba(251, 191, 36, 0.3)',
+                  }}
+                  title="返回島嶼總覽"
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(251, 191, 36, 0.2)'
+                    e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.5)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'rgba(30, 41, 59, 0.7)'
+                    e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.3)'
+                  }}
+                >
+                  <span>🏝️</span>
+                  <span className="hidden sm:inline">返回</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -718,6 +753,8 @@ export default function CuteDatabaseView() {
             onTogglePin={handleTogglePin}
             onSelectMemory={setSelectedMemory}
             onDelete={handleDelete}
+            isDraggable={sortField === 'custom'}
+            onReorder={(newOrder) => setCustomOrder(newOrder)}
           />
         )}
         </div>
@@ -789,9 +826,11 @@ interface SimpleGalleryViewProps {
   onTogglePin: (memory: Memory, e?: React.MouseEvent) => void
   onSelectMemory: (memory: Memory) => void
   onDelete: (memory: Memory, e: React.MouseEvent) => void
+  isDraggable?: boolean
+  onReorder?: (newOrder: string[]) => void
 }
 
-function SimpleGalleryView({ memories, onTogglePin, onSelectMemory, onDelete }: SimpleGalleryViewProps) {
+function SimpleGalleryView({ memories, onTogglePin, onSelectMemory, onDelete, isDraggable = false, onReorder }: SimpleGalleryViewProps) {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     return {
@@ -800,8 +839,460 @@ function SimpleGalleryView({ memories, onTogglePin, onSelectMemory, onDelete }: 
     }
   }
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // 8px 移動距離才觸發拖動
+      },
+    })
+  )
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+
+    if (over && active.id !== over.id) {
+      const oldIndex = memories.findIndex((m) => m.id === active.id)
+      const newIndex = memories.findIndex((m) => m.id === over.id)
+
+      const newOrder = arrayMove(memories, oldIndex, newIndex).map(m => m.id)
+      onReorder?.(newOrder)
+    }
+  }
+
+  if (!isDraggable) {
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4 md:gap-5 pb-4">
+        {memories.map((memory) => (
+          <MemoryCard
+            key={memory.id}
+            memory={memory}
+            onTogglePin={onTogglePin}
+            onSelectMemory={onSelectMemory}
+            onDelete={onDelete}
+            formatDate={formatDate}
+          />
+        ))}
+      </div>
+    )
+  }
+
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4 md:gap-5 pb-4">
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={handleDragEnd}
+    >
+      <SortableContext items={memories.map(m => m.id)} strategy={rectSortingStrategy}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4 md:gap-5 pb-4">
+          {memories.map((memory) => (
+            <DraggableMemoryCard
+              key={memory.id}
+              memory={memory}
+              onTogglePin={onTogglePin}
+              onSelectMemory={onSelectMemory}
+              onDelete={onDelete}
+              formatDate={formatDate}
+            />
+          ))}
+        </div>
+      </SortableContext>
+    </DndContext>
+  )
+}
+
+// 可拖動的記憶卡片
+interface DraggableMemoryCardProps {
+  memory: Memory
+  onTogglePin: (memory: Memory, e?: React.MouseEvent) => void
+  onSelectMemory: (memory: Memory) => void
+  onDelete: (memory: Memory, e: React.MouseEvent) => void
+  formatDate: (dateString: string) => { date: string; time: string }
+}
+
+function DraggableMemoryCard({ memory, onTogglePin, onSelectMemory, onDelete, formatDate }: DraggableMemoryCardProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: memory.id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    cursor: isDragging ? 'grabbing' : 'grab',
+  }
+
+  const { date, time } = formatDate(memory.createdAt)
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+    >
+      <div
+        onClick={(e) => {
+          if (!isDragging) {
+            onSelectMemory(memory)
+          }
+        }}
+        className="group relative rounded-2xl p-3 sm:p-4 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] flex flex-col"
+        style={{
+          background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(26, 26, 46, 0.6) 100%)',
+          backdropFilter: 'blur(12px) saturate(150%)',
+          WebkitBackdropFilter: 'blur(12px) saturate(150%)',
+          border: '2px solid rgba(251, 191, 36, 0.2)',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+          minHeight: '180px',
+        }}
+        onMouseEnter={(e) => {
+          if (!isDragging) {
+            e.currentTarget.style.boxShadow = '0 8px 24px rgba(251, 191, 36, 0.3)'
+            e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.5)'
+          }
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)'
+          e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.2)'
+        }}
+      >
+        {/* 拖動提示 */}
+        <div className="absolute top-2 left-2 z-10">
+          <div className="px-2 py-1 rounded-lg text-xs font-bold" style={{
+            background: 'rgba(251, 191, 36, 0.3)',
+            color: '#fef3c7',
+            border: '1px solid rgba(251, 191, 36, 0.5)',
+          }}>
+            ✋ 拖動
+          </div>
+        </div>
+
+        {/* 釘選按鈕 */}
+        {memory.isPinned && (
+          <div className="absolute top-2 sm:top-3 right-2 sm:top-3 z-10">
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onTogglePin(memory, e)
+              }}
+              className="p-1.5 rounded-lg transition-all text-sm hover:scale-110 active:scale-95"
+              style={{
+                background: 'linear-gradient(135deg, #fbbf24 0%, #fb923c 100%)',
+                color: '#1a1a2e',
+                boxShadow: '0 2px 6px rgba(251, 191, 36, 0.4)',
+              }}
+              title="取消釘選"
+            >
+              📌
+            </button>
+          </div>
+        )}
+
+        {/* 標題區 */}
+        <div className="mb-2 mt-8">
+          <h3 className="text-base sm:text-lg font-black line-clamp-2 leading-tight" style={{
+            color: '#fef3c7',
+            textShadow: '0 2px 4px rgba(0, 0, 0, 0.4)',
+          }}>
+            {memory.title || memory.summary || '無標題記憶'}
+          </h3>
+        </div>
+
+        {/* 分類區 */}
+        {(memory as any).subcategory && (
+          <div className="mb-2">
+            <span
+              className="px-2.5 py-1 text-xs font-black rounded-lg inline-flex items-center gap-1 shadow-md"
+              style={{
+                background: `${(memory as any).subcategory.color}`,
+                color: '#ffffff',
+                border: `2px solid ${(memory as any).subcategory.color}`,
+                boxShadow: `0 2px 6px ${(memory as any).subcategory.color}40`,
+                textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)',
+              }}
+            >
+              <span className="text-sm">{(memory as any).subcategory.emoji}</span>
+              <span className="truncate max-w-[120px]">{(memory as any).subcategory.nameChinese}</span>
+            </span>
+          </div>
+        )}
+
+        {/* 內容預覽區 */}
+        <div className="flex-1 mb-2">
+          {((memory as any).detailedSummary || memory.rawContent) ? (
+            <div>
+              <div className="text-xs font-bold mb-1" style={{ color: '#94a3b8' }}>
+                {(memory as any).detailedSummary ? '💡 AI 深度分析' : '📝 內容預覽'}
+              </div>
+              <p className="text-xs line-clamp-2 font-medium leading-relaxed whitespace-pre-wrap" style={{
+                color: '#e2e8f0',
+                lineHeight: '1.5',
+              }}>
+                {(memory as any).detailedSummary || memory.rawContent}
+              </p>
+            </div>
+          ) : (
+            <div className="text-xs italic" style={{ color: '#64748b' }}>
+              無內容預覽
+            </div>
+          )}
+        </div>
+
+        {/* 標籤區 */}
+        {memory.tags.length > 0 && (
+          <div className="mb-2">
+            <div className="flex flex-wrap gap-1">
+              {memory.tags.slice(0, 3).map((tag: string) => (
+                <span
+                  key={tag}
+                  className="px-2 py-0.5 text-xs font-bold rounded-md truncate max-w-[70px]"
+                  style={{
+                    background: 'rgba(251, 191, 36, 0.2)',
+                    color: '#fbbf24',
+                    border: '1px solid rgba(251, 191, 36, 0.4)',
+                  }}
+                  title={tag}
+                >
+                  #{tag}
+                </span>
+              ))}
+              {memory.tags.length > 3 && (
+                <span className="text-xs font-bold px-1 py-0.5" style={{ color: '#94a3b8' }}>
+                  +{memory.tags.length - 3}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 日期與時間區 */}
+        <div className="pt-2 border-t" style={{ borderColor: 'rgba(251, 191, 36, 0.25)' }}>
+          <div className="flex items-center justify-between text-xs font-semibold" style={{
+            color: '#94a3b8',
+          }}>
+            <div className="flex items-center gap-1">
+              <span className="text-sm">📅</span>
+              <span>{date}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="text-sm">🕐</span>
+              <span>{time}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* 刪除按鈕 */}
+        <div className="absolute bottom-2 sm:bottom-3 left-2 sm:left-3 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onDelete(memory, e)
+            }}
+            className="p-1.5 rounded-lg transition-all hover:scale-110 active:scale-95 text-sm"
+            style={{
+              background: 'rgba(30, 41, 59, 0.95)',
+              border: '2px solid rgba(251, 146, 60, 0.4)',
+            }}
+            title="刪除"
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(251, 146, 60, 0.4)'
+              e.currentTarget.style.borderColor = 'rgba(251, 146, 60, 0.7)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(30, 41, 59, 0.95)'
+              e.currentTarget.style.borderColor = 'rgba(251, 146, 60, 0.4)'
+            }}
+          >
+            🗑️
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// 普通記憶卡片（不可拖動）
+interface MemoryCardProps {
+  memory: Memory
+  onTogglePin: (memory: Memory, e?: React.MouseEvent) => void
+  onSelectMemory: (memory: Memory) => void
+  onDelete: (memory: Memory, e: React.MouseEvent) => void
+  formatDate: (dateString: string) => { date: string; time: string }
+}
+
+function MemoryCard({ memory, onTogglePin, onSelectMemory, onDelete, formatDate }: MemoryCardProps) {
+  const { date, time } = formatDate(memory.createdAt)
+
+  return (
+    <div
+      onClick={() => onSelectMemory(memory)}
+      className="group relative rounded-2xl p-3 sm:p-4 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] flex flex-col"
+      style={{
+        background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(26, 26, 46, 0.6) 100%)',
+        backdropFilter: 'blur(12px) saturate(150%)',
+        WebkitBackdropFilter: 'blur(12px) saturate(150%)',
+        border: '2px solid rgba(251, 191, 36, 0.2)',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+        minHeight: '180px',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.boxShadow = '0 8px 24px rgba(251, 191, 36, 0.3)'
+        e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.5)'
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)'
+        e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.2)'
+      }}
+    >
+      {/* 釘選按鈕 */}
+      {memory.isPinned && (
+        <div className="absolute top-2 sm:top-3 right-2 sm:right-3 z-10">
+          <button
+            onClick={(e) => onTogglePin(memory, e)}
+            className="p-1.5 rounded-lg transition-all text-sm hover:scale-110 active:scale-95"
+            style={{
+              background: 'linear-gradient(135deg, #fbbf24 0%, #fb923c 100%)',
+              color: '#1a1a2e',
+              boxShadow: '0 2px 6px rgba(251, 191, 36, 0.4)',
+            }}
+            title="取消釘選"
+          >
+            📌
+          </button>
+        </div>
+      )}
+
+      {/* 標題區 */}
+      <div className="mb-2">
+        <h3 className="text-base sm:text-lg font-black line-clamp-2 leading-tight" style={{
+          color: '#fef3c7',
+          textShadow: '0 2px 4px rgba(0, 0, 0, 0.4)',
+        }}>
+          {memory.title || memory.summary || '無標題記憶'}
+        </h3>
+      </div>
+
+      {/* 分類區 */}
+      {(memory as any).subcategory && (
+        <div className="mb-2">
+          <span
+            className="px-2.5 py-1 text-xs font-black rounded-lg inline-flex items-center gap-1 shadow-md"
+            style={{
+              background: `${(memory as any).subcategory.color}`,
+              color: '#ffffff',
+              border: `2px solid ${(memory as any).subcategory.color}`,
+              boxShadow: `0 2px 6px ${(memory as any).subcategory.color}40`,
+              textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)',
+            }}
+          >
+            <span className="text-sm">{(memory as any).subcategory.emoji}</span>
+            <span className="truncate max-w-[120px]">{(memory as any).subcategory.nameChinese}</span>
+          </span>
+        </div>
+      )}
+
+      {/* 內容預覽區 */}
+      <div className="flex-1 mb-2">
+        {((memory as any).detailedSummary || memory.rawContent) ? (
+          <div>
+            <div className="text-xs font-bold mb-1" style={{ color: '#94a3b8' }}>
+              {(memory as any).detailedSummary ? '💡 AI 深度分析' : '📝 內容預覽'}
+            </div>
+            <p className="text-xs line-clamp-2 font-medium leading-relaxed whitespace-pre-wrap" style={{
+              color: '#e2e8f0',
+              lineHeight: '1.5',
+            }}>
+              {(memory as any).detailedSummary || memory.rawContent}
+            </p>
+          </div>
+        ) : (
+          <div className="text-xs italic" style={{ color: '#64748b' }}>
+            無內容預覽
+          </div>
+        )}
+      </div>
+
+      {/* 標籤區 */}
+      {memory.tags.length > 0 && (
+        <div className="mb-2">
+          <div className="flex flex-wrap gap-1">
+            {memory.tags.slice(0, 3).map((tag: string) => (
+              <span
+                key={tag}
+                className="px-2 py-0.5 text-xs font-bold rounded-md truncate max-w-[70px]"
+                style={{
+                  background: 'rgba(251, 191, 36, 0.2)',
+                  color: '#fbbf24',
+                  border: '1px solid rgba(251, 191, 36, 0.4)',
+                }}
+                title={tag}
+              >
+                #{tag}
+              </span>
+            ))}
+            {memory.tags.length > 3 && (
+              <span className="text-xs font-bold px-1 py-0.5" style={{ color: '#94a3b8' }}>
+                +{memory.tags.length - 3}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 日期與時間區 */}
+      <div className="pt-2 border-t" style={{ borderColor: 'rgba(251, 191, 36, 0.25)' }}>
+        <div className="flex items-center justify-between text-xs font-semibold" style={{
+          color: '#94a3b8',
+        }}>
+          <div className="flex items-center gap-1">
+            <span className="text-sm">📅</span>
+            <span>{date}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="text-sm">🕐</span>
+            <span>{time}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* 刪除按鈕 */}
+      <div className="absolute bottom-2 sm:bottom-3 left-2 sm:left-3 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button
+          onClick={(e) => onDelete(memory, e)}
+          className="p-1.5 rounded-lg transition-all hover:scale-110 active:scale-95 text-sm"
+          style={{
+            background: 'rgba(30, 41, 59, 0.95)',
+            border: '2px solid rgba(251, 146, 60, 0.4)',
+          }}
+          title="刪除"
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'rgba(251, 146, 60, 0.4)'
+            e.currentTarget.style.borderColor = 'rgba(251, 146, 60, 0.7)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'rgba(30, 41, 59, 0.95)'
+            e.currentTarget.style.borderColor = 'rgba(251, 146, 60, 0.4)'
+          }}
+        >
+          🗑️
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// 刪除舊的重複代碼
+function OldMemoryCardCode_ToDelete() {
+  return null
+}
+
+// 以下是舊代碼，等待刪除
+/*
       {memories.map((memory) => {
         const { date, time } = formatDate(memory.createdAt)
         return (
