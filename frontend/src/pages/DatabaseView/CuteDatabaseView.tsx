@@ -808,14 +808,14 @@ function SimpleGalleryView({ memories, onTogglePin, onSelectMemory, onDelete }: 
           <div
             key={memory.id}
             onClick={() => onSelectMemory(memory)}
-            className="group relative rounded-2xl sm:rounded-3xl p-4 sm:p-5 md:p-6 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] flex flex-col"
+            className="group relative rounded-2xl p-3 sm:p-4 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] flex flex-col"
             style={{
               background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(26, 26, 46, 0.6) 100%)',
               backdropFilter: 'blur(12px) saturate(150%)',
               WebkitBackdropFilter: 'blur(12px) saturate(150%)',
               border: '2px solid rgba(251, 191, 36, 0.2)',
               boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
-              minHeight: '220px',
+              minHeight: '180px',
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.boxShadow = '0 8px 24px rgba(251, 191, 36, 0.3)'
@@ -828,10 +828,10 @@ function SimpleGalleryView({ memories, onTogglePin, onSelectMemory, onDelete }: 
           >
             {/* 釘選按鈕 - 響應式 */}
             {memory.isPinned && (
-              <div className="absolute top-3 sm:top-4 right-3 sm:right-4 z-10">
+              <div className="absolute top-2 sm:top-3 right-2 sm:right-3 z-10">
                 <button
                   onClick={(e) => onTogglePin(memory, e)}
-                  className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl transition-all text-sm sm:text-base hover:scale-110 active:scale-95"
+                  className="p-1.5 rounded-lg transition-all text-sm hover:scale-110 active:scale-95"
                   style={{
                     background: 'linear-gradient(135deg, #fbbf24 0%, #fb923c 100%)',
                     color: '#1a1a2e',
@@ -845,11 +845,10 @@ function SimpleGalleryView({ memories, onTogglePin, onSelectMemory, onDelete }: 
             )}
 
             {/* 標題區 - 響應式 */}
-            <div className="mb-3">
-              <h3 className="text-base sm:text-lg md:text-xl font-black line-clamp-2 leading-snug" style={{
+            <div className="mb-2">
+              <h3 className="text-base sm:text-lg font-black line-clamp-2 leading-tight" style={{
                 color: '#fef3c7',
                 textShadow: '0 2px 4px rgba(0, 0, 0, 0.4)',
-                minHeight: '2.5rem',
               }}>
                 {memory.title || memory.summary || '無標題記憶'}
               </h3>
@@ -857,39 +856,39 @@ function SimpleGalleryView({ memories, onTogglePin, onSelectMemory, onDelete }: 
 
             {/* 分類區 - 響應式標籤 */}
             {(memory as any).subcategory && (
-              <div className="mb-3">
+              <div className="mb-2">
                 <span
-                  className="px-3 py-1.5 text-xs sm:text-sm font-black rounded-xl inline-flex items-center gap-1.5 shadow-lg"
+                  className="px-2.5 py-1 text-xs font-black rounded-lg inline-flex items-center gap-1 shadow-md"
                   style={{
                     background: `${(memory as any).subcategory.color}`,
                     color: '#ffffff',
                     border: `2px solid ${(memory as any).subcategory.color}`,
-                    boxShadow: `0 2px 8px ${(memory as any).subcategory.color}40`,
+                    boxShadow: `0 2px 6px ${(memory as any).subcategory.color}40`,
                     textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)',
                   }}
                 >
-                  <span className="text-sm sm:text-base">{(memory as any).subcategory.emoji}</span>
-                  <span className="truncate max-w-[140px] sm:max-w-[160px]">{(memory as any).subcategory.nameChinese}</span>
+                  <span className="text-sm">{(memory as any).subcategory.emoji}</span>
+                  <span className="truncate max-w-[120px]">{(memory as any).subcategory.nameChinese}</span>
                 </span>
               </div>
             )}
 
             {/* 內容預覽區 - 響應式，優先顯示 AI 深度分析 */}
-            <div className="flex-1 mb-3">
+            <div className="flex-1 mb-2">
               {((memory as any).detailedSummary || memory.rawContent) ? (
-                <div className="mb-2">
-                  <div className="text-xs sm:text-sm font-bold mb-1.5" style={{ color: '#94a3b8' }}>
+                <div>
+                  <div className="text-xs font-bold mb-1" style={{ color: '#94a3b8' }}>
                     {(memory as any).detailedSummary ? '💡 AI 深度分析' : '📝 內容預覽'}
                   </div>
-                  <p className="text-xs sm:text-sm line-clamp-3 sm:line-clamp-4 font-medium leading-relaxed whitespace-pre-wrap" style={{
+                  <p className="text-xs line-clamp-2 font-medium leading-relaxed whitespace-pre-wrap" style={{
                     color: '#e2e8f0',
-                    lineHeight: '1.6',
+                    lineHeight: '1.5',
                   }}>
                     {(memory as any).detailedSummary || memory.rawContent}
                   </p>
                 </div>
               ) : (
-                <div className="text-xs sm:text-sm italic" style={{ color: '#64748b' }}>
+                <div className="text-xs italic" style={{ color: '#64748b' }}>
                   無內容預覽
                 </div>
               )}
@@ -897,19 +896,16 @@ function SimpleGalleryView({ memories, onTogglePin, onSelectMemory, onDelete }: 
 
             {/* 標籤區 - 響應式 */}
             {memory.tags.length > 0 && (
-              <div className="mb-3">
-                <div className="text-xs sm:text-sm font-bold mb-1.5" style={{ color: '#94a3b8' }}>
-                  🏷️ 標籤
-                </div>
-                <div className="flex flex-wrap gap-1.5 sm:gap-2">
+              <div className="mb-2">
+                <div className="flex flex-wrap gap-1">
                   {memory.tags.slice(0, 3).map((tag: string) => (
                     <span
                       key={tag}
-                      className="px-2.5 py-1 text-xs sm:text-sm font-bold rounded-lg truncate max-w-[80px] sm:max-w-[100px]"
+                      className="px-2 py-0.5 text-xs font-bold rounded-md truncate max-w-[70px]"
                       style={{
                         background: 'rgba(251, 191, 36, 0.2)',
                         color: '#fbbf24',
-                        border: '1.5px solid rgba(251, 191, 36, 0.4)',
+                        border: '1px solid rgba(251, 191, 36, 0.4)',
                       }}
                       title={tag}
                     >
@@ -917,7 +913,7 @@ function SimpleGalleryView({ memories, onTogglePin, onSelectMemory, onDelete }: 
                     </span>
                   ))}
                   {memory.tags.length > 3 && (
-                    <span className="text-xs sm:text-sm font-bold px-2 py-1" style={{ color: '#94a3b8' }}>
+                    <span className="text-xs font-bold px-1 py-0.5" style={{ color: '#94a3b8' }}>
                       +{memory.tags.length - 3}
                     </span>
                   )}
@@ -926,26 +922,26 @@ function SimpleGalleryView({ memories, onTogglePin, onSelectMemory, onDelete }: 
             )}
 
             {/* 日期與時間區 - 響應式 */}
-            <div className="pt-3 border-t" style={{ borderColor: 'rgba(251, 191, 36, 0.25)' }}>
-              <div className="flex items-center justify-between text-xs sm:text-sm font-semibold" style={{
+            <div className="pt-2 border-t" style={{ borderColor: 'rgba(251, 191, 36, 0.25)' }}>
+              <div className="flex items-center justify-between text-xs font-semibold" style={{
                 color: '#94a3b8',
               }}>
                 <div className="flex items-center gap-1">
-                  <span className="text-sm sm:text-base">📅</span>
+                  <span className="text-sm">📅</span>
                   <span>{date}</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <span className="text-sm sm:text-base">🕐</span>
+                  <span className="text-sm">🕐</span>
                   <span>{time}</span>
                 </div>
               </div>
             </div>
 
             {/* 刪除按鈕（hover 顯示）- 響應式 */}
-            <div className="absolute bottom-3 sm:bottom-4 left-3 sm:left-4 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="absolute bottom-2 sm:bottom-3 left-2 sm:left-3 opacity-0 group-hover:opacity-100 transition-opacity">
               <button
                 onClick={(e) => onDelete(memory, e)}
-                className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl transition-all hover:scale-110 active:scale-95 text-sm sm:text-base"
+                className="p-1.5 rounded-lg transition-all hover:scale-110 active:scale-95 text-sm"
                 style={{
                   background: 'rgba(30, 41, 59, 0.95)',
                   border: '2px solid rgba(251, 146, 60, 0.4)',
