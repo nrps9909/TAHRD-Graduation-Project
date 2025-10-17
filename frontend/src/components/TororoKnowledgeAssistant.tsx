@@ -353,30 +353,6 @@ export default function TororoKnowledgeAssistant({
     }
   }, [token, user?.id, play])
 
-  // 儲存歷史紀錄
-  const saveToHistory = useCallback((input: string, files: File[], result?: UploadResult) => {
-    const record: HistoryRecord = {
-      id: `history_${Date.now()}`,
-      inputText: input,
-      files: files.map(f => ({ name: f.name, type: f.type })),
-      timestamp: new Date(),
-      result,
-      distributionId: result?.distribution?.id,  // 儲存 distribution ID
-      processingStatus: result?.backgroundProcessing ? 'processing' : 'completed', // 初始狀態
-      memoriesCount: result?.memoriesCreated?.length || 0
-    }
-
-    setHistory(prev => {
-      const updated = [record, ...prev].slice(0, 50) // 只保留最近 50 筆
-      try {
-        localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(updated))
-      } catch (error) {
-        console.error('儲存歷史紀錄失敗:', error)
-      }
-      return updated
-    })
-  }, [])
-
   // 刪除歷史紀錄
   const deleteHistory = (id: string) => {
     setHistory(prev => {
@@ -772,14 +748,16 @@ export default function TororoKnowledgeAssistant({
           setHistory(prev => {
             const updated = prev.map(record => {
               if (record.id === recordId) {
-                return {
+                // 明確指定類型，避免 TypeScript 類型推斷問題
+                const newStatus: 'pending' | 'completed' = result.backgroundProcessing ? 'pending' : 'completed'
+                const updatedRecord: HistoryRecord = {
                   ...record,
                   result,
                   distributionId: result.distribution?.id,
-                  // 如果是同步處理（無背景任務），直接設為 completed
-                  processingStatus: result.backgroundProcessing ? 'pending' : 'completed',
+                  processingStatus: newStatus,
                   memoriesCount: result.backgroundProcessing ? undefined : result.createdMemories?.length || 0
                 }
+                return updatedRecord
               }
               return record
             })
