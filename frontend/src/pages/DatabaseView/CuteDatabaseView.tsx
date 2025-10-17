@@ -616,7 +616,7 @@ export default function CuteDatabaseView() {
                     setSortField(newSort)
                     // 切換到自定義排序時，初始化順序
                     if (newSort === 'custom' && customOrder.length === 0) {
-                      setCustomOrder(filteredMemories.map(m => m.id))
+                      setCustomOrder(filteredMemories.map((m: Memory) => m.id))
                     }
                   }}
                   className="px-4 py-2 rounded-xl text-sm font-bold focus:outline-none transition-all cursor-pointer"
