@@ -98,7 +98,7 @@ export default function CuteDatabaseView() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [searchQuery])
+  }, [searchQuery, handleCreateNewMemory])
 
   const categories: { value: MemoryCategory; label: string; emoji: string; color: string }[] = [
     { value: 'LEARNING', label: '學習', emoji: '📚', color: '#FFB3D9' },
@@ -115,6 +115,7 @@ export default function CuteDatabaseView() {
 
     // 小類別過濾（優先級最高）
     if (selectedSubcategoryId) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       filtered = filtered.filter((m: any) => m.subcategoryId === selectedSubcategoryId)
     }
     // 島嶼過濾（顯示該島嶼下所有小類別的記憶）
@@ -122,6 +123,7 @@ export default function CuteDatabaseView() {
       const selectedIsland = islands.find(i => i.id === selectedIslandId)
       if (selectedIsland) {
         const subcategoryIds = (selectedIsland.subcategories || []).map(sub => sub.id)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         filtered = filtered.filter((m: any) =>
           subcategoryIds.includes(m.subcategoryId)
         )
@@ -135,6 +137,7 @@ export default function CuteDatabaseView() {
     // 搜尋過濾
     if (debouncedSearch) {
       const query = debouncedSearch.toLowerCase()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       filtered = filtered.filter((m: any) =>
         m.title?.toLowerCase().includes(query) ||
         m.summary?.toLowerCase().includes(query) ||
@@ -364,6 +367,7 @@ export default function CuteDatabaseView() {
               islands.map((island) => {
                 const isExpanded = expandedIslands.has(island.id)
                 const subcategories = island.subcategories || []
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const islandMemoryCount = (memoriesData?.memories || []).filter((m: any) =>
                   subcategories.some(sub => sub.id === m.subcategoryId)
                 ).length
@@ -424,6 +428,7 @@ export default function CuteDatabaseView() {
                           </div>
                         ) : (
                           subcategories.map((subcategory) => {
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             const subMemoryCount = (memoriesData?.memories || []).filter(
                               (m: any) => m.subcategoryId === subcategory.id
                             ).length
@@ -465,6 +470,7 @@ export default function CuteDatabaseView() {
 
             {/* 傳統分類（向後兼容） */}
             {categories.some((cat) => {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const count = (memoriesData?.memories || []).filter((m: any) => m.category === cat.value && !m.subcategoryId).length
               return count > 0
             }) && (
@@ -475,6 +481,7 @@ export default function CuteDatabaseView() {
                   📋 傳統分類
                 </div>
                 {categories.map((cat) => {
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   const count = (memoriesData?.memories || []).filter((m: any) => m.category === cat.value && !m.subcategoryId).length
                   if (count === 0) return null
                   const isSelected = selectedCategory === cat.value && !selectedSubcategoryId && !selectedIslandId
@@ -936,7 +943,7 @@ function DraggableMemoryCard({ memory, onTogglePin, onSelectMemory, onDelete, fo
       {...listeners}
     >
       <div
-        onClick={(e) => {
+        onClick={() => {
           if (!isDragging) {
             onSelectMemory(memory)
           }
@@ -1004,6 +1011,7 @@ function DraggableMemoryCard({ memory, onTogglePin, onSelectMemory, onDelete, fo
         </div>
 
         {/* 分類區 */}
+        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
         {(memory as any).subcategory && (
           <div className="mb-2">
             <span
@@ -1178,6 +1186,7 @@ function MemoryCard({ memory, onTogglePin, onSelectMemory, onDelete, formatDate 
       </div>
 
       {/* 分類區 */}
+      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
       {(memory as any).subcategory && (
         <div className="mb-2">
           <span
