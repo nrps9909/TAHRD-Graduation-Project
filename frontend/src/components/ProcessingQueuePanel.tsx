@@ -230,6 +230,23 @@ export function ProcessingQueuePanel() {
   // 獲取資料庫歷史記錄
   const dbHistories = historiesData?.taskHistories || []
 
+  // 🔍 調試日誌 - 查看歷史記錄數據
+  useEffect(() => {
+    if (dbHistories.length > 0) {
+      console.log('[ProcessingQueue] 📊 資料庫歷史記錄:', dbHistories.length, '條')
+      dbHistories.slice(0, 3).forEach((history, i) => {
+        console.log(`[ProcessingQueue] 記錄 ${i + 1}:`, {
+          id: history.id,
+          message: history.message,
+          categoriesInfo: history.categoriesInfo,
+          categoriesInfoType: typeof history.categoriesInfo,
+          categoriesInfoIsArray: Array.isArray(history.categoriesInfo),
+          categoriesInfoLength: history.categoriesInfo?.length || 0
+        })
+      })
+    }
+  }, [dbHistories])
+
   // 如果沒有任務且沒有歷史記錄，不顯示面板
   if (!stats || (stats.queueSize === 0 && stats.processing === 0 && completedTasks.length === 0 && dbHistories.length === 0)) {
     return null
