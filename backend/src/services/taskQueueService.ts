@@ -412,9 +412,12 @@ export class TaskQueueService extends EventEmitter {
    * 通知任務完成
    */
   private notifyTaskComplete(task: QueueTask, result: any) {
-    if (!this.io) return
+    if (!this.io) {
+      logger.warn(`[TaskQueue] ⚠️ Socket.IO 未初始化，無法發送 task-complete 事件`)
+      return
+    }
 
-    this.io.to(task.userId).emit('task-complete', {
+    const payload = {
       taskId: task.id,
       distributionId: task.distributionId,
       progress: task.progress, // 添加 progress 資訊供前端顯示
@@ -424,9 +427,19 @@ export class TaskQueueService extends EventEmitter {
       },
       categoriesInfo: result.categoriesInfo || [], // 新增：記憶的分類信息
       processingTime: task.processingTime
+    }
+
+    logger.info(`[TaskQueue] 📤 發送 task-complete 事件:`, {
+      taskId: task.id,
+      userId: task.userId,
+      message: task.progress.message,
+      categoriesInfoLength: payload.categoriesInfo.length,
+      memoriesCreated: result.memoriesCreated.length
     })
 
-    logger.debug(`[TaskQueue] Notified task complete: ${task.id}`)
+    this.io.to(task.userId).emit('task-complete', payload)
+
+    logger.info(`[TaskQueue] ✅ task-complete 事件已發送到 room: ${task.userId}`)
   }
 
   /**

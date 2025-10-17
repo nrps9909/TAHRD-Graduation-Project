@@ -150,7 +150,12 @@ export function ProcessingQueuePanel() {
 
     // 監聽任務完成
     newSocket.on('task-complete', (data: { taskId: string, progress?: TaskProgress, categoriesInfo?: CategoryInfo[] }) => {
-      console.log('[Queue] 任務完成 ✅:', data)
+      console.log('[Queue] ✅ 任務完成事件觸發:', {
+        taskId: data.taskId,
+        progress: data.progress,
+        categoriesInfo: data.categoriesInfo,
+        categoriesInfoLength: data.categoriesInfo?.length || 0
+      })
 
       // 添加到臨時完成列表(用於顯示通知)
       const completedTask: CompletedTask = {
@@ -160,20 +165,28 @@ export function ProcessingQueuePanel() {
         categoriesInfo: data.categoriesInfo || []
       }
       setCompletedTasks(prev => [completedTask, ...prev].slice(0, 10))
+      console.log('[Queue] ✅ 已添加到完成列表:', completedTask)
 
       // 顯示完成通知 5 秒
       setShowCompleted(true)
-      setTimeout(() => setShowCompleted(false), 5000)
+      console.log('[Queue] ✅ 顯示完成通知')
+      setTimeout(() => {
+        setShowCompleted(false)
+        console.log('[Queue] ⏰ 隱藏完成通知')
+      }, 5000)
 
       // 清除處理中狀態
       setProcessingTasks(prev => {
         const newMap = new Map(prev)
+        const hadTask = newMap.has(data.taskId)
         newMap.delete(data.taskId)
+        console.log(`[Queue] ${hadTask ? '✅ 已移除' : '⚠️ 未找到'} 處理中任務:`, data.taskId)
         return newMap
       })
 
       // 重新載入資料庫歷史記錄
       setTimeout(() => {
+        console.log('[Queue] 🔄 重新載入歷史記錄和隊列狀態')
         refetchHistories()
         newSocket.emit('get-queue-stats')
       }, 500)
