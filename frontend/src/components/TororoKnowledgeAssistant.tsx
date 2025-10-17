@@ -89,8 +89,6 @@ export default function TororoKnowledgeAssistant({
   const [history, setHistory] = useState<HistoryRecord[]>([])
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [conversationHistory, setConversationHistory] = useState<string[]>([]) // 對話歷史
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [socket, setSocket] = useState<Socket | null>(null) // WebSocket 連接（保持連接活躍）
 
   // ChatGPT-style 檔案上傳狀態
   const [uploadedCloudinaryFiles, setUploadedCloudinaryFiles] = useState<Array<{
@@ -114,6 +112,7 @@ export default function TororoKnowledgeAssistant({
   const audioChunksRef = useRef<Blob[]>([])
   const aiGenerationAbortControllerRef = useRef<AbortController | null>(null)
   const inputDebounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const socketRef = useRef<Socket | null>(null) // WebSocket 連接引用
 
   // GraphQL
   const [uploadKnowledge] = useMutation(UPLOAD_KNOWLEDGE)
@@ -278,7 +277,7 @@ export default function TororoKnowledgeAssistant({
       })
     })
 
-    setSocket(newSocket)
+    socketRef.current = newSocket
 
     return () => {
       newSocket.disconnect()
