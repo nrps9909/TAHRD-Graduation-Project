@@ -14,12 +14,10 @@ import { CategoryManagementModal } from '../../components/CategoryManagementModa
 import { GET_ISLANDS, Island } from '../../graphql/category'
 import { QueueFloatingButton } from '../../components/QueueFloatingButton'
 
-type ViewMode = 'gallery' | 'list'
 type SortField = 'createdAt' | 'title'
 
 export default function CuteDatabaseView() {
   const navigate = useNavigate()
-  const [viewMode, setViewMode] = useState<ViewMode>('gallery')
   const [selectedCategory, setSelectedCategory] = useState<MemoryCategory | null>(null)
   const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<string | null>(null)
   const [selectedIslandId, setSelectedIslandId] = useState<string | null>(null)
@@ -499,7 +497,7 @@ export default function CuteDatabaseView() {
       </div>
 
       {/* 主內容區 */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 flex flex-col overflow-hidden">
         {/* 頂部工具列 - 全面響應式優化 */}
         <div className="sticky top-0 z-40 border-b px-2 sm:px-3 md:px-4 py-2 sm:py-2.5 md:py-3" style={{
           borderColor: 'rgba(251, 191, 36, 0.3)',
@@ -585,41 +583,6 @@ export default function CuteDatabaseView() {
 
             {/* 快速操作 - 全面響應式 */}
             <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2">
-              {/* 視圖切換 - 平板以上顯示 */}
-              <div className="hidden md:flex gap-0.5 p-0.5 sm:p-1 rounded-xl sm:rounded-2xl" style={{
-                background: 'rgba(30, 41, 59, 0.6)',
-                border: '2px solid rgba(251, 191, 36, 0.2)',
-              }}>
-                <button
-                  onClick={() => setViewMode('gallery')}
-                  className="px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold transition-all hover:scale-105 active:scale-95"
-                  style={viewMode === 'gallery' ? {
-                    background: 'linear-gradient(135deg, #fbbf24 0%, #fb923c 100%)',
-                    color: '#1a1a2e',
-                    boxShadow: '0 2px 8px rgba(251, 191, 36, 0.3)',
-                  } : {
-                    color: '#94a3b8',
-                  }}
-                  title="畫廊視圖"
-                >
-                  🎴
-                </button>
-                <button
-                  onClick={() => setViewMode('list')}
-                  className="px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold transition-all hover:scale-105 active:scale-95"
-                  style={viewMode === 'list' ? {
-                    background: 'linear-gradient(135deg, #fbbf24 0%, #fb923c 100%)',
-                    color: '#1a1a2e',
-                    boxShadow: '0 2px 8px rgba(251, 191, 36, 0.3)',
-                  } : {
-                    color: '#94a3b8',
-                  }}
-                  title="列表視圖"
-                >
-                  📝
-                </button>
-              </div>
-
               {/* 排序 - 桌面顯示 */}
               <select
                 value={sortField}
@@ -669,8 +632,8 @@ export default function CuteDatabaseView() {
           </div>
         </div>
 
-        {/* 內容區域 - 響應式內距 */}
-        <div className="p-2 sm:p-3 md:p-4">
+        {/* 內容區域 - 響應式內距，添加滾動支持 */}
+        <div className="flex-1 overflow-y-auto p-2 sm:p-3 md:p-4">
         {error ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <div className="w-32 h-32 mb-6 rounded-3xl flex items-center justify-center" style={{
@@ -749,15 +712,8 @@ export default function CuteDatabaseView() {
               </button>
             )}
           </div>
-        ) : viewMode === 'gallery' ? (
-          <SimpleGalleryView
-            memories={allMemories}
-            onTogglePin={handleTogglePin}
-            onSelectMemory={setSelectedMemory}
-            onDelete={handleDelete}
-          />
         ) : (
-          <SimpleListView
+          <SimpleGalleryView
             memories={allMemories}
             onTogglePin={handleTogglePin}
             onSelectMemory={setSelectedMemory}
@@ -845,21 +801,21 @@ function SimpleGalleryView({ memories, onTogglePin, onSelectMemory, onDelete }: 
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 sm:gap-3 md:gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4 md:gap-5 pb-4">
       {memories.map((memory) => {
         const { date, time } = formatDate(memory.createdAt)
         return (
           <div
             key={memory.id}
             onClick={() => onSelectMemory(memory)}
-            className="group relative rounded-xl sm:rounded-2xl p-3 sm:p-4 md:p-5 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] flex flex-col"
+            className="group relative rounded-2xl sm:rounded-3xl p-4 sm:p-5 md:p-6 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] flex flex-col"
             style={{
               background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(26, 26, 46, 0.6) 100%)',
               backdropFilter: 'blur(12px) saturate(150%)',
               WebkitBackdropFilter: 'blur(12px) saturate(150%)',
               border: '2px solid rgba(251, 191, 36, 0.2)',
               boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
-              minHeight: '200px',
+              minHeight: '220px',
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.boxShadow = '0 8px 24px rgba(251, 191, 36, 0.3)'
@@ -872,10 +828,10 @@ function SimpleGalleryView({ memories, onTogglePin, onSelectMemory, onDelete }: 
           >
             {/* 釘選按鈕 - 響應式 */}
             {memory.isPinned && (
-              <div className="absolute top-2 sm:top-3 right-2 sm:right-3 z-10">
+              <div className="absolute top-3 sm:top-4 right-3 sm:right-4 z-10">
                 <button
                   onClick={(e) => onTogglePin(memory, e)}
-                  className="p-1 sm:p-1.5 rounded-md sm:rounded-lg transition-all text-xs sm:text-sm hover:scale-110 active:scale-95"
+                  className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl transition-all text-sm sm:text-base hover:scale-110 active:scale-95"
                   style={{
                     background: 'linear-gradient(135deg, #fbbf24 0%, #fb923c 100%)',
                     color: '#1a1a2e',
@@ -889,11 +845,11 @@ function SimpleGalleryView({ memories, onTogglePin, onSelectMemory, onDelete }: 
             )}
 
             {/* 標題區 - 響應式 */}
-            <div className="mb-2 sm:mb-3">
-              <h3 className="text-sm sm:text-base font-black line-clamp-2 leading-snug" style={{
+            <div className="mb-3">
+              <h3 className="text-base sm:text-lg md:text-xl font-black line-clamp-2 leading-snug" style={{
                 color: '#fef3c7',
                 textShadow: '0 2px 4px rgba(0, 0, 0, 0.4)',
-                minHeight: '2.2rem',
+                minHeight: '2.5rem',
               }}>
                 {memory.title || memory.summary || '無標題記憶'}
               </h3>
@@ -901,9 +857,9 @@ function SimpleGalleryView({ memories, onTogglePin, onSelectMemory, onDelete }: 
 
             {/* 分類區 - 響應式標籤 */}
             {(memory as any).subcategory && (
-              <div className="mb-2 sm:mb-3">
+              <div className="mb-3">
                 <span
-                  className="px-2 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-xs font-black rounded-lg sm:rounded-xl inline-flex items-center gap-1 sm:gap-1.5 shadow-lg"
+                  className="px-3 py-1.5 text-xs sm:text-sm font-black rounded-xl inline-flex items-center gap-1.5 shadow-lg"
                   style={{
                     background: `${(memory as any).subcategory.color}`,
                     color: '#ffffff',
@@ -912,28 +868,28 @@ function SimpleGalleryView({ memories, onTogglePin, onSelectMemory, onDelete }: 
                     textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)',
                   }}
                 >
-                  <span className="text-xs sm:text-sm">{(memory as any).subcategory.emoji}</span>
-                  <span className="truncate max-w-[120px]">{(memory as any).subcategory.nameChinese}</span>
+                  <span className="text-sm sm:text-base">{(memory as any).subcategory.emoji}</span>
+                  <span className="truncate max-w-[140px] sm:max-w-[160px]">{(memory as any).subcategory.nameChinese}</span>
                 </span>
               </div>
             )}
 
             {/* 內容預覽區 - 響應式，優先顯示 AI 深度分析 */}
-            <div className="flex-1 mb-2 sm:mb-3">
+            <div className="flex-1 mb-3">
               {((memory as any).detailedSummary || memory.rawContent) ? (
                 <div className="mb-2">
-                  <div className="text-[10px] sm:text-xs font-bold mb-1" style={{ color: '#94a3b8' }}>
+                  <div className="text-xs sm:text-sm font-bold mb-1.5" style={{ color: '#94a3b8' }}>
                     {(memory as any).detailedSummary ? '💡 AI 深度分析' : '📝 內容預覽'}
                   </div>
-                  <p className="text-[10px] sm:text-xs line-clamp-2 sm:line-clamp-3 font-medium leading-relaxed whitespace-pre-wrap" style={{
+                  <p className="text-xs sm:text-sm line-clamp-3 sm:line-clamp-4 font-medium leading-relaxed whitespace-pre-wrap" style={{
                     color: '#e2e8f0',
-                    lineHeight: '1.5',
+                    lineHeight: '1.6',
                   }}>
                     {(memory as any).detailedSummary || memory.rawContent}
                   </p>
                 </div>
               ) : (
-                <div className="text-[10px] sm:text-xs italic" style={{ color: '#64748b' }}>
+                <div className="text-xs sm:text-sm italic" style={{ color: '#64748b' }}>
                   無內容預覽
                 </div>
               )}
@@ -941,15 +897,15 @@ function SimpleGalleryView({ memories, onTogglePin, onSelectMemory, onDelete }: 
 
             {/* 標籤區 - 響應式 */}
             {memory.tags.length > 0 && (
-              <div className="mb-2 sm:mb-3">
-                <div className="text-[10px] sm:text-xs font-bold mb-1 sm:mb-1.5" style={{ color: '#94a3b8' }}>
+              <div className="mb-3">
+                <div className="text-xs sm:text-sm font-bold mb-1.5" style={{ color: '#94a3b8' }}>
                   🏷️ 標籤
                 </div>
-                <div className="flex flex-wrap gap-1 sm:gap-1.5">
+                <div className="flex flex-wrap gap-1.5 sm:gap-2">
                   {memory.tags.slice(0, 3).map((tag: string) => (
                     <span
                       key={tag}
-                      className="px-1.5 sm:px-2.5 py-0.5 sm:py-1 text-[10px] sm:text-xs font-bold rounded-md sm:rounded-lg truncate max-w-[60px] sm:max-w-[80px]"
+                      className="px-2.5 py-1 text-xs sm:text-sm font-bold rounded-lg truncate max-w-[80px] sm:max-w-[100px]"
                       style={{
                         background: 'rgba(251, 191, 36, 0.2)',
                         color: '#fbbf24',
@@ -961,7 +917,7 @@ function SimpleGalleryView({ memories, onTogglePin, onSelectMemory, onDelete }: 
                     </span>
                   ))}
                   {memory.tags.length > 3 && (
-                    <span className="text-[10px] sm:text-xs font-bold px-1.5 sm:px-2 py-0.5 sm:py-1" style={{ color: '#94a3b8' }}>
+                    <span className="text-xs sm:text-sm font-bold px-2 py-1" style={{ color: '#94a3b8' }}>
                       +{memory.tags.length - 3}
                     </span>
                   )}
@@ -970,26 +926,26 @@ function SimpleGalleryView({ memories, onTogglePin, onSelectMemory, onDelete }: 
             )}
 
             {/* 日期與時間區 - 響應式 */}
-            <div className="pt-2 sm:pt-3 border-t" style={{ borderColor: 'rgba(251, 191, 36, 0.25)' }}>
-              <div className="flex items-center justify-between text-[10px] sm:text-xs font-semibold" style={{
+            <div className="pt-3 border-t" style={{ borderColor: 'rgba(251, 191, 36, 0.25)' }}>
+              <div className="flex items-center justify-between text-xs sm:text-sm font-semibold" style={{
                 color: '#94a3b8',
               }}>
-                <div className="flex items-center gap-0.5 sm:gap-1">
-                  <span className="text-xs sm:text-sm">📅</span>
+                <div className="flex items-center gap-1">
+                  <span className="text-sm sm:text-base">📅</span>
                   <span>{date}</span>
                 </div>
-                <div className="flex items-center gap-0.5 sm:gap-1">
-                  <span className="text-xs sm:text-sm">🕐</span>
+                <div className="flex items-center gap-1">
+                  <span className="text-sm sm:text-base">🕐</span>
                   <span>{time}</span>
                 </div>
               </div>
             </div>
 
             {/* 刪除按鈕（hover 顯示）- 響應式 */}
-            <div className="absolute bottom-2 sm:bottom-3 left-2 sm:left-3 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="absolute bottom-3 sm:bottom-4 left-3 sm:left-4 opacity-0 group-hover:opacity-100 transition-opacity">
               <button
                 onClick={(e) => onDelete(memory, e)}
-                className="p-1 sm:p-1.5 rounded-md sm:rounded-lg transition-all hover:scale-110 active:scale-95 text-xs sm:text-sm"
+                className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl transition-all hover:scale-110 active:scale-95 text-sm sm:text-base"
                 style={{
                   background: 'rgba(30, 41, 59, 0.95)',
                   border: '2px solid rgba(251, 146, 60, 0.4)',
@@ -1014,175 +970,3 @@ function SimpleGalleryView({ memories, onTogglePin, onSelectMemory, onDelete }: 
   )
 }
 
-// ============ 簡化列表視圖 ============
-interface SimpleListViewProps {
-  memories: Memory[]
-  onTogglePin: (memory: Memory, e?: React.MouseEvent) => void
-  onSelectMemory: (memory: Memory) => void
-  onDelete: (memory: Memory, e: React.MouseEvent) => void
-}
-
-function SimpleListView({ memories, onTogglePin, onSelectMemory, onDelete }: SimpleListViewProps) {
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return {
-      date: date.toLocaleDateString('zh-TW', { month: 'short', day: 'numeric' }),
-      time: date.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false }),
-    }
-  }
-
-  return (
-    <div className="space-y-2 sm:space-y-3">
-      {memories.map((memory) => {
-        const { date, time } = formatDate(memory.createdAt)
-        return (
-          <div
-            key={memory.id}
-            onClick={() => onSelectMemory(memory)}
-            className="group flex items-center gap-2 sm:gap-3 md:gap-4 p-3 sm:p-4 rounded-xl sm:rounded-2xl cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99]"
-            style={{
-              background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(26, 26, 46, 0.6) 100%)',
-              backdropFilter: 'blur(12px) saturate(150%)',
-              WebkitBackdropFilter: 'blur(12px) saturate(150%)',
-              border: '2px solid rgba(251, 191, 36, 0.2)',
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.boxShadow = '0 6px 24px rgba(251, 191, 36, 0.3)'
-              e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.5)'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)'
-              e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.2)'
-            }}
-          >
-            {/* 釘選 - 響應式寬度 */}
-            <div className="flex-shrink-0 w-6 sm:w-8 md:w-10">
-              {memory.isPinned && (
-                <button
-                  onClick={(e) => onTogglePin(memory, e)}
-                  className="p-1 sm:p-1.5 rounded-md sm:rounded-lg transition-all hover:scale-110 active:scale-95 text-xs sm:text-sm"
-                  style={{
-                    background: 'linear-gradient(135deg, #fbbf24 0%, #fb923c 100%)',
-                    color: '#1a1a2e',
-                  }}
-                  title="取消釘選"
-                >
-                  📌
-                </button>
-              )}
-            </div>
-
-            {/* 內容 - 響應式 */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5 sm:gap-2 mb-0.5 sm:mb-1">
-                <h3 className="text-sm sm:text-base font-black truncate" style={{
-                  color: '#fef3c7',
-                  textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)',
-                }}>
-                  {memory.title || memory.summary || '無標題記憶'}
-                </h3>
-                {/* 自訂分類 (列表視圖顯示在標題旁) - 響應式 */}
-                {(memory as any).subcategory && (
-                  <span
-                    className="hidden sm:inline-flex px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs font-bold rounded-md sm:rounded-lg items-center gap-0.5 sm:gap-1 flex-shrink-0"
-                    style={{
-                      background: `${(memory as any).subcategory.color}20`,
-                      color: (memory as any).subcategory.color,
-                      border: `1px solid ${(memory as any).subcategory.color}50`,
-                    }}
-                  >
-                    <span className="text-xs sm:text-sm">{(memory as any).subcategory.emoji}</span>
-                    <span className="hidden md:inline truncate max-w-[80px]">{(memory as any).subcategory.nameChinese}</span>
-                  </span>
-                )}
-              </div>
-              {/* 手機端顯示分類標籤 */}
-              {(memory as any).subcategory && (
-                <div className="sm:hidden mb-1">
-                  <span
-                    className="inline-flex px-1.5 py-0.5 text-[10px] font-bold rounded-md items-center gap-0.5"
-                    style={{
-                      background: `${(memory as any).subcategory.color}20`,
-                      color: (memory as any).subcategory.color,
-                      border: `1px solid ${(memory as any).subcategory.color}50`,
-                    }}
-                  >
-                    <span>{(memory as any).subcategory.emoji}</span>
-                    <span className="truncate max-w-[100px]">{(memory as any).subcategory.nameChinese}</span>
-                  </span>
-                </div>
-              )}
-              {memory.summary && (
-                <p className="text-xs sm:text-sm line-clamp-1 sm:line-clamp-2 font-medium mb-0.5 sm:mb-1" style={{ color: '#cbd5e1' }}>
-                  {memory.summary}
-                </p>
-              )}
-            </div>
-
-            {/* 標籤 - 響應式顯示 */}
-            <div className="flex-shrink-0 hidden lg:flex items-center gap-2 w-40 xl:w-56">
-              {memory.tags.slice(0, 5).map((tag: string) => (
-                <span
-                  key={tag}
-                  className="px-2.5 py-1 text-xs font-bold rounded-lg truncate max-w-[80px]"
-                  style={{
-                    background: 'rgba(251, 191, 36, 0.15)',
-                    color: '#fbbf24',
-                    border: '1px solid rgba(251, 191, 36, 0.3)',
-                  }}
-                  title={tag}
-                >
-                  #{tag}
-                </span>
-              ))}
-              {memory.tags.length > 5 && (
-                <span className="text-xs font-bold" style={{ color: '#94a3b8' }}>
-                  +{memory.tags.length - 5}
-                </span>
-              )}
-            </div>
-
-            {/* 日期時間 - 響應式顯示 */}
-            <div className="flex-shrink-0 hidden md:flex flex-col items-end w-16 md:w-20 lg:w-24 text-[10px] sm:text-xs font-semibold" style={{ color: '#94a3b8' }}>
-              <div className="flex items-center gap-0.5 sm:gap-1">
-                <span className="text-xs">📅</span>
-                <span className="hidden lg:inline">{date}</span>
-              </div>
-              <div className="flex items-center gap-0.5 sm:gap-1">
-                <span className="text-xs">🕐</span>
-                <span>{time}</span>
-              </div>
-            </div>
-
-            {/* 操作 - 響應式 */}
-            <div className="flex-shrink-0 flex items-center gap-1 sm:gap-2 w-10 sm:w-16 md:w-20 justify-end">
-              <button
-                onClick={(e) => onDelete(memory, e)}
-                className="p-1 sm:p-1.5 rounded-md sm:rounded-lg transition-all hover:scale-110 active:scale-95 opacity-0 group-hover:opacity-100 text-xs sm:text-sm"
-                style={{
-                  background: 'rgba(30, 41, 59, 0.9)',
-                  border: '2px solid rgba(251, 146, 60, 0.3)',
-                }}
-                title="刪除"
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(251, 146, 60, 0.3)'
-                  e.currentTarget.style.borderColor = 'rgba(251, 146, 60, 0.6)'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'rgba(30, 41, 59, 0.9)'
-                  e.currentTarget.style.borderColor = 'rgba(251, 146, 60, 0.3)'
-                }}
-              >
-                🗑️
-              </button>
-              <div className="hidden sm:block text-base sm:text-lg opacity-0 group-hover:opacity-100 transition-opacity font-bold" style={{ color: '#fef3c7' }}>
-                →
-              </div>
-            </div>
-          </div>
-        )
-      })}
-    </div>
-  )
-}
