@@ -75,17 +75,17 @@ export function MiniMap({ onIslandClick }: MiniMapProps) {
 
   // 根據螢幕大小動態調整尺寸
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
-  const mapSize = isMobile ? 140 : 180 // 手機端更小
+  const mapSize = isMobile ? 120 : 180 // 手機端更小，從 140 降到 120
   const viewBox = 100
   const viewBoxHeight = 110 // 增加高度以避免底部裁切
-  const islandRadius = isMobile ? 8 : 10 // 手機端島嶼更小
+  const islandRadius = isMobile ? 6 : 10 // 手機端島嶼更小，從 8 降到 6
 
   // 計算海洋容器的實際高度，根據 viewBox 比例
-  const mapContainerWidth = mapSize - (isMobile ? 16 : 24) // 手機端更少 padding
+  const mapContainerWidth = mapSize - (isMobile ? 12 : 24) // 手機端更少 padding，從 16 降到 12
   const oceanHeight = (mapContainerWidth * viewBoxHeight) / viewBox // 保持與 viewBox 相同比例
 
   return (
-    <div className={`fixed bottom-3 right-3 md:bottom-6 md:right-6 ${Z_INDEX_CLASSES.MINIMAP}`}>
+    <div className={`fixed bottom-2 right-2 sm:bottom-3 sm:right-3 md:bottom-6 md:right-6 ${Z_INDEX_CLASSES.MINIMAP}`}>
       {/* 主容器 - 動森玻璃卡片 */}
       <div
         className="relative rounded-[28px] overflow-hidden transition-all duration-300 hover:scale-[1.02]"
@@ -112,7 +112,7 @@ export function MiniMap({ onIslandClick }: MiniMapProps) {
         />
 
         {/* 地圖區域 */}
-        <div className="relative px-2 md:px-3 pt-2 md:pt-3 pb-2 md:pb-3">
+        <div className="relative px-1.5 sm:px-2 md:px-3 pt-1.5 sm:pt-2 md:pt-3 pb-1.5 sm:pb-2 md:pb-3">
           {/* 海洋背景容器 */}
           <div
             className="relative rounded-[20px] overflow-hidden"
@@ -314,9 +314,9 @@ export function MiniMap({ onIslandClick }: MiniMapProps) {
 
             </svg>
 
-            {/* 雲朵裝飾 - 縮小 */}
+            {/* 雲朵裝飾 - 縮小，手機端隱藏 */}
             <div
-              className="absolute top-2 left-2 text-lg opacity-40 pointer-events-none"
+              className="hidden sm:block absolute top-2 left-2 text-lg opacity-40 pointer-events-none"
               style={{
                 animation: 'float 6s ease-in-out infinite',
               }}
@@ -324,7 +324,7 @@ export function MiniMap({ onIslandClick }: MiniMapProps) {
               ☁️
             </div>
             <div
-              className="absolute bottom-2 right-2 text-base opacity-30 pointer-events-none"
+              className="hidden sm:block absolute bottom-2 right-2 text-base opacity-30 pointer-events-none"
               style={{
                 animation: 'float 8s ease-in-out infinite',
                 animationDelay: '2s',
