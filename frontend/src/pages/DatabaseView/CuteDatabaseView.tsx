@@ -227,7 +227,7 @@ export default function CuteDatabaseView() {
   const allMemories = filteredMemories
 
   return (
-    <div className="min-h-screen flex relative" style={{
+    <div className="h-screen flex relative overflow-hidden" style={{
       background: 'linear-gradient(135deg, #16213e 0%, #1a1a2e 100%)',
     }}>
       {/* 手機端遮罩層 - 提升 z-index 優先級 */}
