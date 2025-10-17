@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { useQuery, useMutation } from '@apollo/client'
 import { useNavigate } from 'react-router-dom'
 import { GET_MEMORIES, PIN_MEMORY, UNPIN_MEMORY, DELETE_MEMORY, CREATE_MEMORY_DIRECT } from '../../graphql/memory'
@@ -77,6 +77,32 @@ export default function CuteDatabaseView() {
   const [createMemoryDirect] = useMutation(CREATE_MEMORY_DIRECT)
 
   const islands: Island[] = useMemo(() => islandsData?.islands || [], [islandsData?.islands])
+
+  // 創建新記憶（立即在資料庫創建）
+  const handleCreateNewMemory = useCallback(async () => {
+    try {
+      // 不傳遞 category，讓後端使用默認值 LIFE
+      // 用戶可以在編輯器中自由選擇自定義分類 (subcategoryId)
+      const result = await createMemoryDirect({
+        variables: {
+          input: {
+            content: '',  // 空白內容
+            // category 會由後端設為默認值 LIFE
+          },
+        },
+      })
+
+      const newId = result.data?.createMemoryDirect?.id
+      if (newId) {
+        setNewMemoryId(newId)
+        setShowCreateModal(true)
+        toast.success('已創建新記憶 ✨')
+      }
+    } catch (error) {
+      console.error('Create memory error:', error)
+      toast.error('創建失敗，請稍後再試 😢')
+    }
+  }, [createMemoryDirect, toast])
 
   // 鍵盤快捷鍵
   useEffect(() => {
@@ -211,32 +237,6 @@ export default function CuteDatabaseView() {
     } catch (error) {
       console.error('Delete error:', error)
       toast.error('刪除失敗，請稍後再試 😢')
-    }
-  }
-
-  // 創建新記憶（立即在資料庫創建）
-  const handleCreateNewMemory = async () => {
-    try {
-      // 不傳遞 category，讓後端使用默認值 LIFE
-      // 用戶可以在編輯器中自由選擇自定義分類 (subcategoryId)
-      const result = await createMemoryDirect({
-        variables: {
-          input: {
-            content: '',  // 空白內容
-            // category 會由後端設為默認值 LIFE
-          },
-        },
-      })
-
-      const newId = result.data?.createMemoryDirect?.id
-      if (newId) {
-        setNewMemoryId(newId)
-        setShowCreateModal(true)
-        toast.success('已創建新記憶 ✨')
-      }
-    } catch (error) {
-      console.error('Create memory error:', error)
-      toast.error('創建失敗，請稍後再試 😢')
     }
   }
 
@@ -1032,15 +1032,18 @@ function DraggableMemoryCard({ memory, onTogglePin, onSelectMemory, onDelete, fo
 
         {/* 內容預覽區 */}
         <div className="flex-1 mb-2">
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
           {((memory as any).detailedSummary || memory.rawContent) ? (
             <div>
               <div className="text-xs font-bold mb-1" style={{ color: '#94a3b8' }}>
+                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                 {(memory as any).detailedSummary ? '💡 AI 深度分析' : '📝 內容預覽'}
               </div>
               <p className="text-xs line-clamp-2 font-medium leading-relaxed whitespace-pre-wrap" style={{
                 color: '#e2e8f0',
                 lineHeight: '1.5',
               }}>
+                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                 {(memory as any).detailedSummary || memory.rawContent}
               </p>
             </div>
@@ -1207,15 +1210,18 @@ function MemoryCard({ memory, onTogglePin, onSelectMemory, onDelete, formatDate 
 
       {/* 內容預覽區 */}
       <div className="flex-1 mb-2">
+        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
         {((memory as any).detailedSummary || memory.rawContent) ? (
           <div>
             <div className="text-xs font-bold mb-1" style={{ color: '#94a3b8' }}>
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
               {(memory as any).detailedSummary ? '💡 AI 深度分析' : '📝 內容預覽'}
             </div>
             <p className="text-xs line-clamp-2 font-medium leading-relaxed whitespace-pre-wrap" style={{
               color: '#e2e8f0',
               lineHeight: '1.5',
             }}>
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
               {(memory as any).detailedSummary || memory.rawContent}
             </p>
           </div>
