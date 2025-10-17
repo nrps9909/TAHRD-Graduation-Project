@@ -70,16 +70,16 @@ export function ProcessingQueuePanel() {
     console.log('[Queue] 連接到 Socket.IO:', backendUrl, '用戶ID:', userId)
 
     const newSocket = io(backendUrl, {
-      // Cloudflare 免費版不支持 WebSocket，優先使用 polling，成功後會自動升級到 WebSocket
-      transports: ['polling', 'websocket'],
+      // ⚠️ Cloudflare 問題：WebSocket 升級會失敗，只使用 polling
+      transports: ['polling'], // 禁用 WebSocket，只用 polling
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
       reconnectionAttempts: Infinity, // 無限重試，確保長時間穩定連接
       timeout: 20000,
-      // 連接升級配置
-      upgrade: true,
-      rememberUpgrade: true
+      // 禁用升級，避免 Cloudflare WebSocket 問題
+      upgrade: false,
+      rememberUpgrade: false
     })
 
     newSocket.on('connect', () => {
