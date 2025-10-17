@@ -21,6 +21,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { generateTororoResponse, detectEmotion, type UserAction } from '../services/tororoAI'
 import { Z_INDEX_CLASSES } from '../constants/zIndex'
 import { useAuthStore } from '../stores/authStore'
+import { io, Socket } from 'socket.io-client'
 
 // Register PIXI globally for Live2D
 ;(window as Window & typeof globalThis & { PIXI: typeof PIXI }).PIXI = PIXI
@@ -64,6 +65,8 @@ interface HistoryRecord {
   timestamp: Date
   result?: UploadResult
   distributionId?: string  // 儲存 distribution ID 以便後續查詢
+  processingStatus?: 'pending' | 'processing' | 'completed' | 'error' // 處理狀態
+  memoriesCount?: number // 創建的記憶數量
 }
 
 const HISTORY_STORAGE_KEY = 'tororo_knowledge_history'
@@ -86,6 +89,7 @@ export default function TororoKnowledgeAssistant({
   const [history, setHistory] = useState<HistoryRecord[]>([])
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [conversationHistory, setConversationHistory] = useState<string[]>([]) // 對話歷史
+  const [socket, setSocket] = useState<Socket | null>(null) // WebSocket 連接
 
   // ChatGPT-style 檔案上傳狀態
   const [uploadedCloudinaryFiles, setUploadedCloudinaryFiles] = useState<Array<{
@@ -180,6 +184,106 @@ export default function TororoKnowledgeAssistant({
     }
   }, [])
 
+  // WebSocket 連接 - 監聽任務完成事件
+  useEffect(() => {
+    const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000'
+    const userId = token ? user?.id : 'guest-user-id'
+
+    const newSocket = io(backendUrl, {
+      transports: ['polling'],
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      reconnectionAttempts: 10,
+      timeout: 20000,
+      upgrade: false,
+      rememberUpgrade: false
+    })
+
+    newSocket.on('connect', () => {
+      console.log('[Tororo] WebSocket connected ✅')
+      if (userId) {
+        newSocket.emit('join-room', { roomId: userId })
+      }
+    })
+
+    newSocket.on('disconnect', (reason) => {
+      console.log('[Tororo] WebSocket disconnected:', reason)
+    })
+
+    // 監聽任務完成事件
+    newSocket.on('task-complete', (data: {
+      taskId: string
+      distributionId: string
+      progress: { message: string }
+      result: { memoriesCreated: number }
+    }) => {
+      console.log('[Tororo] 收到 task-complete 事件:', data)
+
+      // 更新對應的歷史記錄狀態
+      setHistory(prev => {
+        const updated = prev.map(record => {
+          if (record.distributionId === data.distributionId) {
+            return {
+              ...record,
+              processingStatus: 'completed' as const,
+              memoriesCount: data.result.memoriesCreated
+            }
+          }
+          return record
+        })
+
+        // 保存到 localStorage
+        try {
+          localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(updated))
+        } catch (error) {
+          console.error('更新歷史紀錄失敗:', error)
+        }
+
+        return updated
+      })
+
+      // 播放通知音效
+      play('notification')
+    })
+
+    // 監聽任務錯誤事件
+    newSocket.on('task-error', (data: {
+      taskId: string
+      distributionId: string
+      error: string
+    }) => {
+      console.log('[Tororo] 收到 task-error 事件:', data)
+
+      // 更新對應的歷史記錄狀態
+      setHistory(prev => {
+        const updated = prev.map(record => {
+          if (record.distributionId === data.distributionId) {
+            return {
+              ...record,
+              processingStatus: 'error' as const
+            }
+          }
+          return record
+        })
+
+        try {
+          localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(updated))
+        } catch (error) {
+          console.error('更新歷史紀錄失敗:', error)
+        }
+
+        return updated
+      })
+    })
+
+    setSocket(newSocket)
+
+    return () => {
+      newSocket.disconnect()
+    }
+  }, [token, user?.id, play])
+
   // 儲存歷史紀錄
   const saveToHistory = useCallback((input: string, files: File[], result?: UploadResult) => {
     const record: HistoryRecord = {
@@ -188,7 +292,9 @@ export default function TororoKnowledgeAssistant({
       files: files.map(f => ({ name: f.name, type: f.type })),
       timestamp: new Date(),
       result,
-      distributionId: result?.distribution?.id  // 儲存 distribution ID
+      distributionId: result?.distribution?.id,  // 儲存 distribution ID
+      processingStatus: result?.backgroundProcessing ? 'processing' : 'completed', // 初始狀態
+      memoriesCount: result?.memoriesCreated?.length || 0
     }
 
     setHistory(prev => {
@@ -1195,34 +1301,36 @@ export default function TororoKnowledgeAssistant({
                               </div>
                             )}
 
-                            {/* 結果摘要 */}
-                            {record.result && (
-                              <div className="text-xs font-medium">
-                                {record.result.backgroundProcessing ? (
-                                  <div className="space-y-1">
-                                    <span className="flex items-center gap-1 text-blue-600">
-                                      <span className="inline-block w-2 h-2 bg-blue-400 rounded-full animate-pulse"></span>
-                                      後台處理中...
-                                    </span>
-                                    <p className="text-[10px] text-gray-500">
-                                      💡 記憶正在後台創建，請稍後在知識庫查看
-                                    </p>
-                                  </div>
-                                ) : record.result.memoriesCreated && record.result.memoriesCreated.length > 0 ? (
-                                  <span className="text-green-600">
-                                    ✅ 已創建 {record.result.memoriesCreated.length} 個記憶
+                            {/* 結果摘要 - 根據 processingStatus 顯示 */}
+                            <div className="text-xs font-medium">
+                              {record.processingStatus === 'processing' ? (
+                                <div className="space-y-1">
+                                  <span className="flex items-center gap-1 text-blue-600">
+                                    <span className="inline-block w-2 h-2 bg-blue-400 rounded-full animate-pulse"></span>
+                                    後台處理中...
                                   </span>
-                                ) : record.result.skipRecording ? (
-                                  <span className="text-gray-500">
-                                    💬 簡單互動（未記錄）
-                                  </span>
-                                ) : (
-                                  <span className="text-amber-600">
-                                    ✨ 處理完成
-                                  </span>
-                                )}
-                              </div>
-                            )}
+                                  <p className="text-[10px] text-gray-500">
+                                    💡 記憶正在後台創建，請稍後在知識庫查看
+                                  </p>
+                                </div>
+                              ) : record.processingStatus === 'completed' ? (
+                                <span className="text-green-600">
+                                  ✅ 已創建 {record.memoriesCount || 0} 個記憶
+                                </span>
+                              ) : record.processingStatus === 'error' ? (
+                                <span className="text-red-500">
+                                  ❌ 處理失敗
+                                </span>
+                              ) : record.result?.skipRecording ? (
+                                <span className="text-gray-500">
+                                  💬 簡單互動（未記錄）
+                                </span>
+                              ) : (
+                                <span className="text-amber-600">
+                                  ✨ 處理完成
+                                </span>
+                              )}
+                            </div>
                           </div>
 
                           {/* 右側：操作按鈕 */}
