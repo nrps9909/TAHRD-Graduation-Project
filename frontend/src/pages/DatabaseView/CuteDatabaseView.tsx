@@ -974,7 +974,7 @@ function DraggableMemoryCard({ memory, onTogglePin, onSelectMemory, onDelete, fo
 
         {/* 釘選按鈕 */}
         {memory.isPinned && (
-          <div className="absolute top-2 sm:top-3 right-2 sm:top-3 z-10">
+          <div className="absolute top-2 sm:top-3 right-2 sm:right-3 z-10">
             <button
               onClick={(e) => {
                 e.stopPropagation()
