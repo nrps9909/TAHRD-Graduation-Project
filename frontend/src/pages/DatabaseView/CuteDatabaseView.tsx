@@ -519,158 +519,148 @@ export default function CuteDatabaseView() {
 
       {/* 主內容區 */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* 頂部工具列 - 優化排版 */}
-        <div className="sticky top-0 z-40 border-b px-4 md:px-6 py-3 md:py-4" style={{
+        {/* 頂部工具列 - 單行緊湊布局 */}
+        <div className="sticky top-0 z-40 border-b px-2 sm:px-4 md:px-6 py-2 sm:py-2.5" style={{
           borderColor: 'rgba(251, 191, 36, 0.3)',
           background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.98) 0%, rgba(26, 26, 46, 0.98) 100%)',
           backdropFilter: 'blur(24px) saturate(180%)',
           WebkitBackdropFilter: 'blur(24px) saturate(180%)',
           boxShadow: '0 4px 20px rgba(251, 191, 36, 0.2)',
         }}>
-          <div className="max-w-7xl mx-auto">
-            {/* 第一行：側邊欄按鈕 + 搜尋框 */}
-            <div className="flex items-center gap-3 mb-3">
-              {/* 展開側邊欄按鈕 */}
-              {!sidebarOpen && (
+          <div className="max-w-7xl mx-auto flex items-center gap-2 sm:gap-3">
+            {/* 展開側邊欄按鈕 */}
+            {!sidebarOpen && (
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="p-2 rounded-xl transition-all flex-shrink-0 hover:scale-110 active:scale-95"
+                style={{
+                  color: '#cbd5e1',
+                  background: 'rgba(30, 41, 59, 0.8)',
+                  border: '2px solid rgba(251, 191, 36, 0.3)',
+                }}
+                title="展開側邊欄"
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(251, 191, 36, 0.3)'
+                  e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.6)'
+                  e.currentTarget.style.color = '#fef3c7'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(30, 41, 59, 0.8)'
+                  e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.3)'
+                  e.currentTarget.style.color = '#cbd5e1'
+                }}
+              >
+                <span className="text-sm">☰</span>
+              </button>
+            )}
+
+            {/* 搜尋框 */}
+            <div className="flex-1 relative min-w-0">
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="搜尋..."
+                className="w-full pl-8 sm:pl-10 pr-8 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-medium focus:outline-none transition-all"
+                style={{
+                  border: '2px solid rgba(251, 191, 36, 0.25)',
+                  background: 'rgba(30, 41, 59, 0.7)',
+                  color: '#fef3c7',
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = 'rgba(251, 191, 36, 0.6)'
+                  e.target.style.boxShadow = '0 0 0 3px rgba(251, 191, 36, 0.15)'
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = 'rgba(251, 191, 36, 0.25)'
+                  e.target.style.boxShadow = 'none'
+                }}
+              />
+              <span className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 text-sm sm:text-base">
+                🔍
+              </span>
+              {searchQuery && (
                 <button
-                  onClick={() => setSidebarOpen(true)}
-                  className="p-2.5 rounded-xl transition-all flex-shrink-0 hover:scale-110 active:scale-95"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-lg transition-all hover:scale-110 active:scale-95"
                   style={{
-                    color: '#cbd5e1',
+                    color: '#94a3b8',
                     background: 'rgba(30, 41, 59, 0.8)',
-                    border: '2px solid rgba(251, 191, 36, 0.3)',
                   }}
-                  title="展開側邊欄"
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'rgba(251, 191, 36, 0.3)'
-                    e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.6)'
                     e.currentTarget.style.color = '#fef3c7'
+                    e.currentTarget.style.background = 'rgba(251, 191, 36, 0.3)'
                   }}
                   onMouseLeave={(e) => {
+                    e.currentTarget.style.color = '#94a3b8'
                     e.currentTarget.style.background = 'rgba(30, 41, 59, 0.8)'
-                    e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.3)'
-                    e.currentTarget.style.color = '#cbd5e1'
                   }}
                 >
-                  <span className="text-base">☰</span>
+                  <span className="text-xs">✕</span>
                 </button>
               )}
-
-              {/* 搜尋框 */}
-              <div className="flex-1 relative max-w-2xl">
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="搜尋知識..."
-                  className="w-full pl-11 pr-10 py-2.5 rounded-2xl text-sm font-medium focus:outline-none transition-all"
-                  style={{
-                    border: '2px solid rgba(251, 191, 36, 0.25)',
-                    background: 'rgba(30, 41, 59, 0.7)',
-                    color: '#fef3c7',
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = 'rgba(251, 191, 36, 0.6)'
-                    e.target.style.boxShadow = '0 0 0 4px rgba(251, 191, 36, 0.15)'
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = 'rgba(251, 191, 36, 0.25)'
-                    e.target.style.boxShadow = 'none'
-                  }}
-                />
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-lg">
-                  🔍
-                </span>
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg transition-all hover:scale-110 active:scale-95"
-                    style={{
-                      color: '#94a3b8',
-                      background: 'rgba(30, 41, 59, 0.8)',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.color = '#fef3c7'
-                      e.currentTarget.style.background = 'rgba(251, 191, 36, 0.3)'
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.color = '#94a3b8'
-                      e.currentTarget.style.background = 'rgba(30, 41, 59, 0.8)'
-                    }}
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
             </div>
 
-            {/* 第二行：功能按鈕 */}
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                {/* 排序選擇 */}
-                <select
-                  value={sortField}
-                  onChange={(e) => {
-                    const newSort = e.target.value as SortField
-                    setSortField(newSort)
-                    // 切換到自定義排序時，初始化順序
-                    if (newSort === 'custom' && customOrder.length === 0) {
-                      setCustomOrder(filteredMemories.map((m: Memory) => m.id))
-                    }
-                  }}
-                  className="px-4 py-2 rounded-xl text-sm font-bold focus:outline-none transition-all cursor-pointer"
-                  style={{
-                    border: '2px solid rgba(251, 191, 36, 0.3)',
-                    background: 'rgba(30, 41, 59, 0.7)',
-                    color: '#cbd5e1',
-                  }}
-                >
-                  <option value="createdAt">⏰ 最新優先</option>
-                  <option value="title">🔤 標題排序</option>
-                  <option value="custom">✋ 自訂排序（可拖動）</option>
-                </select>
-              </div>
+            {/* 排序選擇 */}
+            <select
+              value={sortField}
+              onChange={(e) => {
+                const newSort = e.target.value as SortField
+                setSortField(newSort)
+                // 切換到自定義排序時，初始化順序
+                if (newSort === 'custom' && customOrder.length === 0) {
+                  setCustomOrder(filteredMemories.map((m: Memory) => m.id))
+                }
+              }}
+              className="hidden md:block px-3 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold focus:outline-none transition-all cursor-pointer flex-shrink-0"
+              style={{
+                border: '2px solid rgba(251, 191, 36, 0.3)',
+                background: 'rgba(30, 41, 59, 0.7)',
+                color: '#cbd5e1',
+              }}
+            >
+              <option value="createdAt">⏰ 最新</option>
+              <option value="title">🔤 標題</option>
+              <option value="custom">✋ 自訂</option>
+            </select>
 
-              <div className="flex items-center gap-2">
-                {/* 新增按鈕 */}
-                <button
-                  onClick={handleCreateNewMemory}
-                  className="px-5 py-2 rounded-xl font-bold transition-all hover:scale-105 active:scale-95 text-sm flex items-center gap-2"
-                  style={{
-                    background: 'linear-gradient(135deg, #fbbf24 0%, #fb923c 100%)',
-                    color: '#1a1a2e',
-                    boxShadow: '0 4px 12px rgba(251, 191, 36, 0.4)',
-                  }}
-                >
-                  <span>✨</span>
-                  <span className="hidden sm:inline">新增知識</span>
-                </button>
+            {/* 新增按鈕 */}
+            <button
+              onClick={handleCreateNewMemory}
+              className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl font-bold transition-all hover:scale-105 active:scale-95 text-xs sm:text-sm flex items-center gap-1 sm:gap-2 flex-shrink-0"
+              style={{
+                background: 'linear-gradient(135deg, #fbbf24 0%, #fb923c 100%)',
+                color: '#1a1a2e',
+                boxShadow: '0 4px 12px rgba(251, 191, 36, 0.4)',
+              }}
+            >
+              <span className="text-sm sm:text-base">✨</span>
+              <span className="hidden sm:inline">新增</span>
+            </button>
 
-                {/* 返回按鈕 */}
-                <button
-                  onClick={() => navigate('/')}
-                  className="px-5 py-2 rounded-xl font-bold transition-all hover:scale-105 active:scale-95 text-sm flex items-center gap-2"
-                  style={{
-                    background: 'rgba(30, 41, 59, 0.7)',
-                    color: '#cbd5e1',
-                    border: '2px solid rgba(251, 191, 36, 0.3)',
-                  }}
-                  title="返回島嶼總覽"
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'rgba(251, 191, 36, 0.2)'
-                    e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.5)'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'rgba(30, 41, 59, 0.7)'
-                    e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.3)'
-                  }}
-                >
-                  <span>🏝️</span>
-                  <span className="hidden sm:inline">返回</span>
-                </button>
-              </div>
-            </div>
+            {/* 返回按鈕 */}
+            <button
+              onClick={() => navigate('/')}
+              className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl font-bold transition-all hover:scale-105 active:scale-95 text-xs sm:text-sm flex items-center gap-1 sm:gap-2 flex-shrink-0"
+              style={{
+                background: 'rgba(30, 41, 59, 0.7)',
+                color: '#cbd5e1',
+                border: '2px solid rgba(251, 191, 36, 0.3)',
+              }}
+              title="返回島嶼總覽"
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(251, 191, 36, 0.2)'
+                e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.5)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(30, 41, 59, 0.7)'
+                e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.3)'
+              }}
+            >
+              <span className="text-sm sm:text-base">🏝️</span>
+              <span className="hidden lg:inline">返回</span>
+            </button>
           </div>
         </div>
 
