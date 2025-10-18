@@ -28,7 +28,7 @@ export interface SearchResult {
   metadata?: {
     category?: string
     createdAt?: Date
-    importance?: number
+    importanceScore?: number
   }
 }
 
@@ -128,16 +128,53 @@ export class HybridSearchService {
       this.config.minSimilarity
     )
 
-    // 轉換為統一格式
-    return vectorResults.map((vr) => ({
-      memoryId: vr.memoryId,
-      title: vr.title || '無標題',
-      content: vr.content || vr.textContent,
-      tags: vr.tags || [],
-      similarity: vr.similarity,
-      source: 'semantic' as const,
-      metadata: vr.metadata
-    }))
+    if (vectorResults.length === 0) {
+      return []
+    }
+
+    // 獲取完整的 Memory 信息
+    const memoryIds = vectorResults.map((vr) => vr.memoryId)
+    const memories = await prisma.memory.findMany({
+      where: {
+        id: { in: memoryIds },
+        userId
+      },
+      select: {
+        id: true,
+        title: true,
+        rawContent: true,
+        summary: true,
+        tags: true,
+        category: true,
+        createdAt: true,
+        importanceScore: true
+      }
+    })
+
+    // 創建 Memory ID 到 Memory 的映射
+    const memoryMap = new Map(memories.map((m) => [m.id, m]))
+
+    // 轉換為統一格式，保持相似度順序
+    return vectorResults
+      .map((vr) => {
+        const memory = memoryMap.get(vr.memoryId)
+        if (!memory) return null
+
+        return {
+          memoryId: vr.memoryId,
+          title: memory.title || '無標題',
+          content: memory.summary || memory.rawContent || vr.textContent,
+          tags: memory.tags,
+          similarity: vr.similarity,
+          source: 'semantic' as const,
+          metadata: {
+            category: memory.category,
+            createdAt: memory.createdAt,
+            importanceScore: memory.importanceScore
+          }
+        }
+      })
+      .filter((item): item is SearchResult => item !== null)
   }
 
   /**
@@ -174,7 +211,7 @@ export class HybridSearchService {
         tags: true,
         category: true,
         createdAt: true,
-        importance: true
+        importanceScore: true
       }
     })
 
@@ -188,7 +225,7 @@ export class HybridSearchService {
       metadata: {
         category: m.category,
         createdAt: m.createdAt,
-        importance: m.importance
+        importanceScore: m.importanceScore
       }
     }))
   }
@@ -241,7 +278,7 @@ export class HybridSearchService {
         tags: true,
         category: true,
         createdAt: true,
-        importance: true
+        importanceScore: true
       }
     })
 
@@ -255,7 +292,7 @@ export class HybridSearchService {
       metadata: {
         category: m.category,
         createdAt: m.createdAt,
-        importance: m.importance
+        importanceScore: m.importanceScore
       }
     }))
   }
@@ -393,7 +430,7 @@ export class HybridSearchService {
             tags: true,
             category: true,
             createdAt: true,
-            importance: true
+            importanceScore: true
           }
         })
         .then((memories) =>

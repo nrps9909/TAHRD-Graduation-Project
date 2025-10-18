@@ -8,7 +8,7 @@
  * 4. 動物森友會白天風格 - 溫暖可愛的視覺設計
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { io, Socket } from 'socket.io-client'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuthStore } from '../stores/authStore'
@@ -240,8 +240,8 @@ export function ProcessingQueuePanel() {
     return `${minutes}分${secs}秒`
   }, [])
 
-  // 獲取資料庫歷史記錄
-  const dbHistories = historiesData?.taskHistories || []
+  // 獲取資料庫歷史記錄（使用 useMemo 避免不必要的重新渲染）
+  const dbHistories = useMemo(() => historiesData?.taskHistories || [], [historiesData?.taskHistories])
 
   // 🔍 調試日誌 - 查看歷史記錄數據
   useEffect(() => {

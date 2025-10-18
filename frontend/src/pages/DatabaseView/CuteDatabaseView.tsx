@@ -428,9 +428,8 @@ export default function CuteDatabaseView() {
                           </div>
                         ) : (
                           subcategories.map((subcategory) => {
-                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             const subMemoryCount = (memoriesData?.memories || []).filter(
-                              (m: any) => m.subcategoryId === subcategory.id
+                              (m: Memory) => m.subcategoryId === subcategory.id
                             ).length
                             const isSelected = selectedSubcategoryId === subcategory.id
 
@@ -1001,33 +1000,30 @@ function DraggableMemoryCard({ memory, onTogglePin, onSelectMemory, onDelete, fo
         </div>
 
         {/* 分類區 */}
-        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-        {(memory as any).subcategory && (
+        {memory.subcategory && (
           <div className="mb-2">
             <span
               className="px-2.5 py-1 text-xs font-black rounded-lg inline-flex items-center gap-1 shadow-md"
               style={{
-                background: `${(memory as any).subcategory.color}`,
+                background: `${memory.subcategory.color}`,
                 color: '#ffffff',
-                border: `2px solid ${(memory as any).subcategory.color}`,
-                boxShadow: `0 2px 6px ${(memory as any).subcategory.color}40`,
+                border: `2px solid ${memory.subcategory.color}`,
+                boxShadow: `0 2px 6px ${memory.subcategory.color}40`,
                 textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)',
               }}
             >
-              <span className="text-sm">{(memory as any).subcategory.emoji}</span>
-              <span className="truncate max-w-[120px]">{(memory as any).subcategory.nameChinese}</span>
+              <span className="text-sm">{memory.subcategory.emoji}</span>
+              <span className="truncate max-w-[120px]">{memory.subcategory.nameChinese}</span>
             </span>
           </div>
         )}
 
         {/* 內容預覽區 */}
         <div className="flex-1 mb-2">
-          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-          {((memory as any).detailedSummary || memory.rawContent) ? (
+          {(memory.detailedSummary || memory.rawContent) ? (
             <div>
               <div className="text-xs font-bold mb-1" style={{ color: '#94a3b8' }}>
-                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                {(memory as any).detailedSummary ? '💡 AI 深度分析' : '📝 內容預覽'}
+                {memory.detailedSummary ? '💡 AI 深度分析' : '📝 內容預覽'}
               </div>
               <p className="text-xs line-clamp-2 font-medium leading-relaxed whitespace-pre-wrap" style={{
                 color: '#e2e8f0',
@@ -1179,33 +1175,30 @@ function MemoryCard({ memory, onTogglePin, onSelectMemory, onDelete, formatDate 
       </div>
 
       {/* 分類區 */}
-      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-      {(memory as any).subcategory && (
+      {memory.subcategory && (
         <div className="mb-2">
           <span
             className="px-2.5 py-1 text-xs font-black rounded-lg inline-flex items-center gap-1 shadow-md"
             style={{
-              background: `${(memory as any).subcategory.color}`,
+              background: `${memory.subcategory.color}`,
               color: '#ffffff',
-              border: `2px solid ${(memory as any).subcategory.color}`,
-              boxShadow: `0 2px 6px ${(memory as any).subcategory.color}40`,
+              border: `2px solid ${memory.subcategory.color}`,
+              boxShadow: `0 2px 6px ${memory.subcategory.color}40`,
               textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)',
             }}
           >
-            <span className="text-sm">{(memory as any).subcategory.emoji}</span>
-            <span className="truncate max-w-[120px]">{(memory as any).subcategory.nameChinese}</span>
+            <span className="text-sm">{memory.subcategory.emoji}</span>
+            <span className="truncate max-w-[120px]">{memory.subcategory.nameChinese}</span>
           </span>
         </div>
       )}
 
       {/* 內容預覽區 */}
       <div className="flex-1 mb-2">
-        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-        {((memory as any).detailedSummary || memory.rawContent) ? (
+        {(memory.detailedSummary || memory.rawContent) ? (
           <div>
             <div className="text-xs font-bold mb-1" style={{ color: '#94a3b8' }}>
-              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-              {(memory as any).detailedSummary ? '💡 AI 深度分析' : '📝 內容預覽'}
+              {memory.detailedSummary ? '💡 AI 深度分析' : '📝 內容預覽'}
             </div>
             <p className="text-xs line-clamp-2 font-medium leading-relaxed whitespace-pre-wrap" style={{
               color: '#e2e8f0',
