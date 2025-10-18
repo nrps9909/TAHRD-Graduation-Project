@@ -251,14 +251,19 @@ export default function TororoKnowledgeAssistant({
     const userId = token ? user?.id : 'guest-user-id'
 
     const newSocket = io(backendUrl, {
-      transports: ['polling'],
+      // 優先使用 WebSocket，失敗時降級到 polling
+      transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
-      reconnectionAttempts: 10,
-      timeout: 20000,
-      upgrade: false,
-      rememberUpgrade: false
+      reconnectionAttempts: Infinity,
+      // 超時時間必須大於後端 pingInterval (25秒)，避免過早斷線
+      timeout: 60000,
+      // 允許升級到 WebSocket（Nginx 已配置支持）
+      upgrade: true,
+      rememberUpgrade: true,
+      // 自動重連時使用相同的 transport
+      forceNew: false
     })
 
     newSocket.on('connect', () => {
