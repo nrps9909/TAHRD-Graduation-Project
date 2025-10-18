@@ -666,7 +666,8 @@ ${distribution.chiefSummary}
     )
 
     // 規則 1: 高相關性且高置信度 → 強制儲存
-    if (relevanceScore >= 0.7 && confidence >= 0.7) {
+    // 🔧 優化：降低門檻從 0.7 到 0.5，避免誤判有價值的內容
+    if (relevanceScore >= 0.5 && confidence >= 0.5) {
       logger.info(`[Storage Decision] 高相關性 (${relevanceScore.toFixed(2)}) + 高置信度 (${confidence.toFixed(2)}) → 儲存`)
       return true
     }
@@ -707,7 +708,8 @@ ${distribution.chiefSummary}
     // 規則 4: 相關性在閾值邊界 → 綜合評分
     // 計算綜合評分：相關性權重 0.7，置信度權重 0.3
     const compositeScore = relevanceScore * 0.7 + confidence * 0.3
-    const shouldStore = compositeScore >= 0.6
+    // 🔧 優化：降低門檻從 0.6 到 0.5，減少誤判
+    const shouldStore = compositeScore >= 0.5
 
     logger.info(`[Storage Decision] 綜合評分 (${compositeScore.toFixed(2)}) = 相關性×0.7 + 置信度×0.3 → ${shouldStore ? '儲存' : '不儲存'}`)
 

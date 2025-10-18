@@ -246,9 +246,16 @@ export default function TororoKnowledgeAssistant({
   }, [history, getDistribution])
 
   // WebSocket 連接 - 監聽任務完成事件
+  // 🔧 修復：避免反覆斷開重連，只在 userId 變化時重新建立連接
   useEffect(() => {
     const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000'
     const userId = token ? user?.id : 'guest-user-id'
+
+    // 如果沒有 userId，不建立連接
+    if (!userId || userId === 'guest-user-id') {
+      console.log('[Tororo] 等待用戶認證，暫不建立 WebSocket 連接')
+      return
+    }
 
     const newSocket = io(backendUrl, {
       // 優先使用 WebSocket，失敗時降級到 polling
