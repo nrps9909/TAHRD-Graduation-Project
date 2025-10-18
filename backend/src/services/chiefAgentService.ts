@@ -1,7 +1,7 @@
 import { PrismaClient, AssistantType, ChatContextType, ContentType } from '@prisma/client'
 import { logger } from '../utils/logger'
 import axios from 'axios'
-import { spawn, ChildProcessWithoutNullStreams } from 'child_process'
+import { callGeminiAPI } from '../utils/geminiAPI'
 import { assistantService } from './assistantService'
 import { memoryService } from './memoryService'
 import { subAgentService } from './subAgentService'
@@ -76,7 +76,6 @@ interface ClassificationCache {
  */
 export class ChiefAgentService {
   private mcpUrl: string
-  private useGeminiCLI: boolean = true
   private geminiModel: string = 'gemini-2.5-flash'
 
   // 優化：分類結果緩存（內存緩存，避免重複 API 調用）
@@ -86,12 +85,11 @@ export class ChiefAgentService {
 
   constructor() {
     this.mcpUrl = process.env.MCP_SERVICE_URL || 'http://localhost:8765'
-    this.useGeminiCLI = process.env.USE_GEMINI_CLI !== 'false'
 
     // 检查 Gemini API Key
     const apiKey = process.env.GEMINI_API_KEY
     if (apiKey) {
-      logger.info('Gemini CLI initialized successfully')
+      logger.info('Gemini REST API initialized successfully')
     } else {
       logger.warn('GEMINI_API_KEY not found, AI features will be limited')
     }
@@ -569,125 +567,47 @@ ${contextInfo}
   }
 
   /**
-   * 調用 AI 服務（使用 Gemini CLI）
-   * 優化：快速失敗 + 智能重試
+   * 調用 Gemini API 生成內容
+   * 優化：完全使用 REST API，移除不穩定的 CLI
    */
   private async callMCP(prompt: string, assistantId: string): Promise<string> {
-    // 優先使用 Gemini CLI
-    if (this.useGeminiCLI) {
-      let retries = 0
-      const maxRetries = 1 // 優化：只嘗試 1 次，快速失敗
-
-      while (retries < maxRetries) {
-        try {
-          logger.info(`[Chief Agent] Calling Gemini CLI (attempt ${retries + 1}/${maxRetries})`)
-
-          // 使用 spawn + stdin（正確方式）
-          const result = await new Promise<string>((resolve, reject) => {
-            const gemini: ChildProcessWithoutNullStreams = spawn('gemini', ['-m', this.geminiModel], {
-              env: {
-                ...process.env,
-                GEMINI_API_KEY: process.env.GEMINI_API_KEY
-              }
-            })
-
-            let stdout = ''
-            let stderr = ''
-            let timeoutId: NodeJS.Timeout
-
-            gemini.stdout.on('data', (data: Buffer) => {
-              stdout += data.toString()
-            })
-
-            gemini.stderr.on('data', (data: Buffer) => {
-              stderr += data.toString()
-            })
-
-            gemini.on('close', (code: number) => {
-              clearTimeout(timeoutId)
-              if (code === 0) {
-                const response = stdout.trim()
-                if (!response) {
-                  reject(new Error('Empty response from Gemini CLI'))
-                  return
-                }
-                logger.info(`[Chief Agent] Gemini CLI response received (${response.length} chars)`)
-                resolve(response)
-              } else {
-                if (stderr) {
-                  logger.error('[Chief Agent] Gemini CLI stderr:', stderr)
-                  // 檢查是否為速率限制錯誤
-                  if (stderr.includes('429') || stderr.includes('quota') || stderr.includes('rate limit')) {
-                    reject(new Error('RATE_LIMIT'))
-                    return
-                  }
-                }
-                reject(new Error(`Gemini CLI exited with code ${code}: ${stderr}`))
-              }
-            })
-
-            gemini.on('error', (err: Error) => {
-              clearTimeout(timeoutId)
-              reject(err)
-            })
-
-            // 設置超時（Chief Agent 使用 60 秒，比 Sub-Agent 的 90 秒稍短）
-            timeoutId = setTimeout(() => {
-              gemini.kill()
-              reject(new Error('Gemini CLI timeout after 60 seconds'))
-            }, 60000)
-
-            // 將 prompt 寫入 stdin
-            gemini.stdin.write(prompt)
-            gemini.stdin.end()
-          })
-
-          return result
-
-        } catch (error: any) {
-          retries++
-
-          // 記錄錯誤但快速放棄（優化：不再區分速率限制，直接 fallback）
-          logger.error(`[Chief Agent] Gemini CLI error (attempt ${retries}):`, error.message)
-
-          // 快速失敗，立即使用 fallback
-          logger.warn('[Chief Agent] Gemini CLI failed, switching to fallback immediately')
-          break
-        }
-      }
-
-      // 如果失敗，記錄錯誤但不拋出，讓 fallback 接手
-      logger.warn('[Chief Agent] Using fallback method due to Gemini CLI unavailable')
-    }
-
-    // Fallback: 使用 MCP Server
     try {
-      const response = await axios.post(
-        `${this.mcpUrl}/generate`,
-        {
-          npc_id: assistantId,
-          message: prompt,
-          session_id: `assistant-${assistantId}-${Date.now()}`
-        },
-        {
-          timeout: 30000,
-          headers: {
-            'Content-Type': 'application/json'
+      // 直接使用 Gemini REST API（快速、穩定）
+      const response = await callGeminiAPI(prompt, {
+        model: this.geminiModel,
+        temperature: 0.7,
+        maxOutputTokens: 2048,
+        timeout: 15000 // 15 秒超時
+      })
+
+      return response
+
+    } catch (error: any) {
+      logger.error(`[Chief Agent] Gemini API error:`, error.message)
+
+      // Fallback: 使用 MCP Server（如果配置）
+      try {
+        logger.info('[Chief Agent] Trying MCP Server fallback')
+        const fallbackResponse = await axios.post(
+          `${this.mcpUrl}/generate`,
+          {
+            npc_id: assistantId,
+            message: prompt,
+            session_id: `assistant-${assistantId}-${Date.now()}`
+          },
+          {
+            timeout: 30000,
+            headers: {
+              'Content-Type': 'application/json'
+            }
           }
-        }
-      )
+        )
 
-      return response.data.response || ''
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        logger.error(`MCP service error: ${error.message}`)
-        if (error.code === 'ECONNREFUSED') {
-          throw new Error('AI 服務未啟動，請確認 MCP Server 運行中')
-        }
+        return fallbackResponse.data.response || ''
+      } catch (fallbackError) {
+        logger.error('[Chief Agent] All AI services failed')
+        throw new Error('AI 服務暫時不可用，請稍後再試')
       }
-
-      logger.error('MCP call error:', error)
-      throw new Error('AI 服務暫時無法使用')
     }
   }
 
@@ -756,82 +676,19 @@ ${contextInfo}
 
       logger.info(`[白噗噗] 開始快速分類`)
 
-      // === 新增：快速提取連結標題（輕量級）===
-      let enrichedContent = input.content
-      const linkMetadata: Array<{ url: string, title: string, description: string }> = []
+      // === 優化：移除連結提取，提升響應速度 ===
+      // 連結標題提取改由後台 SubAgent 處理（詳細分析階段）
+      // 這樣用戶可以立即看到「已加入隊列」，而不用等待 5-15 秒
 
-      // 檢測連結並快速提取標題
-      if (input.links && input.links.length > 0) {
-        logger.info(`[白噗噗] 檢測到 ${input.links.length} 個連結，快速提取標題...`)
+      const enrichedContent = input.content // 不再豐富化內容
+      const linkMetadata: Array<{ url: string, title: string, description: string }> = [] // 空陣列
 
-        const metadataPromises = input.links.map(async (link) => {
-          try {
-            // 快速提取標題（不做詳細分析，由 SubAgent 處理）
-            const metadata = await this.quickExtractLinkTitle(link.url)
-            return {
-              url: link.url,
-              title: metadata.title || link.title || link.url,
-              description: metadata.description || '等待詳細分析...'
-            }
-          } catch (error) {
-            logger.warn(`[白噗噗] 連結標題提取失敗: ${link.url}`, error)
-            return {
-              url: link.url,
-              title: link.title || link.url,
-              description: '等待詳細分析...'
-            }
-          }
-        })
+      // 檢測是否有連結（用於日誌記錄）
+      const hasLinks = (input.links && input.links.length > 0) ||
+                      /(https?:\/\/[^\s]+)/gi.test(input.content)
 
-        const extractedMetadata = await Promise.all(metadataPromises)
-        linkMetadata.push(...extractedMetadata)
-
-        // 豐富化內容：只添加標題（簡單）
-        if (linkMetadata.length > 0) {
-          enrichedContent += `\n\n📎 連結：\n`
-          linkMetadata.forEach((meta, idx) => {
-            enrichedContent += `${idx + 1}. ${meta.title}\n   🔗 ${meta.url}\n`
-          })
-          logger.info(`[白噗噗] 連結標題提取完成（${linkMetadata.length}個）`)
-        }
-      }
-
-      // 檢測文本中的 URL（即使沒有在 links 參數中）
-      const urlPattern = /(https?:\/\/[^\s]+)/gi
-      const urlsInText = input.content.match(urlPattern)
-
-      if (urlsInText && urlsInText.length > 0 && linkMetadata.length === 0) {
-        logger.info(`[白噗噗] 檢測到文本中的 ${urlsInText.length} 個 URL，快速提取標題...`)
-
-        const metadataPromises = urlsInText.map(async (url) => {
-          try {
-            const metadata = await this.quickExtractLinkTitle(url)
-            return {
-              url,
-              title: metadata.title || url,
-              description: '等待詳細分析...'
-            }
-          } catch (error) {
-            logger.warn(`[白噗噗] URL 標題提取失敗: ${url}`, error)
-            return {
-              url,
-              title: url,
-              description: '等待詳細分析...'
-            }
-          }
-        })
-
-        const extractedMetadata = await Promise.all(metadataPromises)
-        linkMetadata.push(...extractedMetadata)
-
-        // 豐富化內容
-        if (linkMetadata.length > 0) {
-          enrichedContent += `\n\n📎 連結：\n`
-          linkMetadata.forEach((meta, idx) => {
-            enrichedContent += `${idx + 1}. ${meta.title}\n   🔗 ${meta.url}\n`
-          })
-          logger.info(`[白噗噗] URL 標題提取完成（${linkMetadata.length}個）`)
-        }
+      if (hasLinks) {
+        logger.info(`[白噗噗] 檢測到連結，將由 SubAgent 深度分析（優化：跳過同步提取）`)
       }
 
       // 構建極簡快速分類 Prompt（優化：使用豐富化內容）
@@ -872,8 +729,8 @@ LEARNING(學習) / INSPIRATION(靈感) / WORK(工作) / SOCIAL(社交) / LIFE(�
         quickSummary: result.quickSummary || input.content.substring(0, 30),
         shouldRecord: true, // ⚠️ 固定為 true，所有對話都記錄到資料庫
         recordReason: undefined, // 不再需要記錄原因
-        enrichedContent: linkMetadata.length > 0 ? enrichedContent : undefined, // 只在有連結時返回
-        linkMetadata: linkMetadata.length > 0 ? linkMetadata : undefined // 只在有連結時返回
+        enrichedContent: undefined, // 優化：不再同步豐富化內容
+        linkMetadata: undefined // 優化：連結元數據由 SubAgent 提取
       }
 
       // 優化：保存到緩存
@@ -1121,13 +978,11 @@ ${input.content}
           const targetSubAgent = relevantSubAgents[0]
           logger.info(`[Chief Agent] 選擇 SubAgent: ${targetSubAgent.nameChinese} (${targetSubAgent.id})`)
 
-          // 優化：如果有豐富化內容，使用豐富化內容
-          const contentForDistribution = quickResult.enrichedContent || input.content
+          // 優化：直接使用原始內容（連結提取由 SubAgent 處理）
+          const contentForDistribution = input.content
 
-          // 優化：將連結元數據添加到 linkTitles
-          const enrichedLinkTitles = quickResult.linkMetadata
-            ? quickResult.linkMetadata.map(meta => meta.title)
-            : (input.links?.map(l => l.title || l.url) || [])
+          // 優化：使用簡單的連結標題（詳細元數據由 SubAgent 提取）
+          const enrichedLinkTitles = input.links?.map(l => l.title || l.url) || []
 
           // 創建知識分發記錄（使用 subcategoryId）
           // 優化：移除 include（不需要立即載入關聯，提升寫入速度）
@@ -1141,7 +996,7 @@ ${input.content}
               fileTypes: input.files?.map(f => f.type) || [],
               links: input.links?.map(l => l.url) || [],
               linkTitles: enrichedLinkTitles, // 使用提取的標題
-              chiefAnalysis: `白噗噗快速分類 → 動態 SubAgent: ${targetSubAgent.nameChinese}${quickResult.linkMetadata ? `\n已提取 ${quickResult.linkMetadata.length} 個連結元數據` : ''}`,
+              chiefAnalysis: `白噗噗快速分類 → 動態 SubAgent: ${targetSubAgent.nameChinese}`,
               chiefSummary: quickResult.quickSummary,
               identifiedTopics: [targetSubAgent.nameChinese],
               suggestedTags: targetSubAgent.keywords,
@@ -1202,13 +1057,11 @@ ${input.content}
       }
 
       // 4. 創建知識分發記錄（簡化版 - 只記錄基本資訊）
-      // 優化：如果有豐富化內容，使用豐富化內容替代原始內容
-      const contentForDistribution = quickResult.enrichedContent || input.content
+      // 優化：直接使用原始內容（連結提取由 SubAgent 處理）
+      const contentForDistribution = input.content
 
-      // 優化：將連結元數據添加到 linkTitles
-      const enrichedLinkTitles = quickResult.linkMetadata
-        ? quickResult.linkMetadata.map(meta => meta.title)
-        : (input.links?.map(l => l.title || l.url) || [])
+      // 優化：使用簡單的連結標題（詳細元數據由 SubAgent 提取）
+      const enrichedLinkTitles = input.links?.map(l => l.title || l.url) || []
 
       // 優化：移除 include（不需要立即載入關聯，提升寫入速度）
       const distribution = await prisma.knowledgeDistribution.create({
@@ -1221,7 +1074,7 @@ ${input.content}
           fileTypes: input.files?.map(f => f.type) || [],
           links: input.links?.map(l => l.url) || [],
           linkTitles: enrichedLinkTitles, // 使用提取的標題
-          chiefAnalysis: `白噗噗快速分類: ${quickResult.category}${quickResult.linkMetadata ? `\n已提取 ${quickResult.linkMetadata.length} 個連結元數據` : ''}`, // 簡單記錄
+          chiefAnalysis: `白噗噗快速分類: ${quickResult.category}`, // 簡單記錄
           chiefSummary: quickResult.quickSummary,
           identifiedTopics: [quickResult.category],
           suggestedTags: [],
@@ -1370,12 +1223,13 @@ ${input.content}
       // 檢查是否為 YouTube 連結
       if (url.includes('youtube.com') || url.includes('youtu.be')) {
         // 使用 YouTube oEmbed API（無需 API Key，速度快）
+        // 優化：超時從 5秒降至 2秒，加快響應速度
         const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`
-        const response = await axios.get(oembedUrl, { timeout: 5000 })
+        const response = await axios.get(oembedUrl, { timeout: 2000 })
         const title = response.data.title || url
         const author = response.data.author_name || ''
 
-        logger.info(`[白噗噗] YouTube 標題提取成功: ${title}`)
+        logger.info(`[連結提取] YouTube 標題提取成功: ${title}`)
 
         return {
           title,

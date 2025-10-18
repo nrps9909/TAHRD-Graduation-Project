@@ -12,7 +12,7 @@
 import { PrismaClient, AssistantType, ContentType } from '@prisma/client'
 import { logger } from '../utils/logger'
 import axios from 'axios'
-import { spawn, ChildProcessWithoutNullStreams } from 'child_process'
+import { callGeminiAPI } from '../utils/geminiAPI'
 import { assistantService } from './assistantService'
 import { multimodalProcessor } from './multimodalProcessor'
 import { dynamicSubAgentService, DynamicSubAgent } from './dynamicSubAgentService'
@@ -52,12 +52,10 @@ interface DistributionInput {
 
 export class SubAgentService {
   private mcpUrl: string
-  private useGeminiCLI: boolean = true
   private geminiModel: string = 'gemini-2.5-flash' // 使用 Gemini 2.5 Flash 進行深度分析
 
   constructor() {
     this.mcpUrl = process.env.MCP_SERVICE_URL || 'http://localhost:8765'
-    this.useGeminiCLI = process.env.USE_GEMINI_CLI !== 'false'
   }
 
   /**
@@ -546,99 +544,48 @@ ${distribution.chiefSummary}
   /**
    * 調用 AI 服務（使用 Gemini CLI Pro 進行深度分析）
    */
+  /**
+   * 調用 Gemini API 進行深度分析
+   * 優化：完全使用 REST API，移除不穩定的 CLI
+   */
   private async callMCP(prompt: string, assistantId: string): Promise<string> {
-    // 優先使用 Gemini CLI Pro（深度分析）
-    if (this.useGeminiCLI) {
-      try {
-        logger.info(`[Sub-Agent] Calling Gemini CLI for deep analysis`)
-
-        // 使用 stdin 傳遞 prompt（根據 Gemini CLI 文檔的推薦方式）
-        // 使用 child_process spawn 以避免 shell 轉義問題
-        return new Promise<string>((resolve, reject) => {
-          const gemini: ChildProcessWithoutNullStreams = spawn('gemini', ['-m', this.geminiModel], {
-            env: {
-              ...process.env,
-              GEMINI_API_KEY: process.env.GEMINI_API_KEY
-            }
-          })
-
-          let stdout = ''
-          let stderr = ''
-          let timeoutId: NodeJS.Timeout
-
-          gemini.stdout.on('data', (data: Buffer) => {
-            stdout += data.toString()
-          })
-
-          gemini.stderr.on('data', (data: Buffer) => {
-            stderr += data.toString()
-          })
-
-          gemini.on('close', (code: number) => {
-            clearTimeout(timeoutId)
-            if (code === 0) {
-              const response = stdout.trim()
-              logger.info(`[Sub-Agent] Gemini CLI response received (${response.length} chars)`)
-              logger.info(`[Sub-Agent] Response preview: ${response.substring(0, 500)}...`)
-              resolve(response)
-            } else {
-              if (stderr && stderr.includes('Error')) {
-                logger.error('[Sub-Agent] Gemini CLI stderr:', stderr)
-              }
-              reject(new Error(`Gemini CLI exited with code ${code}: ${stderr}`))
-            }
-          })
-
-          gemini.on('error', (err: Error) => {
-            clearTimeout(timeoutId)
-            reject(err)
-          })
-
-          // 設置 90 秒超時
-          timeoutId = setTimeout(() => {
-            gemini.kill()
-            reject(new Error('Gemini CLI timeout after 90 seconds'))
-          }, 90000)
-
-          // 將 prompt 寫入 stdin
-          gemini.stdin.write(prompt)
-          gemini.stdin.end()
-        })
-      } catch (error: any) {
-        logger.error('[Sub-Agent] Gemini CLI error:', error.message)
-        logger.error('[Sub-Agent] Error details:', error)
-        throw new Error('AI 深度分析服務暫時無法使用')
-      }
-    }
-
-    // Fallback: 使用 MCP Server
     try {
-      const response = await axios.post(
-        `${this.mcpUrl}/generate`,
-        {
-          npc_id: assistantId,
-          message: prompt,
-          session_id: `subagent-${assistantId}-${Date.now()}`
-        },
-        {
-          timeout: 30000,
-          headers: {
-            'Content-Type': 'application/json'
+      // 直接使用 Gemini REST API（快速、穩定）
+      const response = await callGeminiAPI(prompt, {
+        model: this.geminiModel,
+        temperature: 0.7,
+        maxOutputTokens: 4096, // SubAgent 需要更長的輸出
+        timeout: 20000 // 20 秒超時（深度分析需要更多時間）
+      })
+
+      return response
+
+    } catch (error: any) {
+      logger.error(`[Sub-Agent] Gemini API error:`, error.message)
+
+      // Fallback: 使用 MCP Server（如果配置）
+      try {
+        logger.info('[Sub-Agent] Trying MCP Server fallback')
+        const fallbackResponse = await axios.post(
+          `${this.mcpUrl}/generate`,
+          {
+            npc_id: assistantId,
+            message: prompt,
+            session_id: `subagent-${assistantId}-${Date.now()}`
+          },
+          {
+            timeout: 30000,
+            headers: {
+              'Content-Type': 'application/json'
+            }
           }
-        }
-      )
+        )
 
-      return response.data.response || ''
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        logger.error(`MCP service error: ${error.message}`)
-        if (error.code === 'ECONNREFUSED') {
-          throw new Error('AI 服务未连接')
-        }
+        return fallbackResponse.data.response || ''
+      } catch (fallbackError) {
+        logger.error('[Sub-Agent] All AI services failed')
+        throw new Error('AI 深度分析服務暫時不可用，請稍後再試')
       }
-
-      logger.error('MCP call error:', error)
-      throw new Error('AI 服務調用失敗')
     }
   }
 
