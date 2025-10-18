@@ -443,7 +443,7 @@ function MessageBubble({ message, theme, currentCat }: MessageBubbleProps) {
             textShadow: currentCat === CatAgent.TORORO && isUser ? '0 1px 1px rgba(255, 255, 255, 0.5)' : 'none'
           }}
         >
-          <div className="text-sm font-medium select-text leading-relaxed prose prose-sm max-w-none"
+          <div className="text-sm font-medium select-text leading-relaxed max-w-none"
             style={{ color: isUser ? theme.userBubbleText : theme.catBubbleText }}
           >
             <ReactMarkdown
