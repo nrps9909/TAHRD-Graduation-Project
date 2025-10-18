@@ -1,11 +1,11 @@
 /**
  * Tororo (白噗噗) AI Resolvers
  *
- * 使用 Gemini CLI 生成白噗噗的回應
+ * 使用 Gemini REST API 生成白噗噗的回應
  */
 
 import { logger } from '../utils/logger'
-import { spawn, ChildProcessWithoutNullStreams } from 'child_process'
+import { callGeminiAPI } from '../utils/geminiAPI'
 
 export const tororoResolvers = {
   Mutation: {
@@ -16,8 +16,8 @@ export const tororoResolvers = {
       try {
         logger.info('[Tororo] 開始生成回應')
 
-        // 使用 Gemini CLI 調用 Gemini 2.5 Flash
-        const response = await callGeminiCLI(prompt)
+        // 使用 Gemini REST API 調用 Gemini 2.5 Flash
+        const response = await callGeminiWithRetry(prompt)
 
         logger.info('[Tororo] 回應生成成功')
 
@@ -39,77 +39,29 @@ export const tororoResolvers = {
 }
 
 /**
- * 使用 Gemini CLI 調用 AI
+ * 使用 Gemini REST API 調用 AI（帶重試機制）
  */
-async function callGeminiCLI(prompt: string): Promise<string> {
+async function callGeminiWithRetry(prompt: string): Promise<string> {
   const model = 'gemini-2.5-flash'
   const maxRetries = 3
   const retryDelays = [2000, 5000, 10000] // 2s, 5s, 10s
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
-      logger.info(`[Tororo] 調用 Gemini CLI (嘗試 ${attempt + 1}/${maxRetries})`)
+      logger.info(`[Tororo] 調用 Gemini REST API (嘗試 ${attempt + 1}/${maxRetries})`)
 
-      // 使用 spawn + stdin（正確方式）
-      const result = await new Promise<string>((resolve, reject) => {
-        const gemini: ChildProcessWithoutNullStreams = spawn('gemini', ['-m', model], {
-          env: {
-            ...process.env,
-            GEMINI_API_KEY: process.env.GEMINI_API_KEY
-          }
-        })
-
-        let stdout = ''
-        let stderr = ''
-        let timeoutId: NodeJS.Timeout
-
-        gemini.stdout.on('data', (data: Buffer) => {
-          stdout += data.toString()
-        })
-
-        gemini.stderr.on('data', (data: Buffer) => {
-          stderr += data.toString()
-        })
-
-        gemini.on('close', (code: number) => {
-          clearTimeout(timeoutId)
-          if (code === 0) {
-            const response = stdout.trim()
-            if (!response) {
-              reject(new Error('Empty response from Gemini CLI'))
-              return
-            }
-            logger.info(`[Tororo] Gemini CLI 回應成功 (${response.length} chars)`)
-            resolve(response)
-          } else {
-            if (stderr) {
-              logger.warn('[Tororo] Gemini CLI stderr:', stderr)
-              // 檢查是否為速率限制錯誤
-              if (stderr.includes('429') || stderr.includes('quota') || stderr.includes('rate limit')) {
-                reject(new Error('RATE_LIMIT'))
-                return
-              }
-            }
-            reject(new Error(`Gemini CLI exited with code ${code}: ${stderr}`))
-          }
-        })
-
-        gemini.on('error', (err: Error) => {
-          clearTimeout(timeoutId)
-          reject(err)
-        })
-
-        // 設置超時（60秒）
-        timeoutId = setTimeout(() => {
-          gemini.kill()
-          reject(new Error('Gemini CLI timeout'))
-        }, 60000)
-
-        // 將 prompt 寫入 stdin
-        gemini.stdin.write(prompt)
-        gemini.stdin.end()
+      const result = await callGeminiAPI(prompt, {
+        model,
+        temperature: 0.7,
+        maxOutputTokens: 2048,
+        timeout: 20000
       })
 
+      if (!result || result.trim().length === 0) {
+        throw new Error('Empty response from Gemini API')
+      }
+
+      logger.info(`[Tororo] Gemini REST API 回應成功 (${result.length} chars)`)
       return result
 
     } catch (error: any) {
@@ -117,9 +69,10 @@ async function callGeminiCLI(prompt: string): Promise<string> {
         error.message?.includes('429') ||
         error.message?.includes('RATE_LIMIT') ||
         error.message?.includes('quota') ||
-        error.message?.includes('rate limit')
+        error.message?.includes('rate limit') ||
+        error.message?.includes('API 配額已用盡')
 
-      logger.error(`[Tororo] Gemini CLI 錯誤 (嘗試 ${attempt + 1}):`, error.message)
+      logger.error(`[Tororo] Gemini REST API 錯誤 (嘗試 ${attempt + 1}):`, error.message)
 
       // 如果不是速率限制錯誤或已達最大重試次數，拋出錯誤
       if (!isRateLimitError || attempt >= maxRetries - 1) {

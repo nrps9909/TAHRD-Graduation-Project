@@ -4,8 +4,8 @@
  * 使用 Gemini Flash 快速分析用戶查詢意圖，決定最佳檢索策略
  */
 
-import { spawn, ChildProcessWithoutNullStreams } from 'child_process'
 import { logger } from '../utils/logger'
+import { callGeminiAPI } from '../utils/geminiAPI'
 
 /**
  * 查詢意圖類型
@@ -271,52 +271,14 @@ ${query}
   }
 
   /**
-   * 調用 Gemini CLI
+   * 調用 Gemini REST API
    */
   private async callGemini(prompt: string): Promise<string> {
-    return await new Promise<string>((resolve, reject) => {
-      const gemini: ChildProcessWithoutNullStreams = spawn('gemini', ['-m', this.config.model], {
-        env: {
-          ...process.env,
-          GEMINI_API_KEY: process.env.GEMINI_API_KEY
-        }
-      })
-
-      let stdout = ''
-      let stderr = ''
-      let timeoutId: NodeJS.Timeout
-
-      gemini.stdout.on('data', (data: Buffer) => {
-        stdout += data.toString()
-      })
-
-      gemini.stderr.on('data', (data: Buffer) => {
-        stderr += data.toString()
-      })
-
-      gemini.on('close', (code: number) => {
-        clearTimeout(timeoutId)
-        if (code === 0) {
-          resolve(stdout.trim())
-        } else {
-          reject(new Error(`Gemini CLI exited with code ${code}: ${stderr}`))
-        }
-      })
-
-      gemini.on('error', (err: Error) => {
-        clearTimeout(timeoutId)
-        reject(err)
-      })
-
-      // 設置超時
-      timeoutId = setTimeout(() => {
-        gemini.kill()
-        reject(new Error('Gemini CLI timeout'))
-      }, this.config.timeout)
-
-      // 寫入 prompt
-      gemini.stdin.write(prompt)
-      gemini.stdin.end()
+    return await callGeminiAPI(prompt, {
+      model: this.config.model,
+      temperature: 0.7,
+      maxOutputTokens: 1024,
+      timeout: this.config.timeout
     })
   }
 

@@ -12,7 +12,7 @@ import { PrismaClient } from '@prisma/client'
 import { logger } from '../utils/logger'
 import { queryIntentAnalyzer } from './queryIntentAnalyzer'
 import { hybridSearchService } from './hybridSearchService'
-import { spawn, ChildProcessWithoutNullStreams } from 'child_process'
+import { callGeminiAPI } from '../utils/geminiAPI'
 
 const prisma = new PrismaClient()
 
@@ -280,62 +280,21 @@ ${query}
   }
 
   /**
-   * 調用 Gemini 2.5 Flash
+   * 調用 Gemini REST API 生成回答
    */
   private async callGemini(prompt: string): Promise<string> {
     try {
-      // 使用 spawn + stdin（正確方式）
-      return await new Promise<string>((resolve, reject) => {
-        const gemini: ChildProcessWithoutNullStreams = spawn('gemini', ['-m', this.model], {
-          env: {
-            ...process.env,
-            GEMINI_API_KEY: process.env.GEMINI_API_KEY
-          }
-        })
-
-        let stdout = ''
-        let stderr = ''
-        let timeoutId: NodeJS.Timeout
-
-        gemini.stdout.on('data', (data: Buffer) => {
-          stdout += data.toString()
-        })
-
-        gemini.stderr.on('data', (data: Buffer) => {
-          stderr += data.toString()
-        })
-
-        gemini.on('close', (code: number) => {
-          clearTimeout(timeoutId)
-          if (code === 0) {
-            const response = stdout.trim()
-            logger.info(`[RAG] Gemini response generated (${response.length} chars)`)
-            resolve(response)
-          } else {
-            if (stderr && stderr.includes('Error')) {
-              logger.error('[RAG] Gemini error:', stderr)
-            }
-            reject(new Error(`Gemini CLI exited with code ${code}: ${stderr}`))
-          }
-        })
-
-        gemini.on('error', (err: Error) => {
-          clearTimeout(timeoutId)
-          reject(err)
-        })
-
-        // 設置超時（30秒）
-        timeoutId = setTimeout(() => {
-          gemini.kill()
-          reject(new Error('Gemini CLI timeout'))
-        }, 30000)
-
-        // 將 prompt 寫入 stdin
-        gemini.stdin.write(prompt)
-        gemini.stdin.end()
+      const response = await callGeminiAPI(prompt, {
+        model: this.model,
+        temperature: 0.7,
+        maxOutputTokens: 2048,
+        timeout: 20000
       })
+
+      logger.info(`[RAG] Gemini REST API response generated (${response.length} chars)`)
+      return response
     } catch (error: any) {
-      logger.error('[RAG] Gemini call failed:', error.message)
+      logger.error('[RAG] Gemini REST API call failed:', error.message)
       throw new Error('生成回答失敗')
     }
   }
