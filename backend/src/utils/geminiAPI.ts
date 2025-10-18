@@ -85,7 +85,10 @@ export async function callGeminiAPI(
       // 處理 HTTP 錯誤
       if (error.response) {
         const status = error.response.status
-        const message = error.response.data?.error?.message || error.message
+        const responseData = error.response.data
+        const message = (responseData && typeof responseData === 'object' && responseData.error?.message)
+          || error.message
+          || 'Unknown error'
 
         logger.error(`[Gemini API] HTTP ${status} after ${duration}ms: ${message}`)
 
