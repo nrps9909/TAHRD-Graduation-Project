@@ -583,7 +583,12 @@ ${contextInfo}
       return response
 
     } catch (error: any) {
-      logger.error(`[Chief Agent] Gemini API error:`, error.message)
+      logger.error(`[Chief Agent] Gemini API error: ${error.message || error}`)
+      logger.error(`[Chief Agent] Error details:`, {
+        message: error.message,
+        stack: error.stack,
+        model: this.geminiModel
+      })
 
       // Fallback: 使用 MCP Server（如果配置）
       try {

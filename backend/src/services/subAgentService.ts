@@ -561,7 +561,12 @@ ${distribution.chiefSummary}
       return response
 
     } catch (error: any) {
-      logger.error(`[Sub-Agent] Gemini API error:`, error.message)
+      logger.error(`[Sub-Agent] Gemini API error: ${error.message || error}`)
+      logger.error(`[Sub-Agent] Error details:`, {
+        message: error.message,
+        stack: error.stack,
+        model: this.geminiModel
+      })
 
       // Fallback: 使用 MCP Server（如果配置）
       try {
