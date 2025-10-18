@@ -73,7 +73,7 @@ export default function UploadModal({ isOpen, onClose, onConfirm }: UploadModalP
               flex-1 px-2.5 sm:px-3 md:px-5 lg:px-6 py-1.5 sm:py-2 md:py-2.5 lg:py-3 rounded-xl sm:rounded-2xl md:rounded-cute font-bold transition-all duration-300 text-xs sm:text-sm md:text-base active:scale-95
               ${activeTab === 'files'
                 ? 'bg-gradient-to-r from-candy-pink to-candy-purple text-white shadow-cute'
-                : 'bg-healing-gentle text-gray-700 hover:bg-candy-blue/20'
+                : 'bg-healing-gentle text-white hover:bg-candy-blue/20'
               }
             `}
           >
@@ -87,7 +87,7 @@ export default function UploadModal({ isOpen, onClose, onConfirm }: UploadModalP
               flex-1 px-2.5 sm:px-3 md:px-5 lg:px-6 py-1.5 sm:py-2 md:py-2.5 lg:py-3 rounded-xl sm:rounded-2xl md:rounded-cute font-bold transition-all duration-300 text-xs sm:text-sm md:text-base active:scale-95
               ${activeTab === 'links'
                 ? 'bg-gradient-to-r from-candy-blue to-candy-purple text-white shadow-cute'
-                : 'bg-healing-gentle text-gray-700 hover:bg-candy-blue/20'
+                : 'bg-healing-gentle text-white hover:bg-candy-blue/20'
               }
             `}
           >
@@ -134,7 +134,7 @@ export default function UploadModal({ isOpen, onClose, onConfirm }: UploadModalP
           </button>
           <button
             onClick={handleCancel}
-            className="px-3 sm:px-4 md:px-5 lg:px-6 py-2 sm:py-2.5 md:py-3 bg-healing-gentle hover:bg-candy-blue text-gray-700 font-bold rounded-xl sm:rounded-2xl md:rounded-cute shadow-cute hover:shadow-cute-lg transition-all duration-300 hover:scale-105 active:scale-95 text-xs sm:text-sm md:text-base whitespace-nowrap"
+            className="px-3 sm:px-4 md:px-5 lg:px-6 py-2 sm:py-2.5 md:py-3 bg-healing-gentle hover:bg-candy-blue text-white font-bold rounded-xl sm:rounded-2xl md:rounded-cute shadow-cute hover:shadow-cute-lg transition-all duration-300 hover:scale-105 active:scale-95 text-xs sm:text-sm md:text-base whitespace-nowrap"
           >
             取消
           </button>

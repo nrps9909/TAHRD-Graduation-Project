@@ -13,7 +13,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useLazyQuery, useMutation } from '@apollo/client'
 import { motion, AnimatePresence } from 'framer-motion'
 import { CHAT_WITH_HIJIKI, CLEAR_HIJIKI_SESSION } from '../graphql/hijikiChat'
-import type { HijikiChatResponse, MemorySource } from '../graphql/hijikiChat'
+import type { HijikiChatResponse } from '../graphql/hijikiChat'
 import { useChatStore } from '../stores/chatStore'
 import { useSound } from '../hooks/useSound'
 
