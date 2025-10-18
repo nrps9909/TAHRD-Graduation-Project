@@ -54,7 +54,7 @@ export default function IslandCreator() {
     onCompleted: (data) => {
       console.log('✅ 島嶼更新成功:', data.updateIsland)
       setIsSaving(false)
-      alert(`✅ 島嶼「${config.name}」已更新！\n\n形狀點數: ${config.shape.length}\n高度: ${config.height}\n斜率: ${config.bevel}`)
+      alert(`✅ 島嶼「${config.name}」已更新！\n\n形狀點數: ${config.shape.length}\n高度: ${(config.height ?? 2).toFixed(1)}\n斜率: ${(config.bevel ?? 0.5).toFixed(1)}`)
       navigate('/', { replace: true })
     },
     onError: (error) => {
@@ -84,12 +84,12 @@ export default function IslandCreator() {
         }
 
         const islandHeight = (currentIsland as any).islandHeight
-        if (islandHeight !== undefined) {
+        if (islandHeight != null) {
           loadedHeight = islandHeight
         }
 
         const islandBevel = (currentIsland as any).islandBevel
-        if (islandBevel !== undefined) {
+        if (islandBevel != null) {
           loadedBevel = islandBevel
         }
       } catch (error) {
@@ -145,8 +145,8 @@ export default function IslandCreator() {
             input: {
               color: config.color,
               customShapeData,
-              islandHeight: config.height,
-              islandBevel: config.bevel,
+              islandHeight: config.height ?? 2,
+              islandBevel: config.bevel ?? 0.5,
             }
           }
         })
@@ -155,15 +155,15 @@ export default function IslandCreator() {
         updateIsland(islandId, {
           color: config.color,
           customShapeData: customShapeData || undefined,
-          islandHeight: config.height,
-          islandBevel: config.bevel,
+          islandHeight: config.height ?? 2,
+          islandBevel: config.bevel ?? 0.5,
           updatedAt: new Date().toISOString(),
         })
 
         console.log('✅ [IslandCreator] 島嶼配置已保存到資料庫', {
           shape: config.shape.length,
-          height: config.height,
-          bevel: config.bevel
+          height: config.height ?? 2,
+          bevel: config.bevel ?? 0.5
         })
       } catch (error) {
         console.error('❌ [IslandCreator] 更新失敗:', error)
@@ -322,11 +322,11 @@ export default function IslandCreator() {
                   min="0.5"
                   max="5"
                   step="0.1"
-                  value={config.height}
+                  value={config.height ?? 2}
                   onChange={(e) => setConfig({ ...config, height: parseFloat(e.target.value) })}
                   className="w-24"
                 />
-                <span className="text-sm text-gray-600 w-8">{config.height.toFixed(1)}</span>
+                <span className="text-sm text-gray-600 w-8">{(config.height ?? 2).toFixed(1)}</span>
               </div>
 
               {/* 斜率控制 */}
@@ -337,11 +337,11 @@ export default function IslandCreator() {
                   min="0"
                   max="2"
                   step="0.1"
-                  value={config.bevel}
+                  value={config.bevel ?? 0.5}
                   onChange={(e) => setConfig({ ...config, bevel: parseFloat(e.target.value) })}
                   className="w-24"
                 />
-                <span className="text-sm text-gray-600 w-8">{config.bevel.toFixed(1)}</span>
+                <span className="text-sm text-gray-600 w-8">{(config.bevel ?? 0.5).toFixed(1)}</span>
               </div>
             </div>
           </div>
@@ -438,8 +438,8 @@ export default function IslandCreator() {
               memories={[]}
               islandId="custom-island"
               shapePoints={config.shape}
-              height={config.height}
-              bevel={config.bevel}
+              height={config.height ?? 2}
+              bevel={config.bevel ?? 0.5}
             />
 
             <mesh position={[0, -3, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
@@ -479,7 +479,7 @@ export default function IslandCreator() {
             <div className="mt-3 pt-3 border-t border-gray-200">
               <div className="text-xs text-gray-500">
                 紋理：{selectedTexture.emoji} {selectedTexture.name}<br/>
-                高度：{config.height.toFixed(1)} | 斜率：{config.bevel.toFixed(1)}
+                高度：{(config.height ?? 2).toFixed(1)} | 斜率：{(config.bevel ?? 0.5).toFixed(1)}
               </div>
             </div>
           </div>
