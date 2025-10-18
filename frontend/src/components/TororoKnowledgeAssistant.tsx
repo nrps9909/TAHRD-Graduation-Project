@@ -13,8 +13,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import * as PIXI from 'pixi.js'
 import { Live2DModel } from 'pixi-live2d-display/cubism4'
-import { useMutation, useQuery } from '@apollo/client'
-import { UPLOAD_KNOWLEDGE, GET_CHIEF_ASSISTANT } from '../graphql/knowledge'
+import { useMutation, useQuery, useLazyQuery } from '@apollo/client'
+import { UPLOAD_KNOWLEDGE, GET_CHIEF_ASSISTANT, GET_KNOWLEDGE_DISTRIBUTION } from '../graphql/knowledge'
 import type { UploadKnowledgeInput } from '../graphql/knowledge'
 import { useSound } from '../hooks/useSound'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -121,6 +121,7 @@ export default function TororoKnowledgeAssistant({
   // GraphQL
   const [uploadKnowledge] = useMutation(UPLOAD_KNOWLEDGE)
   useQuery(GET_CHIEF_ASSISTANT) // Load chief assistant data
+  const [getDistribution] = useLazyQuery(GET_KNOWLEDGE_DISTRIBUTION)
 
   // Sound
   const { play, playRandomMeow } = useSound()
@@ -188,6 +189,62 @@ export default function TororoKnowledgeAssistant({
     }
   }, [])
 
+  /**
+   * 同步 pending 狀態的任務 - 檢查它們是否已完成
+   */
+  const syncPendingTasks = useCallback(async () => {
+    const pendingRecords = history.filter(
+      record => record.processingStatus === 'pending' && record.distributionId
+    )
+
+    if (pendingRecords.length === 0) return
+
+    console.log(`[Tororo] 🔄 檢查 ${pendingRecords.length} 個 pending 任務的狀態`)
+
+    for (const record of pendingRecords) {
+      try {
+        const { data } = await getDistribution({
+          variables: { id: record.distributionId },
+          fetchPolicy: 'network-only', // 強制從伺服器獲取最新數據
+        })
+
+        if (data?.knowledgeDistribution) {
+          const distribution = data.knowledgeDistribution
+          const memoriesCount = distribution.memories?.length || 0
+
+          // 如果已經有 memories 創建，說明處理完成了
+          if (memoriesCount > 0) {
+            console.log(`[Tororo] ✅ Distribution ${record.distributionId} 已完成，創建了 ${memoriesCount} 個記憶`)
+
+            setHistory(prev => {
+              const updated = prev.map(r => {
+                if (r.distributionId === record.distributionId) {
+                  return {
+                    ...r,
+                    processingStatus: 'completed' as const,
+                    memoriesCount
+                  }
+                }
+                return r
+              })
+
+              // 保存到 localStorage
+              try {
+                localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(updated))
+              } catch (error) {
+                console.error('更新歷史紀錄失敗:', error)
+              }
+
+              return updated
+            })
+          }
+        }
+      } catch (error) {
+        console.error(`[Tororo] 檢查 distribution ${record.distributionId} 狀態失敗:`, error)
+      }
+    }
+  }, [history, getDistribution])
+
   // WebSocket 連接 - 監聽任務完成事件
   useEffect(() => {
     const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000'
@@ -209,6 +266,17 @@ export default function TororoKnowledgeAssistant({
       if (userId) {
         newSocket.emit('join-room', { roomId: userId })
       }
+      // 連接後立即同步 pending 任務狀態
+      setTimeout(() => syncPendingTasks(), 1000)
+    })
+
+    newSocket.on('reconnect', (attemptNumber) => {
+      console.log('[Tororo] WebSocket reconnected after', attemptNumber, 'attempts')
+      if (userId) {
+        newSocket.emit('join-room', { roomId: userId })
+      }
+      // 重連後同步 pending 任務狀態
+      setTimeout(() => syncPendingTasks(), 1000)
     })
 
     newSocket.on('disconnect', (reason) => {
@@ -351,7 +419,7 @@ export default function TororoKnowledgeAssistant({
     return () => {
       newSocket.disconnect()
     }
-  }, [token, user?.id, play])
+  }, [token, user?.id, play, syncPendingTasks])
 
   // 刪除歷史紀錄
   const deleteHistory = (id: string) => {
