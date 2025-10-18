@@ -444,7 +444,9 @@ function MessageBubble({ message, theme, currentCat }: MessageBubbleProps) {
           }}
         >
           <div className="text-sm font-medium select-text leading-relaxed max-w-none"
-            style={{ color: isUser ? theme.userBubbleText : theme.catBubbleText }}
+            style={{
+              color: isUser ? theme.userBubbleText : theme.catBubbleText,
+            }}
           >
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
@@ -452,32 +454,32 @@ function MessageBubble({ message, theme, currentCat }: MessageBubbleProps) {
               components={{
                 // 自訂樣式以符合主題
                 p: ({ children }) => (
-                  <p className="mb-2 last:mb-0" style={{ color: isUser ? theme.userBubbleText : theme.catBubbleText }}>
+                  <p className="mb-2 last:mb-0" style={{ color: 'inherit' }}>
                     {children}
                   </p>
                 ),
                 ul: ({ children }) => (
-                  <ul className="list-disc ml-4 mb-2" style={{ color: isUser ? theme.userBubbleText : theme.catBubbleText }}>
+                  <ul className="list-disc ml-4 mb-2" style={{ color: 'inherit' }}>
                     {children}
                   </ul>
                 ),
                 ol: ({ children }) => (
-                  <ol className="list-decimal ml-4 mb-2" style={{ color: isUser ? theme.userBubbleText : theme.catBubbleText }}>
+                  <ol className="list-decimal ml-4 mb-2" style={{ color: 'inherit' }}>
                     {children}
                   </ol>
                 ),
                 li: ({ children }) => (
-                  <li className="mb-1" style={{ color: isUser ? theme.userBubbleText : theme.catBubbleText }}>
+                  <li className="mb-1" style={{ color: 'inherit' }}>
                     {children}
                   </li>
                 ),
                 strong: ({ children }) => (
-                  <strong className="font-bold" style={{ color: isUser ? theme.userBubbleText : theme.catBubbleText }}>
+                  <strong className="font-bold" style={{ color: 'inherit' }}>
                     {children}
                   </strong>
                 ),
                 em: ({ children }) => (
-                  <em className="italic" style={{ color: isUser ? theme.userBubbleText : theme.catBubbleText }}>
+                  <em className="italic" style={{ color: 'inherit' }}>
                     {children}
                   </em>
                 ),
@@ -488,7 +490,7 @@ function MessageBubble({ message, theme, currentCat }: MessageBubbleProps) {
                       background: currentCat === CatAgent.TORORO
                         ? 'rgba(251, 191, 36, 0.2)'
                         : 'rgba(139, 92, 246, 0.2)',
-                      color: isUser ? theme.userBubbleText : theme.catBubbleText
+                      color: 'inherit'
                     }}
                   >
                     {children}
@@ -501,7 +503,7 @@ function MessageBubble({ message, theme, currentCat }: MessageBubbleProps) {
                       background: currentCat === CatAgent.TORORO
                         ? 'rgba(251, 191, 36, 0.15)'
                         : 'rgba(139, 92, 246, 0.15)',
-                      color: isUser ? theme.userBubbleText : theme.catBubbleText
+                      color: 'inherit'
                     }}
                   >
                     {children}
@@ -514,7 +516,7 @@ function MessageBubble({ message, theme, currentCat }: MessageBubbleProps) {
                       borderColor: currentCat === CatAgent.TORORO
                         ? 'rgba(251, 191, 36, 0.5)'
                         : 'rgba(139, 92, 246, 0.5)',
-                      color: isUser ? theme.userBubbleText : theme.catBubbleText
+                      color: 'inherit'
                     }}
                   >
                     {children}
@@ -526,7 +528,7 @@ function MessageBubble({ message, theme, currentCat }: MessageBubbleProps) {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="underline hover:opacity-80 transition-opacity"
-                    style={{ color: isUser ? theme.userBubbleText : theme.catBubbleText }}
+                    style={{ color: 'inherit' }}
                   >
                     {children}
                   </a>
