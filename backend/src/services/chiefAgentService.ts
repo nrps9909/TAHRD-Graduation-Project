@@ -631,11 +631,11 @@ ${contextInfo}
               reject(err)
             })
 
-            // 設置超時（Chief Agent 使用 10 秒）
+            // 設置超時（Chief Agent 使用 60 秒，比 Sub-Agent 的 90 秒稍短）
             timeoutId = setTimeout(() => {
               gemini.kill()
-              reject(new Error('Gemini CLI timeout'))
-            }, 10000)
+              reject(new Error('Gemini CLI timeout after 60 seconds'))
+            }, 60000)
 
             // 將 prompt 寫入 stdin
             gemini.stdin.write(prompt)
@@ -721,8 +721,10 @@ ${contextInfo}
 
   /**
    * 白噗噗快速分類（輕量級 - 使用 Gemini 2.5 Flash）
-   * 只做：1. 快速分類 2. 溫暖回應 3. 簡單摘要 4. 判斷是否值得記錄
-   * 新增：5. 提取連結元數據（標題、描述）- 幫助 SubAgent 更好地評估
+   * 只做：1. 快速分類 2. 溫暖回應 3. 簡單摘要
+   * 新增：4. 提取連結元數據（標題、描述）- 幫助 SubAgent 更好地評估
+   *
+   * ⚠️ 所有對話都會被記錄到資料庫，不再判斷 shouldRecord
    */
   async quickClassifyForTororo(
     userId: string,
@@ -732,8 +734,8 @@ ${contextInfo}
     confidence: number
     warmResponse: string  // 白噗噗的溫暖回應
     quickSummary: string  // 一句話摘要
-    shouldRecord: boolean // 是否值得記錄到知識庫
-    recordReason?: string // 不記錄的原因（如果有）
+    shouldRecord: boolean // 固定為 true，所有對話都記錄
+    recordReason?: string // 保留字段以保持向下兼容
     enrichedContent?: string // 豐富化的內容（包含連結元數據）
     linkMetadata?: Array<{ url: string, title: string, description: string }> // 連結元數據
   }> {
@@ -833,37 +835,23 @@ ${contextInfo}
       }
 
       // 構建極簡快速分類 Prompt（優化：使用豐富化內容）
-      const prompt = `白噗噗☁️ 智能判斷助手
+      const prompt = `白噗噗☁️ 智能分類助手
 
 📝 用戶輸入：${enrichedContent}
 ${input.files && input.files.length > 0 ? `📎 附件：${input.files.length}個文件` : ''}
 
-🧠 判斷規則（寬鬆模式 - 盡量記錄）：
-❌ 不記錄（shouldRecord: false）- 僅限以下極少數情況：
-- 單純問候語（hi/hello/嗨）
-- 純表情符號（只有 emoji 沒有文字）
-- 測試文字（test/測試/123）
-- 明顯誤觸（啊/嗯/哦）
-
-✅ 必須記錄（shouldRecord: true）- 預設接受所有其他內容：
-- 任何超過 5 個字的內容
-- 任何包含有意義詞彙的內容
-- 包含時間、地點、人名、事件的內容
-- 學習、工作、生活、情感相關內容
-- 有檔案或連結附件
-- 用戶想記錄的任何內容（寧可多記錄，不要漏掉）
+🧠 任務：將用戶的輸入分類到合適的類別
+✨ 所有對話都會被記錄，不需要判斷是否記錄
 
 📂 分類選項：
 LEARNING(學習) / INSPIRATION(靈感) / WORK(工作) / SOCIAL(社交) / LIFE(生活) / GOALS(目標) / RESOURCES(資源) / MISC(其他)
 
 🎯 JSON回應格式：
 {
-  "shouldRecord": true,
   "category": "LEARNING",
   "confidence": 0.85,
   "warmResponse": "溫暖可愛的回應☁️✨",
-  "quickSummary": "簡短摘要（15字內）",
-  "recordReason": "不記錄時說明原因"
+  "quickSummary": "簡短摘要（15字內）"
 }
 
 💡 回應風格：像白貓一樣溫柔可愛☁️`
@@ -882,8 +870,8 @@ LEARNING(學習) / INSPIRATION(靈感) / WORK(工作) / SOCIAL(社交) / LIFE(�
         confidence: result.confidence || 0.8,
         warmResponse: result.warmResponse || '收到了～ ☁️',
         quickSummary: result.quickSummary || input.content.substring(0, 30),
-        shouldRecord: result.shouldRecord !== false, // 預設為 true，除非明確為 false
-        recordReason: result.recordReason,
+        shouldRecord: true, // ⚠️ 固定為 true，所有對話都記錄到資料庫
+        recordReason: undefined, // 不再需要記錄原因
         enrichedContent: linkMetadata.length > 0 ? enrichedContent : undefined, // 只在有連結時返回
         linkMetadata: linkMetadata.length > 0 ? linkMetadata : undefined // 只在有連結時返回
       }
@@ -903,18 +891,13 @@ LEARNING(學習) / INSPIRATION(靈感) / WORK(工作) / SOCIAL(社交) / LIFE(�
       // 降級方案：使用關鍵字匹配
       const fallbackCategory = assistantService.fallbackCategoryDetection(input.content)
 
-      // 降級方案：簡單規則判斷是否為寒暄
-      const isGreeting = this.isSimpleGreeting(input.content)
-
       return {
         category: fallbackCategory,
         confidence: 0.5,
-        warmResponse: isGreeting
-          ? '嗨～有什麼想記錄的嗎？☁️'
-          : '收到了！我幫你記錄下來了～ ☁️',
+        warmResponse: '收到了！我幫你記錄下來了～ ☁️',
         quickSummary: input.content.substring(0, 30),
-        shouldRecord: !isGreeting,
-        recordReason: isGreeting ? '簡單問候不需要存儲' : undefined
+        shouldRecord: true, // ⚠️ 固定為 true，所有對話都記錄到資料庫
+        recordReason: undefined
       }
     }
   }
@@ -1113,29 +1096,9 @@ ${input.content}
 
       // === 階段 1: 白噗噗快速分類（Gemini 2.5 Flash）===
       const quickResult = await this.quickClassifyForTororo(userId, input)
-      logger.info(`[白噗噗] 快速分類完成: ${quickResult.category} (${quickResult.confidence}), 是否記錄: ${quickResult.shouldRecord}`)
+      logger.info(`[白噗噗] 快速分類完成: ${quickResult.category} (${quickResult.confidence})`)
 
-      // === 如果不值得記錄，直接返回白噗噗的回應（不創建任何記錄）===
-      if (!quickResult.shouldRecord) {
-        logger.info(`[白噗噗] 內容不值得記錄，僅回應不存儲 - 原因: ${quickResult.recordReason || '簡單互動'}`)
-
-        return {
-          distribution: null, // 不創建分發記錄
-          tororoResponse: {
-            warmMessage: quickResult.warmResponse,
-            category: quickResult.category,
-            quickSummary: quickResult.quickSummary,
-            confidence: quickResult.confidence,
-            shouldRecord: false,
-            recordReason: quickResult.recordReason
-          },
-          agentDecisions: [],
-          memoriesCreated: [],
-          processingTime: Date.now() - startTime,
-          backgroundProcessing: false, // 沒有後台處理
-          skipRecording: true // 標記為跳過記錄
-        }
-      }
+      // ⚠️ 所有對話都會被記錄到資料庫，不再跳過任何內容
 
       // 2. 確定內容類型
       const contentType = this.determineContentType(input)
