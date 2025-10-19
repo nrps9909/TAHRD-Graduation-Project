@@ -376,6 +376,7 @@ const baseTypeDefs = gql`
     category: AssistantType! # 分類結果
     quickSummary: String!    # 一句話摘要
     confidence: Float!       # 信心分數
+    reasoning: String!       # 分類理由
   }
 
   type CreateMemoryResponse {

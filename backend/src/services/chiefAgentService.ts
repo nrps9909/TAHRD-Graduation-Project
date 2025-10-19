@@ -657,6 +657,7 @@ ${contextInfo}
   ): Promise<{
     category: AssistantType
     confidence: number
+    reasoning: string     // 分類理由（用於調試和追蹤）
     warmResponse: string  // 白噗噗的溫暖回應
     quickSummary: string  // 一句話摘要
     shouldRecord: boolean // 固定為 true，所有對話都記錄
@@ -1103,6 +1104,7 @@ ${input.content}
               category: quickResult.category,
               quickSummary: quickResult.quickSummary,
               confidence: quickResult.confidence,
+              reasoning: quickResult.reasoning,
               subAgent: {
                 id: targetSubAgent.id,
                 name: targetSubAgent.nameChinese,
@@ -1182,7 +1184,8 @@ ${input.content}
           warmMessage: quickResult.warmResponse,
           category: quickResult.category,
           quickSummary: quickResult.quickSummary,
-          confidence: quickResult.confidence
+          confidence: quickResult.confidence,
+          reasoning: quickResult.reasoning
         },
         // 暫時沒有深度分析結果（正在後台處理中）
         agentDecisions: [],
