@@ -34,7 +34,8 @@ export default function IslandCreator() {
   const navigate = useNavigate()
   const { islandId } = useParams<{ islandId?: string }>()
   const { islands, updateIsland } = useIslandStore()
-  const canvasRef = useRef<any>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const canvasRef = useRef<any>(null) // Three.js Canvas internal type for GLTF export
   const [showDrawer, setShowDrawer] = useState(false)
   const [showPresets, setShowPresets] = useState(false)
   const [config, setConfig] = useState<IslandConfig>({

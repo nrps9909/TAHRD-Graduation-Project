@@ -202,7 +202,7 @@ export default function IslandView() {
     console.log('✅ [IslandView] refetch 完成')
     console.log('✅ [IslandView] 新的 assistants 資料:', result.data.assistants)
 
-    const updatedAssistant = result.data.assistants.find((a: any) => a.id === assistantId)
+    const updatedAssistant = result.data.assistants.find((a: Assistant) => a.id === assistantId)
     console.log('✅ [IslandView] 更新後的 assistant:', updatedAssistant)
     console.log('✅ [IslandView] 新顏色:', updatedAssistant?.color)
   }
