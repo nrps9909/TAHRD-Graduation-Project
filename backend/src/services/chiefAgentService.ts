@@ -696,27 +696,89 @@ ${contextInfo}
         logger.info(`[白噗噗] 檢測到連結，將由 SubAgent 深度分析（優化：跳過同步提取）`)
       }
 
-      // 構建極簡快速分類 Prompt（優化：使用豐富化內容）
-      const prompt = `白噗噗☁️ 智能分類助手
+      // 構建智能分類 Prompt（優化版：詳細說明 + Few-shot Examples）
+      const prompt = `你是「白噗噗」☁️，一隻溫柔智慧的知識分類助手
 
-📝 用戶輸入：${enrichedContent}
+📝 用戶輸入：「${enrichedContent}」
 ${input.files && input.files.length > 0 ? `📎 附件：${input.files.length}個文件` : ''}
 
-🧠 任務：將用戶的輸入分類到合適的類別
-✨ 所有對話都會被記錄，不需要判斷是否記錄
+🎯 任務：精準分類到最合適的類別
 
-📂 分類選項：
-LEARNING(學習) / INSPIRATION(靈感) / WORK(工作) / SOCIAL(社交) / LIFE(生活) / GOALS(目標) / RESOURCES(資源) / MISC(其他)
+📂 類別定義與範例：
 
-🎯 JSON回應格式：
+1️⃣ LEARNING（學習成長）
+   - 課程筆記、書籍摘要、技能學習、知識點
+   - 範例：「學會了 TypeScript 泛型」、「Python 教學筆記」
+
+2️⃣ INSPIRATION（靈感創意）
+   - 創意想法、設計靈感、寫作素材、藝術創作
+   - 範例：「突然想到一個 App 點子」、「看到很美的配色」
+
+3️⃣ WORK（工作專業）
+   - 工作任務、專案進度、會議記錄、職場相關
+   - 範例：「完成了 API 設計」、「明天要開會討論需求」
+
+4️⃣ SOCIAL（社交互動）
+   - 與人聊天、社交活動、人際關係、聚會邀約
+   - 範例：「和朋友約了週末吃飯」、「同事分享了好笑的事」
+
+5️⃣ LIFE（日常生活）
+   - 生活記錄、心情分享、日常瑣事、個人感想
+   - 範例：「今天天氣真好」、「晚餐吃了好吃的拉麵」
+
+6️⃣ GOALS（目標規劃）
+   - 目標設定、計劃安排、待辦事項、未來規劃
+   - 範例：「這個月要看完 3 本書」、「年底前要學會 React」
+
+7️⃣ RESOURCES（資源收藏）
+   - 實用工具、網站連結、文件資料、參考資源
+   - 範例：「發現一個好用的設計工具」、「這個教學網站很棒」
+
+8️⃣ MISC（其他雜項）
+   - 不屬於以上類別的內容
+   - 範例：隨意閒聊、測試訊息
+
+🧠 分類決策邏輯：
+- 關鍵字優先：出現「學習」→ LEARNING，「工作」→ WORK
+- 上下文判斷：提到技術/課程 → LEARNING，提到同事/專案 → WORK
+- 行動意圖：如果是「要做」→ GOALS，如果是「已做」→ LEARNING/WORK
+- 連結判斷：教學文章 → LEARNING，工具網站 → RESOURCES
+- 不確定時：傾向 LIFE（安全選擇）
+
+📋 Few-shot 範例：
+
+輸入：「今天學會了 Docker compose 的配置」
+→ LEARNING (課程學習、技術知識)
+
+輸入：「明天要和客戶開會討論需求」
+→ WORK (工作任務、會議安排)
+
+輸入：「發現一個很棒的 Figma 插件」
+→ RESOURCES (工具資源)
+
+輸入：「這個月要減肥 5 公斤」
+→ GOALS (目標設定)
+
+輸入：「和家人去了動物園，很開心」
+→ LIFE (生活記錄)
+
+🎯 回應格式（必須是有效的 JSON）：
 {
   "category": "LEARNING",
-  "confidence": 0.85,
-  "warmResponse": "溫暖可愛的回應☁️✨",
-  "quickSummary": "簡短摘要（15字內）"
+  "confidence": 0.9,
+  "reasoning": "提到學習技術知識",
+  "warmResponse": "哇～又學到新知識了呢！☁️✨",
+  "quickSummary": "Docker compose 學習"
 }
 
-💡 回應風格：像白貓一樣溫柔可愛☁️`
+⚠️ 重要：
+1. confidence 要誠實評估（0.5-1.0）
+2. 不確定時降低 confidence，不要亂猜
+3. reasoning 簡短說明分類依據
+4. warmResponse 要符合白貓個性（溫柔、可愛、鼓勵）
+5. quickSummary 控制在 15 字內
+
+請直接回傳 JSON，不要其他文字：`
 
       // 使用 Gemini 2.5 Flash (快速模型)
       const oldModel = this.geminiModel
@@ -730,6 +792,7 @@ LEARNING(學習) / INSPIRATION(靈感) / WORK(工作) / SOCIAL(社交) / LIFE(�
       const classificationResult = {
         category: result.category as AssistantType || AssistantType.LIFE,
         confidence: result.confidence || 0.8,
+        reasoning: result.reasoning || '自動分類',
         warmResponse: result.warmResponse || '收到了～ ☁️',
         quickSummary: result.quickSummary || input.content.substring(0, 30),
         shouldRecord: true, // ⚠️ 固定為 true，所有對話都記錄到資料庫
@@ -737,6 +800,9 @@ LEARNING(學習) / INSPIRATION(靈感) / WORK(工作) / SOCIAL(社交) / LIFE(�
         enrichedContent: undefined, // 優化：不再同步豐富化內容
         linkMetadata: undefined // 優化：連結元數據由 SubAgent 提取
       }
+
+      // 日誌記錄分類結果（方便調試）
+      logger.info(`[白噗噗] 分類結果: ${classificationResult.category} (置信度: ${classificationResult.confidence}, 理由: ${classificationResult.reasoning})`)
 
       // 優化：保存到緩存
       this.ensureCacheCapacity()
@@ -756,6 +822,7 @@ LEARNING(學習) / INSPIRATION(靈感) / WORK(工作) / SOCIAL(社交) / LIFE(�
       return {
         category: fallbackCategory,
         confidence: 0.5,
+        reasoning: '使用關鍵字匹配（AI 暫時無法使用）',
         warmResponse: '收到了！我幫你記錄下來了～ ☁️',
         quickSummary: input.content.substring(0, 30),
         shouldRecord: true, // ⚠️ 固定為 true，所有對話都記錄到資料庫
