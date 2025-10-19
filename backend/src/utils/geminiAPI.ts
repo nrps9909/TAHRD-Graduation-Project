@@ -86,11 +86,21 @@ export async function callGeminiAPI(
       if (error.response) {
         const status = error.response.status
         const responseData = error.response.data
-        const message = (responseData && typeof responseData === 'object' && responseData.error?.message)
-          || error.message
-          || 'Unknown error'
+
+        // 安全地提取錯誤訊息
+        let message = 'Unknown error'
+        try {
+          if (responseData && typeof responseData === 'object') {
+            message = responseData.error?.message || responseData.message || error.message || 'Unknown error'
+          } else if (error.message) {
+            message = error.message
+          }
+        } catch (e) {
+          message = String(error)
+        }
 
         logger.error(`[Gemini API] HTTP ${status} after ${duration}ms: ${message}`)
+        logger.error(`[Gemini API] Response data:`, responseData)
 
         // 處理特定錯誤
         if (status === 429) {
@@ -106,8 +116,8 @@ export async function callGeminiAPI(
         logger.error(`[Gemini API] Timeout after ${duration}ms`)
         throw new Error(`API 調用超時（${timeout}ms）`)
       } else {
-        logger.error(`[Gemini API] Network error after ${duration}ms: ${error.message}`)
-        throw new Error(`網路錯誤: ${error.message}`)
+        logger.error(`[Gemini API] Network error after ${duration}ms: ${error.message || error}`)
+        throw new Error(`網路錯誤: ${error.message || String(error)}`)
       }
     }
 
