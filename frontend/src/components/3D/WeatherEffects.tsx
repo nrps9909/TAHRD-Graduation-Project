@@ -241,171 +241,171 @@ export function WeatherInfo() {
   }
 
   return (
-    <div className="absolute top-2 right-2 sm:top-3 sm:right-3 md:top-6 md:right-6">
-      {/* 動森風格玻璃面板 */}
+    <div className="absolute top-3 right-3 md:top-4 md:right-4">
+      {/* 精簡動森風格玻璃面板 */}
       <div
-        className="relative overflow-hidden rounded-2xl sm:rounded-3xl shadow-2xl"
+        className="relative overflow-hidden rounded-xl md:rounded-2xl shadow-lg"
         style={{
-          background: 'linear-gradient(135deg, rgba(255, 248, 231, 0.45) 0%, rgba(255, 243, 224, 0.35) 100%)',
-          backdropFilter: 'blur(24px) saturate(180%)',
-          WebkitBackdropFilter: 'blur(24px) saturate(180%)',
-          border: '2px solid rgba(255, 255, 255, 0.4)',
-          boxShadow: '0 8px 32px 0 rgba(139, 92, 46, 0.2), inset 0 1px 0 0 rgba(255, 255, 255, 0.5)',
+          background: 'linear-gradient(135deg, rgba(255, 248, 231, 0.5) 0%, rgba(255, 243, 224, 0.4) 100%)',
+          backdropFilter: 'blur(20px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+          border: '1.5px solid rgba(255, 255, 255, 0.5)',
+          boxShadow: '0 4px 16px 0 rgba(139, 92, 46, 0.15), inset 0 1px 0 0 rgba(255, 255, 255, 0.6)',
         }}
       >
-        {/* 可愛的裝飾邊框 */}
+        {/* 頂部光澤 */}
         <div
-          className="absolute inset-0 rounded-2xl sm:rounded-3xl pointer-events-none"
+          className="absolute inset-0 rounded-xl md:rounded-2xl pointer-events-none"
           style={{
-            background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.25) 0%, transparent 40%, rgba(139, 92, 46, 0.03) 100%)',
+            background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.2) 0%, transparent 35%)',
           }}
         />
 
-        {/* 內容區域 */}
-        <div className="relative p-3 sm:p-4 md:p-5 min-w-[160px] sm:min-w-[200px] md:min-w-[220px]">
-          <div className="flex flex-col gap-2 sm:gap-3 md:gap-4">
-            {/* 時間顯示 - 動森風格 */}
-            <div className="flex items-center gap-2 sm:gap-3">
+        {/* 緊湊內容區域 */}
+        <div className="relative p-2.5 md:p-3 min-w-[140px] md:min-w-[160px]">
+          <div className="flex flex-col gap-2">
+            {/* 時間 - 水平緊湊布局 */}
+            <div className="flex items-center gap-2">
               <div
-                className="flex-shrink-0 w-10 h-10 sm:w-11 sm:h-11 md:w-12 md:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center text-lg sm:text-xl md:text-2xl"
+                className="flex-shrink-0 w-8 h-8 md:w-9 md:h-9 rounded-lg md:rounded-xl flex items-center justify-center text-base md:text-lg"
                 style={{
                   background: isNight
                     ? 'linear-gradient(135deg, rgba(139, 92, 246, 0.3) 0%, rgba(99, 102, 241, 0.2) 100%)'
                     : 'linear-gradient(135deg, rgba(251, 191, 36, 0.4) 0%, rgba(245, 158, 11, 0.3) 100%)',
-                  boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.1)',
+                  boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.1)',
                 }}
               >
                 {isNight ? '🌙' : '☀️'}
               </div>
-              <div className="flex-1">
-                <div className="text-[10px] sm:text-xs font-bold" style={{ color: '#8B5C2E' }}>當前時間</div>
-                <div className="text-xl sm:text-2xl font-black" style={{
+              <div className="flex-1 min-w-0">
+                <div className="text-lg md:text-xl font-black leading-tight" style={{
                   color: '#5D3A1A',
                   textShadow: '0 1px 2px rgba(255, 255, 255, 0.8)'
                 }}>
                   {timeString}
                 </div>
-                <div className="text-[10px] sm:text-xs font-semibold" style={{ color: '#A67C52' }}>
-                  {isNight ? '🌟 夜晚' : '🌤️ 白天'}
+                <div className="text-[9px] md:text-[10px] font-semibold" style={{ color: '#A67C52' }}>
+                  {isNight ? '夜晚' : '白天'}
                 </div>
               </div>
             </div>
 
-            {/* 分隔線 - 動森風格 */}
+            {/* 分隔線 */}
             <div
-              className="h-[2px] rounded-full"
+              className="h-[1px] rounded-full"
               style={{
-                background: 'linear-gradient(90deg, transparent, rgba(139, 92, 46, 0.3), transparent)',
+                background: 'linear-gradient(90deg, transparent, rgba(139, 92, 46, 0.25), transparent)',
               }}
             />
 
-            {/* 天氣顯示 */}
+            {/* 天氣 */}
             <div>
               {weatherLoading ? (
-                <div className="flex items-center justify-center gap-2 text-xs sm:text-sm font-semibold" style={{ color: '#8B5C2E' }}>
-                  <div className="animate-spin text-base sm:text-xl">⏳</div>
-                  <span>載入中...</span>
+                <div className="flex items-center justify-center gap-1.5 text-[10px] md:text-xs font-semibold py-1" style={{ color: '#8B5C2E' }}>
+                  <div className="animate-spin text-sm">⏳</div>
+                  <span>載入中</span>
                 </div>
               ) : weather ? (
                 <>
-                  <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+                  {/* 天氣主要資訊 - 橫向緊湊 */}
+                  <div className="flex items-center gap-2 mb-1.5">
                     <div
-                      className="flex-shrink-0 w-12 h-12 sm:w-13 sm:h-13 md:w-14 md:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center text-2xl sm:text-3xl"
+                      className="flex-shrink-0 w-9 h-9 md:w-10 md:h-10 rounded-lg md:rounded-xl flex items-center justify-center text-xl md:text-2xl"
                       style={{
                         background: 'linear-gradient(135deg, rgba(147, 197, 253, 0.3) 0%, rgba(96, 165, 250, 0.2) 100%)',
-                        boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.1)',
+                        boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.1)',
                       }}
                     >
                       {getWeatherIcon(weather.type)}
                     </div>
-                    <div className="flex-1">
-                      <div className="text-xs sm:text-sm font-bold" style={{ color: '#5D3A1A' }}>
-                        {weatherNames[weather.type] || weather.description}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[10px] md:text-xs font-bold leading-tight" style={{ color: '#5D3A1A' }}>
+                        {weatherNames[weather.type]}
                       </div>
-                      <div className="text-2xl sm:text-3xl font-black" style={{
+                      <div className="text-xl md:text-2xl font-black leading-tight" style={{
                         color: '#3B82F6',
-                        textShadow: '0 2px 4px rgba(255, 255, 255, 0.8)'
+                        textShadow: '0 1px 2px rgba(255, 255, 255, 0.8)'
                       }}>
                         {weather.temperature.toFixed(1)}°
                       </div>
                     </div>
                   </div>
 
-                  {/* 位置資訊 - 動森風格標籤 */}
+                  {/* 位置標籤 - 更小巧 */}
                   {userLocation && (
                     <div
-                      className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full mb-2 sm:mb-3 text-[10px] sm:text-xs font-bold"
+                      className="inline-flex items-center gap-1 px-1.5 md:px-2 py-0.5 md:py-1 rounded-full mb-1.5 text-[9px] md:text-[10px] font-bold"
                       style={{
-                        background: 'linear-gradient(135deg, rgba(134, 239, 172, 0.4) 0%, rgba(74, 222, 128, 0.3) 100%)',
+                        background: 'linear-gradient(135deg, rgba(134, 239, 172, 0.35) 0%, rgba(74, 222, 128, 0.25) 100%)',
                         color: '#166534',
-                        boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.1)',
+                        boxShadow: 'inset 0 1px 1px rgba(0, 0, 0, 0.08)',
                       }}
                     >
-                      <span className="text-xs sm:text-sm">📍</span>
-                      <span className="truncate max-w-[120px]">{weather.location}</span>
+                      <span className="text-[10px]">📍</span>
+                      <span className="truncate max-w-[90px]">{weather.location}</span>
                     </div>
                   )}
 
-                  {/* 詳細資訊 - 動森風格卡片 */}
-                  <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
+                  {/* 詳細資訊 - 更緊湊 */}
+                  <div className="grid grid-cols-2 gap-1.5">
                     <div
-                      className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl"
+                      className="flex items-center gap-1 px-1.5 md:px-2 py-1 md:py-1.5 rounded-lg md:rounded-xl"
                       style={{
-                        background: 'linear-gradient(135deg, rgba(147, 197, 253, 0.25) 0%, rgba(191, 219, 254, 0.2) 100%)',
-                        boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.05)',
+                        background: 'linear-gradient(135deg, rgba(147, 197, 253, 0.2) 0%, rgba(191, 219, 254, 0.15) 100%)',
+                        boxShadow: 'inset 0 1px 1px rgba(0, 0, 0, 0.04)',
                       }}
                     >
-                      <span className="text-base sm:text-lg">💧</span>
+                      <span className="text-sm md:text-base">💧</span>
                       <div>
-                        <div className="text-[10px] sm:text-xs font-semibold" style={{ color: '#8B5C2E' }}>濕度</div>
-                        <div className="text-xs sm:text-sm font-bold" style={{ color: '#3B82F6' }}>{weather.humidity}%</div>
+                        <div className="text-[8px] md:text-[9px] font-semibold leading-tight" style={{ color: '#8B5C2E' }}>濕度</div>
+                        <div className="text-[10px] md:text-xs font-bold leading-tight" style={{ color: '#3B82F6' }}>{weather.humidity}%</div>
                       </div>
                     </div>
                     <div
-                      className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl"
+                      className="flex items-center gap-1 px-1.5 md:px-2 py-1 md:py-1.5 rounded-lg md:rounded-xl"
                       style={{
-                        background: 'linear-gradient(135deg, rgba(196, 181, 253, 0.25) 0%, rgba(221, 214, 254, 0.2) 100%)',
-                        boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.05)',
+                        background: 'linear-gradient(135deg, rgba(196, 181, 253, 0.2) 0%, rgba(221, 214, 254, 0.15) 100%)',
+                        boxShadow: 'inset 0 1px 1px rgba(0, 0, 0, 0.04)',
                       }}
                     >
-                      <span className="text-base sm:text-lg">💨</span>
+                      <span className="text-sm md:text-base">💨</span>
                       <div>
-                        <div className="text-[10px] sm:text-xs font-semibold" style={{ color: '#8B5C2E' }}>風速</div>
-                        <div className="text-xs sm:text-sm font-bold" style={{ color: '#7C3AED' }}>{weather.windSpeed.toFixed(1)}</div>
+                        <div className="text-[8px] md:text-[9px] font-semibold leading-tight" style={{ color: '#8B5C2E' }}>風速</div>
+                        <div className="text-[10px] md:text-xs font-bold leading-tight" style={{ color: '#7C3AED' }}>{weather.windSpeed.toFixed(1)}</div>
                       </div>
                     </div>
                   </div>
 
-                  {/* 提示訊息 - 手機端縮小 */}
+                  {/* 定位提示 - 更小巧 */}
                   {weather.location === '未知位置' && (
                     <div
-                      className="mt-2 sm:mt-3 px-2 sm:px-3 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[10px] sm:text-xs font-semibold flex items-center gap-1.5 sm:gap-2"
+                      className="mt-1.5 px-2 py-1 rounded-lg text-[8px] md:text-[9px] font-semibold flex items-center gap-1"
                       style={{
-                        background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.3) 0%, rgba(252, 211, 77, 0.2) 100%)',
+                        background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.25) 0%, rgba(252, 211, 77, 0.15) 100%)',
                         color: '#92400E',
-                        boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.05)',
+                        boxShadow: 'inset 0 1px 1px rgba(0, 0, 0, 0.04)',
                       }}
                     >
-                      <span className="text-xs sm:text-sm">💡</span>
-                      <span className="hidden sm:inline">允許定位以顯示你的位置</span>
-                      <span className="sm:hidden">允許定位</span>
+                      <span className="text-[10px]">💡</span>
+                      <span className="hidden md:inline">允許定位以顯示位置</span>
+                      <span className="md:hidden">允許定位</span>
                     </div>
                   )}
                 </>
               ) : (
-                <div className="text-xs sm:text-sm font-semibold text-center" style={{ color: '#8B5C2E' }}>
-                  天氣資料載入中...
+                <div className="text-[10px] md:text-xs font-semibold text-center py-1" style={{ color: '#8B5C2E' }}>
+                  載入中...
                 </div>
               )}
             </div>
           </div>
         </div>
 
-        {/* 底部裝飾光暈 */}
+        {/* 底部光暈 */}
         <div
-          className="absolute bottom-0 left-0 right-0 h-8 pointer-events-none"
+          className="absolute bottom-0 left-0 right-0 h-6 pointer-events-none"
           style={{
-            background: 'linear-gradient(to top, rgba(251, 191, 36, 0.15), transparent)',
+            background: 'linear-gradient(to top, rgba(251, 191, 36, 0.1), transparent)',
           }}
         />
       </div>
