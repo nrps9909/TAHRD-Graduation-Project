@@ -1271,23 +1271,30 @@ export default function TororoKnowledgeAssistant({
           </div>
         </div>
 
-        {/* Center Content Area - 右側置中 - 響應式間距 */}
-        <div className="relative z-10 h-full w-full flex items-center justify-end pr-4 sm:pr-8 md:pr-16 lg:pr-24 xl:pr-32">
+        {/* Center Content Area - 右側置中 - 優化響應式間距 */}
+        <div className="relative z-10 h-full w-full flex items-center justify-end px-3 sm:px-6 md:pr-12 lg:pr-20 xl:pr-28">
 
           <AnimatePresence mode="wait">
-            {/* Main Input Screen - 全新簡約設計 - 響應式寬度 */}
+            {/* Main Input Screen - 重新設計的精簡版 */}
             {viewMode === 'main' && (
               <motion.div
                 key="main"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                className="w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl px-4 sm:px-0"
+                className="w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg"
               >
-                {/* 輸入框主體 - 動物森友會白天風格 */}
+                {/* 輸入框主體 - 精簡動森風格 */}
                 <div className="relative">
-                  {/* 文字輸入區 - 響應式 */}
-                  <div className="bg-gradient-to-br from-amber-50/95 to-yellow-50/95 rounded-2xl sm:rounded-3xl shadow-2xl border-2 sm:border-4 border-amber-200/80 overflow-hidden transition-all duration-300 focus-within:border-amber-300 focus-within:shadow-[0_20px_60px_rgba(245,158,11,0.25)]">
+                  <div
+                    className="rounded-xl md:rounded-2xl shadow-lg overflow-hidden transition-all duration-300 focus-within:shadow-xl focus-within:shadow-amber-200/50"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(255, 248, 231, 0.98) 0%, rgba(255, 243, 224, 0.95) 100%)',
+                      backdropFilter: 'blur(12px)',
+                      border: '2px solid rgba(251, 191, 36, 0.3)',
+                    }}
+                  >
+                    {/* 輸入區域 */}
                     <textarea
                       value={inputText}
                       onChange={(e) => setInputText(e.target.value)}
@@ -1297,27 +1304,29 @@ export default function TororoKnowledgeAssistant({
                           handleSubmit()
                         }
                       }}
-                      placeholder="想記錄什麼呢？✨"
-                      className="w-full px-4 py-3 sm:px-6 sm:py-5 bg-white/30 focus:bg-white/50 border-none focus:outline-none text-sm sm:text-base resize-none placeholder-amber-400/70 text-amber-900 font-medium selection:bg-amber-200/50 selection:text-amber-900"
+                      placeholder="想記錄些什麼呢？✨"
+                      className="w-full px-3 py-2.5 md:px-4 md:py-3 bg-white/40 focus:bg-white/60 border-none focus:outline-none text-sm md:text-base resize-none placeholder-amber-400/60 text-amber-900 font-medium selection:bg-amber-200/50 transition-colors"
                       style={{
-                        minHeight: '80px',
-                        maxHeight: '200px',
+                        minHeight: '70px',
+                        maxHeight: '180px',
                         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", sans-serif',
-                        WebkitTapHighlightColor: 'transparent'
                       }}
                       autoFocus
                     />
 
-                    {/* 文件預覽 - ChatGPT 風格 */}
+                    {/* 文件預覽 - 精簡版 */}
                     {uploadedCloudinaryFiles.length > 0 && (
-                      <div className="px-6 pb-4 flex flex-wrap gap-2">
+                      <div className="px-3 pb-2 md:px-4 md:pb-3 flex flex-wrap gap-1.5">
                         {uploadedCloudinaryFiles.map((file) => (
-                          <div key={file.id} className="inline-flex items-center gap-2 px-3 py-2 bg-white/60 backdrop-blur-sm rounded-xl group hover:bg-white/80 transition-all shadow-sm border-2 border-amber-200/50">
-                            <span className="text-xs text-amber-800 font-medium max-w-[120px] truncate">
+                          <div
+                            key={file.id}
+                            className="inline-flex items-center gap-1.5 px-2 py-1 md:px-2.5 md:py-1.5 bg-white/70 rounded-lg hover:bg-white/90 transition-all shadow-sm border border-amber-200/60"
+                          >
+                            <span className="text-xs text-amber-800 font-medium max-w-[100px] md:max-w-[150px] truncate">
                               {file.name}
                             </span>
                             {file.status === 'uploading' && (
-                              <span className="text-xs text-blue-500 animate-pulse">上傳中...</span>
+                              <span className="text-xs text-blue-500 animate-pulse">⏳</span>
                             )}
                             {file.status === 'error' && (
                               <span className="text-xs text-red-500">❌</span>
@@ -1327,7 +1336,7 @@ export default function TororoKnowledgeAssistant({
                             )}
                             <button
                               onClick={() => removeFile(file.id)}
-                              className="w-5 h-5 flex items-center justify-center text-amber-400 hover:text-red-500 transition-colors text-xs font-bold bg-white/50 rounded-full hover:bg-red-50"
+                              className="w-4 h-4 flex items-center justify-center text-amber-400 hover:text-red-500 transition-colors text-[10px] font-bold bg-white/60 rounded-full hover:bg-red-50"
                             >
                               ✕
                             </button>
@@ -1336,13 +1345,19 @@ export default function TororoKnowledgeAssistant({
                       </div>
                     )}
 
-                    {/* 底部工具欄 - 響應式 */}
-                    <div className="px-3 py-3 sm:px-5 sm:py-4 bg-gradient-to-r from-amber-100/80 to-yellow-100/80 backdrop-blur-sm border-t-2 border-amber-200/60 flex items-center justify-between gap-2">
-                      {/* 左側工具按鈕 */}
-                      <div className="flex items-center gap-1.5 sm:gap-2">
+                    {/* 底部工具欄 - 簡化版 */}
+                    <div
+                      className="px-2.5 py-2 md:px-3 md:py-2.5 flex items-center justify-between gap-2"
+                      style={{
+                        background: 'linear-gradient(to right, rgba(251, 191, 36, 0.12) 0%, rgba(245, 158, 11, 0.1) 100%)',
+                        borderTop: '1px solid rgba(251, 191, 36, 0.2)',
+                      }}
+                    >
+                      {/* 工具按鈕組 */}
+                      <div className="flex items-center gap-1 md:gap-1.5">
                         <button
                           onClick={() => fileInputRef.current?.click()}
-                          className="p-2 sm:p-2.5 text-base sm:text-xl bg-white/60 hover:bg-white/90 text-amber-600 hover:text-amber-700 rounded-lg sm:rounded-xl transition-all shadow-sm hover:shadow-md hover:scale-105 active:scale-95 border-2 border-amber-200/50"
+                          className="p-1.5 md:p-2 text-base md:text-lg bg-white/70 hover:bg-white text-amber-600 hover:text-amber-700 rounded-lg transition-all hover:scale-105 active:scale-95 border border-amber-200/40"
                           title="上傳檔案"
                         >
                           📎
@@ -1350,10 +1365,10 @@ export default function TororoKnowledgeAssistant({
 
                         <button
                           onClick={toggleTranscribeRecording}
-                          className={`p-2 sm:p-2.5 text-base sm:text-xl rounded-lg sm:rounded-xl transition-all shadow-sm hover:shadow-md border-2 ${
+                          className={`p-1.5 md:p-2 text-base md:text-lg rounded-lg transition-all border ${
                             isRecordingTranscribe
                               ? 'text-red-500 bg-red-100 border-red-300 animate-pulse'
-                              : 'bg-white/60 hover:bg-white/90 text-amber-600 hover:text-amber-700 border-amber-200/50 hover:scale-105 active:scale-95'
+                              : 'bg-white/70 hover:bg-white text-amber-600 hover:text-amber-700 border-amber-200/40 hover:scale-105 active:scale-95'
                           }`}
                           title={isRecordingTranscribe ? '停止錄音' : '語音轉文字'}
                         >
@@ -1362,10 +1377,10 @@ export default function TororoKnowledgeAssistant({
 
                         <button
                           onClick={toggleDialogRecording}
-                          className={`p-2 sm:p-2.5 text-base sm:text-xl rounded-lg sm:rounded-xl transition-all shadow-sm hover:shadow-md border-2 ${
+                          className={`p-1.5 md:p-2 text-base md:text-lg rounded-lg transition-all border ${
                             isRecordingDialog
                               ? 'text-green-500 bg-green-100 border-green-300 animate-pulse'
-                              : 'bg-white/60 hover:bg-white/90 text-amber-600 hover:text-amber-700 border-amber-200/50 hover:scale-105 active:scale-95'
+                              : 'bg-white/70 hover:bg-white text-amber-600 hover:text-amber-700 border-amber-200/40 hover:scale-105 active:scale-95'
                           }`}
                           title={isRecordingDialog ? '停止對話' : '語音對話'}
                         >
@@ -1374,20 +1389,21 @@ export default function TororoKnowledgeAssistant({
 
                         <button
                           onClick={takePhoto}
-                          className="p-2 sm:p-2.5 text-base sm:text-xl bg-white/60 hover:bg-white/90 text-amber-600 hover:text-amber-700 rounded-lg sm:rounded-xl transition-all shadow-sm hover:shadow-md hover:scale-105 active:scale-95 border-2 border-amber-200/50"
+                          className="p-1.5 md:p-2 text-base md:text-lg bg-white/70 hover:bg-white text-amber-600 hover:text-amber-700 rounded-lg transition-all hover:scale-105 active:scale-95 border border-amber-200/40"
                           title="拍照"
                         >
                           📷
                         </button>
                       </div>
 
-                      {/* 右側提交按鈕 */}
+                      {/* 發送按鈕 */}
                       <button
                         onClick={handleSubmit}
                         disabled={(!inputText.trim() && uploadedCloudinaryFiles.length === 0) || isUploading}
-                        className="px-4 py-2 sm:px-6 sm:py-2.5 bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-500 hover:to-yellow-500 disabled:from-gray-200 disabled:to-gray-300 text-white disabled:text-gray-400 rounded-lg sm:rounded-xl font-bold transition-all duration-200 active:scale-95 disabled:cursor-not-allowed shadow-lg hover:shadow-xl border-2 border-amber-300 disabled:border-gray-300"
+                        className="px-3 py-1.5 md:px-4 md:py-2 bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-500 hover:to-yellow-500 disabled:from-gray-200 disabled:to-gray-300 text-white disabled:text-gray-400 rounded-lg font-bold text-sm md:text-base transition-all active:scale-95 disabled:cursor-not-allowed shadow-md hover:shadow-lg border border-amber-500/30 disabled:border-gray-300 flex items-center gap-1.5"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 sm:w-5 sm:h-5">
+                        <span className="hidden md:inline">發送</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
                           <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
                         </svg>
                       </button>
