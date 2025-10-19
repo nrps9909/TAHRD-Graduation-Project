@@ -1212,31 +1212,44 @@ export default function TororoKnowledgeAssistant({
             className="w-full h-full"
           />
 
-          {/* Tororo Speech Bubble - 在貓咪頭上 - 響應式寬度 */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 pointer-events-none max-w-[180px] sm:max-w-[250px] md:max-w-[350px] lg:max-w-[500px] xl:max-w-[700px]">
+          {/* Tororo Speech Bubble - 重新設計的精簡版 */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 pointer-events-none w-[200px] sm:w-[280px] md:w-[360px] lg:w-[440px]">
             <motion.div
               initial={{ opacity: 0, y: 10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{ delay: 0.5, type: 'spring', stiffness: 200, damping: 15 }}
               className="relative"
             >
-              {/* 外層光暈效果 */}
-              <div className="absolute inset-0 bg-gradient-to-br from-amber-300/30 to-yellow-300/30 rounded-2xl sm:rounded-3xl blur-xl"></div>
+              {/* 對話框主體 - 精簡動森風格 */}
+              <div
+                className="relative rounded-xl md:rounded-2xl px-3 py-2 md:px-4 md:py-3 shadow-lg inline-block min-w-[160px]"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(255, 248, 231, 0.98) 0%, rgba(255, 243, 224, 0.96) 100%)',
+                  backdropFilter: 'blur(12px)',
+                  border: '1.5px solid rgba(251, 191, 36, 0.4)',
+                }}
+              >
+                {/* 頂部微光效果 */}
+                <div
+                  className="absolute top-0 left-0 right-0 h-1/2 rounded-t-xl md:rounded-t-2xl pointer-events-none"
+                  style={{
+                    background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.4) 0%, transparent 100%)',
+                  }}
+                />
 
-              {/* 對話框主體 - 動物森友會白天風格 */}
-              <div className="relative bg-gradient-to-br from-amber-50/98 via-yellow-50/98 to-white/98 backdrop-blur-xl rounded-2xl sm:rounded-3xl px-3 py-3 sm:px-6 sm:py-5 shadow-2xl border-2 sm:border-3 border-amber-200/70 inline-block min-w-[150px]">
-
-                {/* 主要文字內容 - 響應式字體 */}
+                {/* 文字內容 */}
                 <div className="relative">
-                  <p className="text-xs sm:text-sm font-medium text-amber-900 leading-relaxed break-words"
-                     style={{
-                       textShadow: '0 1px 3px rgba(255,255,255,0.9)',
-                       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", sans-serif'
-                     }}>
+                  <p
+                    className="text-xs md:text-sm font-medium text-amber-900 leading-relaxed break-words"
+                    style={{
+                      textShadow: '0 1px 2px rgba(255,255,255,0.8)',
+                      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", sans-serif'
+                    }}
+                  >
                     {displayedText || '\u00A0'}
                     {isTyping && (
                       <motion.span
-                        className="inline-block w-0.5 h-3 sm:h-4 bg-amber-400 ml-1 rounded-full"
+                        className="inline-block w-0.5 h-3 md:h-3.5 bg-amber-500 ml-1 rounded-full"
                         animate={{ opacity: [1, 0, 1] }}
                         transition={{ duration: 0.8, repeat: Infinity }}
                       />
@@ -1244,27 +1257,36 @@ export default function TororoKnowledgeAssistant({
                   </p>
                 </div>
 
-                {/* 清除按鈕 - 動物森友會風格 */}
+                {/* 清除按鈕 */}
                 {audioDialogResponse && !isTyping && (
                   <button
                     onClick={() => setAudioDialogResponse('')}
-                    className="mt-3 px-3 py-1.5 text-xs font-bold text-amber-700 hover:text-amber-800 bg-white/60 hover:bg-white/90 rounded-full transition-all hover:scale-105 active:scale-95 pointer-events-auto shadow-md border-2 border-amber-200/50"
+                    className="mt-2 px-2.5 py-1 text-[10px] md:text-xs font-bold text-amber-700 hover:text-amber-800 bg-white/70 hover:bg-white rounded-full transition-all hover:scale-105 active:scale-95 pointer-events-auto shadow-sm border border-amber-200/60"
                   >
                     清除 ✕
                   </button>
                 )}
-
-                {/* 底部裝飾線 */}
-                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-16 h-1 bg-gradient-to-r from-transparent via-amber-300/60 to-transparent rounded-full"></div>
               </div>
 
-              {/* 對話框尾巴 */}
-              <div className="absolute -bottom-3 left-1/2 -translate-x-1/2">
+              {/* 對話框尾巴 - 簡化版 */}
+              <div className="absolute -bottom-2 left-1/2 -translate-x-1/2">
                 <div className="relative">
-                  {/* 外層邊框 */}
-                  <div className="w-0 h-0 border-l-[14px] border-l-transparent border-r-[14px] border-r-transparent border-t-[14px] border-t-amber-200/70"></div>
-                  {/* 內層漸層填充 */}
-                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[12px] border-l-transparent border-r-[12px] border-r-transparent border-t-[12px] border-t-yellow-50/98"></div>
+                  <div
+                    className="w-0 h-0"
+                    style={{
+                      borderLeft: '10px solid transparent',
+                      borderRight: '10px solid transparent',
+                      borderTop: '10px solid rgba(251, 191, 36, 0.4)',
+                    }}
+                  />
+                  <div
+                    className="absolute top-0 left-1/2 -translate-x-1/2 w-0 h-0"
+                    style={{
+                      borderLeft: '9px solid transparent',
+                      borderRight: '9px solid transparent',
+                      borderTop: '9px solid rgba(255, 248, 231, 0.98)',
+                    }}
+                  />
                 </div>
               </div>
             </motion.div>
