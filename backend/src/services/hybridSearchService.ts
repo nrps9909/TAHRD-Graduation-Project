@@ -155,7 +155,7 @@ export class HybridSearchService {
     const memoryMap = new Map(memories.map((m) => [m.id, m]))
 
     // 轉換為統一格式，保持相似度順序
-    return vectorResults
+    const results: SearchResult[] = vectorResults
       .map((vr) => {
         const memory = memoryMap.get(vr.memoryId)
         if (!memory) return null
@@ -172,9 +172,11 @@ export class HybridSearchService {
             createdAt: memory.createdAt,
             importanceScore: memory.importanceScore
           }
-        }
+        } as SearchResult
       })
       .filter((item): item is SearchResult => item !== null)
+
+    return results
   }
 
   /**

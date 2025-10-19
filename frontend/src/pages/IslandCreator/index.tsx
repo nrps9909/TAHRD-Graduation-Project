@@ -34,7 +34,7 @@ export default function IslandCreator() {
   const navigate = useNavigate()
   const { islandId } = useParams<{ islandId?: string }>()
   const { islands, updateIsland } = useIslandStore()
-  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const canvasRef = useRef<any>(null)
   const [showDrawer, setShowDrawer] = useState(false)
   const [showPresets, setShowPresets] = useState(false)
   const [config, setConfig] = useState<IslandConfig>({

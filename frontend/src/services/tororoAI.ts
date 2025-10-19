@@ -5,7 +5,7 @@
 
 // API 速率限制管理
 class RateLimiter {
-  private queue: Array<() => Promise<any>> = []
+  private queue: Array<() => Promise<unknown>> = []
   private isProcessing = false
   private lastCallTime = 0
   private minInterval = 1000 // 最小間隔 1 秒
@@ -52,8 +52,9 @@ class RateLimiter {
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
         return await this.enqueue(fn)
-      } catch (error: any) {
-        const isRateLimitError = error.message?.includes('429') || error.message?.includes('速率')
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : String(error)
+        const isRateLimitError = errorMessage.includes('429') || errorMessage.includes('速率')
 
         if (!isRateLimitError || attempt === maxRetries - 1) {
           throw error

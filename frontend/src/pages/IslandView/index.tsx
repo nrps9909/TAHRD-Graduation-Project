@@ -6,7 +6,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { GET_ASSISTANTS } from '../../graphql/assistant'
 import { GET_MEMORIES } from '../../graphql/memory'
 import { Assistant } from '../../types/assistant'
-import { Message } from '../../types/message'
+import { Message, MessageFile, MessageLink } from '../../types/message'
 import { Memory } from '../../types/memory'
 import MessageBubble from '../../components/ChatInterface/MessageBubble'
 import UploadModal from '../../components/ChatInterface/UploadModal'
@@ -58,11 +58,11 @@ export default function IslandView() {
       const z = Math.sin(angle) * radius
       const y = 0 // 樹從地面開始
 
-      trees.push({
+      const treeMemory: IslandMemory = {
         id: memory.id,
         title: memory.title || memory.summary || '無標題記憶',
         content: memory.rawContent || memory.summary || '',
-        category: memory.subcategory?.nameChinese || memory.category || '未分類',
+        category: (memory.subcategory?.nameChinese || memory.category || '未分類') as IslandMemory['category'],
         importance: 5, // 固定預設值，不再使用此欄位
         tags: memory.tags || [],
         position: [x, y, z] as [number, number, number],
@@ -70,11 +70,32 @@ export default function IslandView() {
         emoji: memory.emoji || memory.subcategory?.emoji || '💭',
         summary: memory.summary,
         // 保留 subcategory 資訊用於顯示
-        subcategory: memory.subcategory,
+        subcategory: memory.subcategory ? {
+          id: memory.subcategory.id,
+          userId: '',
+          islandId: '',
+          position: 0,
+          name: null,
+          nameChinese: memory.subcategory.nameChinese,
+          emoji: memory.subcategory.emoji,
+          color: memory.subcategory.color,
+          description: null,
+          systemPrompt: '',
+          personality: '',
+          chatStyle: '',
+          keywords: [],
+          memoryCount: 0,
+          chatCount: 0,
+          isActive: true,
+          createdAt: '',
+          updatedAt: ''
+        } : null,
         // AI 深度分析欄位
         detailedSummary: memory.detailedSummary,
         actionableAdvice: memory.actionableAdvice,
-      })
+      }
+
+      trees.push(treeMemory)
     })
 
     return trees
@@ -116,7 +137,7 @@ export default function IslandView() {
   }, [messages])
 
   // 发送消息
-  const handleSendMessage = async (additionalFiles?: any[], additionalLinks?: any[]) => {
+  const handleSendMessage = async (additionalFiles?: MessageFile[], additionalLinks?: MessageLink[]) => {
     if (!inputText.trim() && !additionalFiles?.length && !additionalLinks?.length) return
 
     // 创建用户消息
@@ -157,7 +178,7 @@ export default function IslandView() {
   }
 
   // 处理上传确认
-  const handleUploadConfirm = (data: { files: any[]; links: any[] }) => {
+  const handleUploadConfirm = (data: { files: MessageFile[]; links: MessageLink[] }) => {
     handleSendMessage(data.files, data.links)
   }
 
