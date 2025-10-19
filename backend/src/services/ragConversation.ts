@@ -13,6 +13,7 @@ import { logger } from '../utils/logger'
 import { queryIntentAnalyzer } from './queryIntentAnalyzer'
 import { hybridSearchService } from './hybridSearchService'
 import { callGeminiAPI } from '../utils/geminiAPI'
+import { vectorService } from './vectorService'
 
 const prisma = new PrismaClient()
 
@@ -179,7 +180,7 @@ export class RAGConversationService {
     const semanticResults = await vectorService.semanticSearch(userId, query, maxResults, 0.5)
 
     // 2. 獲取完整記憶資訊
-    const memoryIds = semanticResults.map((r) => r.memoryId)
+    const memoryIds = semanticResults.map((r: { memoryId: string; similarity: number }) => r.memoryId)
     const memories = await prisma.memory.findMany({
       where: {
         id: { in: memoryIds },
@@ -196,7 +197,7 @@ export class RAGConversationService {
     })
 
     // 3. 合併結果並排序
-    const enrichedResults = semanticResults.map((sr) => {
+    const enrichedResults = semanticResults.map((sr: { memoryId: string; similarity: number }) => {
       const memory = memories.find((m) => m.id === sr.memoryId)
       return {
         memoryId: sr.memoryId,
@@ -207,7 +208,7 @@ export class RAGConversationService {
       }
     })
 
-    return enrichedResults.sort((a, b) => b.similarity - a.similarity)
+    return enrichedResults.sort((a: { similarity: number }, b: { similarity: number }) => b.similarity - a.similarity)
   }
 
   /**

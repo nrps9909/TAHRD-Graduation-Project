@@ -6,7 +6,7 @@
  */
 
 import axios from 'axios'
-import logger from './logger'
+import { logger } from './logger'
 
 export interface GeminiAPIConfig {
   model?: string

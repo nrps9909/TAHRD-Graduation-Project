@@ -34,7 +34,7 @@ export default function IslandCreator() {
   const navigate = useNavigate()
   const { islandId } = useParams<{ islandId?: string }>()
   const { islands, updateIsland } = useIslandStore()
-  const canvasRef = useRef<any>(null)
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const [showDrawer, setShowDrawer] = useState(false)
   const [showPresets, setShowPresets] = useState(false)
   const [config, setConfig] = useState<IslandConfig>({
@@ -77,18 +77,18 @@ export default function IslandCreator() {
       let loadedBevel = 0.5
 
       try {
-        const customShapeData = (currentIsland as any).customShapeData
+        const customShapeData = currentIsland.customShapeData
         if (customShapeData && typeof customShapeData === 'string') {
           loadedShape = JSON.parse(customShapeData)
           console.log('✅ [IslandCreator] 載入自訂形狀:', loadedShape.length, '個點')
         }
 
-        const islandHeight = (currentIsland as any).islandHeight
+        const islandHeight = currentIsland.islandHeight
         if (islandHeight != null) {
           loadedHeight = islandHeight
         }
 
-        const islandBevel = (currentIsland as any).islandBevel
+        const islandBevel = currentIsland.islandBevel
         if (islandBevel != null) {
           loadedBevel = islandBevel
         }

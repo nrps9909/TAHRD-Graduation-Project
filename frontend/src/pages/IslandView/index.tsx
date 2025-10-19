@@ -62,23 +62,23 @@ export default function IslandView() {
         id: memory.id,
         title: memory.title || memory.summary || '無標題記憶',
         content: memory.rawContent || memory.summary || '',
-        category: (memory as any).subcategory?.nameChinese || memory.category || '未分類',
+        category: memory.subcategory?.nameChinese || memory.category || '未分類',
         importance: 5, // 固定預設值，不再使用此欄位
         tags: memory.tags || [],
         position: [x, y, z] as [number, number, number],
         createdAt: new Date(memory.createdAt),
-        emoji: memory.emoji || (memory as any).subcategory?.emoji || '💭',
+        emoji: memory.emoji || memory.subcategory?.emoji || '💭',
         summary: memory.summary,
         // 保留 subcategory 資訊用於顯示
-        subcategory: (memory as any).subcategory,
+        subcategory: memory.subcategory,
         // AI 深度分析欄位
-        detailedSummary: (memory as any).detailedSummary,
-        actionableAdvice: (memory as any).actionableAdvice,
+        detailedSummary: memory.detailedSummary,
+        actionableAdvice: memory.actionableAdvice,
       })
     })
 
     return trees
-  }, [memoriesData, assistant])
+  }, [memoriesData])
 
   // 檢測螢幕尺寸，調整是否為手機
   useEffect(() => {
