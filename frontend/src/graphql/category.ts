@@ -277,6 +277,11 @@ export interface UpdateIslandInput {
   positionY?: number
   positionZ?: number
   position?: number
+
+  // 3D 外觀配置（可選）
+  customShapeData?: string | null
+  islandHeight?: number | null
+  islandBevel?: number | null
 }
 
 export interface CreateSubcategoryInput {

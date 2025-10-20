@@ -112,6 +112,11 @@ export const categoryTypeDefs = gql`
     positionY: Float
     positionZ: Float
     position: Int
+
+    # 3D 外觀配置（可選）
+    customShapeData: String
+    islandHeight: Float
+    islandBevel: Float
   }
 
   input CreateSubcategoryInput {
