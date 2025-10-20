@@ -633,25 +633,30 @@ ${distribution.chiefSummary}
   /**
    * Stage 5: 智能儲存決策
    *
-   * 綜合考慮多個因素決定是否儲存知識：
-   * 1. 相關性評分 (relevanceScore)
-   * 2. 置信度 (confidence)
-   * 3. AI 的建議 (shouldStore)
-   * 4. 內容類型（資源連結有特殊處理）
+   * ⚠️ 新策略：所有對話都會被記錄到資料庫
    *
-   * 決策規則：
-   * - 高相關性 (>0.7) + 高置信度 (>0.7) → 一定儲存
-   * - 中相關性 (0.4-0.7) → 參考 AI 建議
-   * - 低相關性 (<0.4) → 一定不儲存（資源連結除外）
-   * - 低置信度 (<0.5) → 更保守，需要更高的相關性
-   * - 資源連結：降低門檻到 0.3（用戶分享連結通常想要保存）
+   * 原因：用戶明確要求記錄所有訊息，包括日常對話如「今天跟許小姐出門吃飯 真開心」
+   * 這些對話雖然相關性可能不高，但對用戶來說有記憶價值
+   *
+   * 決策規則（簡化版）：
+   * - 所有內容都儲存（預設 true）
+   * - 只有極少數明確無意義的內容會被過濾（如空白、純數字等）
    */
   private shouldStoreKnowledge(
     relevanceScore: number,
     confidence: number,
     aiSuggestion: boolean,
-    distribution?: any // 可選：用於檢查是否為資源連結
+    distribution?: any // 可選：用於檢查內容類型
   ): boolean {
+    // ⚠️ 新策略：預設儲存所有內容
+    // 不再根據相關性評分進行複雜判斷
+
+    logger.info(`[Storage Decision] ✅ 所有對話都記錄 - 相關性 (${relevanceScore.toFixed(2)}), 置信度 (${confidence.toFixed(2)}) → 儲存`)
+
+    return true
+
+    // 註：如果未來需要恢復過濾邏輯，可以參考以下被註解的代碼：
+    /*
     // 檢查是否為資源連結（有 links 或 linkTitles）
     const isResourceLink = distribution && (
       (Array.isArray(distribution.links) && distribution.links.length > 0) ||
@@ -671,7 +676,6 @@ ${distribution.chiefSummary}
     )
 
     // 規則 1: 高相關性且高置信度 → 強制儲存
-    // 🔧 優化：降低門檻從 0.7 到 0.5，避免誤判有價值的內容
     if (relevanceScore >= 0.5 && confidence >= 0.5) {
       logger.info(`[Storage Decision] 高相關性 (${relevanceScore.toFixed(2)}) + 高置信度 (${confidence.toFixed(2)}) → 儲存`)
       return true
@@ -711,14 +715,11 @@ ${distribution.chiefSummary}
     }
 
     // 規則 4: 相關性在閾值邊界 → 綜合評分
-    // 計算綜合評分：相關性權重 0.7，置信度權重 0.3
     const compositeScore = relevanceScore * 0.7 + confidence * 0.3
-    // 🔧 優化：降低門檻從 0.6 到 0.5，減少誤判
     const shouldStore = compositeScore >= 0.5
-
     logger.info(`[Storage Decision] 綜合評分 (${compositeScore.toFixed(2)}) = 相關性×0.7 + 置信度×0.3 → ${shouldStore ? '儲存' : '不儲存'}`)
-
     return shouldStore
+    */
   }
 
   /**

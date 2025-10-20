@@ -63,10 +63,13 @@ interface ClassificationCache {
   result: {
     category: AssistantType
     confidence: number
+    reasoning: string
     warmResponse: string
     quickSummary: string
     shouldRecord: boolean
     recordReason?: string
+    enrichedContent?: string
+    linkMetadata?: Array<{ url: string, title: string, description: string }>
   }
   timestamp: number
 }
@@ -681,6 +684,10 @@ ${contextInfo}
       }
 
       logger.info(`[白噗噗] 開始快速分類`)
+
+      // === 檢查用戶是否有自訂 SubAgent ===
+      const userSubAgents = await dynamicSubAgentService.getUserSubAgents(userId)
+      const hasCustomCategories = userSubAgents.length > 0
 
       // === 優化：移除連結提取，提升響應速度 ===
       // 連結標題提取改由後台 SubAgent 處理（詳細分析階段）

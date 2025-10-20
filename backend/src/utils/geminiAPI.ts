@@ -35,7 +35,7 @@ export async function callGeminiAPI(
     model = 'gemini-2.5-flash',
     temperature = 0.7,
     maxOutputTokens = 2048,
-    timeout = 15000
+    timeout = 30000 // 增加默認超時時間到 30 秒
   } = config
 
   const apiKey = process.env.GEMINI_API_KEY

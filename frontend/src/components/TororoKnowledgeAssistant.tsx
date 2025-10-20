@@ -117,6 +117,7 @@ export default function TororoKnowledgeAssistant({
   const aiGenerationAbortControllerRef = useRef<AbortController | null>(null)
   const inputDebounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const socketRef = useRef<Socket | null>(null) // WebSocket 連接引用
+  const textareaRef = useRef<HTMLTextAreaElement>(null) // Textarea 引用，用於自動調整高度
 
   // GraphQL
   const [uploadKnowledge] = useMutation(UPLOAD_KNOWLEDGE)
@@ -125,6 +126,24 @@ export default function TororoKnowledgeAssistant({
 
   // Sound
   const { play, playRandomMeow } = useSound()
+
+  /**
+   * 自動調整 textarea 高度（像 ChatGPT 一樣）
+   */
+  const autoResizeTextarea = useCallback(() => {
+    const textarea = textareaRef.current
+    if (!textarea) return
+
+    // 重置高度以獲取正確的 scrollHeight
+    textarea.style.height = 'auto'
+
+    // 計算新高度（最小 70px，最大 300px）
+    const minHeight = 70
+    const maxHeight = 300
+    const newHeight = Math.min(Math.max(textarea.scrollHeight, minHeight), maxHeight)
+
+    textarea.style.height = `${newHeight}px`
+  }, [])
 
   /**
    * 生成 AI 回應並顯示（優化版本，支援取消）
@@ -188,6 +207,11 @@ export default function TororoKnowledgeAssistant({
       console.error('載入歷史紀錄失敗:', error)
     }
   }, [])
+
+  // 自動調整 textarea 高度當輸入文字變化時
+  useEffect(() => {
+    autoResizeTextarea()
+  }, [inputText, autoResizeTextarea])
 
   /**
    * 同步 pending 狀態的任務 - 檢查它們是否已完成
@@ -758,6 +782,11 @@ export default function TororoKnowledgeAssistant({
     setUploadedCloudinaryFiles([])
     play('message_sent')
 
+    // 重置 textarea 高度
+    if (textareaRef.current) {
+      textareaRef.current.style.height = '70px'
+    }
+
     // 顯示簡短的提交確認（不阻塞UI）
     setAudioDialogResponse('已送出！可以繼續輸入下一個～ ☁️✨')
 
@@ -893,6 +922,11 @@ export default function TororoKnowledgeAssistant({
     setUploadedCloudinaryFiles([])
     setProcessingResult(null)
     play('button_click')
+
+    // 重置 textarea 高度
+    if (textareaRef.current) {
+      textareaRef.current.style.height = '70px'
+    }
   }, [play])
 
   // 1. 語音轉文字 - 錄音後轉成文字加到輸入框
@@ -954,6 +988,8 @@ export default function TororoKnowledgeAssistant({
                 if (transcribedText) {
                   setInputText(prev => prev + (prev ? '\n' : '') + transcribedText)
                   play('upload_success')
+                  // 調整 textarea 高度
+                  setTimeout(() => autoResizeTextarea(), 0)
                 }
               } else {
                 console.error('Gemini 語音識別失敗:', await response.text())
@@ -1212,8 +1248,52 @@ export default function TororoKnowledgeAssistant({
             className="w-full h-full"
           />
 
-          {/* Tororo Speech Bubble - 重新設計的精簡版 */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 pointer-events-none w-[200px] sm:w-[280px] md:w-[360px] lg:w-[440px]">
+          {/* Tororo Speech Bubble - 精確頭部定位版本 */}
+          {/*
+            🎯 精確定位系統說明：
+
+            Live2D 容器設定：
+            - 容器大小: 200x300px (小) → 250x350px (中) → 350x450px (大)
+            - 底部定位: bottom-8/12/16
+
+            Live2D 模型設定 (見 line 498):
+            - anchor: (0.5, 1) - 底部中心對齊
+            - position: (containerWidth/2, containerHeight*0.95)
+            - scale: 動態縮放
+
+            對話框定位邏輯：
+            1. 貓咪模型從容器底部向上延伸，頭部約在容器頂部 5-15% 位置
+            2. 對話框需要定位在頭部上方，留出適當間距
+            3. 使用 CSS clamp() 實現響應式定位，適應所有屏幕尺寸
+
+            定位參數：
+            - 小屏幕 (<640px): 頂部向下 10px (頭部較低)
+            - 中屏幕 (640-1024px): 頂部向下 6-8% (動態計算)
+            - 大屏幕 (>1024px): 頂部向下最多 35px (頭部較高)
+          */}
+          <div
+            className="absolute pointer-events-none"
+            style={{
+              // 🎯 垂直定位：精確對齊貓咪頭部
+              // clamp(最小值, 首選值, 最大值)
+              // - 最小: 10px (防止頂部溢出)
+              // - 首選: 6% (相對於容器高度，適應大多數情況)
+              // - 最大: 35px (大屏幕時的最大偏移)
+              top: 'clamp(10px, 6%, 35px)',
+
+              // 🎯 水平定位：居中對齊貓咪頭部
+              left: '50%',
+              transform: 'translateX(-50%)',
+
+              // 📏 響應式寬度：確保對話框不會太寬或太窄
+              width: 'clamp(200px, 90vw, 440px)',
+              maxWidth: '440px',
+
+              // 🎨 添加微妙的浮動動畫效果
+              // 使用 CSS 變量以便後續可通過 motion 控制
+              transition: 'top 0.3s ease-out',
+            }}
+          >
             <motion.div
               initial={{ opacity: 0, y: 10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -1268,23 +1348,31 @@ export default function TororoKnowledgeAssistant({
                 )}
               </div>
 
-              {/* 對話框尾巴 - 簡化版 */}
-              <div className="absolute -bottom-2 left-1/2 -translate-x-1/2">
+              {/* 對話框尾巴 - 指向貓咪頭部 */}
+              <div
+                className="absolute left-1/2 -translate-x-1/2"
+                style={{
+                  // 尾巴從對話框底部延伸出來
+                  bottom: '-14px',
+                }}
+              >
+                {/* 外層陰影/邊框 */}
                 <div className="relative">
                   <div
                     className="w-0 h-0"
                     style={{
-                      borderLeft: '10px solid transparent',
-                      borderRight: '10px solid transparent',
-                      borderTop: '10px solid rgba(251, 191, 36, 0.4)',
+                      borderLeft: '12px solid transparent',
+                      borderRight: '12px solid transparent',
+                      borderTop: '14px solid rgba(251, 191, 36, 0.4)',
                     }}
                   />
+                  {/* 內層填充 */}
                   <div
                     className="absolute top-0 left-1/2 -translate-x-1/2 w-0 h-0"
                     style={{
-                      borderLeft: '9px solid transparent',
-                      borderRight: '9px solid transparent',
-                      borderTop: '9px solid rgba(255, 248, 231, 0.98)',
+                      borderLeft: '11px solid transparent',
+                      borderRight: '11px solid transparent',
+                      borderTop: '13px solid rgba(255, 248, 231, 0.98)',
                     }}
                   />
                 </div>
@@ -1318,8 +1406,12 @@ export default function TororoKnowledgeAssistant({
                   >
                     {/* 輸入區域 */}
                     <textarea
+                      ref={textareaRef}
                       value={inputText}
-                      onChange={(e) => setInputText(e.target.value)}
+                      onChange={(e) => {
+                        setInputText(e.target.value)
+                        autoResizeTextarea()
+                      }}
                       onKeyPress={(e) => {
                         if (e.key === 'Enter' && !e.shiftKey && (inputText.trim() || uploadedCloudinaryFiles.length > 0) && !isUploading) {
                           e.preventDefault()
@@ -1329,8 +1421,8 @@ export default function TororoKnowledgeAssistant({
                       placeholder="想記錄些什麼呢？✨"
                       className="w-full px-3 py-2.5 md:px-4 md:py-3 bg-white/40 focus:bg-white/60 border-none focus:outline-none text-sm md:text-base resize-none placeholder-amber-400/60 text-amber-900 font-medium selection:bg-amber-200/50 transition-colors"
                       style={{
-                        minHeight: '70px',
-                        maxHeight: '180px',
+                        height: '70px',
+                        overflowY: 'hidden',
                         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", sans-serif',
                       }}
                       autoFocus

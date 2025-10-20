@@ -289,14 +289,21 @@ ${query}
         model: this.model,
         temperature: 0.7,
         maxOutputTokens: 2048,
-        timeout: 20000
+        timeout: 30000 // 增加到 30 秒以處理複雜的 RAG 查詢
       })
 
       logger.info(`[RAG] Gemini REST API response generated (${response.length} chars)`)
       return response
     } catch (error: any) {
       logger.error('[RAG] Gemini REST API call failed:', error.message)
-      throw new Error('生成回答失敗')
+      // 提供更詳細的錯誤訊息
+      if (error.message.includes('超時')) {
+        throw new Error('抱歉，查詢時間過長，請嘗試簡化問題或稍後再試')
+      } else if (error.message.includes('配額')) {
+        throw new Error('API 配額已用盡，請稍後再試')
+      } else {
+        throw new Error(`生成回答失敗: ${error.message}`)
+      }
     }
   }
 

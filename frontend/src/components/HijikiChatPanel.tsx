@@ -105,12 +105,20 @@ export function HijikiChatPanel({ onClose }: HijikiChatPanelProps) {
       let errorMessage = '抱歉，查詢時發生錯誤。請稍後再試。'
 
       if (error instanceof Error) {
-        if (error.message.includes('Network') || error.message.includes('fetch')) {
+        // 從 GraphQL 錯誤中提取實際的錯誤訊息
+        const actualError = (error as any)?.graphQLErrors?.[0]?.message || error.message
+
+        if (actualError.includes('Network') || actualError.includes('fetch')) {
           errorMessage = '網路連線錯誤，請檢查網路連線後再試。'
-        } else if (error.message.includes('401') || error.message.includes('未授權')) {
+        } else if (actualError.includes('401') || actualError.includes('未授權')) {
           errorMessage = '認證失敗，請重新登入後再試。'
-        } else if (error.message.includes('timeout')) {
-          errorMessage = '查詢超時，請稍後再試或簡化問題。'
+        } else if (actualError.includes('timeout') || actualError.includes('超時')) {
+          errorMessage = '查詢時間過長，請嘗試簡化問題或稍後再試。'
+        } else if (actualError.includes('配額')) {
+          errorMessage = 'API 配額已用盡，請稍後再試。'
+        } else if (actualError !== error.message) {
+          // 如果有更具體的錯誤訊息，顯示它
+          errorMessage = actualError
         }
       }
 
