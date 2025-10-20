@@ -47,7 +47,8 @@
       "Bash(npx ts-node:*)",
       "Bash(docker ps:*)",
       "Bash(docker-compose:*)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(node_modules/.bin/tsc --noEmit)"
     ],
     "deny": [],
     "additionalDirectories": [

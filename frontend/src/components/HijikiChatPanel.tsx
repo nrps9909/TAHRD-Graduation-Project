@@ -106,7 +106,8 @@ export function HijikiChatPanel({ onClose }: HijikiChatPanelProps) {
 
       if (error instanceof Error) {
         // 從 GraphQL 錯誤中提取實際的錯誤訊息
-        const actualError = (error as any)?.graphQLErrors?.[0]?.message || error.message
+        const graphQLError = error as Error & { graphQLErrors?: Array<{ message: string }> }
+        const actualError = graphQLError.graphQLErrors?.[0]?.message || error.message
 
         if (actualError.includes('Network') || actualError.includes('fetch')) {
           errorMessage = '網路連線錯誤，請檢查網路連線後再試。'

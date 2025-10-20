@@ -76,6 +76,7 @@ enum AssistantType {
   LIFE       // 生活記錄
   GOALS      // 目標規劃
   RESOURCES  // 資源收藏
+  MISC       // 雜項（不屬於其他類別的知識）
 
   @@map("assistant_type")
 }
