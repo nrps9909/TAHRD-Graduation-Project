@@ -81,7 +81,7 @@ export const authResolvers = {
         const token = jwt.sign(
           { userId: user.id, username: user.username },
           config.jwtSecret,
-          { expiresIn: config.jwtExpiresIn }
+          { expiresIn: config.jwtExpiresIn } as jwt.SignOptions
         )
 
         logger.info(`User registered: ${user.username} (${user.id})`)
@@ -153,7 +153,7 @@ export const authResolvers = {
         const token = jwt.sign(
           { userId: user.id, username: user.username },
           config.jwtSecret,
-          { expiresIn: config.jwtExpiresIn }
+          { expiresIn: config.jwtExpiresIn } as jwt.SignOptions
         )
 
         logger.info(`User logged in: ${user.username} (${user.id})`)
