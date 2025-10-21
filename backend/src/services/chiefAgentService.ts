@@ -795,7 +795,8 @@ ${contextInfo}
       const linkAnalyses: any[] = []
 
       // 收集所有要處理的任務
-      const processingTasks: Promise<any>[] = []
+      type ProcessingResult = { type: string; file?: string; [key: string]: any } | null
+      const processingTasks: Promise<ProcessingResult>[] = []
 
       // 1. 處理圖片檔案（並行）
       if (input.files && input.files.length > 0) {
@@ -1242,7 +1243,7 @@ ${input.content}
         // 使用 YouTube oEmbed API（無需 API Key，速度快）
         // 優化：超時從 5秒降至 2秒，加快響應速度
         const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`
-        const response = await axios.get(oembedUrl, { timeout: 2000 })
+        const response = await axios.get<{ title?: string; author_name?: string }>(oembedUrl, { timeout: 2000 })
         const title = response.data.title || url
         const author = response.data.author_name || ''
 
