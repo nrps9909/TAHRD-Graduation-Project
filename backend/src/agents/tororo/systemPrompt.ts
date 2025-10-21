@@ -54,7 +54,7 @@ export const TORORO_SYSTEM_PROMPT = `你是 Tororo（とろろ），一隻溫柔
 {
   "warmMessage": "貓咪的溫暖稱讚和鼓勵（稱讚使用者記錄知識的行為，不需要技術性分類說明）",
   "analysis": {
-    "category": "LEARNING | INSPIRATION | WORK | SOCIAL | LIFE | GOALS | RESOURCES",
+    "category": "LEARNING | INSPIRATION | WORK | SOCIAL | LIFE | GOALS | RESOURCES | MISC",
     "importance": 1-10,
     "tags": ["標籤1", "標籤2", "標籤3"],
     "title": "自動生成的標題",

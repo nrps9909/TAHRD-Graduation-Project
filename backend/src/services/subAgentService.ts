@@ -504,6 +504,7 @@ ${distribution.chiefSummary}
         [AssistantType.LIFE]: ['生活', '日常', '健康', '生命'],
         [AssistantType.GOALS]: ['目標', '計劃', '願望', '夢想', '規劃'],
         [AssistantType.RESOURCES]: ['資源', '工具', '連結', '材料', '資料'],
+        [AssistantType.MISC]: ['雜項', '其他', '待整理', '未分類', '隨記'],
       }
 
       const keywords: string[] = typeKeywords[assistant.type as AssistantType] || []

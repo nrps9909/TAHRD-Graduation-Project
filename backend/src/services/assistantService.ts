@@ -109,7 +109,8 @@ export class AssistantService {
       [AssistantType.SOCIAL]: ['朋友', '聚會', '約', '同學', '八卦', '聽說', '據說'],
       [AssistantType.LIFE]: ['今天', '吃', '睡', '起床', '日常', '心情', '感覺'],
       [AssistantType.GOALS]: ['目標', '夢想', '希望', '計劃', '打算', '想要', '未來'],
-      [AssistantType.RESOURCES]: ['文章', '連結', 'http', 'www', '影片', '書', '參考']
+      [AssistantType.RESOURCES]: ['文章', '連結', 'http', 'www', '影片', '書', '參考'],
+      [AssistantType.MISC]: ['雜項', '其他', '待整理', '未分類', '隨記', '雜念']
     }
 
     // 計算每個類別的匹配分數
