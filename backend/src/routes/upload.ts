@@ -220,4 +220,150 @@ router.get('/test-cloudinary', async (req: Request, res: Response) => {
   }
 })
 
+// 語音轉文字 API (代理 Gemini API，避免前端暴露 API Key)
+router.post('/speech-to-text', authenticate, async (req: any, res: Response) => {
+  try {
+    const { audioData, mimeType = 'audio/webm' } = req.body
+
+    if (!audioData) {
+      return res.status(400).json({ error: '缺少音頻數據' })
+    }
+
+    const apiKey = process.env.GEMINI_API_KEY
+    if (!apiKey) {
+      logger.error('[SpeechToText] GEMINI_API_KEY 未設置')
+      return res.status(500).json({ error: 'API 配置錯誤' })
+    }
+
+    logger.info(`[SpeechToText] 用戶 ${req.userId} 請求語音轉文字`)
+
+    // 調用 Gemini API
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text: '請將這段語音轉換成文字。如果是中文請用繁體中文輸出，如果是英文請直接輸出英文。只輸出轉錄的文字內容，不要加任何說明。',
+                },
+                {
+                  inline_data: {
+                    mime_type: mimeType,
+                    data: audioData,
+                  },
+                },
+              ],
+            },
+          ],
+        }),
+      }
+    )
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      logger.error('[SpeechToText] Gemini API 錯誤:', errorText)
+      return res.status(response.status).json({
+        error: '語音識別失敗',
+        details: errorText
+      })
+    }
+
+    const data = await response.json()
+    const transcribedText = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+
+    logger.info(`[SpeechToText] 轉換成功，文字長度: ${transcribedText.length}`)
+
+    return res.json({
+      success: true,
+      text: transcribedText,
+    })
+  } catch (error: any) {
+    logger.error('[SpeechToText] 處理失敗:', error)
+    return res.status(500).json({
+      error: '語音轉文字失敗',
+      message: error.message,
+    })
+  }
+})
+
+// 語音對話 API (代理 Gemini 音頻對話 API)
+router.post('/audio-dialog', authenticate, async (req: any, res: Response) => {
+  try {
+    const { audioData, mimeType = 'audio/webm', systemPrompt } = req.body
+
+    if (!audioData) {
+      return res.status(400).json({ error: '缺少音頻數據' })
+    }
+
+    const apiKey = process.env.GEMINI_API_KEY
+    if (!apiKey) {
+      logger.error('[AudioDialog] GEMINI_API_KEY 未設置')
+      return res.status(500).json({ error: 'API 配置錯誤' })
+    }
+
+    logger.info(`[AudioDialog] 用戶 ${req.userId} 請求語音對話`)
+
+    const defaultPrompt = '你是白噗噗，一隻溫柔貼心的白貓知識助手。請仔細聆聽用戶的語音，理解他們的情緒和語氣，並給予溫暖、貼心的回應。'
+
+    // 調用 Gemini Audio Dialog API
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text: systemPrompt || defaultPrompt,
+                },
+                {
+                  inline_data: {
+                    mime_type: mimeType,
+                    data: audioData,
+                  },
+                },
+              ],
+            },
+          ],
+        }),
+      }
+    )
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      logger.error('[AudioDialog] Gemini API 錯誤:', errorText)
+      return res.status(response.status).json({
+        error: '語音對話失敗',
+        details: errorText
+      })
+    }
+
+    const data = await response.json()
+    const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+
+    logger.info(`[AudioDialog] 對話成功，回應長度: ${responseText.length}`)
+
+    return res.json({
+      success: true,
+      text: responseText,
+    })
+  } catch (error: any) {
+    logger.error('[AudioDialog] 處理失敗:', error)
+    return res.status(500).json({
+      error: '語音對話失敗',
+      message: error.message,
+    })
+  }
+})
+
 export default router

@@ -22,6 +22,7 @@ import { generateTororoResponse, detectEmotion, type UserAction } from '../servi
 import { Z_INDEX_CLASSES } from '../constants/zIndex'
 import { useAuthStore } from '../stores/authStore'
 import { io, Socket } from 'socket.io-client'
+import { API_ENDPOINTS, MAX_FILE_SIZE, WS_URL } from '../config/api'
 
 // Register PIXI globally for Live2D
 ;(window as Window & typeof globalThis & { PIXI: typeof PIXI }).PIXI = PIXI
@@ -272,7 +273,6 @@ export default function TororoKnowledgeAssistant({
   // WebSocket 連接 - 監聽任務完成事件
   // 🔧 修復：避免反覆斷開重連，只在 userId 變化時重新建立連接
   useEffect(() => {
-    const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000'
     const userId = token ? user?.id : 'guest-user-id'
 
     // 如果沒有 userId，不建立連接
@@ -281,7 +281,7 @@ export default function TororoKnowledgeAssistant({
       return
     }
 
-    const newSocket = io(backendUrl, {
+    const newSocket = io(WS_URL, {
       // 優先使用 WebSocket，失敗時降級到 polling
       transports: ['websocket', 'polling'],
       reconnection: true,
@@ -656,22 +656,43 @@ export default function TororoKnowledgeAssistant({
     play('notification')
     setIsUploading(true)
 
-    // 為每個檔案建立初始狀態
-    const newFiles = Array.from(files).map(file => ({
-      id: `file-${Date.now()}-${Math.random()}`,
-      name: file.name,
-      url: '',
-      type: file.type,
-      size: file.size,
-      status: 'uploading' as const,
-      progress: 0
-    }))
+    // 為每個檔案建立初始狀態並驗證大小
+    const newFiles = Array.from(files).map(file => {
+      // 驗證文件大小
+      if (file.size > MAX_FILE_SIZE) {
+        alert(`檔案 "${file.name}" 過大，最大限制 10MB`)
+        return {
+          id: `file-${Date.now()}-${Math.random()}`,
+          name: file.name,
+          url: '',
+          type: file.type,
+          size: file.size,
+          status: 'error' as const,
+          progress: 0
+        }
+      }
+
+      return {
+        id: `file-${Date.now()}-${Math.random()}`,
+        name: file.name,
+        url: '',
+        type: file.type,
+        size: file.size,
+        status: 'uploading' as const,
+        progress: 0
+      }
+    })
 
     setUploadedCloudinaryFiles(prev => [...prev, ...newFiles])
 
     // ⚡ 優化：並發上傳所有檔案
     const uploadPromises = Array.from(files).map(async (file, index) => {
       const fileId = newFiles[index].id
+
+      // 如果文件已標記為錯誤（超過大小限制），跳過上傳
+      if (newFiles[index].status === 'error') {
+        return { success: false, fileId }
+      }
 
       try {
         const formData = new FormData()
@@ -683,7 +704,7 @@ export default function TororoKnowledgeAssistant({
           headers['Authorization'] = `Bearer ${token}`
         }
 
-        const response = await fetch('http://localhost:4000/api/upload-multiple', {
+        const response = await fetch(API_ENDPOINTS.UPLOAD_MULTIPLE, {
           method: 'POST',
           headers,
           body: formData
@@ -954,36 +975,22 @@ export default function TororoKnowledgeAssistant({
             reader.onloadend = async () => {
               const base64Audio = reader.result?.toString().split(',')[1]
 
-              const response = await fetch(
-                `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-exp-native-audio-thinking-dialog:generateContent?key=${import.meta.env.VITE_GEMINI_API_KEY}`,
-                {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                  },
-                  body: JSON.stringify({
-                    contents: [
-                      {
-                        parts: [
-                          {
-                            text: '請將這段語音轉換成文字。如果是中文請用繁體中文輸出，如果是英文請直接輸出英文。只輸出轉錄的文字內容，不要加任何說明。',
-                          },
-                          {
-                            inline_data: {
-                              mime_type: 'audio/webm',
-                              data: base64Audio,
-                            },
-                          },
-                        ],
-                      },
-                    ],
-                  }),
-                }
-              )
+              // 調用後端 API 進行語音轉文字
+              const response = await fetch(API_ENDPOINTS.SPEECH_TO_TEXT, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  ...(token && { 'Authorization': `Bearer ${token}` })
+                },
+                body: JSON.stringify({
+                  audioData: base64Audio,
+                  mimeType: 'audio/webm'
+                }),
+              })
 
               if (response.ok) {
                 const data = await response.json()
-                const transcribedText = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+                const transcribedText = data.text || ''
 
                 if (transcribedText) {
                   setInputText(prev => prev + (prev ? '\n' : '') + transcribedText)
@@ -992,7 +999,8 @@ export default function TororoKnowledgeAssistant({
                   setTimeout(() => autoResizeTextarea(), 0)
                 }
               } else {
-                console.error('Gemini 語音識別失敗:', await response.text())
+                const errorData = await response.json()
+                console.error('語音識別失敗:', errorData)
                 alert('語音識別失敗，請稍後再試')
               }
             }
@@ -1046,37 +1054,23 @@ export default function TororoKnowledgeAssistant({
             reader.onloadend = async () => {
               const base64Audio = reader.result?.toString().split(',')[1]
 
-              // 直接音頻對話 - 理解語氣和情緒
-              const response = await fetch(
-                `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-exp-native-audio-thinking-dialog:generateContent?key=${import.meta.env.VITE_GEMINI_API_KEY}`,
-                {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                  },
-                  body: JSON.stringify({
-                    contents: [
-                      {
-                        parts: [
-                          {
-                            text: '你是白噗噗，一隻溫柔貼心的白貓知識助手。請仔細聆聽用戶的語音，理解他們的情緒和語氣，並給予溫暖、貼心的回應。',
-                          },
-                          {
-                            inline_data: {
-                              mime_type: 'audio/webm',
-                              data: base64Audio,
-                            },
-                          },
-                        ],
-                      },
-                    ],
-                  }),
-                }
-              )
+              // 調用後端 API 進行語音對話
+              const response = await fetch(API_ENDPOINTS.AUDIO_DIALOG, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  ...(token && { 'Authorization': `Bearer ${token}` })
+                },
+                body: JSON.stringify({
+                  audioData: base64Audio,
+                  mimeType: 'audio/webm',
+                  systemPrompt: '你是白噗噗，一隻溫柔貼心的白貓知識助手。請仔細聆聽用戶的語音，理解他們的情緒和語氣，並給予溫暖、貼心的回應。'
+                }),
+              })
 
               if (response.ok) {
                 const data = await response.json()
-                const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+                const responseText = data.text || ''
 
                 if (responseText) {
                   setAudioDialogResponse(responseText)
@@ -1084,7 +1078,8 @@ export default function TororoKnowledgeAssistant({
                   playRandomMeow()
                 }
               } else {
-                console.error('Gemini 語音對話失敗:', await response.text())
+                const errorData = await response.json()
+                console.error('語音對話失敗:', errorData)
                 alert('語音對話失敗，請稍後再試')
               }
             }
@@ -1145,7 +1140,7 @@ export default function TororoKnowledgeAssistant({
                   headers['Authorization'] = `Bearer ${token}`
                 }
                 
-                const response = await fetch('http://localhost:4000/api/upload-multiple', {
+                const response = await fetch(API_ENDPOINTS.UPLOAD_MULTIPLE, {
                   method: 'POST',
                   headers,
                   body: formData
