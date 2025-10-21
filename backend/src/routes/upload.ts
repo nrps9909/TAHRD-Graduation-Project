@@ -4,6 +4,9 @@ import { v2 as cloudinary, UploadApiResponse } from 'cloudinary'
 import { CloudinaryStorage } from 'multer-storage-cloudinary'
 import { logger } from '../utils/logger'
 import * as jwt from 'jsonwebtoken'
+import { getConfig } from '../utils/config'
+
+const config = getConfig()
 
 const router = express.Router()
 
@@ -23,7 +26,7 @@ const authenticate = (req: any, res: Response, next: NextFunction): void => {
   const token = authHeader.replace('Bearer ', '')
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default-secret') as any
+    const decoded = jwt.verify(token, config.jwtSecret) as any
     req.userId = decoded.userId
 
     if (!req.userId) {

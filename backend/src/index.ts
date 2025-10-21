@@ -5,6 +5,10 @@ import express from 'express'
 // 從根目錄載入 .env
 dotenv.config({ path: path.join(__dirname, '../../.env') })
 
+// 首先驗證配置（包含 JWT_SECRET 等敏感資訊）
+import { getConfig } from './utils/config'
+const config = getConfig()
+
 // 調試環境變數
 console.log('[DEBUG] Backend 啟動時的環境變數:')
 console.log('GEMINI_API_KEY:', process.env.GEMINI_API_KEY ? '已設置' : '未設置')
@@ -15,6 +19,7 @@ import { ApolloServer } from '@apollo/server'
 import { expressMiddleware } from '@apollo/server/express4'
 import { ApolloServerPluginDrainHttpServer } from '@apollo/server/plugin/drainHttpServer'
 import cors from 'cors'
+import helmet from 'helmet'
 import { typeDefs } from './schema'
 import { resolvers } from './resolvers'
 import { createContext } from './context'
@@ -25,8 +30,10 @@ import uploadRoutes from './routes/upload'
 import { connectRedis } from './utils/redis'
 import { PrismaClient } from '@prisma/client'
 import { taskQueueService } from './services/taskQueueService'
+import { graphqlLimiter, uploadLimiter, aiLimiter } from './middleware/security'
+import { sanitizeHtml } from './middleware/validation'
 
-const PORT = process.env.PORT || 4000
+const PORT = config.port
 
 async function startServer() {
   try {
@@ -98,8 +105,14 @@ async function startServer() {
     })
     
     await server.start()
-    
-    // 中間件設置
+
+    // 安全中間件設置
+    app.use(helmet({
+      contentSecurityPolicy: process.env.NODE_ENV === 'production' ? undefined : false,
+      crossOriginEmbedderPolicy: false,
+    }))
+
+    // CORS 中間件
     app.use(cors({
       origin: function (origin, callback) {
         // 允許的 origins 列表
@@ -135,9 +148,12 @@ async function startServer() {
     }))
     
     app.use(express.json({ limit: '10mb' }))
-    
-    // GraphQL endpoint
-    app.use('/graphql', expressMiddleware(server, {
+
+    // HTML 消毒中間件（防止 XSS 攻擊）
+    app.use(sanitizeHtml)
+
+    // GraphQL endpoint（帶速率限制）
+    app.use('/graphql', graphqlLimiter, expressMiddleware(server, {
       context: ({ req }) => createContext({ req, prisma, redis, io })
     }))
     
@@ -166,7 +182,10 @@ async function startServer() {
     // 追蹤 API 路由 - Removed old tracking system
     // app.use(trackingRoutes)
 
-    // 檔案上傳路由
+    // 檔案上傳路由（帶速率限制）
+    app.use('/api/upload-multiple', uploadLimiter)
+    app.use('/api/speech-to-text', aiLimiter)
+    app.use('/api/audio-dialog', aiLimiter)
     app.use('/api', uploadRoutes)
 
     // 啟動服務器

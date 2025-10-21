@@ -2,6 +2,9 @@ import { PrismaClient } from '@prisma/client'
 import { Server } from 'socket.io'
 import Redis from 'ioredis'
 import * as jwt from 'jsonwebtoken'
+import { getConfig } from './utils/config'
+
+const config = getConfig()
 
 export interface Context {
   prisma: PrismaClient
@@ -28,7 +31,7 @@ export const createContext = async ({ req, prisma, redis, io }: CreateContextArg
     const token = authHeader.replace('Bearer ', '')
 
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default-secret') as any
+      const decoded = jwt.verify(token, config.jwtSecret) as any
       userId = decoded.userId
 
       if (userId) {
@@ -50,8 +53,8 @@ export const createContext = async ({ req, prisma, redis, io }: CreateContextArg
     }
   }
 
-  // 🔧 開發環境：自動創建或獲取測試用戶
-  if (process.env.NODE_ENV === 'development' && !userId) {
+  // 🔧 開發環境：自動創建或獲取測試用戶（僅限開發環境）
+  if (config.nodeEnv === 'development' && !userId) {
     try {
       // 嘗試獲取或創建測試用戶
       let testUser = await prisma.user.findUnique({
@@ -59,7 +62,7 @@ export const createContext = async ({ req, prisma, redis, io }: CreateContextArg
       })
 
       if (!testUser) {
-        console.log('🔧 [DEV] Creating test user...')
+        logger.info('🔧 [DEV] Creating test user...')
         testUser = await prisma.user.create({
           data: {
             username: 'dev_user',
@@ -69,14 +72,17 @@ export const createContext = async ({ req, prisma, redis, io }: CreateContextArg
             isActive: true
           }
         })
-        console.log('✅ [DEV] Test user created:', testUser.id)
+        logger.info('✅ [DEV] Test user created:', testUser.id)
       }
 
       userId = testUser.id
       user = testUser
     } catch (error) {
-      console.error('⚠️ [DEV] Failed to create test user:', error)
+      logger.error('⚠️ [DEV] Failed to create test user:', error)
     }
+  } else if (config.nodeEnv === 'production' && !userId) {
+    // 生產環境：確保沒有自動創建用戶
+    logger.debug('[PROD] No authentication token provided')
   }
 
   return {
