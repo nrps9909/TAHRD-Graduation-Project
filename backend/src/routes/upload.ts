@@ -277,7 +277,7 @@ router.post('/speech-to-text', authenticate, async (req: any, res: Response) => 
       })
     }
 
-    const data = await response.json()
+    const data = await response.json() as any
     const transcribedText = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
 
     logger.info(`[SpeechToText] 轉換成功，文字長度: ${transcribedText.length}`)
@@ -351,7 +351,7 @@ router.post('/audio-dialog', authenticate, async (req: any, res: Response) => {
       })
     }
 
-    const data = await response.json()
+    const data = await response.json() as any
     const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
 
     logger.info(`[AudioDialog] 對話成功，回應長度: ${responseText.length}`)

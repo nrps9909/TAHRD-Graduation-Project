@@ -80,7 +80,7 @@ export const authResolvers = {
         // 生成 JWT token
         const token = jwt.sign(
           { userId: user.id, username: user.username },
-          JWT_SECRET,
+          JWT_SECRET as string,
           { expiresIn: JWT_EXPIRES_IN }
         )
 
@@ -152,7 +152,7 @@ export const authResolvers = {
         // 生成 JWT token
         const token = jwt.sign(
           { userId: user.id, username: user.username },
-          JWT_SECRET,
+          JWT_SECRET as string,
           { expiresIn: JWT_EXPIRES_IN }
         )
 

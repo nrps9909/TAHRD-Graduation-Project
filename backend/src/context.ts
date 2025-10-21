@@ -3,6 +3,7 @@ import { Server } from 'socket.io'
 import Redis from 'ioredis'
 import * as jwt from 'jsonwebtoken'
 import { getConfig } from './utils/config'
+import { logger } from './utils/logger'
 
 const config = getConfig()
 
