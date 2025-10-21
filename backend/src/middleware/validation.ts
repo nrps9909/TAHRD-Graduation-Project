@@ -14,7 +14,7 @@ export const handleValidationErrors = (
   req: Request,
   res: Response,
   next: NextFunction
-): void => {
+) => {
   const errors = validationResult(req)
 
   if (!errors.isEmpty()) {
@@ -84,7 +84,7 @@ export const uploadValidation = (
   req: Request,
   res: Response,
   next: NextFunction
-): void => {
+) => {
   const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 
   if (!req.file && !req.files) {
