@@ -777,32 +777,32 @@ export default function Live2DCat({
                           rehypePlugins={[rehypeSanitize]}
                           components={{
                             p: ({ children }) => (
-                              <p className="mb-2 last:mb-0" style={{ color: 'inherit' }}>
+                              <p className="mb-2 last:mb-0" style={{ color: isBlackCat ? '#FFFFFF' : 'inherit' }}>
                                 {children}
                               </p>
                             ),
                             ul: ({ children }) => (
-                              <ul className="list-disc ml-4 mb-2" style={{ color: 'inherit' }}>
+                              <ul className="list-disc ml-4 mb-2" style={{ color: isBlackCat ? '#FFFFFF' : 'inherit' }}>
                                 {children}
                               </ul>
                             ),
                             ol: ({ children }) => (
-                              <ol className="list-decimal ml-4 mb-2" style={{ color: 'inherit' }}>
+                              <ol className="list-decimal ml-4 mb-2" style={{ color: isBlackCat ? '#FFFFFF' : 'inherit' }}>
                                 {children}
                               </ol>
                             ),
                             li: ({ children }) => (
-                              <li className="mb-1" style={{ color: 'inherit' }}>
+                              <li className="mb-1" style={{ color: isBlackCat ? '#FFFFFF' : 'inherit' }}>
                                 {children}
                               </li>
                             ),
                             strong: ({ children }) => (
-                              <strong className="font-bold" style={{ color: 'inherit' }}>
+                              <strong className="font-bold" style={{ color: isBlackCat ? '#FFFFFF' : 'inherit' }}>
                                 {children}
                               </strong>
                             ),
                             em: ({ children }) => (
-                              <em className="italic" style={{ color: 'inherit' }}>
+                              <em className="italic" style={{ color: isBlackCat ? '#FFFFFF' : 'inherit' }}>
                                 {children}
                               </em>
                             ),
@@ -811,7 +811,7 @@ export default function Live2DCat({
                                 className="px-1.5 py-0.5 rounded text-xs font-mono"
                                 style={{
                                   background: isBlackCat ? 'rgba(139, 92, 246, 0.2)' : 'rgba(251, 191, 36, 0.2)',
-                                  color: 'inherit'
+                                  color: isBlackCat ? '#FFFFFF' : 'inherit'
                                 }}
                               >
                                 {children}
@@ -822,7 +822,7 @@ export default function Live2DCat({
                                 className="p-3 rounded-lg overflow-x-auto text-xs font-mono my-2"
                                 style={{
                                   background: isBlackCat ? 'rgba(139, 92, 246, 0.15)' : 'rgba(251, 191, 36, 0.15)',
-                                  color: 'inherit'
+                                  color: isBlackCat ? '#FFFFFF' : 'inherit'
                                 }}
                               >
                                 {children}
@@ -833,7 +833,7 @@ export default function Live2DCat({
                                 className="border-l-4 pl-3 py-1 my-2"
                                 style={{
                                   borderColor: isBlackCat ? 'rgba(139, 92, 246, 0.5)' : 'rgba(251, 191, 36, 0.5)',
-                                  color: 'inherit'
+                                  color: isBlackCat ? '#FFFFFF' : 'inherit'
                                 }}
                               >
                                 {children}
@@ -845,7 +845,7 @@ export default function Live2DCat({
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="underline hover:opacity-80 transition-opacity"
-                                style={{ color: 'inherit' }}
+                                style={{ color: isBlackCat ? '#FFFFFF' : 'inherit' }}
                               >
                                 {children}
                               </a>
