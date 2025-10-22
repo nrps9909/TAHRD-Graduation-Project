@@ -549,14 +549,15 @@ ${assistant.type === 'SOCIAL' ? `
       ).length
 
       const relevanceScore = Math.min(matchCount / Math.max(keywords.length, 1), 1)
-      const shouldStore = relevanceScore > 0.4
+      // ⚠️ 移除相關性門檻 - 所有內容都儲存
+      const shouldStore = true
+
+      logger.info(`[Fallback Evaluation] ✅ 降級評估：所有對話都記錄 - 相關性 (${relevanceScore.toFixed(2)}) → 儲存`)
 
       return {
         relevanceScore,
         shouldStore,
-        reasoning: shouldStore
-          ? `基於關鍵字匹配，此內容與 ${assistant.nameChinese} 的領域相關`
-          : `基於關鍵字匹配，此內容與 ${assistant.nameChinese} 的領域相關性較低`,
+        reasoning: `基於降級評估，此內容歸類到 ${assistant.nameChinese}`,
         confidence: 0.3,
         suggestedCategory: assistant.type,
         suggestedTags: distribution.suggestedTags.slice(0, 3),
@@ -564,10 +565,12 @@ ${assistant.type === 'SOCIAL' ? `
       }
     } catch (error) {
       logger.error('[Sub-Agent] 降級評估失敗:', error)
+      // ⚠️ 即使降級評估失敗，仍然儲存內容
+      logger.info(`[Fallback Evaluation Error] ✅ 評估失敗但仍記錄 → 儲存`)
       return {
         relevanceScore: 0.1,
-        shouldStore: false,
-        reasoning: '無法評估知識相關性',
+        shouldStore: true, // 改為 true
+        reasoning: '降級評估失敗，但仍儲存此內容',
         confidence: 0.1,
         suggestedTags: [],
         keyInsights: [],
@@ -1120,14 +1123,15 @@ ${distribution.chiefSummary}
     // 計算關鍵字匹配度
     const matchCount = keywords.filter(kw => content.includes(kw.toLowerCase())).length
     const relevanceScore = Math.min(matchCount / Math.max(keywords.length, 1), 1)
-    const shouldStore = relevanceScore > 0.4
+    // ⚠️ 移除相關性門檻 - 所有內容都儲存
+    const shouldStore = true
+
+    logger.info(`[Fallback Dynamic Evaluation] ✅ 降級評估（動態 SubAgent）：所有對話都記錄 - 相關性 (${relevanceScore.toFixed(2)}) → 儲存`)
 
     return {
       relevanceScore,
       shouldStore,
-      reasoning: shouldStore
-        ? `基於關鍵字匹配，此內容與 ${subAgent.nameChinese} 的領域相關`
-        : `基於關鍵字匹配，此內容與 ${subAgent.nameChinese} 的領域相關性較低`,
+      reasoning: `基於降級評估，此內容歸類到 ${subAgent.nameChinese}`,
       confidence: 0.3,
       suggestedTags: distribution.suggestedTags.slice(0, 3),
       keyInsights: [`關鍵字匹配數: ${matchCount}/${keywords.length}`],
