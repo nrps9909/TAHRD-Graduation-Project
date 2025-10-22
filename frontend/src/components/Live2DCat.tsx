@@ -668,7 +668,7 @@ export default function Live2DCat({
               {showFallback ? (
                 <div className="text-center animate-bounce-gentle">
                   <div className="text-9xl mb-4 filter drop-shadow-lg">{theme.emoji}</div>
-                  <div 
+                  <div
                     className="rounded-2xl px-6 py-3"
                     style={{
                       background: theme.catBubbleBg,
@@ -684,11 +684,91 @@ export default function Live2DCat({
                   </div>
                 </div>
               ) : (
-                <div
-                  ref={live2dContainerRef}
-                  className="w-full h-full"
-                  style={{ position: 'relative' }}
-                />
+                <>
+                  <div
+                    ref={live2dContainerRef}
+                    className="w-full h-full"
+                    style={{ position: 'relative' }}
+                  />
+
+                  {/* 懸浮對話泡泡 - 顯示最新助理訊息 */}
+                  {messages.length > 0 && messages[messages.length - 1].type === 'assistant' && (
+                    <div
+                      className="absolute top-4 sm:top-8 md:top-12 left-1/2 transform -translate-x-1/2 max-w-[90%] md:max-w-[85%] animate-slide-down z-10"
+                      style={{
+                        animation: 'slideDown 0.3s ease-out'
+                      }}
+                    >
+                      <div
+                        className="relative rounded-2xl px-3 py-2 sm:px-4 sm:py-3 shadow-2xl"
+                        style={{
+                          background: theme.catBubbleBg,
+                          border: `2px solid ${isBlackCat ? 'rgba(139, 92, 246, 0.5)' : 'rgba(251, 191, 36, 0.5)'}`,
+                          boxShadow: isBlackCat
+                            ? '0 8px 24px rgba(139, 92, 246, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.1)'
+                            : '0 8px 24px rgba(251, 191, 36, 0.3), inset 0 1px 2px rgba(255, 255, 255, 0.5)'
+                        }}
+                      >
+                        {/* 對話泡泡箭頭 - 指向貓咪 */}
+                        <div
+                          className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-4 h-4 rotate-45"
+                          style={{
+                            background: theme.catBubbleBg,
+                            borderRight: `2px solid ${isBlackCat ? 'rgba(139, 92, 246, 0.5)' : 'rgba(251, 191, 36, 0.5)'}`,
+                            borderBottom: `2px solid ${isBlackCat ? 'rgba(139, 92, 246, 0.5)' : 'rgba(251, 191, 36, 0.5)'}`
+                          }}
+                        />
+
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-base sm:text-lg">{theme.emoji}</span>
+                          <span className="text-xs sm:text-sm font-bold" style={{ color: theme.catBubbleText }}>
+                            {theme.name}
+                          </span>
+                        </div>
+
+                        <p
+                          className="text-xs sm:text-sm leading-relaxed line-clamp-3"
+                          style={{ color: theme.catBubbleText }}
+                        >
+                          {messages[messages.length - 1].content.split('\n')[0]}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 處理中的對話泡泡 */}
+                  {isProcessing && (
+                    <div
+                      className="absolute top-4 sm:top-8 md:top-12 left-1/2 transform -translate-x-1/2 max-w-[80%] animate-pulse z-10"
+                    >
+                      <div
+                        className="relative rounded-2xl px-4 py-3 shadow-2xl"
+                        style={{
+                          background: theme.catBubbleBg,
+                          border: `2px solid ${isBlackCat ? 'rgba(139, 92, 246, 0.5)' : 'rgba(251, 191, 36, 0.5)'}`,
+                        }}
+                      >
+                        <div
+                          className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-4 h-4 rotate-45"
+                          style={{
+                            background: theme.catBubbleBg,
+                            borderRight: `2px solid ${isBlackCat ? 'rgba(139, 92, 246, 0.5)' : 'rgba(251, 191, 36, 0.5)'}`,
+                            borderBottom: `2px solid ${isBlackCat ? 'rgba(139, 92, 246, 0.5)' : 'rgba(251, 191, 36, 0.5)'}`
+                          }}
+                        />
+
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">{theme.emoji}</span>
+                          <div className="flex gap-1">
+                            <span className="w-2 h-2 rounded-full animate-bounce" style={{ background: theme.catBubbleText, animationDelay: '0ms' }} />
+                            <span className="w-2 h-2 rounded-full animate-bounce" style={{ background: theme.catBubbleText, animationDelay: '150ms' }} />
+                            <span className="w-2 h-2 rounded-full animate-bounce" style={{ background: theme.catBubbleText, animationDelay: '300ms' }} />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
