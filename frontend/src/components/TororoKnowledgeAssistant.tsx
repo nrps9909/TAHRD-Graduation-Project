@@ -1193,7 +1193,7 @@ export default function TororoKnowledgeAssistant({
           <div className="flex items-center gap-2 sm:gap-3 bg-gradient-to-r from-purple-900/80 to-indigo-900/80 backdrop-blur-md rounded-xl sm:rounded-2xl px-3 py-2 sm:px-5 sm:py-3 shadow-lg border-2 border-purple-500/60">
             <div>
               <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-white">白噗噗</h1>
-              <p className="text-xs sm:text-sm text-white/80">甚麼都可以跟我說!</p>
+              <p className="text-xs sm:text-sm text-gray-700">甚麼都可以跟我說!</p>
             </div>
           </div>
         </div>
@@ -1212,7 +1212,7 @@ export default function TororoKnowledgeAssistant({
                 generateAndDisplayResponse('open_panel')
               }
             }}
-            className="relative w-10 h-10 sm:w-12 sm:h-12 bg-white/10 hover:bg-white/20 text-white hover:text-white rounded-lg sm:rounded-xl shadow-lg border-2 border-white/30 flex items-center justify-center transition-all duration-200 hover:shadow-xl active:scale-95 hover:scale-105 text-lg sm:text-xl"
+            className="relative w-10 h-10 sm:w-12 sm:h-12 bg-white/10 hover:bg-white/20 text-gray-900 hover:text-gray-900 rounded-lg sm:rounded-xl shadow-lg border-2 border-gray-300 flex items-center justify-center transition-all duration-200 hover:shadow-xl active:scale-95 hover:scale-105 text-lg sm:text-xl"
             title="查看歷史紀錄"
           >
             📋
@@ -1315,7 +1315,7 @@ export default function TororoKnowledgeAssistant({
                 {/* 文字內容 */}
                 <div className="relative">
                   <p
-                    className="text-xs md:text-sm font-medium text-white leading-relaxed break-words"
+                    className="text-xs md:text-sm font-medium text-gray-900 leading-relaxed break-words"
                     style={{
                       textShadow: '0 1px 2px rgba(255,255,255,0.8)',
                       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", sans-serif'
@@ -1414,7 +1414,7 @@ export default function TororoKnowledgeAssistant({
                         }
                       }}
                       placeholder="想記錄些什麼呢？✨"
-                      className="w-full px-3 py-2.5 md:px-4 md:py-3 bg-white/40 focus:bg-white/60 border-none focus:outline-none text-sm md:text-base resize-none placeholder-white/40 text-white font-medium selection:bg-purple-200/50 transition-colors"
+                      className="w-full px-3 py-2.5 md:px-4 md:py-3 bg-white/40 focus:bg-white/60 border-none focus:outline-none text-sm md:text-base resize-none placeholder-gray-500 text-gray-900 font-medium selection:bg-purple-200/50 transition-colors"
                       style={{
                         height: '70px',
                         overflowY: 'hidden',
@@ -1431,21 +1431,21 @@ export default function TororoKnowledgeAssistant({
                             key={file.id}
                             className="inline-flex items-center gap-1.5 px-2 py-1 md:px-2.5 md:py-1.5 bg-white/10 rounded-lg hover:bg-white/20 transition-all shadow-sm border border-white/30"
                           >
-                            <span className="text-xs text-white font-medium max-w-[100px] md:max-w-[150px] truncate">
+                            <span className="text-xs text-gray-900 font-medium max-w-[100px] md:max-w-[150px] truncate">
                               {file.name}
                             </span>
                             {file.status === 'uploading' && (
-                              <span className="text-xs text-blue-300 animate-pulse">⏳</span>
+                              <span className="text-xs text-blue-600 animate-pulse">⏳</span>
                             )}
                             {file.status === 'error' && (
-                              <span className="text-xs text-red-300">❌</span>
+                              <span className="text-xs text-red-600">❌</span>
                             )}
                             {file.status === 'completed' && (
-                              <span className="text-xs text-green-300">✅</span>
+                              <span className="text-xs text-green-600">✅</span>
                             )}
                             <button
                               onClick={() => removeFile(file.id)}
-                              className="w-4 h-4 flex items-center justify-center text-white hover:text-red-300 transition-colors text-[10px] font-bold bg-white/20 rounded-full hover:bg-red-500/20"
+                              className="w-4 h-4 flex items-center justify-center text-gray-900 hover:text-red-600 transition-colors text-[10px] font-bold bg-white/20 rounded-full hover:bg-red-500/20"
                             >
                               ✕
                             </button>
@@ -1466,7 +1466,7 @@ export default function TororoKnowledgeAssistant({
                       <div className="flex items-center gap-1 md:gap-1.5">
                         <button
                           onClick={() => fileInputRef.current?.click()}
-                          className="p-1.5 md:p-2 text-base md:text-lg bg-white/10 hover:bg-white/20 text-white hover:text-white rounded-lg transition-all hover:scale-105 active:scale-95 border border-white/30"
+                          className="p-1.5 md:p-2 text-base md:text-lg bg-white/10 hover:bg-white/20 text-gray-900 hover:text-gray-900 rounded-lg transition-all hover:scale-105 active:scale-95 border border-gray-300"
                           title="上傳檔案"
                         >
                           📎
@@ -1477,7 +1477,7 @@ export default function TororoKnowledgeAssistant({
                           className={`p-1.5 md:p-2 text-base md:text-lg rounded-lg transition-all border ${
                             isRecordingTranscribe
                               ? 'text-red-500 bg-red-100 border-red-300 animate-pulse'
-                              : 'bg-white/10 hover:bg-white/20 text-white hover:text-white border-white/30 hover:scale-105 active:scale-95'
+                              : 'bg-white/10 hover:bg-white/20 text-gray-900 hover:text-gray-900 border-gray-300 hover:scale-105 active:scale-95'
                           }`}
                           title={isRecordingTranscribe ? '停止錄音' : '語音轉文字'}
                         >
@@ -1489,7 +1489,7 @@ export default function TororoKnowledgeAssistant({
                           className={`p-1.5 md:p-2 text-base md:text-lg rounded-lg transition-all border ${
                             isRecordingDialog
                               ? 'text-green-500 bg-green-100 border-green-300 animate-pulse'
-                              : 'bg-white/10 hover:bg-white/20 text-white hover:text-white border-white/30 hover:scale-105 active:scale-95'
+                              : 'bg-white/10 hover:bg-white/20 text-gray-900 hover:text-gray-900 border-gray-300 hover:scale-105 active:scale-95'
                           }`}
                           title={isRecordingDialog ? '停止對話' : '語音對話'}
                         >
@@ -1498,7 +1498,7 @@ export default function TororoKnowledgeAssistant({
 
                         <button
                           onClick={takePhoto}
-                          className="p-1.5 md:p-2 text-base md:text-lg bg-white/10 hover:bg-white/20 text-white hover:text-white rounded-lg transition-all hover:scale-105 active:scale-95 border border-white/30"
+                          className="p-1.5 md:p-2 text-base md:text-lg bg-white/10 hover:bg-white/20 text-gray-900 hover:text-gray-900 rounded-lg transition-all hover:scale-105 active:scale-95 border border-gray-300"
                           title="拍照"
                         >
                           📷
@@ -1531,10 +1531,10 @@ export default function TororoKnowledgeAssistant({
                 exit={{ opacity: 0, scale: 0.9 }}
                 className="text-center w-full max-w-2xl"
               >
-                <h2 className="text-3xl font-bold text-white mb-4">
+                <h2 className="text-3xl font-bold text-gray-900 mb-4">
                   白噗噗正在分類中... 🤔
                 </h2>
-                <p className="text-white/80 mb-6">
+                <p className="text-gray-900/80 mb-6">
                   預計只需要 3-5 秒就完成囉！☁️✨
                 </p>
                 <div className="flex items-center justify-center gap-3 mt-6">
@@ -1548,7 +1548,7 @@ export default function TororoKnowledgeAssistant({
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 2 }}
-                  className="mt-8 text-sm text-white/70"
+                  className="mt-8 text-sm text-gray-900/70"
                 >
                   <p>💡 小提示：後台會持續深度分析，不會影響你的使用喔～</p>
                 </motion.div>
@@ -1566,7 +1566,7 @@ export default function TororoKnowledgeAssistant({
               >
                 {/* 頭部 */}
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-3xl font-bold text-white">
+                  <h2 className="text-3xl font-bold text-gray-900">
                     歷史紀錄
                   </h2>
                   {history.length > 0 && (
@@ -1577,7 +1577,7 @@ export default function TororoKnowledgeAssistant({
                           play('button_click')
                         }
                       }}
-                      className="text-sm text-white hover:text-red-300 font-medium transition-colors px-4 py-2 rounded-xl hover:bg-red-500/20 border-2 border-transparent hover:border-red-300"
+                      className="text-sm text-gray-900 hover:text-red-300 font-medium transition-colors px-4 py-2 rounded-xl hover:bg-red-500/20 border-2 border-transparent hover:border-red-300"
                     >
                       清空全部
                     </button>
@@ -1588,8 +1588,8 @@ export default function TororoKnowledgeAssistant({
                 <div className="flex-1 overflow-y-auto space-y-3 pr-2">
                   {history.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full text-center">
-                      <p className="text-lg text-white font-medium">還沒有歷史紀錄</p>
-                      <p className="text-sm text-white/70 mt-2">開始記錄你的第一個想法吧！✨</p>
+                      <p className="text-lg text-gray-900 font-medium">還沒有歷史紀錄</p>
+                      <p className="text-sm text-gray-900/70 mt-2">開始記錄你的第一個想法吧！✨</p>
                     </div>
                   ) : (
                     history.map((record, index) => (
@@ -1603,17 +1603,17 @@ export default function TororoKnowledgeAssistant({
                         <div className="flex items-start gap-4">
                           {/* 左側：時間 */}
                           <div className="flex-shrink-0 text-center bg-white/10 rounded-xl px-3 py-2">
-                            <div className="text-xs text-white font-medium">
+                            <div className="text-xs text-gray-900 font-medium">
                               {record.timestamp.toLocaleDateString('zh-TW', { month: 'short', day: 'numeric' })}
                             </div>
-                            <div className="text-xs text-white/70">
+                            <div className="text-xs text-gray-900/70">
                               {record.timestamp.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}
                             </div>
                           </div>
 
                           {/* 中間：內容 */}
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm text-white font-medium line-clamp-2 mb-2">
+                            <p className="text-sm text-gray-900 font-medium line-clamp-2 mb-2">
                               {record.inputText || '(無文字內容)'}
                             </p>
 
@@ -1621,7 +1621,7 @@ export default function TororoKnowledgeAssistant({
                             {record.files.length > 0 && (
                               <div className="flex flex-wrap gap-1 mb-2">
                                 {record.files.map((file, i) => (
-                                  <span key={i} className="text-xs bg-purple-500/30 text-white px-2 py-1 rounded-lg border border-purple-300/50">
+                                  <span key={i} className="text-xs bg-purple-500/30 text-gray-900 px-2 py-1 rounded-lg border border-purple-300/50">
                                     {file.name}
                                   </span>
                                 ))}
@@ -1633,12 +1633,12 @@ export default function TororoKnowledgeAssistant({
                               {record.processingStatus === 'pending' ? (
                                 <div className="space-y-1">
                                   <div className="flex items-center gap-2">
-                                    <span className="flex items-center gap-1 text-white/70">
+                                    <span className="flex items-center gap-1 text-gray-900/70">
                                       <span className="inline-block w-2 h-2 bg-white/50 rounded-full animate-pulse"></span>
                                       等待處理...
                                     </span>
                                   </div>
-                                  <p className="text-[10px] text-white/60">
+                                  <p className="text-[10px] text-gray-900/60">
                                     📋 已送出，等待後台開始處理
                                   </p>
                                 </div>
@@ -1660,7 +1660,7 @@ export default function TororoKnowledgeAssistant({
                                       {record.progressMessage}
                                     </p>
                                   )}
-                                  <p className="text-[10px] text-white/60">
+                                  <p className="text-[10px] text-gray-900/60">
                                     💡 記憶正在後台創建，請稍後在知識庫查看
                                   </p>
                                 </div>
@@ -1691,11 +1691,11 @@ export default function TororoKnowledgeAssistant({
                                   )}
                                 </div>
                               ) : record.result?.skipRecording ? (
-                                <span className="text-white/60">
+                                <span className="text-gray-900/60">
                                   💬 簡單互動（未記錄）
                                 </span>
                               ) : (
-                                <span className="text-white">
+                                <span className="text-gray-900">
                                   ✨ 處理完成
                                 </span>
                               )}
@@ -1771,7 +1771,7 @@ export default function TororoKnowledgeAssistant({
                 exit={{ opacity: 0, scale: 0.8 }}
                 className="text-center w-full max-w-2xl"
               >
-                <h2 className="text-4xl font-bold text-white mb-6">
+                <h2 className="text-4xl font-bold text-gray-900 mb-6">
                   記住囉！✨
                 </h2>
 
@@ -1781,8 +1781,8 @@ export default function TororoKnowledgeAssistant({
                   {processingResult.tororoResponse?.category && (
                     <div className="text-center mb-4">
                       <div className="inline-flex items-center gap-2 px-5 py-2.5 bg-purple-500/30 rounded-xl border-2 border-purple-300/50">
-                        <span className="text-sm font-bold text-white">分類到</span>
-                        <span className="text-base font-bold text-white">{processingResult.tororoResponse.category}</span>
+                        <span className="text-sm font-bold text-gray-900">分類到</span>
+                        <span className="text-base font-bold text-gray-900">{processingResult.tororoResponse.category}</span>
                       </div>
                     </div>
                   )}
@@ -1804,31 +1804,31 @@ export default function TororoKnowledgeAssistant({
                             )}
                             <div className="flex-1 min-w-0">
                               {/* 標題 */}
-                              <h3 className="text-lg font-bold text-white mb-2">{memory.title}</h3>
+                              <h3 className="text-lg font-bold text-gray-900 mb-2">{memory.title}</h3>
 
                               {/* 助手標籤 */}
                               <div className="inline-flex items-center gap-2 px-3 py-1 bg-purple-500/30 rounded-lg mb-2">
                                 {memory.assistant.emoji && <span>{memory.assistant.emoji}</span>}
-                                <span className="text-sm font-medium text-white">{memory.assistant.nameChinese}</span>
+                                <span className="text-sm font-medium text-gray-900">{memory.assistant.nameChinese}</span>
                               </div>
 
                               {/* 類別 */}
                               {memory.category && (
-                                <p className="text-sm text-white font-medium mb-2">
+                                <p className="text-sm text-gray-900 font-medium mb-2">
                                   <span className="font-bold">類別：</span>{memory.category}
                                 </p>
                               )}
 
                               {/* 摘要 */}
                               {memory.summary && (
-                                <p className="text-sm text-white/80 leading-relaxed mb-2">{memory.summary}</p>
+                                <p className="text-sm text-gray-700 leading-relaxed mb-2">{memory.summary}</p>
                               )}
 
                               {/* 標籤 */}
                               {memory.tags && memory.tags.length > 0 && (
                                 <div className="flex flex-wrap gap-2 mt-2">
                                   {memory.tags.map((tag: string, i: number) => (
-                                    <span key={i} className="px-2.5 py-1 text-xs font-medium bg-purple-500/30 text-white rounded-lg border border-purple-300/50">
+                                    <span key={i} className="px-2.5 py-1 text-xs font-medium bg-purple-500/30 text-gray-900 rounded-lg border border-purple-300/50">
                                       #{tag}
                                     </span>
                                   ))}
@@ -1855,7 +1855,7 @@ export default function TororoKnowledgeAssistant({
                       play('button_click')
                       onClose?.()
                     }}
-                    className="px-10 py-4 bg-white/10 hover:bg-white/20 text-white hover:text-white rounded-xl font-bold text-lg shadow-lg border-2 border-white/30 hover:border-white/50 transition-all duration-200 hover:shadow-xl active:scale-95 hover:scale-105"
+                    className="px-10 py-4 bg-white/10 hover:bg-white/20 text-gray-900 hover:text-gray-900 rounded-xl font-bold text-lg shadow-lg border-2 border-gray-300 hover:border-gray-400 transition-all duration-200 hover:shadow-xl active:scale-95 hover:scale-105"
                   >
                     完成
                   </button>
