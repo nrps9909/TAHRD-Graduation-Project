@@ -179,10 +179,10 @@ export function HijikiChatPanel({ onClose }: HijikiChatPanelProps) {
         <div className="flex items-center gap-3">
           <span className="text-4xl">🌙</span>
           <div>
-            <h2 className="text-xl font-bold" style={{ color: '#E0E7FF' }}>
+            <h2 className="text-xl font-bold" style={{ color: '#FFFFFF' }}>
               黑噗噗
             </h2>
-            <p className="text-sm" style={{ color: '#C7D2FE' }}>
+            <p className="text-sm" style={{ color: '#FFFFFF' }}>
               讓我看看！
             </p>
           </div>
@@ -193,7 +193,7 @@ export function HijikiChatPanel({ onClose }: HijikiChatPanelProps) {
             className="p-2 rounded-xl transition-all hover:scale-110"
             style={{
               background: 'rgba(67, 56, 202, 0.3)',
-              color: '#E0E7FF',
+              color: '#FFFFFF',
             }}
             title="清空對話"
           >
@@ -204,7 +204,7 @@ export function HijikiChatPanel({ onClose }: HijikiChatPanelProps) {
             className="p-2 rounded-xl transition-all hover:scale-110"
             style={{
               background: 'rgba(67, 56, 202, 0.3)',
-              color: '#E0E7FF',
+              color: '#FFFFFF',
             }}
           >
             ✕
@@ -220,10 +220,10 @@ export function HijikiChatPanel({ onClose }: HijikiChatPanelProps) {
         {chatState.messages.length === 0 && !isTyping && (
           <div className="flex flex-col items-center justify-center h-full text-center px-6">
             <div className="text-6xl mb-4">🌙</div>
-            <h3 className="text-lg font-bold mb-2" style={{ color: '#E0E7FF' }}>
+            <h3 className="text-lg font-bold mb-2" style={{ color: '#FFFFFF' }}>
               歡迎使用黑噗噗知識查詢
             </h3>
-            <p className="text-sm mb-6" style={{ color: '#C7D2FE' }}>
+            <p className="text-sm mb-6" style={{ color: '#FFFFFF' }}>
               我可以幫你在知識庫中查找相關記憶和資訊
             </p>
             <div
@@ -231,7 +231,7 @@ export function HijikiChatPanel({ onClose }: HijikiChatPanelProps) {
               style={{
                 background: 'rgba(67, 56, 202, 0.2)',
                 border: '1px solid rgba(139, 92, 246, 0.4)',
-                color: '#C7D2FE',
+                color: '#FFFFFF',
               }}
             >
               <p>💡 試著問我：</p>
@@ -259,12 +259,12 @@ export function HijikiChatPanel({ onClose }: HijikiChatPanelProps) {
                   message.type === 'user'
                     ? {
                         background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.5) 0%, rgba(99, 102, 241, 0.4) 100%)',
-                        color: '#E0E7FF',
+                        color: '#FFFFFF',
                         border: '2px solid rgba(139, 92, 246, 0.4)',
                       }
                     : {
                         background: 'linear-gradient(135deg, rgba(67, 56, 202, 0.4) 0%, rgba(79, 70, 229, 0.3) 100%)',
-                        color: '#E0E7FF',
+                        color: '#FFFFFF',
                         border: '2px solid rgba(99, 102, 241, 0.3)',
                       }
                 }
@@ -292,7 +292,7 @@ export function HijikiChatPanel({ onClose }: HijikiChatPanelProps) {
                 )}
                 <p
                   className="text-xs mt-2 opacity-60"
-                  style={{ color: '#C7D2FE' }}
+                  style={{ color: '#FFFFFF' }}
                 >
                   {new Date(message.timestamp).toLocaleTimeString('zh-TW', {
                     hour: '2-digit',
@@ -322,19 +322,19 @@ export function HijikiChatPanel({ onClose }: HijikiChatPanelProps) {
                   animate={{ opacity: [0.4, 1, 0.4] }}
                   transition={{ duration: 1.5, repeat: Infinity, delay: 0 }}
                   className="w-2 h-2 rounded-full"
-                  style={{ background: '#C7D2FE' }}
+                  style={{ background: '#FFFFFF' }}
                 />
                 <motion.div
                   animate={{ opacity: [0.4, 1, 0.4] }}
                   transition={{ duration: 1.5, repeat: Infinity, delay: 0.2 }}
                   className="w-2 h-2 rounded-full"
-                  style={{ background: '#C7D2FE' }}
+                  style={{ background: '#FFFFFF' }}
                 />
                 <motion.div
                   animate={{ opacity: [0.4, 1, 0.4] }}
                   transition={{ duration: 1.5, repeat: Infinity, delay: 0.4 }}
                   className="w-2 h-2 rounded-full"
-                  style={{ background: '#C7D2FE' }}
+                  style={{ background: '#FFFFFF' }}
                 />
               </div>
             </div>
@@ -361,7 +361,7 @@ export function HijikiChatPanel({ onClose }: HijikiChatPanelProps) {
             style={{
               background: 'rgba(67, 56, 202, 0.2)',
               border: '2px solid rgba(139, 92, 246, 0.4)',
-              color: '#E0E7FF',
+              color: '#FFFFFF',
               minHeight: '80px',
               maxHeight: '200px',
             }}
@@ -388,7 +388,7 @@ export function HijikiChatPanel({ onClose }: HijikiChatPanelProps) {
             </svg>
           </button>
         </div>
-        <p className="text-xs mt-2 opacity-60" style={{ color: '#C7D2FE' }}>
+        <p className="text-xs mt-2 opacity-60" style={{ color: '#FFFFFF' }}>
           💡 提示：我會在你的知識庫中搜尋相關記憶來回答問題
         </p>
       </div>
