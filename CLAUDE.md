@@ -4,6 +4,52 @@
 
 ---
 
+## 🎨 2025-10-22: 黑噗噗對話文字顏色修復
+
+### Commit Information
+- **Main Commit**: `fcd289f`
+- **Related Commits**: `0b9dc5b`, `9a4e314`, `e8f851e`, `23897e9`
+- **Branch**: `production`
+- **Author**: Claude Code
+- **Date**: 2025-10-22
+
+### 問題描述
+
+黑噗噗對話介面的所有文字顯示為黑色，在深色背景上無法閱讀。
+
+### 問題根源
+
+`Live2DCat.tsx` 組件中的 ReactMarkdown 配置使用 `color: 'inherit'`，導致文字繼承了錯誤的顏色（黑色）。
+
+### 解決方案
+
+**關鍵修復**: `frontend/src/components/Live2DCat.tsx`
+
+將所有 ReactMarkdown 元素的顏色從 `color: 'inherit'` 改為條件判斷：
+```typescript
+color: isBlackCat ? '#FFFFFF' : 'inherit'
+```
+
+**修改的 ReactMarkdown 元素**（10個）:
+- `<p>`, `<ul>`, `<ol>`, `<li>`, `<strong>`, `<em>`, `<code>`, `<pre>`, `<blockquote>`, `<a>`
+
+### 額外優化
+
+為確保代碼一致性，也更新了以下組件：
+- `ChatBubble.tsx` - ReactMarkdown 條件判斷
+- `constants.ts` - hijiki 主題配置
+- `HijikiChatPanel.tsx` - 所有文字顏色
+
+### 經驗教訓
+
+1. **先確認組件使用關係**: 使用 `grep` 搜索文字來源和組件引用
+2. **理解 CSS 繼承**: ReactMarkdown 的 `inherit` 會覆蓋主題配置
+3. **保持代碼一致性**: 更新所有相關組件確保未來兼容
+
+詳細文檔：[BLACK_PUFF_TEXT_FIX_SUMMARY.md](./BLACK_PUFF_TEXT_FIX_SUMMARY.md)
+
+---
+
 ## 📦 CI/CD 配置
 
 ### GitHub Actions 自動部署
