@@ -23,21 +23,18 @@ export const MEMORY_FRAGMENT = gql`
     detailedSummary
     importanceScore
     actionableAdvice
-    # 社交成長紀錄專用字段
-    socialContext
-    userReaction
-    aiFeedback
-    socialSkillTags
-    progressChange
+    # 多媒體內容
     fileUrls
     fileNames
     fileTypes
     links
     linkTitles
+    # 狀態
     isPinned
     isArchived
     createdAt
     updatedAt
+    # 關聯資料
     assistant {
       id
       name
