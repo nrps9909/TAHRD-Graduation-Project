@@ -454,32 +454,32 @@ function MessageBubble({ message, theme, currentCat }: MessageBubbleProps) {
               components={{
                 // 自訂樣式以符合主題
                 p: ({ children }) => (
-                  <p className="mb-2 last:mb-0" style={{ color: 'inherit' }}>
+                  <p className="mb-2 last:mb-0" style={{ color: currentCat === CatAgent.HIJIKI ? '#FFFFFF' : 'inherit' }}>
                     {children}
                   </p>
                 ),
                 ul: ({ children }) => (
-                  <ul className="list-disc ml-4 mb-2" style={{ color: 'inherit' }}>
+                  <ul className="list-disc ml-4 mb-2" style={{ color: currentCat === CatAgent.HIJIKI ? '#FFFFFF' : 'inherit' }}>
                     {children}
                   </ul>
                 ),
                 ol: ({ children }) => (
-                  <ol className="list-decimal ml-4 mb-2" style={{ color: 'inherit' }}>
+                  <ol className="list-decimal ml-4 mb-2" style={{ color: currentCat === CatAgent.HIJIKI ? '#FFFFFF' : 'inherit' }}>
                     {children}
                   </ol>
                 ),
                 li: ({ children }) => (
-                  <li className="mb-1" style={{ color: 'inherit' }}>
+                  <li className="mb-1" style={{ color: currentCat === CatAgent.HIJIKI ? '#FFFFFF' : 'inherit' }}>
                     {children}
                   </li>
                 ),
                 strong: ({ children }) => (
-                  <strong className="font-bold" style={{ color: 'inherit' }}>
+                  <strong className="font-bold" style={{ color: currentCat === CatAgent.HIJIKI ? '#FFFFFF' : 'inherit' }}>
                     {children}
                   </strong>
                 ),
                 em: ({ children }) => (
-                  <em className="italic" style={{ color: 'inherit' }}>
+                  <em className="italic" style={{ color: currentCat === CatAgent.HIJIKI ? '#FFFFFF' : 'inherit' }}>
                     {children}
                   </em>
                 ),
@@ -490,7 +490,7 @@ function MessageBubble({ message, theme, currentCat }: MessageBubbleProps) {
                       background: currentCat === CatAgent.TORORO
                         ? 'rgba(251, 191, 36, 0.2)'
                         : 'rgba(139, 92, 246, 0.2)',
-                      color: 'inherit'
+                      color: currentCat === CatAgent.HIJIKI ? '#FFFFFF' : 'inherit'
                     }}
                   >
                     {children}
@@ -503,7 +503,7 @@ function MessageBubble({ message, theme, currentCat }: MessageBubbleProps) {
                       background: currentCat === CatAgent.TORORO
                         ? 'rgba(251, 191, 36, 0.15)'
                         : 'rgba(139, 92, 246, 0.15)',
-                      color: 'inherit'
+                      color: currentCat === CatAgent.HIJIKI ? '#FFFFFF' : 'inherit'
                     }}
                   >
                     {children}
@@ -516,7 +516,7 @@ function MessageBubble({ message, theme, currentCat }: MessageBubbleProps) {
                       borderColor: currentCat === CatAgent.TORORO
                         ? 'rgba(251, 191, 36, 0.5)'
                         : 'rgba(139, 92, 246, 0.5)',
-                      color: 'inherit'
+                      color: currentCat === CatAgent.HIJIKI ? '#FFFFFF' : 'inherit'
                     }}
                   >
                     {children}
@@ -528,7 +528,7 @@ function MessageBubble({ message, theme, currentCat }: MessageBubbleProps) {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="underline hover:opacity-80 transition-opacity"
-                    style={{ color: 'inherit' }}
+                    style={{ color: currentCat === CatAgent.HIJIKI ? '#FFFFFF' : 'inherit' }}
                   >
                     {children}
                   </a>
