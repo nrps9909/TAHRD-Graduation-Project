@@ -234,8 +234,8 @@ export function HijikiChatPanel({ onClose }: HijikiChatPanelProps) {
                 color: '#FFFFFF',
               }}
             >
-              <p>💡 試著問我：</p>
-              <ul className="space-y-1 pl-4">
+              <p style={{ color: '#FFFFFF' }}>💡 試著問我：</p>
+              <ul className="space-y-1 pl-4" style={{ color: '#FFFFFF' }}>
                 <li>• 我有哪些關於學習的記憶？</li>
                 <li>• 最近記錄了什麼想法？</li>
                 <li>• 幫我找關於某個主題的筆記</li>
@@ -269,12 +269,12 @@ export function HijikiChatPanel({ onClose }: HijikiChatPanelProps) {
                       }
                 }
               >
-                <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: '#FFFFFF' }}>
                   {message.content}
                 </p>
                 {message.attachments && message.attachments.length > 0 && (
                   <div className="mt-3 space-y-2">
-                    <p className="text-xs font-bold opacity-75">相關記憶:</p>
+                    <p className="text-xs font-bold opacity-75" style={{ color: '#FFFFFF' }}>相關記憶:</p>
                     {message.attachments.map((attachment, idx) => (
                       <a
                         key={idx}
@@ -283,6 +283,7 @@ export function HijikiChatPanel({ onClose }: HijikiChatPanelProps) {
                         style={{
                           background: 'rgba(139, 92, 246, 0.2)',
                           border: '1px solid rgba(139, 92, 246, 0.4)',
+                          color: '#FFFFFF',
                         }}
                       >
                         📝 {attachment.name}
