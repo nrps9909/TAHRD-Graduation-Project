@@ -133,6 +133,13 @@ const baseTypeDefs = gql`
     importanceScore: Int      # 1-10 重要性評分
     actionableAdvice: String  # 行動建議
 
+    # Social Growth Record (社交島專用格式)
+    socialContext: String     # [情境] 簡述當下發生什麼
+    userReaction: String      # [使用者反應] 情緒或行為反應
+    aiFeedback: String        # [AI 回饋] 建議或安撫
+    socialSkillTags: [String!]!  # [社交能力標籤] #表達情緒 #傾聽 #自我覺察等
+    progressChange: Int       # [進度變化] +1/0/-1
+
     # Classification
     category: AssistantType!
     tags: [String!]!
