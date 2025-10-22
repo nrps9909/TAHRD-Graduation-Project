@@ -113,6 +113,104 @@ export function MemoryDetailModal({ memory, isOpen, onClose }: MemoryDetailModal
 
               {/* 內容區域 */}
               <div className="overflow-y-auto max-h-[calc(85vh-240px)] p-6 space-y-6 bg-[#1E1E1E]">
+                {/* 社交成長紀錄格式（僅針對社交島） */}
+                {memory.category === 'SOCIAL' && (
+                  memory.socialContext || memory.userReaction || memory.aiFeedback ||
+                  (memory.socialSkillTags && memory.socialSkillTags.length > 0) ||
+                  memory.progressChange !== undefined
+                ) && (
+                  <div className="p-6 rounded-2xl bg-gradient-to-br from-pink-900/30 to-purple-900/30 border-2 border-pink-500/30">
+                    <h3 className="text-lg font-bold text-pink-300 mb-4 flex items-center gap-2">
+                      <span>🌟</span>
+                      社交成長紀錄
+                    </h3>
+
+                    <div className="space-y-4">
+                      {/* 主題 */}
+                      <div>
+                        <div className="text-xs font-semibold text-pink-400 mb-1">[主題]</div>
+                        <div className="text-gray-200 font-medium">{memory.title}</div>
+                      </div>
+
+                      {/* 情境 */}
+                      {memory.socialContext && (
+                        <div>
+                          <div className="text-xs font-semibold text-pink-400 mb-1">[情境]</div>
+                          <div className="text-gray-300">{memory.socialContext}</div>
+                        </div>
+                      )}
+
+                      {/* 使用者反應 */}
+                      {memory.userReaction && (
+                        <div>
+                          <div className="text-xs font-semibold text-pink-400 mb-1">[使用者反應]</div>
+                          <div className="text-gray-300">{memory.userReaction}</div>
+                        </div>
+                      )}
+
+                      {/* AI 回饋 */}
+                      {memory.aiFeedback && (
+                        <div className="p-3 rounded-xl bg-pink-500/10 border border-pink-500/20">
+                          <div className="text-xs font-semibold text-pink-400 mb-1">[AI 回饋]</div>
+                          <div className="text-pink-200 italic">{memory.aiFeedback}</div>
+                        </div>
+                      )}
+
+                      {/* 社交能力標籤 */}
+                      {memory.socialSkillTags && memory.socialSkillTags.length > 0 && (
+                        <div>
+                          <div className="text-xs font-semibold text-pink-400 mb-2">[社交能力標籤]</div>
+                          <div className="flex flex-wrap gap-2">
+                            {memory.socialSkillTags.map((tag, idx) => (
+                              <span
+                                key={idx}
+                                className="px-3 py-1 rounded-full text-xs font-medium bg-pink-500/20 text-pink-200 border border-pink-500/30"
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 進度變化 */}
+                      {memory.progressChange !== undefined && (
+                        <div className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/20">
+                          <div className="text-xs font-semibold text-purple-300">[進度變化]</div>
+                          <div className="flex items-center gap-2">
+                            {memory.progressChange > 0 && (
+                              <>
+                                <span className="text-2xl">📈</span>
+                                <span className="text-green-400 font-bold">成長 +{memory.progressChange}</span>
+                              </>
+                            )}
+                            {memory.progressChange === 0 && (
+                              <>
+                                <span className="text-2xl">➡️</span>
+                                <span className="text-yellow-400 font-bold">維持 0</span>
+                              </>
+                            )}
+                            {memory.progressChange < 0 && (
+                              <>
+                                <span className="text-2xl">📉</span>
+                                <span className="text-orange-400 font-bold">退步 {memory.progressChange}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 建議行動 */}
+                      {memory.actionableAdvice && (
+                        <div>
+                          <div className="text-xs font-semibold text-pink-400 mb-1">[建議行動]</div>
+                          <div className="text-gray-300">{memory.actionableAdvice}</div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* 完整內容 */}
                 <div>
                   <h3 className="text-sm font-bold text-gray-400 mb-2 flex items-center gap-2">

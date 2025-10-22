@@ -173,6 +173,13 @@ model Memory {
   importanceScore  Int?     @map("importance_score") // 1-10 重要性評分
   actionableAdvice String?  @map("actionable_advice") @db.String // 行動建議
 
+  // 社交成長紀錄專用字段 (針對人際關係分類)
+  socialContext    String?  @map("social_context") @db.String // [情境] 簡述當下發生什麼
+  userReaction     String?  @map("user_reaction") @db.String // [使用者反應] 情緒或行為反應
+  aiFeedback       String?  @map("ai_feedback") @db.String // [AI 回饋] 建議或安撫
+  socialSkillTags  String[] @default([]) @map("social_skill_tags") // [社交能力標籤] #表達情緒 #傾聽等
+  progressChange   Int?     @map("progress_change") // [進度變化] +1/0/-1
+
   // Classification
   category         AssistantType
   tags             String[] // 自動生成的標籤

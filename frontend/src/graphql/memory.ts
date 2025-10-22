@@ -23,6 +23,12 @@ export const MEMORY_FRAGMENT = gql`
     detailedSummary
     importanceScore
     actionableAdvice
+    # 社交成長紀錄專用字段
+    socialContext
+    userReaction
+    aiFeedback
+    socialSkillTags
+    progressChange
     fileUrls
     fileNames
     fileTypes

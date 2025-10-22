@@ -41,6 +41,13 @@ export interface Memory {
   // AI 深度分析
   detailedSummary?: string
   actionableAdvice?: string
+
+  // 社交成長紀錄專用字段（針對人際關係分類）
+  socialContext?: string  // [情境] 簡述當下發生什麼
+  userReaction?: string  // [使用者反應] 情緒或行為反應
+  aiFeedback?: string  // [AI 回饋] 建議或安撫
+  socialSkillTags?: string[]  // [社交能力標籤]
+  progressChange?: number  // [進度變化] +1/0/-1
 }
 
 // 小類別（SubAgent）- 與資料庫 schema 一致

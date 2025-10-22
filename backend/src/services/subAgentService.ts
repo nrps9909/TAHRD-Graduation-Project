@@ -33,6 +33,12 @@ interface EvaluationResult {
   sentiment?: string          // 情感分析（positive|neutral|negative）
   importanceScore?: number    // 重要性評分（1-10）
   actionableAdvice?: string   // 行動建議
+  // 社交成長紀錄專用字段（針對 SOCIAL 分類）
+  socialContext?: string      // [情境] 簡述當下發生什麼（限一句話）
+  userReaction?: string       // [使用者反應] 情緒或行為反應
+  aiFeedback?: string         // [AI 回饋] 建議或安撫（具體一句話）
+  socialSkillTags?: string[]  // [社交能力標籤] #表達情緒 #傾聽 #自我覺察 #主動互動
+  progressChange?: number     // [進度變化] 成長 +1／維持 0／退步 -1
 }
 
 interface DistributionInput {
@@ -332,6 +338,13 @@ export class SubAgentService {
       const importanceScore = evaluation.importanceScore || Math.round(evaluation.relevanceScore * 10)
       const actionableAdvice = evaluation.actionableAdvice
 
+      // 解析社交成長紀錄專用字段（針對 SOCIAL 分類）
+      const socialContext = evaluation.socialContext
+      const userReaction = evaluation.userReaction
+      const aiFeedback = evaluation.aiFeedback
+      const socialSkillTags = evaluation.socialSkillTags || []
+      const progressChange = evaluation.progressChange
+
       // 創建完整的記憶記錄（包含 Sub-Agent 的深度分析）
       const memory = await prisma.memory.create({
         data: {
@@ -360,6 +373,13 @@ export class SubAgentService {
           detailedSummary: detailedSummary, // SubAgent 的詳細摘要（2-3句話）
           importanceScore: importanceScore, // 1-10 重要性評分
           actionableAdvice: actionableAdvice, // 行動建議
+
+          // === 新增：社交成長紀錄專用字段 ===
+          socialContext: socialContext, // [情境] 簡述當下發生什麼
+          userReaction: userReaction, // [使用者反應] 情緒或行為反應
+          aiFeedback: aiFeedback, // [AI 回饋] 建議或安撫
+          socialSkillTags: socialSkillTags, // [社交能力標籤]
+          progressChange: progressChange, // [進度變化] +1/0/-1
 
           distribution: {
             connect: { id: distributionId }
@@ -435,6 +455,17 @@ ${distribution.chiefSummary}
 6. **情感分析** - 判斷內容的情感傾向
 7. **重要性評分** - 1-10分，評估這個知識的重要程度
 8. **行動建議** - 如果適用，提供後續行動建議
+${assistant.type === 'SOCIAL' ? `
+**🌟 特別要求 - 社交成長紀錄格式：**
+由於這是人際關係相關的知識，請額外提供以下專屬分析：
+- **情境描述** - 用一句話簡述當下發生了什麼（例：與朋友發生衝突、主動打招呼練習）
+- **使用者反應** - 描述使用者的情緒或行為反應（例：感到焦慮、選擇迴避、嘗試主動溝通）
+- **AI 回饋** - 提供具體一句話的建議或安撫（例：「你願意主動表達感受，這是很大的進步」）
+- **社交能力標籤** - 從以下選項中選擇適用的標籤（可多選）：#表達情緒 #傾聽 #自我覺察 #主動互動 #同理心 #衝突解決 #建立關係 #維持友誼
+- **進度變化** - 評估這次互動對使用者社交能力的影響：成長 +1（有進步）／維持 0（持平）／退步 -1（遇到挫折）
+
+這個格式能幫助使用者看到自己的社交成長軌跡，更有說服力地證明系統能解決社交困擾。
+` : ''}
 
 請以 JSON 格式返回完整分析（只返回 JSON，不要其他文字）：
 {
@@ -453,7 +484,12 @@ ${distribution.chiefSummary}
   "suggestedTitle": "XXX學習筆記",
   "sentiment": "positive|neutral|negative",
   "importanceScore": 8,
-  "actionableAdvice": "建議用戶可以..."
+  "actionableAdvice": "建議用戶可以..."${assistant.type === 'SOCIAL' ? `,
+  "socialContext": "與朋友發生衝突",
+  "userReaction": "感到焦慮和不知所措，選擇迴避對方",
+  "aiFeedback": "你能意識到自己的情緒反應，這是解決問題的第一步",
+  "socialSkillTags": ["#自我覺察", "#衝突解決"],
+  "progressChange": 1` : ''}
 }
 
 **評估準則：**
