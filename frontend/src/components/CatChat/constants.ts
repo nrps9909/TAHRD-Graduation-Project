@@ -46,17 +46,17 @@ export const AC_COLORS = {
     boxShadow: '0 8px 32px 0 rgba(139, 92, 246, 0.3), inset 0 1px 0 0 rgba(167, 139, 250, 0.3)',
     // 頭部
     headerBg: 'linear-gradient(135deg, rgba(139, 92, 246, 0.4) 0%, rgba(99, 102, 241, 0.3) 100%)',
-    headerText: '#E0E7FF',
-    headerTextSecondary: '#C7D2FE',
+    headerText: '#FFFFFF',
+    headerTextSecondary: '#FFFFFF',
     // 訊息氣泡
     userBubbleBg: 'linear-gradient(135deg, rgba(139, 92, 246, 0.5) 0%, rgba(99, 102, 241, 0.4) 100%)',
-    userBubbleText: '#E0E7FF',
+    userBubbleText: '#FFFFFF',
     catBubbleBg: 'linear-gradient(135deg, rgba(67, 56, 202, 0.4) 0%, rgba(79, 70, 229, 0.3) 100%)',
-    catBubbleText: '#E0E7FF',
+    catBubbleText: '#FFFFFF',
     // 按鈕
     buttonBg: 'linear-gradient(135deg, rgba(139, 92, 246, 0.3) 0%, rgba(99, 102, 241, 0.25) 100%)',
     buttonHoverBg: 'linear-gradient(135deg, rgba(139, 92, 246, 0.5) 0%, rgba(99, 102, 241, 0.4) 100%)',
-    buttonText: '#E0E7FF',
+    buttonText: '#FFFFFF',
     // 輸入框
     inputBorder: 'rgba(139, 92, 246, 0.4)',
     inputFocusBorder: 'rgba(99, 102, 241, 0.6)',
