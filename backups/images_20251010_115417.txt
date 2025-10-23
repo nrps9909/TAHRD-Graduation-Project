@@ -1,5 +1,0 @@
-CONTAINER                REPOSITORY                    TAG                 PLATFORM            IMAGE ID            SIZE                CREATED
-heart-whisper-backend    heart-whisper-town-backend    latest              linux/amd64         bc32510cd5cb        674MB               14 minutes ago
-heart-whisper-frontend   heart-whisper-town-frontend   latest              linux/amd64         1f6e9bf49e59        98.1MB              8 minutes ago
-heart-whisper-nginx      nginx                         alpine              linux/amd64         5e7abcdd2021        52.8MB              292 years ago
-heart-whisper-redis      redis                         7-alpine            linux/amd64         5f703438f575        41.4MB              292 years ago

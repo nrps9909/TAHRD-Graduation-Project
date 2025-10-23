@@ -282,8 +282,8 @@ export default function TororoKnowledgeAssistant({
     }
 
     const newSocket = io(WS_URL, {
-      // 優先使用 WebSocket，失敗時降級到 polling
-      transports: ['websocket', 'polling'],
+      // ⚠️ Cloudflare 問題：WebSocket 升級會失敗，只使用 polling
+      transports: ['polling'], // 禁用 WebSocket，只用 polling
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,

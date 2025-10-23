@@ -576,9 +576,10 @@ ${contextInfo}
   private async callMCP(prompt: string, assistantId: string): Promise<string> {
     try {
       // 直接使用 Gemini REST API（快速、穩定）
+      // 注意：分類任務使用低 temperature (0.2) 以獲得穩定、準確的結果
       const response = await callGeminiAPI(prompt, {
         model: this.geminiModel,
-        temperature: 0.7,
+        temperature: 0.2, // 降低 temperature 提升分類準確度（原 0.7）
         maxOutputTokens: 2048,
         timeout: 15000 // 15 秒超時
       })

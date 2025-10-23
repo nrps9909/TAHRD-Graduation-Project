@@ -602,9 +602,10 @@ ${assistant.type === 'SOCIAL' ? `
   private async callMCP(prompt: string, assistantId: string): Promise<string> {
     try {
       // 直接使用 Gemini REST API（快速、穩定）
+      // 注意：評估任務使用低 temperature (0.2) 以獲得穩定、準確的相關性判斷
       const response = await callGeminiAPI(prompt, {
         model: this.geminiModel,
-        temperature: 0.7,
+        temperature: 0.2, // 降低 temperature 提升評估準確度（原 0.7）
         maxOutputTokens: 4096, // SubAgent 需要更長的輸出
         timeout: 20000 // 20 秒超時（深度分析需要更多時間）
       })
