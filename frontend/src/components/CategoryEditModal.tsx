@@ -80,6 +80,11 @@ export const EditModal: React.FC<EditModalProps> = ({
         emoji: island.emoji || '🏝️',
         color: island.color || '#FFB3D9',
         description: island.description || '',
+        keywords: [],
+        systemPrompt: '',
+        personality: '',
+        chatStyle: '',
+        islandId: '',
       })
     } else if (mode === 'subcategory' && !isNew && subcategory) {
       setFormData({
@@ -170,20 +175,20 @@ export const EditModal: React.FC<EditModalProps> = ({
   const addKeyword = () => {
     const keyword = keywordInput.trim()
     if (keyword && !formData.keywords.includes(keyword)) {
-      setFormData({
-        ...formData,
-        keywords: [...formData.keywords, keyword],
-      })
+      setFormData((prev) => ({
+        ...prev,
+        keywords: [...prev.keywords, keyword],
+      }))
       setKeywordInput('')
     }
   }
 
   // 移除關鍵字
   const removeKeyword = (index: number) => {
-    setFormData({
-      ...formData,
-      keywords: formData.keywords.filter((_keyword: string, i: number) => i !== index),
-    })
+    setFormData((prev) => ({
+      ...prev,
+      keywords: prev.keywords.filter((_keyword: string, i: number) => i !== index),
+    }))
   }
 
   // 提交表單
@@ -291,7 +296,7 @@ export const EditModal: React.FC<EditModalProps> = ({
               <input
                 type="text"
                 value={formData.nameChinese}
-                onChange={(e) => setFormData({ ...formData, nameChinese: e.target.value })}
+                onChange={(e) => setFormData((prev) => ({ ...prev, nameChinese: e.target.value }))}
                 className="w-full px-3 py-2 bg-[#1E1E1E] border border-gray-700 rounded-lg text-gray-200 focus:border-[#d8c47e] focus:outline-none"
                 placeholder={mode === 'island' ? '例如：學習成長島' : '例如：技術學習'}
               />
@@ -304,7 +309,7 @@ export const EditModal: React.FC<EditModalProps> = ({
                 <input
                   type="text"
                   value={formData.emoji}
-                  onChange={(e) => setFormData({ ...formData, emoji: e.target.value })}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, emoji: e.target.value }))}
                   className="w-full px-3 py-2 bg-[#1E1E1E] border border-gray-700 rounded-lg text-2xl text-center focus:border-[#d8c47e] focus:outline-none"
                   placeholder="🏝️"
                 />
@@ -314,7 +319,7 @@ export const EditModal: React.FC<EditModalProps> = ({
                 <input
                   type="color"
                   value={formData.color}
-                  onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, color: e.target.value }))}
                   className="w-full h-[42px] bg-[#1E1E1E] border border-gray-700 rounded-lg cursor-pointer"
                 />
               </div>
@@ -328,7 +333,7 @@ export const EditModal: React.FC<EditModalProps> = ({
                 </label>
                 <select
                   value={formData.islandId}
-                  onChange={(e) => setFormData({ ...formData, islandId: e.target.value })}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, islandId: e.target.value }))}
                   className="w-full px-3 py-2 bg-[#1E1E1E] border border-gray-700 rounded-lg text-gray-200 focus:border-[#d8c47e] focus:outline-none"
                 >
                   {islands.map((island) => (
@@ -369,7 +374,7 @@ export const EditModal: React.FC<EditModalProps> = ({
               <label className="block text-sm text-gray-400 mb-2">描述</label>
               <textarea
                 value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
                 className="w-full px-3 py-2 bg-[#1E1E1E] border border-gray-700 rounded-lg text-gray-200 focus:border-[#d8c47e] focus:outline-none resize-none"
                 rows={2}
                 placeholder="簡短說明這個分類的用途..."
@@ -441,7 +446,7 @@ export const EditModal: React.FC<EditModalProps> = ({
                     </label>
                     <textarea
                       value={formData.systemPrompt}
-                      onChange={(e) => setFormData({ ...formData, systemPrompt: e.target.value })}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, systemPrompt: e.target.value }))}
                       className="w-full px-3 py-2 bg-[#1E1E1E] border border-gray-700 rounded-lg text-gray-200 focus:border-[#d8c47e] focus:outline-none resize-none font-mono text-sm"
                       rows={4}
                       placeholder="AI 助手的角色定位和職責..."
@@ -456,7 +461,7 @@ export const EditModal: React.FC<EditModalProps> = ({
                     <input
                       type="text"
                       value={formData.personality}
-                      onChange={(e) => setFormData({ ...formData, personality: e.target.value })}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, personality: e.target.value }))}
                       className="w-full px-3 py-2 bg-[#1E1E1E] border border-gray-700 rounded-lg text-gray-200 focus:border-[#d8c47e] focus:outline-none"
                       placeholder="AI 的性格特點..."
                     />
@@ -470,7 +475,7 @@ export const EditModal: React.FC<EditModalProps> = ({
                     <input
                       type="text"
                       value={formData.chatStyle}
-                      onChange={(e) => setFormData({ ...formData, chatStyle: e.target.value })}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, chatStyle: e.target.value }))}
                       className="w-full px-3 py-2 bg-[#1E1E1E] border border-gray-700 rounded-lg text-gray-200 focus:border-[#d8c47e] focus:outline-none"
                       placeholder="如何與用戶互動..."
                     />
