@@ -6,6 +6,7 @@
 
 import { categoryService } from '../services/categoryService'
 import { categoryInitService } from '../services/categoryInitService'
+import { promptGeneratorService } from '../services/promptGeneratorService'
 import { logger } from '../utils/logger'
 
 export interface Context {
@@ -129,6 +130,61 @@ export const categoryResolvers = {
         return stats
       } catch (error) {
         logger.error('[categoryResolvers] 獲取統計失敗:', error)
+        throw error
+      }
+    },
+
+    /**
+     * AI 生成島嶼提示詞
+     */
+    generateIslandPrompt: async (
+      _parent: any,
+      args: { nameChinese: string; emoji?: string },
+      context: Context
+    ) => {
+      try {
+        const userId = context.userId
+        if (!userId) {
+          throw new Error('未授權：請先登入')
+        }
+
+        const suggestion = await promptGeneratorService.generateIslandPrompt(
+          args.nameChinese,
+          args.emoji
+        )
+
+        logger.info(`[categoryResolvers] AI 生成島嶼提示詞: ${args.nameChinese}`)
+        return suggestion
+      } catch (error) {
+        logger.error('[categoryResolvers] AI 生成島嶼提示詞失敗:', error)
+        throw error
+      }
+    },
+
+    /**
+     * AI 生成小類別提示詞
+     */
+    generateSubcategoryPrompt: async (
+      _parent: any,
+      args: { nameChinese: string; emoji?: string; islandName?: string },
+      context: Context
+    ) => {
+      try {
+        const userId = context.userId
+        if (!userId) {
+          throw new Error('未授權：請先登入')
+        }
+
+        const suggestion = await promptGeneratorService.generateSubcategoryPrompt(
+          args.nameChinese,
+          args.emoji,
+          args.islandName
+        )
+
+        logger.info(`[categoryResolvers] AI 生成小類別提示詞: ${args.nameChinese}`)
+        return suggestion
+      } catch (error) {
+        logger.error('[categoryResolvers] AI 生成小類別提示詞失敗:', error)
         throw error
       }
     },

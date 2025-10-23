@@ -89,6 +89,21 @@ export const categoryTypeDefs = gql`
     totalMemories: Int!
   }
 
+  # AI 生成的提示詞建議（島嶼）
+  type IslandPromptSuggestion {
+    description: String!
+    keywords: [String!]!
+  }
+
+  # AI 生成的提示詞建議（小類別）
+  type SubcategoryPromptSuggestion {
+    description: String!
+    keywords: [String!]!
+    systemPrompt: String!
+    personality: String!
+    chatStyle: String!
+  }
+
   # ============ Inputs ============
 
   input CreateIslandInput {
@@ -160,6 +175,10 @@ export const categoryTypeDefs = gql`
 
     # 統計
     categoryStats: CustomCategoryStats!
+
+    # AI 提示詞生成
+    generateIslandPrompt(nameChinese: String!, emoji: String): IslandPromptSuggestion!
+    generateSubcategoryPrompt(nameChinese: String!, emoji: String, islandName: String): SubcategoryPromptSuggestion!
   }
 
   extend type Mutation {

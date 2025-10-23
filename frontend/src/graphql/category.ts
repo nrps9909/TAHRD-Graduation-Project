@@ -196,6 +196,29 @@ export const REORDER_SUBCATEGORIES = gql`
   }
 `
 
+// ============ AI Prompt Generation ============
+
+export const GENERATE_ISLAND_PROMPT = gql`
+  query GenerateIslandPrompt($nameChinese: String!, $emoji: String) {
+    generateIslandPrompt(nameChinese: $nameChinese, emoji: $emoji) {
+      description
+      keywords
+    }
+  }
+`
+
+export const GENERATE_SUBCATEGORY_PROMPT = gql`
+  query GenerateSubcategoryPrompt($nameChinese: String!, $emoji: String, $islandName: String) {
+    generateSubcategoryPrompt(nameChinese: $nameChinese, emoji: $emoji, islandName: $islandName) {
+      description
+      keywords
+      systemPrompt
+      personality
+      chatStyle
+    }
+  }
+`
+
 // ============ TypeScript Types ============
 
 export interface Island {
