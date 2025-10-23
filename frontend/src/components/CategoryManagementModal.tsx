@@ -76,6 +76,12 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
 
   // 刪除島嶼（會自動刪除所有小類別）
   const handleDeleteIsland = async (island: Island) => {
+    // 檢查是否為最後一個島嶼
+    if (islands.length <= 1) {
+      alert('❌ 無法刪除最後一個島嶼\n\n請至少保留一個島嶼來管理您的知識。')
+      return
+    }
+
     // 構建確認訊息
     let confirmMessage = `確定要刪除島嶼「${island.nameChinese}」嗎？`
 
@@ -87,9 +93,10 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
       try {
         await deleteIsland({ variables: { id: island.id } })
         alert('刪除成功！')
-      } catch (error) {
+      } catch (error: any) {
         console.error('刪除失敗:', error)
-        alert('刪除失敗，請查看控制台')
+        const errorMessage = error?.message || error?.graphQLErrors?.[0]?.message || '刪除失敗，請查看控制台'
+        alert(errorMessage)
       }
     }
   }
@@ -255,6 +262,8 @@ interface IslandsTabProps {
 }
 
 const IslandsTab: React.FC<IslandsTabProps> = ({ islands, onEdit, onDelete, onAdd }) => {
+  const isLastIsland = islands.length <= 1
+
   return (
     <div className="space-y-3 md:space-y-4">
       <div className="flex justify-between items-center gap-2">
@@ -266,6 +275,13 @@ const IslandsTab: React.FC<IslandsTabProps> = ({ islands, onEdit, onDelete, onAd
           + 新增島嶼
         </button>
       </div>
+
+      {/* 提示訊息 */}
+      {isLastIsland && (
+        <div className="bg-amber-900/20 border border-amber-700/50 text-amber-300 rounded-lg p-3 text-xs md:text-sm">
+          💡 至少需要保留一個島嶼來管理您的知識
+        </div>
+      )}
 
       <div className="grid gap-3 md:gap-4 grid-cols-1 md:grid-cols-2">
         {islands.map((island) => (
@@ -298,7 +314,13 @@ const IslandsTab: React.FC<IslandsTabProps> = ({ islands, onEdit, onDelete, onAd
                 </button>
                 <button
                   onClick={() => onDelete(island)}
-                  className="text-[#E74C3C] hover:text-[#C0392B] text-xs md:text-sm whitespace-nowrap"
+                  disabled={isLastIsland}
+                  className={`text-xs md:text-sm whitespace-nowrap ${
+                    isLastIsland
+                      ? 'text-gray-600 cursor-not-allowed'
+                      : 'text-[#E74C3C] hover:text-[#C0392B]'
+                  }`}
+                  title={isLastIsland ? '至少需要保留一個島嶼' : '刪除島嶼'}
                 >
                   刪除
                 </button>

@@ -139,9 +139,21 @@ export class CategoryService {
    * 級聯行為：
    * - Island 刪除 → 自動刪除所有 Subcategory (Cascade)
    * - Subcategory 刪除 → Memory 保留，subcategoryId 設為 null (SetNull)
+   *
+   * 限制：至少需要保留一個島嶼
    */
   async deleteIsland(userId: string, islandId: string) {
     try {
+      // 檢查用戶總共有多少島嶼
+      const totalIslands = await prisma.island.count({
+        where: { userId },
+      })
+
+      // 至少需要保留一個島嶼
+      if (totalIslands <= 1) {
+        throw new Error('無法刪除最後一個島嶼，請至少保留一個島嶼')
+      }
+
       // 獲取即將刪除的小類別數量（用於日誌記錄）
       const subcategoriesCount = await prisma.subcategory.count({
         where: { islandId, userId },
