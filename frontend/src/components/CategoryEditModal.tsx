@@ -5,13 +5,27 @@
 
 import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { useLazyQuery } from '@apollo/client'
+import { useLazyQuery, MutationFunction } from '@apollo/client'
 import {
   GENERATE_ISLAND_PROMPT,
   GENERATE_SUBCATEGORY_PROMPT,
   Island,
   Subcategory,
 } from '../graphql/category'
+
+// 表單數據類型
+interface FormData {
+  nameChinese: string
+  emoji: string
+  color: string
+  description: string
+  keywords: string[]
+  systemPrompt: string
+  personality: string
+  chatStyle: string
+  islandId: string
+  name?: string
+}
 
 interface EditModalProps {
   editState: {
@@ -22,8 +36,8 @@ interface EditModalProps {
   }
   islands: Island[]
   onClose: () => void
-  onCreate: any
-  onUpdate: any
+  onCreate: MutationFunction
+  onUpdate: MutationFunction
   onRefetch: () => void
 }
 
@@ -38,12 +52,12 @@ export const EditModal: React.FC<EditModalProps> = ({
   const { mode, island, subcategory, isNew } = editState
 
   // 表單狀態
-  const [formData, setFormData] = useState<any>({
+  const [formData, setFormData] = useState<FormData>({
     nameChinese: '',
     emoji: '',
     color: '',
     description: '',
-    keywords: [] as string[],
+    keywords: [],
     systemPrompt: '',
     personality: '',
     chatStyle: '',
@@ -168,7 +182,7 @@ export const EditModal: React.FC<EditModalProps> = ({
   const removeKeyword = (index: number) => {
     setFormData({
       ...formData,
-      keywords: formData.keywords.filter((_: any, i: number) => i !== index),
+      keywords: formData.keywords.filter((_keyword: string, i: number) => i !== index),
     })
   }
 

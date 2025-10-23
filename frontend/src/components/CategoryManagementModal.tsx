@@ -93,9 +93,12 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
       try {
         await deleteIsland({ variables: { id: island.id } })
         alert('刪除成功！')
-      } catch (error: any) {
+      } catch (error) {
         console.error('刪除失敗:', error)
-        const errorMessage = error?.message || error?.graphQLErrors?.[0]?.message || '刪除失敗，請查看控制台'
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : (error as { graphQLErrors?: Array<{ message: string }> })?.graphQLErrors?.[0]?.message || '刪除失敗，請查看控制台'
         alert(errorMessage)
       }
     }

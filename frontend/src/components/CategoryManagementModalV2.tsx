@@ -30,7 +30,7 @@ interface CategoryManagementModalV2Props {
   onClose: () => void
 }
 
-type EditMode = 'island' | 'subcategory' | null
+type EditMode = 'island' | 'subcategory'
 
 interface EditState {
   mode: EditMode
