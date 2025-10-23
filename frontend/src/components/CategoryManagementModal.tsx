@@ -74,13 +74,16 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
     }
   }
 
-  // 刪除島嶼
+  // 刪除島嶼（會自動刪除所有小類別）
   const handleDeleteIsland = async (island: Island) => {
+    // 構建確認訊息
+    let confirmMessage = `確定要刪除島嶼「${island.nameChinese}」嗎？`
+
     if (island.subcategoryCount > 0) {
-      alert('請先刪除該島嶼下的所有小類別')
-      return
+      confirmMessage = `⚠️ 刪除島嶼「${island.nameChinese}」將會同時刪除其下的 ${island.subcategoryCount} 個小類別。\n\n相關的記憶會保留，但會失去分類標籤。\n\n確定要繼續嗎？`
     }
-    if (confirm(`確定要刪除島嶼「${island.nameChinese}」嗎？`)) {
+
+    if (confirm(confirmMessage)) {
       try {
         await deleteIsland({ variables: { id: island.id } })
         alert('刪除成功！')

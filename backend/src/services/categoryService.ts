@@ -134,24 +134,25 @@ export class CategoryService {
   }
 
   /**
-   * 刪除島嶼（會級聯刪除所有小類別和記憶）
+   * 刪除島嶼（會自動級聯刪除所有小類別，記憶會保留但失去分類關聯）
+   *
+   * 級聯行為：
+   * - Island 刪除 → 自動刪除所有 Subcategory (Cascade)
+   * - Subcategory 刪除 → Memory 保留，subcategoryId 設為 null (SetNull)
    */
   async deleteIsland(userId: string, islandId: string) {
     try {
-      // 檢查是否有小類別
+      // 獲取即將刪除的小類別數量（用於日誌記錄）
       const subcategoriesCount = await prisma.subcategory.count({
         where: { islandId, userId },
       })
 
-      if (subcategoriesCount > 0) {
-        throw new Error('請先刪除或移動該島嶼下的所有小類別')
-      }
-
+      // 直接刪除島嶼，資料庫會自動級聯刪除小類別
       const island = await prisma.island.deleteMany({
         where: { id: islandId, userId },
       })
 
-      logger.info(`[CategoryService] 刪除島嶼: ${islandId}`)
+      logger.info(`[CategoryService] 刪除島嶼: ${islandId}，已自動刪除 ${subcategoriesCount} 個小類別`)
       return island
     } catch (error) {
       logger.error('[CategoryService] 刪除島嶼失敗:', error)
