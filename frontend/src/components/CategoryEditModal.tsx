@@ -128,11 +128,11 @@ export const EditModal: React.FC<EditModalProps> = ({
         })
 
         if (data?.generateIslandPrompt) {
-          setFormData({
-            ...formData,
+          setFormData((prev) => ({
+            ...prev,
             description: data.generateIslandPrompt.description,
             keywords: data.generateIslandPrompt.keywords,
-          })
+          }))
           alert('✨ AI 生成成功！')
         }
       } else {
@@ -146,14 +146,14 @@ export const EditModal: React.FC<EditModalProps> = ({
         })
 
         if (data?.generateSubcategoryPrompt) {
-          setFormData({
-            ...formData,
+          setFormData((prev) => ({
+            ...prev,
             description: data.generateSubcategoryPrompt.description,
             keywords: data.generateSubcategoryPrompt.keywords,
             systemPrompt: data.generateSubcategoryPrompt.systemPrompt,
             personality: data.generateSubcategoryPrompt.personality,
             chatStyle: data.generateSubcategoryPrompt.chatStyle,
-          })
+          }))
           setShowAdvanced(true) // 自動展開進階設定
           alert('✨ AI 生成成功！')
         }
