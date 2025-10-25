@@ -102,8 +102,8 @@ export const CategoryManagementModalV2: React.FC<CategoryManagementModalV2Props>
       setEditState({ mode, island: item as Island, isNew })
     } else if (mode === 'subcategory') {
       const subcategoryData = item as Subcategory
-      // 如果是新增，需要設定 islandId
-      if (isNew && islandId) {
+      // 如果提供了 islandId（新增或編輯時），確保設定正確的 islandId
+      if (islandId) {
         setEditState({ mode, subcategory: { ...subcategoryData, islandId } as Subcategory, isNew })
       } else {
         setEditState({ mode, subcategory: subcategoryData, isNew })
@@ -244,7 +244,7 @@ export const CategoryManagementModalV2: React.FC<CategoryManagementModalV2Props>
                     onEdit={() => startEdit('island', island, false)}
                     onDelete={() => handleDeleteIsland(island)}
                     onAddSubcategory={() => startEdit('subcategory', undefined, true, island.id)}
-                    onEditSubcategory={(sub) => startEdit('subcategory', sub, false)}
+                    onEditSubcategory={(sub) => startEdit('subcategory', sub, false, island.id)}
                     onDeleteSubcategory={handleDeleteSubcategory}
                   />
                 ))}
