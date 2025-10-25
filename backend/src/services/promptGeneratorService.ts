@@ -28,22 +28,27 @@ export interface SubcategoryPromptSuggestion {
 export class PromptGeneratorService {
   /**
    * 根據島嶼名稱生成建議內容
+   * @param nameChinese 島嶼名稱
+   * @param emoji 表情符號
+   * @param userHint 使用者提供的描述提示（可選），例如：「我女朋友」、「工作相關」
    */
   async generateIslandPrompt(
     nameChinese: string,
-    emoji: string = '🏝️'
+    emoji: string = '🏝️',
+    userHint?: string
   ): Promise<IslandPromptSuggestion> {
     try {
-      logger.info(`[PromptGenerator] 生成島嶼提示詞: ${nameChinese} ${emoji}`)
+      logger.info(`[PromptGenerator] 生成島嶼提示詞: ${nameChinese} ${emoji}${userHint ? ` (使用者提示: ${userHint})` : ''}`)
 
       const prompt = `你是一個專業的知識管理助手，幫助用戶設計知識分類系統。
 
 用戶想要創建一個島嶼（大類別）：
 - 名稱：${nameChinese}
 - 表情符號：${emoji}
+${userHint ? `- 使用者補充說明：${userHint}` : ''}
 
-請根據這個名稱，生成適合的：
-1. 描述（description）：簡短說明這個島嶼適合存放什麼類型的知識（1句話，15-30字）
+請根據這個名稱${userHint ? '和使用者的補充說明' : ''}，生成適合的：
+1. 描述（description）：簡短說明這個島嶼適合存放什麼類型的知識（1句話，15-30字）${userHint ? '，請結合使用者的補充說明來生成更精準的描述' : ''}
 2. 關鍵字（keywords）：5-8個相關關鍵字，用於自動分類知識
 
 📋 範例：
@@ -84,27 +89,34 @@ export class PromptGeneratorService {
 
   /**
    * 根據小類別名稱生成建議內容
+   * @param nameChinese 小類別名稱
+   * @param emoji 表情符號
+   * @param islandName 所屬島嶼名稱（可選）
+   * @param userHints 使用者提供的提示（可選）
    */
   async generateSubcategoryPrompt(
     nameChinese: string,
     emoji: string = '📚',
-    islandName?: string
+    islandName?: string,
+    userHints?: { description?: string; systemPrompt?: string }
   ): Promise<SubcategoryPromptSuggestion> {
     try {
-      logger.info(`[PromptGenerator] 生成小類別提示詞: ${nameChinese} ${emoji}`)
+      logger.info(`[PromptGenerator] 生成小類別提示詞: ${nameChinese} ${emoji}${userHints ? ' (使用者提供提示)' : ''}`)
 
       const islandContext = islandName ? `\n- 所屬島嶼：${islandName}` : ''
+      const userHintContext = userHints?.description ? `\n- 使用者補充說明：${userHints.description}` : ''
+      const systemPromptHint = userHints?.systemPrompt ? `\n- 使用者期望的系統提示：${userHints.systemPrompt}` : ''
 
       const prompt = `你是一個專業的 AI 助手設計師，幫助用戶設計知識分類的 AI 助手。
 
 用戶想要創建一個小類別（SubAgent）：
 - 名稱：${nameChinese}
-- 表情符號：${emoji}${islandContext}
+- 表情符號：${emoji}${islandContext}${userHintContext}${systemPromptHint}
 
-請根據這個名稱，生成適合的：
-1. 描述（description）：簡短說明這個類別適合存放什麼知識（1句話，15-30字）
+請根據這個名稱${userHints ? '和使用者的補充說明' : ''}，生成適合的：
+1. 描述（description）：簡短說明這個類別適合存放什麼知識（1句話，15-30字）${userHints?.description ? '，請結合使用者的補充說明' : ''}
 2. 關鍵字（keywords）：5-8個相關關鍵字，用於自動分類
-3. 系統提示詞（systemPrompt）：AI 助手的角色定位和職責（50-100字）
+3. 系統提示詞（systemPrompt）：AI 助手的角色定位和職責（50-100字）${userHints?.systemPrompt ? '，請基於使用者提供的期望進行擴展和優化' : ''}
 4. 個性設定（personality）：AI 的性格特點（20-40字）
 5. 對話風格（chatStyle）：如何與用戶互動（20-40字）
 

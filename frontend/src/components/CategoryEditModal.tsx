@@ -144,13 +144,15 @@ export const EditModal: React.FC<EditModalProps> = ({
       let submitData: IslandSubmitData | SubcategorySubmitData
 
       if (isNew) {
-        // 首次創建：只提交名稱和必要欄位，讓後端 AI 自動生成其他內容
+        // 首次創建：提交名稱和可選的描述提示，讓後端 AI 根據提示生成更精準的內容
         if (mode === 'island') {
           submitData = {
             name: formData.nameChinese,
             nameChinese: formData.nameChinese,
             emoji: formData.emoji || '🏝️',
             color: formData.color || '#FFB3D9',
+            // 如果使用者有填寫描述，作為 AI 生成的提示
+            ...(formData.description.trim() && { description: formData.description.trim() }),
           } as IslandSubmitData
         } else {
           submitData = {
@@ -159,6 +161,9 @@ export const EditModal: React.FC<EditModalProps> = ({
             islandId: formData.islandId,
             emoji: formData.emoji || '📚',
             color: formData.color || '#FFB3D9',
+            // 如果使用者有填寫描述或其他欄位，作為 AI 生成的提示
+            ...(formData.description.trim() && { description: formData.description.trim() }),
+            ...(formData.systemPrompt.trim() && { systemPrompt: formData.systemPrompt.trim() }),
           } as SubcategorySubmitData
         }
       } else {
@@ -247,8 +252,8 @@ export const EditModal: React.FC<EditModalProps> = ({
             <div className="bg-blue-900/20 border border-blue-700/50 rounded-lg p-3 text-xs text-blue-300">
               <span className="font-semibold">💡 首次創建提示：</span>
               {mode === 'island'
-                ? ' 輸入名稱後，AI 會自動生成描述。你可以在創建後隨時編輯。'
-                : ' 輸入名稱後，AI 會自動生成描述、關鍵字和系統提示詞。你可以在創建後隨時編輯。'}
+                ? ' 輸入名稱後，AI 會自動生成描述。你可以選擇性地在「描述」欄位輸入一些提示（例如：我女朋友），讓 AI 生成更精準的內容。創建後隨時可編輯。'
+                : ' 輸入名稱後，AI 會自動生成描述、關鍵字和系統提示詞。你可以選擇性地在「描述」或「系統提示詞」欄位輸入一些提示，讓 AI 生成更精準的內容。創建後隨時可編輯。'}
             </div>
           )}
 
@@ -293,14 +298,14 @@ export const EditModal: React.FC<EditModalProps> = ({
             <div>
               <label className="block text-sm font-semibold text-gray-200 mb-2">
                 描述
-                {isNew && <span className="text-xs text-gray-500 ml-2 font-normal">（創建時自動生成）</span>}
+                {isNew && <span className="text-xs text-purple-400 ml-2 font-normal">（可選：輸入提示讓 AI 生成更精準）</span>}
               </label>
               <textarea
                 value={formData.description}
                 onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
                 className="w-full px-4 py-3 bg-[#1E1E1E] border-2 border-gray-700 rounded-lg text-gray-200 focus:border-[#d8c47e] focus:outline-none resize-none"
                 rows={3}
-                placeholder={isNew ? 'AI 會自動生成...' : '簡短說明這個分類的用途'}
+                placeholder={isNew ? '（可選）輸入一些提示，例如：我女朋友、工作相關、學習筆記等...' : '簡短說明這個分類的用途'}
               />
             </div>
 

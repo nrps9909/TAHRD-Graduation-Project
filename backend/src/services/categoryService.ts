@@ -71,21 +71,23 @@ export class CategoryService {
     try {
       const { promptGeneratorService } = await import('./promptGeneratorService')
 
-      // 如果沒有提供 description，使用 AI 自動生成
+      // 使用 AI 自動生成描述
+      // 如果使用者提供了 description，作為 AI 生成的提示；如果沒提供，AI 會根據名稱生成
       let description = data.description
-      if (!description) {
-        logger.info(`[CategoryService] 為島嶼「${data.nameChinese}」自動生成描述`)
-        try {
-          const generated = await promptGeneratorService.generateIslandPrompt(
-            data.nameChinese,
-            data.emoji || '🏝️'
-          )
-          description = generated.description
-          logger.info(`[CategoryService] AI 生成描述成功`)
-        } catch (error) {
-          logger.error('[CategoryService] AI 生成描述失敗，使用預設值:', error)
-          description = `${data.nameChinese}相關的知識和記錄`
-        }
+      const userProvidedHint = data.description // 保存使用者提供的提示
+
+      logger.info(`[CategoryService] 為島嶼「${data.nameChinese}」自動生成描述${userProvidedHint ? ` (使用者提示: ${userProvidedHint})` : ''}`)
+      try {
+        const generated = await promptGeneratorService.generateIslandPrompt(
+          data.nameChinese,
+          data.emoji || '🏝️',
+          userProvidedHint // 將使用者提示傳給 AI
+        )
+        description = generated.description
+        logger.info(`[CategoryService] AI 生成描述成功: ${description}`)
+      } catch (error) {
+        logger.error('[CategoryService] AI 生成描述失敗，使用預設值:', error)
+        description = userProvidedHint || `${data.nameChinese}相關的知識和記錄`
       }
 
       // 獲取當前最大 position
@@ -276,17 +278,23 @@ export class CategoryService {
     try {
       const { promptGeneratorService } = await import('./promptGeneratorService')
 
-      // 如果沒有提供完整資訊，使用 AI 自動生成
+      // 使用 AI 自動生成設定
+      // 如果使用者提供了 description 或 systemPrompt，作為 AI 生成的提示
       let description = data.description
       let keywords = data.keywords
       let systemPrompt = data.systemPrompt
       let personality = data.personality
       let chatStyle = data.chatStyle
 
+      const userProvidedHints = {
+        description: data.description,
+        systemPrompt: data.systemPrompt
+      }
+
       const needsGeneration = !description || !keywords || !systemPrompt || !personality || !chatStyle
 
       if (needsGeneration) {
-        logger.info(`[CategoryService] 為小類別「${data.nameChinese}」自動生成設定`)
+        logger.info(`[CategoryService] 為小類別「${data.nameChinese}」自動生成設定${userProvidedHints.description || userProvidedHints.systemPrompt ? ' (使用者提供提示)' : ''}`)
         try {
           // 獲取島嶼資訊
           const island = await prisma.island.findUnique({
@@ -297,7 +305,8 @@ export class CategoryService {
           const generated = await promptGeneratorService.generateSubcategoryPrompt(
             data.nameChinese,
             data.emoji || '📚',
-            island?.nameChinese
+            island?.nameChinese,
+            userProvidedHints.description || userProvidedHints.systemPrompt ? userProvidedHints : undefined
           )
 
           description = description || generated.description
