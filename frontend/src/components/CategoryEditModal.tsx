@@ -180,21 +180,25 @@ export const EditModal: React.FC<EditModalProps> = ({
     }
 
     try {
-      // 準備提交數據
-      const submitData = {
+      // 準備提交數據 - 島嶼和小類別有不同的欄位
+      const baseData = {
         name: formData.nameChinese, // 英文名稱設為與中文相同
         nameChinese: formData.nameChinese,
         emoji: formData.emoji || (mode === 'island' ? '🏝️' : '📚'),
         color: formData.color || '#FFB3D9',
         description: formData.description || `${formData.nameChinese}相關的知識和記錄`,
-        keywords: formData.keywords.length > 0 ? formData.keywords : [formData.nameChinese],
-        ...(mode === 'subcategory' && {
-          islandId: formData.islandId,
-          systemPrompt: formData.systemPrompt || `我是你的${formData.nameChinese}助手，專門幫助你整理和管理${formData.nameChinese}相關的知識。`,
-          personality: formData.personality || '友善、專業、樂於助人',
-          chatStyle: formData.chatStyle || '清晰明瞭，提供實用建議',
-        })
       }
+
+      const submitData = mode === 'island'
+        ? baseData  // 島嶼不需要 keywords
+        : {
+            ...baseData,
+            islandId: formData.islandId,
+            keywords: formData.keywords.length > 0 ? formData.keywords : [formData.nameChinese],
+            systemPrompt: formData.systemPrompt || `我是你的${formData.nameChinese}助手，專門幫助你整理和管理${formData.nameChinese}相關的知識。`,
+            personality: formData.personality || '友善、專業、樂於助人',
+            chatStyle: formData.chatStyle || '清晰明瞭，提供實用建議',
+          }
 
       if (isNew) {
         await onCreate({
