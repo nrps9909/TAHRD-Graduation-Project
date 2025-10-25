@@ -168,16 +168,19 @@ export const CategoryManagementModalV2: React.FC<CategoryManagementModalV2Props>
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-2 md:p-4">
       <div className="bg-[#232323] rounded-xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="px-4 md:px-6 py-3 md:py-4 border-b border-gray-800 flex items-center justify-between bg-[#2a2a2a]">
+        <div className="px-4 md:px-6 py-3 md:py-4 border-b border-gray-800 flex items-center justify-between bg-gradient-to-r from-[#2a2a2a] to-[#323232]">
           <div>
-            <h2 className="text-lg md:text-2xl font-bold text-[#d8c47e]">🎨 智能分類系統</h2>
-            <p className="text-xs md:text-sm text-gray-400 mt-1">
-              AI 自動生成提示詞，讓分類更智能
+            <h2 className="text-lg md:text-2xl font-bold bg-gradient-to-r from-[#d8c47e] to-[#e0cc86] bg-clip-text text-transparent">
+              ✨ 自訂分類系統
+            </h2>
+            <p className="text-xs md:text-sm text-gray-400 mt-1 flex items-center gap-1">
+              <span className="inline-block">🤖</span>
+              <span>自訂名稱，AI 自動生成最佳提示詞</span>
             </p>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-200 text-xl md:text-2xl leading-none flex-shrink-0"
+            className="text-gray-400 hover:text-white text-xl md:text-2xl leading-none flex-shrink-0 hover:rotate-90 transition-all duration-300"
           >
             ×
           </button>
@@ -201,20 +204,31 @@ export const CategoryManagementModalV2: React.FC<CategoryManagementModalV2Props>
             </div>
           ) : (
             <div className="p-4 md:p-6">
-              {/* 新增島嶼按鈕 */}
-              <div className="mb-4 flex justify-end">
-                <button
-                  onClick={() => startEdit('island', undefined, true)}
-                  className="px-4 py-2 bg-[#d8c47e] text-[#191919] rounded-lg hover:bg-[#e0cc86] transition-colors text-sm font-medium"
-                >
-                  + 新增島嶼
-                </button>
+              {/* 使用說明和新增按鈕 */}
+              <div className="mb-4 bg-gradient-to-r from-purple-900/20 to-blue-900/20 border border-purple-700/50 rounded-lg p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-purple-300 text-sm mb-2">💡 極簡操作流程</h3>
+                    <ul className="text-xs text-gray-400 space-y-1">
+                      <li>1. 輸入<span className="text-[#d8c47e]">名稱</span>（島嶼或小類別）</li>
+                      <li>2. 點擊「<span className="text-purple-400">一鍵自動生成</span>」→ AI 自動填充所有設定</li>
+                      <li>3. （可選）自訂<span className="text-blue-400">系統提示詞</span>來調整 SubAgent 分析格式</li>
+                    </ul>
+                  </div>
+                  <button
+                    onClick={() => startEdit('island', undefined, true)}
+                    className="px-4 py-2 bg-gradient-to-r from-[#d8c47e] to-[#e0cc86] text-[#191919] rounded-lg hover:shadow-lg transition-all duration-300 hover:scale-105 text-sm font-medium whitespace-nowrap"
+                  >
+                    ✨ 新增島嶼
+                  </button>
+                </div>
               </div>
 
               {/* 提示訊息 */}
               {isLastIsland && (
-                <div className="mb-4 bg-amber-900/20 border border-amber-700/50 text-amber-300 rounded-lg p-3 text-xs md:text-sm">
-                  💡 至少需要保留一個島嶼來管理您的知識
+                <div className="mb-4 bg-amber-900/20 border border-amber-700/50 text-amber-300 rounded-lg p-3 text-xs md:text-sm flex items-center gap-2">
+                  <span className="text-lg">⚠️</span>
+                  <span>至少需要保留一個島嶼來管理您的知識</span>
                 </div>
               )}
 
@@ -372,18 +386,19 @@ const IslandCard: React.FC<IslandCardProps> = ({
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="bg-[#1E1E1E] p-3 md:p-4 space-y-2">
+            <div className="bg-[#1E1E1E] p-3 md:p-4 space-y-3">
               {/* 新增小類別按鈕 */}
               <button
                 onClick={onAddSubcategory}
-                className="w-full py-2 border border-dashed border-gray-600 rounded-lg text-gray-400 hover:text-gray-200 hover:border-gray-400 transition-colors text-sm"
+                className="w-full py-3 border-2 border-dashed border-[#d8c47e]/30 rounded-lg text-[#d8c47e] hover:bg-[#d8c47e]/10 hover:border-[#d8c47e] transition-all duration-300 text-sm font-medium flex items-center justify-center gap-2"
               >
-                + 新增小類別到「{island.nameChinese}」
+                <span className="text-lg">✨</span>
+                <span>新增小類別到「{island.nameChinese}」</span>
               </button>
 
               {/* 小類別列表 */}
               {hasSubcategories && (
-                <div className="space-y-2 mt-3">
+                <div className="space-y-2">
                   {island.subcategories!.map((sub) => (
                     <SubcategoryCard
                       key={sub.id}
@@ -415,6 +430,8 @@ const SubcategoryCard: React.FC<SubcategoryCardProps> = ({
   onEdit,
   onDelete,
 }) => {
+  const [showPrompt, setShowPrompt] = React.useState(false)
+
   return (
     <div
       className="bg-[#2a2a2a] rounded-lg p-3 border-l-2"
@@ -458,7 +475,39 @@ const SubcategoryCard: React.FC<SubcategoryCardProps> = ({
           <div className="flex gap-3 mt-2 text-xs text-gray-500">
             <span>💭 {subcategory.memoryCount} 條記憶</span>
             <span>💬 {subcategory.chatCount} 次對話</span>
+            {subcategory.systemPrompt && (
+              <button
+                onClick={() => setShowPrompt(!showPrompt)}
+                className="text-purple-400 hover:text-purple-300 transition-colors"
+              >
+                {showPrompt ? '🔽 隱藏 Prompt' : '🤖 查看 Prompt'}
+              </button>
+            )}
           </div>
+
+          {/* Prompt 預覽 */}
+          {showPrompt && subcategory.systemPrompt && (
+            <div className="mt-3 p-3 bg-[#1E1E1E] rounded border border-gray-700">
+              <div className="space-y-2 text-xs">
+                <div>
+                  <span className="text-purple-400 font-semibold">系統提示詞：</span>
+                  <p className="text-gray-400 mt-1 leading-relaxed">{subcategory.systemPrompt}</p>
+                </div>
+                {subcategory.personality && (
+                  <div>
+                    <span className="text-blue-400 font-semibold">個性：</span>
+                    <span className="text-gray-400 ml-2">{subcategory.personality}</span>
+                  </div>
+                )}
+                {subcategory.chatStyle && (
+                  <div>
+                    <span className="text-green-400 font-semibold">對話風格：</span>
+                    <span className="text-gray-400 ml-2">{subcategory.chatStyle}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex gap-2">

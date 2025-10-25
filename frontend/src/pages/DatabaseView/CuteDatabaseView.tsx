@@ -10,7 +10,7 @@ import { useToast } from '../../hooks/useToast'
 import { useDebounce } from '../../hooks/useDebounce'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import { useConfirm } from '../../hooks/useConfirm'
-import { CategoryManagementModal } from '../../components/CategoryManagementModal'
+import { CategoryManagementModalV2 } from '../../components/CategoryManagementModalV2'
 import { GET_ISLANDS, Island } from '../../graphql/category'
 import { QueueFloatingButton } from '../../components/QueueFloatingButton'
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core'
@@ -781,7 +781,7 @@ export default function CuteDatabaseView() {
 
       {/* Category Management Modal */}
       {showCategoryModal && (
-        <CategoryManagementModal
+        <CategoryManagementModalV2
           isOpen={showCategoryModal}
           onClose={() => setShowCategoryModal(false)}
         />

@@ -203,48 +203,43 @@ export const EditModal: React.FC<EditModalProps> = ({
       return
     }
 
-    // 小類別必須有 systemPrompt, personality, chatStyle
-    if (mode === 'subcategory') {
-      if (!formData.systemPrompt.trim()) {
-        alert('請輸入系統提示詞（或使用 AI 生成）')
-        return
-      }
-      if (!formData.personality.trim()) {
-        alert('請輸入個性設定（或使用 AI 生成）')
-        return
-      }
-      if (!formData.chatStyle.trim()) {
-        alert('請輸入對話風格（或使用 AI 生成）')
-        return
-      }
-    }
-
     try {
+      // 準備提交數據
+      const submitData = {
+        name: formData.nameChinese, // 英文名稱設為與中文相同
+        nameChinese: formData.nameChinese,
+        emoji: formData.emoji || (mode === 'island' ? '🏝️' : '📚'),
+        color: formData.color || '#FFB3D9',
+        description: formData.description || `${formData.nameChinese}相關的知識和記錄`,
+        keywords: formData.keywords.length > 0 ? formData.keywords : [formData.nameChinese],
+        ...(mode === 'subcategory' && {
+          islandId: formData.islandId,
+          systemPrompt: formData.systemPrompt || `我是你的${formData.nameChinese}助手，專門幫助你整理和管理${formData.nameChinese}相關的知識。`,
+          personality: formData.personality || '友善、專業、樂於助人',
+          chatStyle: formData.chatStyle || '清晰明瞭，提供實用建議',
+        })
+      }
+
       if (isNew) {
         await onCreate({
-          variables: {
-            input: {
-              ...formData,
-              name: formData.nameChinese, // 英文名稱設為與中文相同
-            },
-          },
+          variables: { input: submitData },
         })
       } else {
         const id = mode === 'island' ? island!.id : subcategory!.id
         await onUpdate({
           variables: {
             id,
-            input: formData,
+            input: submitData,
           },
         })
       }
 
       await onRefetch()
-      alert(isNew ? '創建成功！' : '更新成功！')
+      alert(isNew ? '✅ 創建成功！' : '✅ 更新成功！')
       onClose()
     } catch (error) {
       console.error('操作失敗:', error)
-      alert('操作失敗，請查看控制台')
+      alert('❌ 操作失敗，請查看控制台')
     }
   }
 
@@ -286,55 +281,36 @@ export const EditModal: React.FC<EditModalProps> = ({
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
           {/* 基本資訊 */}
           <div className="space-y-4">
-            <h4 className="font-semibold text-gray-200 text-sm">基本資訊</h4>
-
             {/* 名稱 */}
             <div>
-              <label className="block text-sm text-gray-400 mb-2">
-                名稱 <span className="text-red-400">*</span>
+              <label className="block text-sm font-semibold text-gray-200 mb-2">
+                {mode === 'island' ? '島嶼名稱' : '小類別名稱'} <span className="text-red-400">*</span>
               </label>
               <input
                 type="text"
                 value={formData.nameChinese}
                 onChange={(e) => setFormData((prev) => ({ ...prev, nameChinese: e.target.value }))}
-                className="w-full px-3 py-2 bg-[#1E1E1E] border border-gray-700 rounded-lg text-gray-200 focus:border-[#d8c47e] focus:outline-none"
-                placeholder={mode === 'island' ? '例如：學習成長島' : '例如：技術學習'}
+                className="w-full px-4 py-3 bg-[#1E1E1E] border-2 border-gray-700 rounded-lg text-gray-200 text-lg focus:border-[#d8c47e] focus:outline-none transition-colors"
+                placeholder={mode === 'island' ? '例如：學習成長' : '例如：技術學習'}
+                autoFocus
               />
-            </div>
-
-            {/* 表情符號和顏色 */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">表情符號</label>
-                <input
-                  type="text"
-                  value={formData.emoji}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, emoji: e.target.value }))}
-                  className="w-full px-3 py-2 bg-[#1E1E1E] border border-gray-700 rounded-lg text-2xl text-center focus:border-[#d8c47e] focus:outline-none"
-                  placeholder="🏝️"
-                />
-              </div>
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">顏色</label>
-                <input
-                  type="color"
-                  value={formData.color}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, color: e.target.value }))}
-                  className="w-full h-[42px] bg-[#1E1E1E] border border-gray-700 rounded-lg cursor-pointer"
-                />
-              </div>
+              <p className="text-xs text-gray-500 mt-1.5">
+                {mode === 'island'
+                  ? '💡 AI 會根據島嶼名稱自動生成描述和關鍵字'
+                  : '💡 AI 會根據小類別名稱自動生成完整的助手設定'}
+              </p>
             </div>
 
             {/* 島嶼選擇（僅小類別） */}
             {mode === 'subcategory' && (
               <div>
-                <label className="block text-sm text-gray-400 mb-2">
+                <label className="block text-sm font-semibold text-gray-200 mb-2">
                   所屬島嶼 <span className="text-red-400">*</span>
                 </label>
                 <select
                   value={formData.islandId}
                   onChange={(e) => setFormData((prev) => ({ ...prev, islandId: e.target.value }))}
-                  className="w-full px-3 py-2 bg-[#1E1E1E] border border-gray-700 rounded-lg text-gray-200 focus:border-[#d8c47e] focus:outline-none"
+                  className="w-full px-4 py-3 bg-[#1E1E1E] border-2 border-gray-700 rounded-lg text-gray-200 focus:border-[#d8c47e] focus:outline-none"
                 >
                   {islands.map((island) => (
                     <option key={island.id} value={island.id}>
@@ -345,143 +321,85 @@ export const EditModal: React.FC<EditModalProps> = ({
               </div>
             )}
 
-            {/* AI 生成按鈕 */}
-            <div className="bg-gradient-to-r from-purple-900/20 to-blue-900/20 border border-purple-700/50 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <div>
-                  <h5 className="font-semibold text-purple-300 text-sm">✨ AI 智能生成</h5>
-                  <p className="text-xs text-gray-400 mt-1">
-                    根據名稱自動生成描述和關鍵字
-                    {mode === 'subcategory' && '，以及 AI 助手設定'}
-                  </p>
+            {/* AI 生成按鈕 - 極簡版 */}
+            <div className="relative bg-gradient-to-r from-purple-900/30 via-blue-900/30 to-purple-900/30 border-2 border-purple-500/50 rounded-lg p-5 overflow-hidden">
+              {/* 背景光暈效果 */}
+              <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 via-blue-500/10 to-purple-500/10 animate-pulse" />
+
+              <div className="relative">
+                <div className="flex items-start gap-3 mb-3">
+                  <span className="text-3xl animate-bounce">🤖</span>
+                  <div className="flex-1">
+                    <h5 className="font-bold text-purple-300 text-base flex items-center gap-2">
+                      ✨ AI 自動設定
+                      <span className="px-2 py-0.5 bg-purple-600/50 text-purple-200 rounded-full text-xs font-normal">
+                        Gemini 2.5 Flash
+                      </span>
+                    </h5>
+                    <p className="text-xs text-gray-300 mt-1.5 leading-relaxed">
+                      {mode === 'island'
+                        ? '自動生成描述、關鍵字等所有必要資訊'
+                        : '自動生成描述、關鍵字、系統提示詞等所有設定'}
+                    </p>
+                  </div>
                 </div>
-              </div>
-              <button
-                onClick={handleGenerate}
-                disabled={isGenerating || !formData.nameChinese.trim()}
-                className={`w-full mt-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-                  isGenerating || !formData.nameChinese.trim()
-                    ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:from-purple-500 hover:to-blue-500'
-                }`}
-              >
-                {isGenerating ? '⏳ AI 生成中...' : '✨ 使用 AI 生成'}
-              </button>
-            </div>
 
-            {/* 描述 */}
-            <div>
-              <label className="block text-sm text-gray-400 mb-2">描述</label>
-              <textarea
-                value={formData.description}
-                onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
-                className="w-full px-3 py-2 bg-[#1E1E1E] border border-gray-700 rounded-lg text-gray-200 focus:border-[#d8c47e] focus:outline-none resize-none"
-                rows={2}
-                placeholder="簡短說明這個分類的用途..."
-              />
-            </div>
-
-            {/* 關鍵字 */}
-            <div>
-              <label className="block text-sm text-gray-400 mb-2">關鍵字（用於自動分類）</label>
-              <div className="flex gap-2 mb-2">
-                <input
-                  type="text"
-                  value={keywordInput}
-                  onChange={(e) => setKeywordInput(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addKeyword())}
-                  className="flex-1 px-3 py-2 bg-[#1E1E1E] border border-gray-700 rounded-lg text-gray-200 focus:border-[#d8c47e] focus:outline-none"
-                  placeholder="輸入關鍵字後按 Enter"
-                />
                 <button
-                  onClick={addKeyword}
-                  className="px-4 py-2 bg-[#d8c47e] text-[#191919] rounded-lg hover:bg-[#e0cc86] transition-colors"
+                  onClick={handleGenerate}
+                  disabled={isGenerating || !formData.nameChinese.trim()}
+                  className={`w-full px-4 py-3 rounded-lg font-bold transition-all duration-300 ${
+                    isGenerating || !formData.nameChinese.trim()
+                      ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-purple-600 via-blue-600 to-purple-600 text-white hover:shadow-lg hover:scale-105 active:scale-95'
+                  }`}
                 >
-                  新增
+                  {isGenerating ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="animate-spin">⏳</span>
+                      <span>AI 生成中，請稍候...</span>
+                    </span>
+                  ) : (
+                    <span className="flex items-center justify-center gap-2">
+                      <span>✨</span>
+                      <span>一鍵自動生成所有設定</span>
+                    </span>
+                  )}
                 </button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {formData.keywords.map((keyword: string, index: number) => (
-                  <span
-                    key={index}
-                    className="px-3 py-1 bg-gray-700 text-gray-200 rounded-full text-sm flex items-center gap-2"
-                  >
-                    {keyword}
-                    <button
-                      onClick={() => removeKeyword(index)}
-                      className="text-red-400 hover:text-red-300"
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-                {formData.keywords.length === 0 && (
-                  <span className="text-xs text-gray-500">尚無關鍵字</span>
+
+                {!formData.nameChinese.trim() && (
+                  <p className="text-xs text-amber-400 mt-2 text-center">
+                    💡 請先輸入名稱後再使用 AI 生成
+                  </p>
                 )}
               </div>
             </div>
           </div>
 
-          {/* 進階設定（僅小類別） */}
+          {/* 系統提示詞（僅小類別） */}
           {mode === 'subcategory' && (
-            <div className="space-y-4 border-t border-gray-800 pt-4">
-              <button
-                onClick={() => setShowAdvanced(!showAdvanced)}
-                className="flex items-center gap-2 text-sm font-semibold text-gray-200"
-              >
-                <span>{showAdvanced ? '▼' : '▶'}</span>
-                <span>AI 助手設定</span>
-                <span className="text-red-400">*</span>
-                <span className="text-xs text-gray-500 font-normal">
-                  （可使用 AI 生成）
-                </span>
-              </button>
+            <div className="space-y-4 border-t-2 border-gray-700 pt-4">
+              <div className="bg-blue-900/20 border border-blue-700/50 rounded-lg p-3 text-xs text-blue-300">
+                💡 <strong>系統提示詞</strong>決定了 SubAgent 如何分析和整理這個類別的知識。你可以在這裡指定分析格式、重點關注項目等。
+              </div>
 
-              {showAdvanced && (
-                <div className="space-y-4 pl-6">
-                  {/* 系統提示詞 */}
-                  <div>
-                    <label className="block text-sm text-gray-400 mb-2">
-                      系統提示詞 <span className="text-red-400">*</span>
-                    </label>
-                    <textarea
-                      value={formData.systemPrompt}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, systemPrompt: e.target.value }))}
-                      className="w-full px-3 py-2 bg-[#1E1E1E] border border-gray-700 rounded-lg text-gray-200 focus:border-[#d8c47e] focus:outline-none resize-none font-mono text-sm"
-                      rows={4}
-                      placeholder="AI 助手的角色定位和職責..."
-                    />
-                  </div>
-
-                  {/* 個性設定 */}
-                  <div>
-                    <label className="block text-sm text-gray-400 mb-2">
-                      個性設定 <span className="text-red-400">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.personality}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, personality: e.target.value }))}
-                      className="w-full px-3 py-2 bg-[#1E1E1E] border border-gray-700 rounded-lg text-gray-200 focus:border-[#d8c47e] focus:outline-none"
-                      placeholder="AI 的性格特點..."
-                    />
-                  </div>
-
-                  {/* 對話風格 */}
-                  <div>
-                    <label className="block text-sm text-gray-400 mb-2">
-                      對話風格 <span className="text-red-400">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.chatStyle}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, chatStyle: e.target.value }))}
-                      className="w-full px-3 py-2 bg-[#1E1E1E] border border-gray-700 rounded-lg text-gray-200 focus:border-[#d8c47e] focus:outline-none"
-                      placeholder="如何與用戶互動..."
-                    />
-                  </div>
-                </div>
-              )}
+              {/* 系統提示詞 */}
+              <div>
+                <label className="flex items-center gap-2 text-sm font-semibold text-purple-300 mb-2">
+                  <span className="text-2xl">🤖</span>
+                  <span>系統提示詞</span>
+                  <span className="text-xs text-gray-500 font-normal">（可選 - 留空則使用 AI 生成的預設值）</span>
+                </label>
+                <textarea
+                  value={formData.systemPrompt}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, systemPrompt: e.target.value }))}
+                  className="w-full px-4 py-3 bg-[#1E1E1E] border-2 border-purple-700/30 rounded-lg text-gray-200 focus:border-purple-500 focus:outline-none resize-none font-mono text-sm leading-relaxed"
+                  rows={6}
+                  placeholder="例如：整理技術學習筆記時，請重點標註：&#10;1. 核心概念和原理&#10;2. 實際應用場景&#10;3. 常見問題和解決方案&#10;4. 相關技術棧的關聯"
+                />
+                <p className="text-xs text-gray-500 mt-2">
+                  💬 你可以告訴 SubAgent 如何分析知識、採用什麼格式、關注哪些重點等
+                </p>
+              </div>
             </div>
           )}
         </div>
