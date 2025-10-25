@@ -5,10 +5,8 @@
 
 import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { useLazyQuery, MutationFunction } from '@apollo/client'
+import { MutationFunction } from '@apollo/client'
 import {
-  GENERATE_ISLAND_PROMPT,
-  GENERATE_SUBCATEGORY_PROMPT,
   Island,
   Subcategory,
 } from '../graphql/category'
@@ -25,6 +23,28 @@ interface FormData {
   chatStyle: string
   islandId: string
   name?: string
+}
+
+// 提交數據類型
+interface IslandSubmitData {
+  name: string
+  nameChinese: string
+  emoji: string
+  color: string
+  description?: string
+}
+
+interface SubcategorySubmitData {
+  name: string
+  nameChinese: string
+  emoji: string
+  color: string
+  islandId: string
+  description?: string
+  keywords?: string[]
+  systemPrompt?: string
+  personality?: string
+  chatStyle?: string
 }
 
 interface EditModalProps {
@@ -121,7 +141,7 @@ export const EditModal: React.FC<EditModalProps> = ({
 
     try {
       // 準備提交數據
-      let submitData: any
+      let submitData: IslandSubmitData | SubcategorySubmitData
 
       if (isNew) {
         // 首次創建：只提交名稱和必要欄位，讓後端 AI 自動生成其他內容
@@ -131,7 +151,7 @@ export const EditModal: React.FC<EditModalProps> = ({
             nameChinese: formData.nameChinese,
             emoji: formData.emoji || '🏝️',
             color: formData.color || '#FFB3D9',
-          }
+          } as IslandSubmitData
         } else {
           submitData = {
             name: formData.nameChinese,
@@ -139,7 +159,7 @@ export const EditModal: React.FC<EditModalProps> = ({
             islandId: formData.islandId,
             emoji: formData.emoji || '📚',
             color: formData.color || '#FFB3D9',
-          }
+          } as SubcategorySubmitData
         }
       } else {
         // 編輯：提交所有欄位（使用者可能已修改）
@@ -152,7 +172,7 @@ export const EditModal: React.FC<EditModalProps> = ({
         }
 
         submitData = mode === 'island'
-          ? baseData
+          ? baseData as IslandSubmitData
           : {
               ...baseData,
               islandId: formData.islandId,
@@ -160,7 +180,7 @@ export const EditModal: React.FC<EditModalProps> = ({
               systemPrompt: formData.systemPrompt,
               personality: formData.personality,
               chatStyle: formData.chatStyle,
-            }
+            } as SubcategorySubmitData
       }
 
       if (isNew) {
