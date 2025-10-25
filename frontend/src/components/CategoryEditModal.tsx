@@ -64,9 +64,7 @@ export const EditModal: React.FC<EditModalProps> = ({
     islandId: '',
   })
 
-  const [keywordInput, setKeywordInput] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
-  const [showAdvanced, setShowAdvanced] = useState(false)
 
   // AI 生成查詢
   const [generateIslandPrompt] = useLazyQuery(GENERATE_ISLAND_PROMPT)
@@ -98,7 +96,6 @@ export const EditModal: React.FC<EditModalProps> = ({
         chatStyle: subcategory.chatStyle || '',
         islandId: subcategory.islandId || '',
       })
-      setShowAdvanced(true) // 編輯時預設展開進階設定
     } else if (isNew) {
       // 新增時的預設值
       setFormData({
@@ -159,7 +156,6 @@ export const EditModal: React.FC<EditModalProps> = ({
             personality: data.generateSubcategoryPrompt.personality,
             chatStyle: data.generateSubcategoryPrompt.chatStyle,
           }))
-          setShowAdvanced(true) // 自動展開進階設定
           alert('✨ AI 生成成功！')
         }
       }
@@ -169,26 +165,6 @@ export const EditModal: React.FC<EditModalProps> = ({
     } finally {
       setIsGenerating(false)
     }
-  }
-
-  // 新增關鍵字
-  const addKeyword = () => {
-    const keyword = keywordInput.trim()
-    if (keyword && !formData.keywords.includes(keyword)) {
-      setFormData((prev) => ({
-        ...prev,
-        keywords: [...prev.keywords, keyword],
-      }))
-      setKeywordInput('')
-    }
-  }
-
-  // 移除關鍵字
-  const removeKeyword = (index: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      keywords: prev.keywords.filter((_keyword: string, i: number) => i !== index),
-    }))
   }
 
   // 提交表單
