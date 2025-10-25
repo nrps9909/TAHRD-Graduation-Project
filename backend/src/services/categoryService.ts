@@ -69,6 +69,25 @@ export class CategoryService {
     positionZ?: number
   }) {
     try {
+      const { promptGeneratorService } = await import('./promptGeneratorService')
+
+      // 如果沒有提供 description，使用 AI 自動生成
+      let description = data.description
+      if (!description) {
+        logger.info(`[CategoryService] 為島嶼「${data.nameChinese}」自動生成描述`)
+        try {
+          const generated = await promptGeneratorService.generateIslandPrompt(
+            data.nameChinese,
+            data.emoji || '🏝️'
+          )
+          description = generated.description
+          logger.info(`[CategoryService] AI 生成描述成功`)
+        } catch (error) {
+          logger.error('[CategoryService] AI 生成描述失敗，使用預設值:', error)
+          description = `${data.nameChinese}相關的知識和記錄`
+        }
+      }
+
       // 獲取當前最大 position
       const maxPosition = await prisma.island.findFirst({
         where: { userId },
@@ -86,7 +105,7 @@ export class CategoryService {
           nameChinese: data.nameChinese,
           emoji: data.emoji || '🏝️',
           color: data.color || '#FFB3D9',
-          description: data.description,
+          description,
           positionX: data.positionX ?? 0,
           positionY: data.positionY ?? 0,
           positionZ: data.positionZ ?? 0,
@@ -250,11 +269,54 @@ export class CategoryService {
     color?: string
     description?: string
     keywords?: string[]
-    systemPrompt: string
-    personality: string
-    chatStyle: string
+    systemPrompt?: string
+    personality?: string
+    chatStyle?: string
   }) {
     try {
+      const { promptGeneratorService } = await import('./promptGeneratorService')
+
+      // 如果沒有提供完整資訊，使用 AI 自動生成
+      let description = data.description
+      let keywords = data.keywords
+      let systemPrompt = data.systemPrompt
+      let personality = data.personality
+      let chatStyle = data.chatStyle
+
+      const needsGeneration = !description || !keywords || !systemPrompt || !personality || !chatStyle
+
+      if (needsGeneration) {
+        logger.info(`[CategoryService] 為小類別「${data.nameChinese}」自動生成設定`)
+        try {
+          // 獲取島嶼資訊
+          const island = await prisma.island.findUnique({
+            where: { id: data.islandId },
+            select: { nameChinese: true }
+          })
+
+          const generated = await promptGeneratorService.generateSubcategoryPrompt(
+            data.nameChinese,
+            data.emoji || '📚',
+            island?.nameChinese
+          )
+
+          description = description || generated.description
+          keywords = keywords || generated.keywords
+          systemPrompt = systemPrompt || generated.systemPrompt
+          personality = personality || generated.personality
+          chatStyle = chatStyle || generated.chatStyle
+
+          logger.info(`[CategoryService] AI 生成設定成功`)
+        } catch (error) {
+          logger.error('[CategoryService] AI 生成設定失敗，使用預設值:', error)
+          description = description || `${data.nameChinese}相關的知識和記錄`
+          keywords = keywords || [data.nameChinese]
+          systemPrompt = systemPrompt || `我是你的${data.nameChinese}助手，專門幫助你整理和管理${data.nameChinese}相關的知識。`
+          personality = personality || '友善、專業、樂於助人'
+          chatStyle = chatStyle || '清晰明瞭，提供實用建議'
+        }
+      }
+
       // 獲取當前最大 position
       const maxPosition = await prisma.subcategory.findFirst({
         where: { userId },
@@ -273,11 +335,11 @@ export class CategoryService {
           nameChinese: data.nameChinese,
           emoji: data.emoji || '📚',
           color: data.color || '#FFB3D9',
-          description: data.description,
-          keywords: data.keywords || [],
-          systemPrompt: data.systemPrompt,
-          personality: data.personality,
-          chatStyle: data.chatStyle,
+          description,
+          keywords,
+          systemPrompt,
+          personality,
+          chatStyle,
         },
       })
 

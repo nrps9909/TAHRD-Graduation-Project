@@ -64,11 +64,6 @@ export const EditModal: React.FC<EditModalProps> = ({
     islandId: '',
   })
 
-  const [isGenerating, setIsGenerating] = useState(false)
-
-  // AI 生成查詢
-  const [generateIslandPrompt] = useLazyQuery(GENERATE_ISLAND_PROMPT)
-  const [generateSubcategoryPrompt] = useLazyQuery(GENERATE_SUBCATEGORY_PROMPT)
 
   // 初始化表單數據
   useEffect(() => {
@@ -112,61 +107,6 @@ export const EditModal: React.FC<EditModalProps> = ({
     }
   }, [mode, island, subcategory, isNew, islands])
 
-  // AI 生成 Prompt
-  const handleGenerate = async () => {
-    if (!formData.nameChinese.trim()) {
-      alert('請先輸入名稱')
-      return
-    }
-
-    setIsGenerating(true)
-    try {
-      if (mode === 'island') {
-        const { data } = await generateIslandPrompt({
-          variables: {
-            nameChinese: formData.nameChinese,
-            emoji: formData.emoji,
-          },
-        })
-
-        if (data?.generateIslandPrompt) {
-          setFormData((prev) => ({
-            ...prev,
-            description: data.generateIslandPrompt.description,
-            keywords: data.generateIslandPrompt.keywords,
-          }))
-          alert('✨ AI 生成成功！')
-        }
-      } else {
-        const selectedIsland = islands.find((i) => i.id === formData.islandId)
-        const { data } = await generateSubcategoryPrompt({
-          variables: {
-            nameChinese: formData.nameChinese,
-            emoji: formData.emoji,
-            islandName: selectedIsland?.nameChinese,
-          },
-        })
-
-        if (data?.generateSubcategoryPrompt) {
-          setFormData((prev) => ({
-            ...prev,
-            description: data.generateSubcategoryPrompt.description,
-            keywords: data.generateSubcategoryPrompt.keywords,
-            systemPrompt: data.generateSubcategoryPrompt.systemPrompt,
-            personality: data.generateSubcategoryPrompt.personality,
-            chatStyle: data.generateSubcategoryPrompt.chatStyle,
-          }))
-          alert('✨ AI 生成成功！')
-        }
-      }
-    } catch (error) {
-      console.error('AI 生成失敗:', error)
-      alert('AI 生成失敗，請重試')
-    } finally {
-      setIsGenerating(false)
-    }
-  }
-
   // 提交表單
   const handleSubmit = async () => {
     if (!formData.nameChinese.trim()) {
@@ -180,25 +120,48 @@ export const EditModal: React.FC<EditModalProps> = ({
     }
 
     try {
-      // 準備提交數據 - 島嶼和小類別有不同的欄位
-      const baseData = {
-        name: formData.nameChinese, // 英文名稱設為與中文相同
-        nameChinese: formData.nameChinese,
-        emoji: formData.emoji || (mode === 'island' ? '🏝️' : '📚'),
-        color: formData.color || '#FFB3D9',
-        description: formData.description || `${formData.nameChinese}相關的知識和記錄`,
-      }
+      // 準備提交數據
+      let submitData: any
 
-      const submitData = mode === 'island'
-        ? baseData  // 島嶼不需要 keywords
-        : {
-            ...baseData,
-            islandId: formData.islandId,
-            keywords: formData.keywords.length > 0 ? formData.keywords : [formData.nameChinese],
-            systemPrompt: formData.systemPrompt || `我是你的${formData.nameChinese}助手，專門幫助你整理和管理${formData.nameChinese}相關的知識。`,
-            personality: formData.personality || '友善、專業、樂於助人',
-            chatStyle: formData.chatStyle || '清晰明瞭，提供實用建議',
+      if (isNew) {
+        // 首次創建：只提交名稱和必要欄位，讓後端 AI 自動生成其他內容
+        if (mode === 'island') {
+          submitData = {
+            name: formData.nameChinese,
+            nameChinese: formData.nameChinese,
+            emoji: formData.emoji || '🏝️',
+            color: formData.color || '#FFB3D9',
           }
+        } else {
+          submitData = {
+            name: formData.nameChinese,
+            nameChinese: formData.nameChinese,
+            islandId: formData.islandId,
+            emoji: formData.emoji || '📚',
+            color: formData.color || '#FFB3D9',
+          }
+        }
+      } else {
+        // 編輯：提交所有欄位（使用者可能已修改）
+        const baseData = {
+          name: formData.nameChinese,
+          nameChinese: formData.nameChinese,
+          emoji: formData.emoji,
+          color: formData.color,
+          description: formData.description,
+        }
+
+        submitData = mode === 'island'
+          ? baseData
+          : {
+              ...baseData,
+              islandId: formData.islandId,
+              keywords: formData.keywords,
+              systemPrompt: formData.systemPrompt,
+              personality: formData.personality,
+              chatStyle: formData.chatStyle,
+            }
+      }
 
       if (isNew) {
         await onCreate({
@@ -259,6 +222,16 @@ export const EditModal: React.FC<EditModalProps> = ({
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          {/* 提示說明 */}
+          {isNew && (
+            <div className="bg-blue-900/20 border border-blue-700/50 rounded-lg p-3 text-xs text-blue-300">
+              <span className="font-semibold">💡 首次創建提示：</span>
+              {mode === 'island'
+                ? ' 輸入名稱後，AI 會自動生成描述。你可以在創建後隨時編輯。'
+                : ' 輸入名稱後，AI 會自動生成描述、關鍵字和系統提示詞。你可以在創建後隨時編輯。'}
+            </div>
+          )}
+
           {/* 基本資訊 */}
           <div className="space-y-4">
             {/* 名稱 */}
@@ -274,11 +247,6 @@ export const EditModal: React.FC<EditModalProps> = ({
                 placeholder={mode === 'island' ? '例如：學習成長' : '例如：技術學習'}
                 autoFocus
               />
-              <p className="text-xs text-gray-500 mt-1.5">
-                {mode === 'island'
-                  ? '💡 AI 會根據島嶼名稱自動生成描述和關鍵字'
-                  : '💡 AI 會根據小類別名稱自動生成完整的助手設定'}
-              </p>
             </div>
 
             {/* 島嶼選擇（僅小類別） */}
@@ -301,83 +269,85 @@ export const EditModal: React.FC<EditModalProps> = ({
               </div>
             )}
 
-            {/* AI 生成按鈕 - 極簡版 */}
-            <div className="relative bg-gradient-to-r from-purple-900/30 via-blue-900/30 to-purple-900/30 border-2 border-purple-500/50 rounded-lg p-5 overflow-hidden">
-              {/* 背景光暈效果 */}
-              <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 via-blue-500/10 to-purple-500/10 animate-pulse" />
+            {/* 描述 */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-200 mb-2">
+                描述
+                {isNew && <span className="text-xs text-gray-500 ml-2 font-normal">（創建時自動生成）</span>}
+              </label>
+              <textarea
+                value={formData.description}
+                onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
+                className="w-full px-4 py-3 bg-[#1E1E1E] border-2 border-gray-700 rounded-lg text-gray-200 focus:border-[#d8c47e] focus:outline-none resize-none"
+                rows={3}
+                placeholder={isNew ? 'AI 會自動生成...' : '簡短說明這個分類的用途'}
+              />
+            </div>
 
-              <div className="relative">
-                <div className="flex items-start gap-3 mb-3">
-                  <span className="text-3xl animate-bounce">🤖</span>
-                  <div className="flex-1">
-                    <h5 className="font-bold text-purple-300 text-base flex items-center gap-2">
-                      ✨ AI 自動設定
-                      <span className="px-2 py-0.5 bg-purple-600/50 text-purple-200 rounded-full text-xs font-normal">
-                        Gemini 2.5 Flash
-                      </span>
-                    </h5>
-                    <p className="text-xs text-gray-300 mt-1.5 leading-relaxed">
-                      {mode === 'island'
-                        ? '自動生成描述、關鍵字等所有必要資訊'
-                        : '自動生成描述、關鍵字、系統提示詞等所有設定'}
-                    </p>
-                  </div>
-                </div>
-
-                <button
-                  onClick={handleGenerate}
-                  disabled={isGenerating || !formData.nameChinese.trim()}
-                  className={`w-full px-4 py-3 rounded-lg font-bold transition-all duration-300 ${
-                    isGenerating || !formData.nameChinese.trim()
-                      ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                      : 'bg-gradient-to-r from-purple-600 via-blue-600 to-purple-600 text-white hover:shadow-lg hover:scale-105 active:scale-95'
-                  }`}
-                >
-                  {isGenerating ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <span className="animate-spin">⏳</span>
-                      <span>AI 生成中，請稍候...</span>
-                    </span>
-                  ) : (
-                    <span className="flex items-center justify-center gap-2">
-                      <span>✨</span>
-                      <span>一鍵自動生成所有設定</span>
-                    </span>
-                  )}
-                </button>
-
-                {!formData.nameChinese.trim() && (
-                  <p className="text-xs text-amber-400 mt-2 text-center">
-                    💡 請先輸入名稱後再使用 AI 生成
-                  </p>
-                )}
+            {/* Emoji 和顏色 */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-200 mb-2">Emoji</label>
+                <input
+                  type="text"
+                  value={formData.emoji}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, emoji: e.target.value }))}
+                  className="w-full px-3 py-2 bg-[#1E1E1E] border-2 border-gray-700 rounded-lg text-2xl text-center focus:border-[#d8c47e] focus:outline-none"
+                  placeholder={mode === 'island' ? '🏝️' : '📚'}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-200 mb-2">顏色</label>
+                <input
+                  type="color"
+                  value={formData.color}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, color: e.target.value }))}
+                  className="w-full h-[42px] rounded-lg cursor-pointer"
+                />
               </div>
             </div>
           </div>
 
-          {/* 系統提示詞（僅小類別） */}
+          {/* 小類別進階設定 */}
           {mode === 'subcategory' && (
             <div className="space-y-4 border-t-2 border-gray-700 pt-4">
-              <div className="bg-blue-900/20 border border-blue-700/50 rounded-lg p-3 text-xs text-blue-300">
-                💡 <strong>系統提示詞</strong>決定了 SubAgent 如何分析和整理這個類別的知識。你可以在這裡指定分析格式、重點關注項目等。
+              {/* 關鍵字 */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-200 mb-2">
+                  關鍵字
+                  {isNew && <span className="text-xs text-gray-500 ml-2 font-normal">（創建時自動生成）</span>}
+                </label>
+                <input
+                  type="text"
+                  value={formData.keywords.join(', ')}
+                  onChange={(e) => setFormData((prev) => ({
+                    ...prev,
+                    keywords: e.target.value.split(',').map(k => k.trim()).filter(Boolean)
+                  }))}
+                  className="w-full px-4 py-3 bg-[#1E1E1E] border-2 border-gray-700 rounded-lg text-gray-200 focus:border-[#d8c47e] focus:outline-none"
+                  placeholder={isNew ? 'AI 會自動生成...' : '用逗號分隔，例如：技術, 程式, 學習'}
+                />
+                <p className="text-xs text-gray-500 mt-1.5">
+                  💡 Chief Agent 會根據這些關鍵字來分類知識
+                </p>
               </div>
 
               {/* 系統提示詞 */}
               <div>
-                <label className="flex items-center gap-2 text-sm font-semibold text-purple-300 mb-2">
-                  <span className="text-2xl">🤖</span>
-                  <span>系統提示詞</span>
-                  <span className="text-xs text-gray-500 font-normal">（可選 - 留空則使用 AI 生成的預設值）</span>
+                <label className="block text-sm font-semibold text-purple-300 mb-2">
+                  <span className="text-lg mr-1">🤖</span>
+                  系統提示詞
+                  {isNew && <span className="text-xs text-gray-500 ml-2 font-normal">（創建時自動生成）</span>}
                 </label>
                 <textarea
                   value={formData.systemPrompt}
                   onChange={(e) => setFormData((prev) => ({ ...prev, systemPrompt: e.target.value }))}
                   className="w-full px-4 py-3 bg-[#1E1E1E] border-2 border-purple-700/30 rounded-lg text-gray-200 focus:border-purple-500 focus:outline-none resize-none font-mono text-sm leading-relaxed"
                   rows={6}
-                  placeholder="例如：整理技術學習筆記時，請重點標註：&#10;1. 核心概念和原理&#10;2. 實際應用場景&#10;3. 常見問題和解決方案&#10;4. 相關技術棧的關聯"
+                  placeholder={isNew ? 'AI 會自動生成...' : '例如：整理技術學習筆記時，請重點標註：\n1. 核心概念和原理\n2. 實際應用場景\n3. 常見問題和解決方案'}
                 />
-                <p className="text-xs text-gray-500 mt-2">
-                  💬 你可以告訴 SubAgent 如何分析知識、採用什麼格式、關注哪些重點等
+                <p className="text-xs text-gray-500 mt-1.5">
+                  💬 告訴 SubAgent 如何分析知識、採用什麼格式、關注哪些重點
                 </p>
               </div>
             </div>
