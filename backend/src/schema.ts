@@ -108,6 +108,7 @@ const baseTypeDefs = gql`
     id: ID!
     userId: ID!
     assistantId: ID  # Optional: null for dynamic SubAgent memories
+    islandId: ID     # Optional: Island ID for custom island memories
 
     # Content
     rawContent: String!
