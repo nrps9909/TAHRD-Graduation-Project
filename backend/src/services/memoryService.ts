@@ -185,7 +185,6 @@ export class MemoryService {
       rawContent?: string
       emoji?: string
       category?: AssistantType
-      subcategoryId?: string | null
       tags?: string[]
       fileUrls?: string[]
       fileNames?: string[]
@@ -206,34 +205,14 @@ export class MemoryService {
         throw new Error('無權修改此記憶')
       }
 
-      // 如果更新了 subcategoryId，需要同步更新 category
-      let categoryToUpdate = updates.category
-      if (updates.subcategoryId !== undefined) {
-        if (updates.subcategoryId === null) {
-          // 如果清除了自定義分類，保持現有的 category 或使用 LIFE
-          categoryToUpdate = updates.category || existing.category || AssistantType.LIFE
-        } else {
-          // 查詢 subcategory 的 name，並將其作為 category
-          const subcategory = await prisma.subcategory.findUnique({
-            where: { id: updates.subcategoryId }
-          })
-          if (subcategory) {
-            // 將 subcategory.name 轉換為 AssistantType
-            categoryToUpdate = subcategory.name as AssistantType
-          }
-        }
-      }
-
       const memory = await prisma.memory.update({
         where: { id },
         data: {
           ...updates,
-          category: categoryToUpdate,
           archivedAt: updates.isArchived ? new Date() : null
         },
         include: {
-          assistant: true,
-          subcategory: true
+          assistant: true
         }
       })
 

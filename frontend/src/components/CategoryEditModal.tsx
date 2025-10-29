@@ -8,7 +8,6 @@ import { motion } from 'framer-motion'
 import { MutationFunction } from '@apollo/client'
 import {
   Island,
-  Subcategory,
 } from '../graphql/category'
 
 // 表單數據類型
@@ -17,11 +16,6 @@ interface FormData {
   emoji: string
   color: string
   description: string
-  keywords: string[]
-  systemPrompt: string
-  personality: string
-  chatStyle: string
-  islandId: string
   name?: string
 }
 
@@ -34,24 +28,9 @@ interface IslandSubmitData {
   description?: string
 }
 
-interface SubcategorySubmitData {
-  name: string
-  nameChinese: string
-  emoji: string
-  color: string
-  islandId: string
-  description?: string
-  keywords?: string[]
-  systemPrompt?: string
-  personality?: string
-  chatStyle?: string
-}
-
 interface EditModalProps {
   editState: {
-    mode: 'island' | 'subcategory'
     island?: Island
-    subcategory?: Subcategory
     isNew: boolean
   }
   islands: Island[]
@@ -69,7 +48,7 @@ export const EditModal: React.FC<EditModalProps> = ({
   onUpdate,
   onRefetch,
 }) => {
-  const { mode, island, subcategory, isNew } = editState
+  const { island, isNew } = editState
 
   // 表單狀態
   const [formData, setFormData] = useState<FormData>({
@@ -77,55 +56,27 @@ export const EditModal: React.FC<EditModalProps> = ({
     emoji: '',
     color: '',
     description: '',
-    keywords: [],
-    systemPrompt: '',
-    personality: '',
-    chatStyle: '',
-    islandId: '',
   })
-
 
   // 初始化表單數據
   useEffect(() => {
-    if (mode === 'island' && !isNew && island) {
+    if (!isNew && island) {
       setFormData({
         nameChinese: island.nameChinese || '',
         emoji: island.emoji || '🏝️',
         color: island.color || '#FFB3D9',
         description: island.description || '',
-        keywords: [],
-        systemPrompt: '',
-        personality: '',
-        chatStyle: '',
-        islandId: '',
-      })
-    } else if (mode === 'subcategory' && !isNew && subcategory) {
-      setFormData({
-        nameChinese: subcategory.nameChinese || '',
-        emoji: subcategory.emoji || '📚',
-        color: subcategory.color || '#FFB3D9',
-        description: subcategory.description || '',
-        keywords: subcategory.keywords || [],
-        systemPrompt: subcategory.systemPrompt || '',
-        personality: subcategory.personality || '',
-        chatStyle: subcategory.chatStyle || '',
-        islandId: subcategory.islandId || '',
       })
     } else if (isNew) {
       // 新增時的預設值
       setFormData({
         nameChinese: '',
-        emoji: mode === 'island' ? '🏝️' : '📚',
+        emoji: '🏝️',
         color: '#FFB3D9',
         description: '',
-        keywords: [],
-        systemPrompt: '',
-        personality: '',
-        chatStyle: '',
-        islandId: islands[0]?.id || '',
       })
     }
-  }, [mode, island, subcategory, isNew, islands])
+  }, [island, isNew])
 
   // 提交表單
   const handleSubmit = async () => {
@@ -134,58 +85,29 @@ export const EditModal: React.FC<EditModalProps> = ({
       return
     }
 
-    if (mode === 'subcategory' && !formData.islandId) {
-      alert('請選擇所屬島嶼')
-      return
-    }
-
     try {
       // 準備提交數據
-      let submitData: IslandSubmitData | SubcategorySubmitData
+      let submitData: IslandSubmitData
 
       if (isNew) {
         // 首次創建：提交名稱和可選的描述提示，讓後端 AI 根據提示生成更精準的內容
-        if (mode === 'island') {
-          submitData = {
-            name: formData.nameChinese,
-            nameChinese: formData.nameChinese,
-            emoji: formData.emoji || '🏝️',
-            color: formData.color || '#FFB3D9',
-            // 如果使用者有填寫描述，作為 AI 生成的提示
-            ...(formData.description.trim() && { description: formData.description.trim() }),
-          } as IslandSubmitData
-        } else {
-          submitData = {
-            name: formData.nameChinese,
-            nameChinese: formData.nameChinese,
-            islandId: formData.islandId,
-            emoji: formData.emoji || '📚',
-            color: formData.color || '#FFB3D9',
-            // 如果使用者有填寫描述或其他欄位，作為 AI 生成的提示
-            ...(formData.description.trim() && { description: formData.description.trim() }),
-            ...(formData.systemPrompt.trim() && { systemPrompt: formData.systemPrompt.trim() }),
-          } as SubcategorySubmitData
-        }
+        submitData = {
+          name: formData.nameChinese,
+          nameChinese: formData.nameChinese,
+          emoji: formData.emoji || '🏝️',
+          color: formData.color || '#FFB3D9',
+          // 如果使用者有填寫描述，作為 AI 生成的提示
+          ...(formData.description.trim() && { description: formData.description.trim() }),
+        } as IslandSubmitData
       } else {
         // 編輯：提交所有欄位（使用者可能已修改）
-        const baseData = {
+        submitData = {
           name: formData.nameChinese,
           nameChinese: formData.nameChinese,
           emoji: formData.emoji,
           color: formData.color,
           description: formData.description,
-        }
-
-        submitData = mode === 'island'
-          ? baseData as IslandSubmitData
-          : {
-              ...baseData,
-              islandId: formData.islandId,
-              keywords: formData.keywords,
-              systemPrompt: formData.systemPrompt,
-              personality: formData.personality,
-              chatStyle: formData.chatStyle,
-            } as SubcategorySubmitData
+        } as IslandSubmitData
       }
 
       if (isNew) {
@@ -193,10 +115,9 @@ export const EditModal: React.FC<EditModalProps> = ({
           variables: { input: submitData },
         })
       } else {
-        const id = mode === 'island' ? island!.id : subcategory!.id
         await onUpdate({
           variables: {
-            id,
+            id: island!.id,
             input: submitData,
           },
         })
@@ -211,13 +132,7 @@ export const EditModal: React.FC<EditModalProps> = ({
     }
   }
 
-  const title = isNew
-    ? mode === 'island'
-      ? '新增島嶼'
-      : '新增小類別'
-    : mode === 'island'
-    ? '編輯島嶼'
-    : '編輯小類別'
+  const title = isNew ? '新增島嶼' : '編輯島嶼'
 
   return (
     <motion.div
@@ -251,9 +166,7 @@ export const EditModal: React.FC<EditModalProps> = ({
           {isNew && (
             <div className="bg-blue-900/20 border border-blue-700/50 rounded-lg p-3 text-xs text-blue-300">
               <span className="font-semibold">💡 首次創建提示：</span>
-              {mode === 'island'
-                ? ' 輸入名稱後，AI 會自動生成描述。你可以選擇性地在「描述」欄位輸入一些提示（例如：我女朋友），讓 AI 生成更精準的內容。創建後隨時可編輯。'
-                : ' 輸入名稱後，AI 會自動生成描述、關鍵字和系統提示詞。你可以選擇性地在「描述」或「系統提示詞」欄位輸入一些提示，讓 AI 生成更精準的內容。創建後隨時可編輯。'}
+              輸入名稱後，AI 會自動生成描述。你可以選擇性地在「描述」欄位輸入一些提示（例如：我女朋友），讓 AI 生成更精準的內容。創建後隨時可編輯。
             </div>
           )}
 
@@ -262,37 +175,17 @@ export const EditModal: React.FC<EditModalProps> = ({
             {/* 名稱 */}
             <div>
               <label className="block text-sm font-semibold text-gray-200 mb-2">
-                {mode === 'island' ? '島嶼名稱' : '小類別名稱'} <span className="text-red-400">*</span>
+                島嶼名稱 <span className="text-red-400">*</span>
               </label>
               <input
                 type="text"
                 value={formData.nameChinese}
                 onChange={(e) => setFormData((prev) => ({ ...prev, nameChinese: e.target.value }))}
                 className="w-full px-4 py-3 bg-[#1E1E1E] border-2 border-gray-700 rounded-lg text-gray-200 text-lg focus:border-[#d8c47e] focus:outline-none transition-colors"
-                placeholder={mode === 'island' ? '例如：學習成長' : '例如：技術學習'}
+                placeholder="例如：學習成長"
                 autoFocus
               />
             </div>
-
-            {/* 島嶼選擇（僅小類別） */}
-            {mode === 'subcategory' && (
-              <div>
-                <label className="block text-sm font-semibold text-gray-200 mb-2">
-                  所屬島嶼 <span className="text-red-400">*</span>
-                </label>
-                <select
-                  value={formData.islandId}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, islandId: e.target.value }))}
-                  className="w-full px-4 py-3 bg-[#1E1E1E] border-2 border-gray-700 rounded-lg text-gray-200 focus:border-[#d8c47e] focus:outline-none"
-                >
-                  {islands.map((island) => (
-                    <option key={island.id} value={island.id}>
-                      {island.emoji} {island.nameChinese}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
 
             {/* 描述 */}
             <div>
@@ -332,51 +225,6 @@ export const EditModal: React.FC<EditModalProps> = ({
               </div>
             </div>
           </div>
-
-          {/* 小類別進階設定 */}
-          {mode === 'subcategory' && (
-            <div className="space-y-4 border-t-2 border-gray-700 pt-4">
-              {/* 關鍵字 */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-200 mb-2">
-                  關鍵字
-                  {isNew && <span className="text-xs text-gray-500 ml-2 font-normal">（創建時自動生成）</span>}
-                </label>
-                <input
-                  type="text"
-                  value={formData.keywords.join(', ')}
-                  onChange={(e) => setFormData((prev) => ({
-                    ...prev,
-                    keywords: e.target.value.split(',').map(k => k.trim()).filter(Boolean)
-                  }))}
-                  className="w-full px-4 py-3 bg-[#1E1E1E] border-2 border-gray-700 rounded-lg text-gray-200 focus:border-[#d8c47e] focus:outline-none"
-                  placeholder={isNew ? 'AI 會自動生成...' : '用逗號分隔，例如：技術, 程式, 學習'}
-                />
-                <p className="text-xs text-gray-500 mt-1.5">
-                  💡 Chief Agent 會根據這些關鍵字來分類知識
-                </p>
-              </div>
-
-              {/* 系統提示詞 */}
-              <div>
-                <label className="block text-sm font-semibold text-purple-300 mb-2">
-                  <span className="text-lg mr-1">🤖</span>
-                  系統提示詞
-                  {isNew && <span className="text-xs text-gray-500 ml-2 font-normal">（創建時自動生成）</span>}
-                </label>
-                <textarea
-                  value={formData.systemPrompt}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, systemPrompt: e.target.value }))}
-                  className="w-full px-4 py-3 bg-[#1E1E1E] border-2 border-purple-700/30 rounded-lg text-gray-200 focus:border-purple-500 focus:outline-none resize-none font-mono text-sm leading-relaxed"
-                  rows={6}
-                  placeholder={isNew ? 'AI 會自動生成...' : '例如：整理技術學習筆記時，請重點標註：\n1. 核心概念和原理\n2. 實際應用場景\n3. 常見問題和解決方案'}
-                />
-                <p className="text-xs text-gray-500 mt-1.5">
-                  💬 告訴 SubAgent 如何分析知識、採用什麼格式、關注哪些重點
-                </p>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Footer */}

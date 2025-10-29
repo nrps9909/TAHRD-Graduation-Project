@@ -2,10 +2,9 @@
  * Category Management Modal V2 - 重新設計版本
  *
  * 特色：
- * 1. 樹狀結構顯示島嶼和小類別
+ * 1. 管理島嶼（大岛屿）
  * 2. AI 自動生成 Prompt
- * 3. 可視化編輯 Prompt
- * 4. 更直觀的用戶體驗
+ * 3. 更直觀的用戶體驗
  */
 
 import React, { useState } from 'react'
@@ -16,12 +15,8 @@ import {
   CREATE_ISLAND,
   UPDATE_ISLAND,
   DELETE_ISLAND,
-  CREATE_SUBCATEGORY,
-  UPDATE_SUBCATEGORY,
-  DELETE_SUBCATEGORY,
   INITIALIZE_CATEGORIES,
   Island,
-  Subcategory,
 } from '../graphql/category'
 import { EditModal } from './CategoryEditModal'
 
@@ -30,12 +25,8 @@ interface CategoryManagementModalV2Props {
   onClose: () => void
 }
 
-type EditMode = 'island' | 'subcategory'
-
 interface EditState {
-  mode: EditMode
   island?: Island
-  subcategory?: Subcategory
   isNew: boolean
 }
 
@@ -58,22 +49,13 @@ export const CategoryManagementModalV2: React.FC<CategoryManagementModalV2Props>
   const [deleteIsland] = useMutation(DELETE_ISLAND, {
     refetchQueries: [{ query: GET_ISLANDS }],
   })
-  const [createSubcategory] = useMutation(CREATE_SUBCATEGORY, {
-    refetchQueries: [{ query: GET_ISLANDS }],
-  })
-  const [updateSubcategory] = useMutation(UPDATE_SUBCATEGORY, {
-    refetchQueries: [{ query: GET_ISLANDS }],
-  })
-  const [deleteSubcategory] = useMutation(DELETE_SUBCATEGORY, {
-    refetchQueries: [{ query: GET_ISLANDS }],
-  })
 
   const islands: Island[] = data?.islands || []
   const isLastIsland = islands.length <= 1
 
   // 初始化分類系統
   const handleInitialize = async () => {
-    if (confirm('確定要初始化預設的 5 個島嶼和小類別嗎？')) {
+    if (confirm('確定要初始化預設的 5 個島嶼嗎？')) {
       try {
         await initializeCategories()
         await refetch()
@@ -85,30 +67,9 @@ export const CategoryManagementModalV2: React.FC<CategoryManagementModalV2Props>
     }
   }
 
-  // 切換島嶼展開/收合
-  const toggleIsland = (islandId: string) => {
-    const newExpanded = new Set(expandedIslands)
-    if (newExpanded.has(islandId)) {
-      newExpanded.delete(islandId)
-    } else {
-      newExpanded.add(islandId)
-    }
-    setExpandedIslands(newExpanded)
-  }
-
   // 開始編輯
-  const startEdit = (mode: EditMode, item?: Island | Subcategory, isNew = false, islandId?: string) => {
-    if (mode === 'island') {
-      setEditState({ mode, island: item as Island, isNew })
-    } else if (mode === 'subcategory') {
-      const subcategoryData = item as Subcategory
-      // 如果提供了 islandId（新增或編輯時），確保設定正確的 islandId
-      if (islandId) {
-        setEditState({ mode, subcategory: { ...subcategoryData, islandId } as Subcategory, isNew })
-      } else {
-        setEditState({ mode, subcategory: subcategoryData, isNew })
-      }
-    }
+  const startEdit = (item?: Island, isNew = false) => {
+    setEditState({ island: item, isNew })
   }
 
   // 關閉編輯
@@ -123,11 +84,7 @@ export const CategoryManagementModalV2: React.FC<CategoryManagementModalV2Props>
       return
     }
 
-    let confirmMessage = `確定要刪除島嶼「${island.nameChinese}」嗎？`
-
-    if (island.subcategoryCount > 0) {
-      confirmMessage = `⚠️ 刪除島嶼「${island.nameChinese}」將會同時刪除其下的 ${island.subcategoryCount} 個小類別。\n\n相關的記憶會保留，但會失去分類標籤。\n\n確定要繼續嗎？`
-    }
+    const confirmMessage = `確定要刪除島嶼「${island.nameChinese}」嗎？\n\n相關的記憶會保留，但會失去分類標籤。`
 
     if (confirm(confirmMessage)) {
       try {
@@ -140,24 +97,6 @@ export const CategoryManagementModalV2: React.FC<CategoryManagementModalV2Props>
             ? error.message
             : (error as { graphQLErrors?: Array<{ message: string }> })?.graphQLErrors?.[0]?.message || '刪除失敗'
         alert(errorMessage)
-      }
-    }
-  }
-
-  // 刪除小類別
-  const handleDeleteSubcategory = async (subcategory: Subcategory) => {
-    if (subcategory.memoryCount > 0) {
-      alert('請先刪除該小類別下的所有記憶')
-      return
-    }
-
-    if (confirm(`確定要刪除小類別「${subcategory.nameChinese}」嗎？`)) {
-      try {
-        await deleteSubcategory({ variables: { id: subcategory.id } })
-        alert('刪除成功！')
-      } catch (error) {
-        console.error('刪除失敗:', error)
-        alert('刪除失敗，請查看控制台')
       }
     }
   }
@@ -210,13 +149,13 @@ export const CategoryManagementModalV2: React.FC<CategoryManagementModalV2Props>
                   <div className="flex-1">
                     <h3 className="font-semibold text-purple-300 text-sm mb-2">💡 極簡操作流程</h3>
                     <ul className="text-xs text-gray-400 space-y-1">
-                      <li>1. 輸入<span className="text-[#d8c47e]">名稱</span>（島嶼或小類別）</li>
+                      <li>1. 輸入<span className="text-[#d8c47e]">島嶼名稱</span></li>
                       <li>2. 點擊「<span className="text-purple-400">一鍵自動生成</span>」→ AI 自動填充所有設定</li>
-                      <li>3. （可選）自訂<span className="text-blue-400">系統提示詞</span>來調整 SubAgent 分析格式</li>
+                      <li>3. （可選）自訂島嶼的描述和外觀</li>
                     </ul>
                   </div>
                   <button
-                    onClick={() => startEdit('island', undefined, true)}
+                    onClick={() => startEdit(undefined, true)}
                     className="px-4 py-2 bg-gradient-to-r from-[#d8c47e] to-[#e0cc86] text-[#191919] rounded-lg hover:shadow-lg transition-all duration-300 hover:scale-105 text-sm font-medium whitespace-nowrap"
                   >
                     ✨ 新增島嶼
@@ -232,20 +171,15 @@ export const CategoryManagementModalV2: React.FC<CategoryManagementModalV2Props>
                 </div>
               )}
 
-              {/* 島嶼樹狀列表 */}
+              {/* 島嶼列表 */}
               <div className="space-y-3">
                 {islands.map((island) => (
                   <IslandCard
                     key={island.id}
                     island={island}
-                    isExpanded={expandedIslands.has(island.id)}
                     isLastIsland={isLastIsland}
-                    onToggle={() => toggleIsland(island.id)}
-                    onEdit={() => startEdit('island', island, false)}
+                    onEdit={() => startEdit(island, false)}
                     onDelete={() => handleDeleteIsland(island)}
-                    onAddSubcategory={() => startEdit('subcategory', undefined, true, island.id)}
-                    onEditSubcategory={(sub) => startEdit('subcategory', sub, false, island.id)}
-                    onDeleteSubcategory={handleDeleteSubcategory}
                   />
                 ))}
               </div>
@@ -256,8 +190,7 @@ export const CategoryManagementModalV2: React.FC<CategoryManagementModalV2Props>
         {/* Footer */}
         <div className="px-4 md:px-6 py-3 md:py-4 border-t border-gray-800 bg-[#2a2a2a] flex justify-between items-center">
           <div className="text-xs md:text-sm text-gray-400">
-            {islands.length} 個島嶼，
-            {islands.reduce((sum, i) => sum + (i.subcategoryCount || 0), 0)} 個小類別
+            {islands.length} 個島嶼
           </div>
           <button
             onClick={onClose}
@@ -275,8 +208,8 @@ export const CategoryManagementModalV2: React.FC<CategoryManagementModalV2Props>
             editState={editState}
             islands={islands}
             onClose={closeEdit}
-            onCreate={editState.mode === 'island' ? createIsland : createSubcategory}
-            onUpdate={editState.mode === 'island' ? updateIsland : updateSubcategory}
+            onCreate={createIsland}
+            onUpdate={updateIsland}
             onRefetch={refetch}
           />
         )}
@@ -289,28 +222,17 @@ export const CategoryManagementModalV2: React.FC<CategoryManagementModalV2Props>
 
 interface IslandCardProps {
   island: Island
-  isExpanded: boolean
   isLastIsland: boolean
-  onToggle: () => void
   onEdit: () => void
   onDelete: () => void
-  onAddSubcategory: () => void
-  onEditSubcategory: (sub: Subcategory) => void
-  onDeleteSubcategory: (sub: Subcategory) => void
 }
 
 const IslandCard: React.FC<IslandCardProps> = ({
   island,
-  isExpanded,
   isLastIsland,
-  onToggle,
   onEdit,
   onDelete,
-  onAddSubcategory,
-  onEditSubcategory,
-  onDeleteSubcategory,
 }) => {
-  const hasSubcategories = island.subcategories && island.subcategories.length > 0
 
   return (
     <motion.div
@@ -322,14 +244,6 @@ const IslandCard: React.FC<IslandCardProps> = ({
       {/* Island Header */}
       <div className="bg-[#2a2a2a] p-3 md:p-4">
         <div className="flex items-center gap-3">
-          {/* 展開/收合按鈕 */}
-          <button
-            onClick={onToggle}
-            className="text-xl text-gray-400 hover:text-gray-200 transition-colors"
-          >
-            {isExpanded ? '▼' : '▶'}
-          </button>
-
           {/* Emoji */}
           <div className="text-2xl">{island.emoji}</div>
 
@@ -347,7 +261,6 @@ const IslandCard: React.FC<IslandCardProps> = ({
               <p className="text-xs md:text-sm text-gray-400 mt-1">{island.description}</p>
             )}
             <div className="flex gap-3 mt-2 text-xs text-gray-500">
-              <span>📚 {island.subcategoryCount} 個小類別</span>
               <span>💭 {island.memoryCount} 條記憶</span>
             </div>
           </div>
@@ -375,157 +288,7 @@ const IslandCard: React.FC<IslandCardProps> = ({
           </div>
         </div>
       </div>
-
-      {/* Subcategories */}
-      <AnimatePresence>
-        {isExpanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="overflow-hidden"
-          >
-            <div className="bg-[#1E1E1E] p-3 md:p-4 space-y-3">
-              {/* 新增小類別按鈕 */}
-              <button
-                onClick={onAddSubcategory}
-                className="w-full py-3 border-2 border-dashed border-[#d8c47e]/30 rounded-lg text-[#d8c47e] hover:bg-[#d8c47e]/10 hover:border-[#d8c47e] transition-all duration-300 text-sm font-medium flex items-center justify-center gap-2"
-              >
-                <span className="text-lg">✨</span>
-                <span>新增小類別到「{island.nameChinese}」</span>
-              </button>
-
-              {/* 小類別列表 */}
-              {hasSubcategories && (
-                <div className="space-y-2">
-                  {island.subcategories!.map((sub) => (
-                    <SubcategoryCard
-                      key={sub.id}
-                      subcategory={sub}
-                      onEdit={() => onEditSubcategory(sub)}
-                      onDelete={() => onDeleteSubcategory(sub)}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </motion.div>
-  )
-}
-
-// ============ Subcategory Card Component ============
-
-interface SubcategoryCardProps {
-  subcategory: Subcategory
-  onEdit: () => void
-  onDelete: () => void
-}
-
-const SubcategoryCard: React.FC<SubcategoryCardProps> = ({
-  subcategory,
-  onEdit,
-  onDelete,
-}) => {
-  const [showPrompt, setShowPrompt] = React.useState(false)
-
-  return (
-    <div
-      className="bg-[#2a2a2a] rounded-lg p-3 border-l-2"
-      style={{ borderLeftColor: subcategory.color }}
-    >
-      <div className="flex items-start gap-3">
-        <div className="text-xl flex-shrink-0">{subcategory.emoji}</div>
-
-        <div className="flex-1 min-w-0">
-          <div className="flex items-baseline gap-2">
-            <h4 className="font-semibold text-gray-200 text-sm">
-              {subcategory.nameChinese}
-            </h4>
-            {subcategory.name && (
-              <span className="text-xs text-gray-500">{subcategory.name}</span>
-            )}
-          </div>
-
-          {subcategory.description && (
-            <p className="text-xs text-gray-400 mt-1">{subcategory.description}</p>
-          )}
-
-          {subcategory.keywords && subcategory.keywords.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-2">
-              {subcategory.keywords.slice(0, 5).map((keyword, idx) => (
-                <span
-                  key={idx}
-                  className="px-2 py-0.5 bg-gray-700 text-gray-300 rounded text-xs"
-                >
-                  {keyword}
-                </span>
-              ))}
-              {subcategory.keywords.length > 5 && (
-                <span className="px-2 py-0.5 text-gray-500 text-xs">
-                  +{subcategory.keywords.length - 5}
-                </span>
-              )}
-            </div>
-          )}
-
-          <div className="flex gap-3 mt-2 text-xs text-gray-500">
-            <span>💭 {subcategory.memoryCount} 條記憶</span>
-            <span>💬 {subcategory.chatCount} 次對話</span>
-            {subcategory.systemPrompt && (
-              <button
-                onClick={() => setShowPrompt(!showPrompt)}
-                className="text-purple-400 hover:text-purple-300 transition-colors"
-              >
-                {showPrompt ? '🔽 隱藏 Prompt' : '🤖 查看 Prompt'}
-              </button>
-            )}
-          </div>
-
-          {/* Prompt 預覽 */}
-          {showPrompt && subcategory.systemPrompt && (
-            <div className="mt-3 p-3 bg-[#1E1E1E] rounded border border-gray-700">
-              <div className="space-y-2 text-xs">
-                <div>
-                  <span className="text-purple-400 font-semibold">系統提示詞：</span>
-                  <p className="text-gray-400 mt-1 leading-relaxed">{subcategory.systemPrompt}</p>
-                </div>
-                {subcategory.personality && (
-                  <div>
-                    <span className="text-blue-400 font-semibold">個性：</span>
-                    <span className="text-gray-400 ml-2">{subcategory.personality}</span>
-                  </div>
-                )}
-                {subcategory.chatStyle && (
-                  <div>
-                    <span className="text-green-400 font-semibold">對話風格：</span>
-                    <span className="text-gray-400 ml-2">{subcategory.chatStyle}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="flex gap-2">
-          <button
-            onClick={onEdit}
-            className="px-2 py-1 text-xs text-blue-400 hover:text-blue-300 transition-colors"
-          >
-            編輯
-          </button>
-          <button
-            onClick={onDelete}
-            className="px-2 py-1 text-xs text-red-400 hover:text-red-300 transition-colors"
-          >
-            刪除
-          </button>
-        </div>
-      </div>
-    </div>
   )
 }
 

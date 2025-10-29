@@ -108,7 +108,6 @@ const baseTypeDefs = gql`
     id: ID!
     userId: ID!
     assistantId: ID  # Optional: null for dynamic SubAgent memories
-    subcategoryId: ID  # Optional: used by dynamic SubAgents
 
     # Content
     rawContent: String!
@@ -169,7 +168,6 @@ const baseTypeDefs = gql`
     # Relations
     user: User!
     assistant: Assistant  # Optional: null for dynamic SubAgent memories
-    subcategory: Subcategory  # Optional: used by dynamic SubAgents
     chatMessages: [ChatMessage!]!
   }
 
@@ -457,7 +455,6 @@ const baseTypeDefs = gql`
     content: String!
     tags: [String!]
     category: AssistantType
-    subcategoryId: ID
     emoji: String
   }
 
@@ -466,7 +463,6 @@ const baseTypeDefs = gql`
     rawContent: String
     emoji: String
     category: AssistantType
-    subcategoryId: ID
     tags: [String!]
     fileUrls: [String!]
     fileNames: [String!]

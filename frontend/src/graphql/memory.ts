@@ -13,7 +13,6 @@ export const MEMORY_FRAGMENT = gql`
     title
     emoji
     category
-    subcategoryId
     tags
     keyPoints
     aiSentiment
@@ -44,12 +43,6 @@ export const MEMORY_FRAGMENT = gql`
     assistant {
       id
       name
-      nameChinese
-      emoji
-      color
-    }
-    subcategory {
-      id
       nameChinese
       emoji
       color

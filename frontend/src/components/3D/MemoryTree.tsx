@@ -22,7 +22,7 @@ interface MemoryTreeProps {
 
 /**
  * 根據島嶼顏色計算樹的顏色（不再使用 importance）
- * @param islandColor 島嶼/小類別主題色
+ * @param islandColor 島嶼主題色
  */
 function calculateTreeColor(islandColor: string): string {
   const baseColor = new THREE.Color(islandColor)
@@ -78,10 +78,10 @@ function generateTreeParams(seed: number) {
 export function MemoryTree({ memory, islandColor, position, seed, onClick }: MemoryTreeProps) {
   const groupRef = useRef<Group>(null)
 
-  // 計算樹的顏色（優先使用 subcategory.color，否則使用 islandColor）
+  // 計算樹的顏色（使用 islandColor）
   const treeColor = useMemo(
-    () => calculateTreeColor(memory.subcategory?.color || islandColor),
-    [islandColor, memory.subcategory]
+    () => calculateTreeColor(islandColor),
+    [islandColor]
   )
 
   // 生成樹的隨機參數

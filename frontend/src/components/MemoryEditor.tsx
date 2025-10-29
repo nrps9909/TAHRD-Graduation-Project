@@ -1,15 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useMutation, useQuery } from '@apollo/client'
+import { useMutation } from '@apollo/client'
 import { UPDATE_MEMORY, DELETE_MEMORY, PIN_MEMORY, UNPIN_MEMORY } from '../graphql/memory'
 import type { Memory } from '../graphql/memory'
-import { GET_SUBCATEGORIES, Subcategory } from '../graphql/category'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
 import rehypeSanitize from 'rehype-sanitize'
 import SaveStatusIndicator from './Editor/SaveStatusIndicator'
 import TagManager from './Editor/TagManager'
-import CategorySelector from './Editor/CategorySelector'
 import ViewModeToggle, { type ViewMode } from './Editor/ViewModeToggle'
 
 interface MemoryEditorProps {
@@ -21,7 +19,6 @@ interface MemoryEditorProps {
 export default function MemoryEditor({ memory, onClose, onUpdate }: MemoryEditorProps) {
   const [title, setTitle] = useState(memory.title || '')
   const [content, setContent] = useState(memory.rawContent || memory.summary || '')
-  const [subcategoryId, setSubcategoryId] = useState<string | null>(memory.subcategoryId || null)
   const [tags, setTags] = useState<string[]>(memory.tags)
   const [isSaving, setIsSaving] = useState(false)
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
@@ -31,17 +28,13 @@ export default function MemoryEditor({ memory, onClose, onUpdate }: MemoryEditor
   const [attachments, setAttachments] = useState<Array<{url: string, name: string, type: string}>>([])
   const [viewMode, setViewMode] = useState<ViewMode>('preview')
 
-  // 載入自訂分類
-  const { data: subcategoriesData } = useQuery(GET_SUBCATEGORIES)
-  const subcategories: Subcategory[] = subcategoriesData?.subcategories || []
-
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const previewRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>()
 
   // 用 ref 追蹤最新的編輯器狀態，避免閉包問題
-  const latestStateRef = useRef({ title, content, subcategoryId, tags, attachments })
+  const latestStateRef = useRef({ title, content, tags, attachments })
 
   // 追蹤是否有進行中的保存請求
   const savingInProgressRef = useRef(false)
@@ -75,19 +68,18 @@ export default function MemoryEditor({ memory, onClose, onUpdate }: MemoryEditor
 
   // 更新最新狀態的 ref
   useEffect(() => {
-    latestStateRef.current = { title, content, subcategoryId, tags, attachments }
-  }, [title, content, subcategoryId, tags, attachments])
+    latestStateRef.current = { title, content, tags, attachments }
+  }, [title, content, tags, attachments])
 
   // 追蹤未保存的變更
   useEffect(() => {
     const hasChanges = (
       title !== (memory.title || '') ||
       content !== (memory.rawContent || memory.summary || '') ||
-      JSON.stringify(tags) !== JSON.stringify(memory.tags) ||
-      subcategoryId !== (memory.subcategoryId || null)
+      JSON.stringify(tags) !== JSON.stringify(memory.tags)
     )
     setHasUnsavedChanges(hasChanges)
-  }, [title, content, tags, subcategoryId, memory])
+  }, [title, content, tags, memory])
 
   useEffect(() => {
     document.body.style.overflow = 'hidden'
@@ -133,7 +125,6 @@ export default function MemoryEditor({ memory, onClose, onUpdate }: MemoryEditor
             title: currentState.title,
             rawContent: currentState.content,
             tags: currentState.tags,
-            subcategoryId: currentState.subcategoryId,
             fileUrls: currentState.attachments.map(a => a.url),
             fileNames: currentState.attachments.map(a => a.name),
             fileTypes: currentState.attachments.map(a => a.type),
@@ -188,7 +179,7 @@ export default function MemoryEditor({ memory, onClose, onUpdate }: MemoryEditor
     }
     // 注意：不要把 autoSave 放在依賴中，避免無限循環
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [title, content, tags, subcategoryId, attachments])
+  }, [title, content, tags, attachments])
 
   // 安全關閉 - 確保保存後再關閉
   const handleClose = async () => {
@@ -485,16 +476,6 @@ export default function MemoryEditor({ memory, onClose, onUpdate }: MemoryEditor
                     }}
                   />
 
-                  {/* 分類選擇器 */}
-                  <div className="mb-4">
-                    <label className="text-xs text-gray-400 mb-2 block">分類</label>
-                    <CategorySelector
-                      subcategories={subcategories}
-                      selectedSubcategoryId={subcategoryId}
-                      onSelectSubcategory={setSubcategoryId}
-                    />
-                  </div>
-
                   {/* 標籤 */}
                   <div className="mb-6">
                     <TagManager
@@ -605,16 +586,6 @@ export default function MemoryEditor({ memory, onClose, onUpdate }: MemoryEditor
                         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif',
                       }}
                     />
-
-                    {/* 分類選擇器 */}
-                    <div className="mb-4">
-                      <label className="text-xs text-gray-400 mb-2 block">分類</label>
-                      <CategorySelector
-                        subcategories={subcategories}
-                        selectedSubcategoryId={subcategoryId}
-                        onSelectSubcategory={setSubcategoryId}
-                      />
-                    </div>
 
                     {/* 標籤 */}
                     <div className="mb-6">

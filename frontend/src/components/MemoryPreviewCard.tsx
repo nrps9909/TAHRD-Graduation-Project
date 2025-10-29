@@ -67,7 +67,7 @@ export default function MemoryPreviewCard({
             </p>
           )}
 
-          {/* Category & Subcategory */}
+          {/* Category */}
           <div className="flex flex-wrap gap-1.5 mb-3">
             {memory.category && CATEGORY_INFO[memory.category] && (
               <span
@@ -79,18 +79,6 @@ export default function MemoryPreviewCard({
                 }}
               >
                 {CATEGORY_INFO[memory.category].emoji} {CATEGORY_INFO[memory.category].name}
-              </span>
-            )}
-            {memory.subcategory && (
-              <span
-                className="px-2 py-1 text-xs font-medium rounded-lg"
-                style={{
-                  background: `${memory.subcategory.color}20`,
-                  color: memory.subcategory.color,
-                  border: `1px solid ${memory.subcategory.color}40`,
-                }}
-              >
-                {memory.subcategory.emoji} {memory.subcategory.nameChinese}
               </span>
             )}
           </div>
@@ -175,7 +163,7 @@ export default function MemoryPreviewCard({
           </p>
         )}
 
-        {/* Category & Subcategory */}
+        {/* Category */}
         <div className="flex flex-wrap gap-1.5 mb-3">
           {memory.category && CATEGORY_INFO[memory.category] && (
             <span
@@ -186,17 +174,6 @@ export default function MemoryPreviewCard({
               }}
             >
               {CATEGORY_INFO[memory.category].emoji} {CATEGORY_INFO[memory.category].name}
-            </span>
-          )}
-          {memory.subcategory && (
-            <span
-              className="px-2 py-1 text-xs font-medium rounded"
-              style={{
-                background: `${memory.subcategory.color}20`,
-                color: memory.subcategory.color,
-              }}
-            >
-              {memory.subcategory.emoji} {memory.subcategory.nameChinese}
             </span>
           )}
         </div>

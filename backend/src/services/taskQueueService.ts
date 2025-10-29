@@ -47,7 +47,7 @@ export interface QueueTask {
     message: string
   }
   metadata?: {
-    useDynamicSubAgent?: boolean
+    useIslandSubAgent?: boolean
     [key: string]: any
   }
 }
@@ -92,7 +92,7 @@ export class TaskQueueService extends EventEmitter {
     distributionId: string,
     assistantIds: string[],
     priority: TaskPriority = TaskPriority.NORMAL,
-    metadata?: { useDynamicSubAgent?: boolean; [key: string]: any }
+    metadata?: { useIslandSubAgent?: boolean; [key: string]: any }
   ): Promise<string> {
     const taskId = `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
 
@@ -216,7 +216,7 @@ export class TaskQueueService extends EventEmitter {
 
   /**
    * 執行任務（調用 Sub-Agent 服務）
-   * 支援動態 SubAgent 和預設 Assistant 兩種模式
+   * 支援 Island-based SubAgent 和預設 Assistant 兩種模式
    */
   private async executeTask(task: QueueTask): Promise<any> {
     const { userId, distributionId, assistantIds, metadata } = task
@@ -228,15 +228,15 @@ export class TaskQueueService extends EventEmitter {
 
     let result: any
 
-    // 檢查是否使用動態 SubAgent
-    if (metadata?.useDynamicSubAgent) {
-      logger.info(`[TaskQueue] 使用動態 SubAgent 處理任務 ${task.id}`)
-      // assistantIds 在這裡實際上是 subcategoryIds
-      const subcategoryIds = assistantIds
-      result = await subAgentService.processDistributionWithDynamicSubAgents(
+    // 檢查是否使用 Island-based SubAgent
+    if (metadata?.useIslandSubAgent) {
+      logger.info(`[TaskQueue] 使用 Island-based SubAgent 處理任務 ${task.id}`)
+      // assistantIds 在這裡實際上是 islandIds
+      const islandIds = assistantIds
+      result = await subAgentService.processDistributionWithIslands(
         userId,
         distributionId,
-        subcategoryIds
+        islandIds
       )
     } else {
       logger.info(`[TaskQueue] 使用預設 Assistant 處理任務 ${task.id}`)

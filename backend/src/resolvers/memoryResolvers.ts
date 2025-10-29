@@ -221,7 +221,7 @@ export const memoryResolvers = {
      */
     createMemoryDirect: async (
       _: any,
-      { input }: { input: { title?: string; content: string; tags?: string[]; category?: AssistantType; subcategoryId?: string; emoji?: string } },
+      { input }: { input: { title?: string; content: string; tags?: string[]; category?: AssistantType; emoji?: string } },
       { userId, prisma }: Context
     ) => {
       if (!userId) {
@@ -245,7 +245,6 @@ export const memoryResolvers = {
           data: {
             userId,
             assistantId: defaultAssistant.id,
-            subcategoryId: input.subcategoryId || null,
             title: input.title || null,
             rawContent: input.content,
             summary: input.title || input.content.substring(0, 100),
@@ -485,14 +484,6 @@ export const memoryResolvers = {
 
       return prisma.assistant.findUnique({
         where: { id: parent.assistantId }
-      })
-    },
-
-    subcategory: async (parent: any, _: any, { prisma }: Context) => {
-      if (!parent.subcategoryId) return null
-
-      return prisma.subcategory.findUnique({
-        where: { id: parent.subcategoryId }
       })
     },
 

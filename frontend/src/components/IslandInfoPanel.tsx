@@ -17,15 +17,6 @@ export function IslandInfoPanel() {
 
   const totalMemories = island.memoryCount
 
-  // 区域图标映射 - now based on subcategories
-  const subcategoryDisplay = island.subcategories?.map(sub => ({
-    id: sub.id,
-    emoji: sub.emoji,
-    name: sub.nameChinese,
-    color: sub.color,
-    count: sub.memoryCount
-  })) || []
-
   return (
     <div className={`fixed top-20 right-4 ${Z_INDEX_CLASSES.FIXED_PANEL} w-80`}>
       {/* 摺疊按鈕 - 動森風格 */}
@@ -170,81 +161,6 @@ export function IslandInfoPanel() {
             <span className="text-sm font-bold" style={{ color: '#78350F' }}>
               {formatDistanceToNow(new Date(island.updatedAt), { addSuffix: true, locale: zhTW })}
             </span>
-          </div>
-
-          {/* 裝飾性分隔線 */}
-          <div
-            className="h-[2px] mx-4"
-            style={{
-              background: 'linear-gradient(to right, transparent, rgba(251, 191, 36, 0.3) 50%, transparent)',
-            }}
-          />
-
-          {/* 子類別分布 */}
-          <div>
-            <h4 className="text-base font-bold mb-3 flex items-center gap-2" style={{ color: '#4A5568' }}>
-              <div
-                className="w-8 h-8 rounded-[12px] flex items-center justify-center"
-                style={{
-                  background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.3) 0%, rgba(245, 158, 11, 0.2) 100%)',
-                  boxShadow: 'inset 0 1px 2px rgba(255, 255, 255, 0.4)',
-                }}
-              >
-                <span className="text-sm">🗺️</span>
-              </div>
-              子類別分布
-            </h4>
-            <div className="space-y-3">
-              {subcategoryDisplay.map((subcategory) => {
-                const percentage = totalMemories > 0 ? (subcategory.count / totalMemories) * 100 : 0
-
-                return (
-                  <div key={subcategory.id} className="group">
-                    <div className="flex items-center justify-between mb-1.5">
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="w-7 h-7 rounded-[10px] flex items-center justify-center"
-                          style={{
-                            background: `linear-gradient(135deg, ${subcategory.color}40 0%, ${subcategory.color}25 100%)`,
-                            boxShadow: 'inset 0 1px 2px rgba(255, 255, 255, 0.3)',
-                          }}
-                        >
-                          <span className="text-sm">{subcategory.emoji}</span>
-                        </div>
-                        <span className="text-sm font-bold" style={{ color: '#4A5568' }}>
-                          {subcategory.name}
-                        </span>
-                      </div>
-                      <span
-                        className="text-sm font-black px-2.5 py-1 rounded-[10px]"
-                        style={{
-                          color: subcategory.color,
-                          background: `${subcategory.color}20`,
-                        }}
-                      >
-                        {subcategory.count}
-                      </span>
-                    </div>
-                    <div
-                      className="h-3 rounded-full overflow-hidden"
-                      style={{
-                        background: 'linear-gradient(135deg, rgba(226, 232, 240, 0.8) 0%, rgba(203, 213, 225, 0.6) 100%)',
-                        boxShadow: 'inset 0 1px 3px rgba(0, 0, 0, 0.1)',
-                      }}
-                    >
-                      <div
-                        className="h-full rounded-full transition-all duration-500 group-hover:opacity-90"
-                        style={{
-                          width: `${percentage}%`,
-                          background: `linear-gradient(90deg, ${subcategory.color} 0%, ${subcategory.color}dd 100%)`,
-                          boxShadow: `0 0 8px ${subcategory.color}60`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
           </div>
 
           {/* 裝飾性分隔線 */}

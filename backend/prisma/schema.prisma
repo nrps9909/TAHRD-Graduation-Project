@@ -37,7 +37,6 @@ model User {
   chatSessions ChatSession[]
   settings     UserSettings?
   islands      Island[]
-  subcategories Subcategory[]
 
   @@map("users")
 }
@@ -145,9 +144,6 @@ model Memory {
   userId           String   @map("user_id") @db.ObjectId
   assistantId      String?  @map("assistant_id") @db.ObjectId  // Optional: null for dynamic SubAgents
 
-  // 新的分類系統（可選，向後兼容）
-  subcategoryId    String?  @map("subcategory_id") @db.ObjectId
-
   // Content
   rawContent       String   @map("raw_content") @db.String
   summary          String?  @db.String
@@ -207,7 +203,6 @@ model Memory {
   // Relations
   user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   assistant        Assistant? @relation(fields: [assistantId], references: [id], onDelete: Cascade)
-  subcategory      Subcategory? @relation(fields: [subcategoryId], references: [id], onDelete: SetNull)
   chatMessages     ChatMessage[]
   distribution     KnowledgeDistribution? @relation(fields: [distributionId], references: [id])
 
@@ -215,7 +210,6 @@ model Memory {
   @@index([userId, category])
   @@index([userId, createdAt(sort: Desc)])  // 時間倒序查詢
   @@index([userId, assistantId])
-  @@index([userId, subcategoryId])
   @@index([userId, assistantId, createdAt(sort: Desc)])  // 複合索引：特定助手的最新記憶
   @@index([userId, category, createdAt(sort: Desc)])  // 複合索引：特定分類的最新記憶
   @@index([tags])  // 標籤搜索
@@ -609,7 +603,6 @@ model Island {
   islandBevel      Float?   @default(0.5) @map("island_bevel") // Island edge bevel/slope (0-2.0)
 
   // 統計
-  subcategoryCount Int      @default(0) @map("subcategory_count")
   memoryCount      Int      @default(0) @map("memory_count")
 
   // 狀態
@@ -621,55 +614,8 @@ model Island {
 
   // Relations
   user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  subcategories    Subcategory[]
 
   @@index([userId, position])
   @@index([userId])
   @@map("islands")
-}
-
-// Subcategory - 代表小類別（SubAgent，可自由新增刪減）
-model Subcategory {
-  id               String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId           String   @map("user_id") @db.ObjectId
-  islandId         String   @map("island_id") @db.ObjectId
-
-  // 順序位置（用於排序顯示）
-  position         Int
-
-  // 自訂資訊
-  name             String?  // 英文名稱（已廢棄，僅向後兼容）
-  nameChinese      String   @map("name_chinese") // 中文名稱（主要使用）
-  emoji            String   @default("📚")
-  color            String   @default("#FFB3D9")
-  description      String?  @db.String
-
-  // AI 設定（關鍵！動態提示詞）
-  systemPrompt     String   @map("system_prompt") @db.String
-  personality      String   @db.String
-  chatStyle        String   @map("chat_style") @db.String
-
-  // 關鍵字（用於分類判斷）
-  keywords         String[] @default([])
-
-  // 統計
-  memoryCount      Int      @default(0) @map("memory_count")
-  chatCount        Int      @default(0) @map("chat_count")
-
-  // 狀態
-  isActive         Boolean  @default(true) @map("is_active")
-
-  // Timestamps
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
-
-  // Relations
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  island           Island   @relation(fields: [islandId], references: [id], onDelete: Cascade)
-  memories         Memory[]
-
-  @@index([userId, position])
-  @@index([userId, islandId])
-  @@index([userId])
-  @@map("subcategories")
 }

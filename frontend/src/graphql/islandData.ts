@@ -19,13 +19,6 @@ export const GET_ALL_MEMORIES = gql`
       tags
       emoji
       createdAt
-      subcategoryId
-      subcategory {
-        id
-        nameChinese
-        emoji
-        color
-      }
       assistant {
         id
         nameChinese

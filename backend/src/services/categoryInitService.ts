@@ -298,50 +298,6 @@ export class CategoryInitService {
       throw new Error('獲取分類失敗')
     }
   }
-
-  /**
-   * 獲取使用者的某個小類別（SubAgent）
-   */
-  async getSubcategory(userId: string, subcategoryId: string) {
-    try {
-      const subcategory = await prisma.subcategory.findFirst({
-        where: {
-          id: subcategoryId,
-          userId,
-        },
-        include: {
-          island: true,
-        },
-      })
-
-      return subcategory
-    } catch (error) {
-      logger.error('[CategoryInit] 獲取小類別失敗:', error)
-      throw new Error('獲取小類別失敗')
-    }
-  }
-
-  /**
-   * 根據 position 獲取小類別
-   */
-  async getSubcategoryByPosition(userId: string, position: number) {
-    try {
-      const subcategory = await prisma.subcategory.findFirst({
-        where: {
-          userId,
-          position,
-        },
-        include: {
-          island: true,
-        },
-      })
-
-      return subcategory
-    } catch (error) {
-      logger.error('[CategoryInit] 根據 position 獲取小類別失敗:', error)
-      throw new Error('獲取小類別失敗')
-    }
-  }
 }
 
 export const categoryInitService = new CategoryInitService()

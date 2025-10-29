@@ -20,7 +20,6 @@ export const ISLAND_FRAGMENT = gql`
     positionX
     positionY
     positionZ
-    subcategoryCount
     memoryCount
     isActive
     createdAt
@@ -33,83 +32,22 @@ export const ISLAND_FRAGMENT = gql`
   }
 `
 
-export const SUBCATEGORY_FRAGMENT = gql`
-  fragment SubcategoryFields on Subcategory {
-    id
-    userId
-    islandId
-    position
-    name
-    nameChinese
-    emoji
-    color
-    description
-    systemPrompt
-    personality
-    chatStyle
-    keywords
-    memoryCount
-    chatCount
-    isActive
-    createdAt
-    updatedAt
-  }
-`
-
 // ============ Queries ============
 
 export const GET_ISLANDS = gql`
   ${ISLAND_FRAGMENT}
-  ${SUBCATEGORY_FRAGMENT}
   query GetIslands {
     islands {
       ...IslandFields
-      subcategories {
-        ...SubcategoryFields
-      }
     }
   }
 `
 
 export const GET_ISLAND = gql`
   ${ISLAND_FRAGMENT}
-  ${SUBCATEGORY_FRAGMENT}
   query GetIsland($id: ID!) {
     island(id: $id) {
       ...IslandFields
-      subcategories {
-        ...SubcategoryFields
-      }
-    }
-  }
-`
-
-export const GET_SUBCATEGORIES = gql`
-  ${SUBCATEGORY_FRAGMENT}
-  query GetSubcategories($islandId: ID) {
-    subcategories(islandId: $islandId) {
-      ...SubcategoryFields
-      island {
-        id
-        nameChinese
-        emoji
-        color
-      }
-    }
-  }
-`
-
-export const GET_SUBCATEGORY = gql`
-  ${SUBCATEGORY_FRAGMENT}
-  query GetSubcategory($id: ID!) {
-    subcategory(id: $id) {
-      ...SubcategoryFields
-      island {
-        id
-        nameChinese
-        emoji
-        color
-      }
     }
   }
 `
@@ -118,7 +56,6 @@ export const GET_CATEGORY_STATS = gql`
   query GetCategoryStats {
     categoryStats {
       islandsCount
-      subcategoriesCount
       totalMemories
     }
   }
@@ -130,7 +67,6 @@ export const INITIALIZE_CATEGORIES = gql`
   mutation InitializeCategories {
     initializeCategories {
       islandsCount
-      subcategoriesCount
       totalMemories
     }
   }
@@ -166,36 +102,6 @@ export const REORDER_ISLANDS = gql`
   }
 `
 
-export const CREATE_SUBCATEGORY = gql`
-  ${SUBCATEGORY_FRAGMENT}
-  mutation CreateSubcategory($input: CreateSubcategoryInput!) {
-    createSubcategory(input: $input) {
-      ...SubcategoryFields
-    }
-  }
-`
-
-export const UPDATE_SUBCATEGORY = gql`
-  ${SUBCATEGORY_FRAGMENT}
-  mutation UpdateSubcategory($id: ID!, $input: UpdateSubcategoryInput!) {
-    updateSubcategory(id: $id, input: $input) {
-      ...SubcategoryFields
-    }
-  }
-`
-
-export const DELETE_SUBCATEGORY = gql`
-  mutation DeleteSubcategory($id: ID!) {
-    deleteSubcategory(id: $id)
-  }
-`
-
-export const REORDER_SUBCATEGORIES = gql`
-  mutation ReorderSubcategories($subcategoryIds: [ID!]!) {
-    reorderSubcategories(subcategoryIds: $subcategoryIds)
-  }
-`
-
 // ============ AI Prompt Generation ============
 
 export const GENERATE_ISLAND_PROMPT = gql`
@@ -203,18 +109,6 @@ export const GENERATE_ISLAND_PROMPT = gql`
     generateIslandPrompt(nameChinese: $nameChinese, emoji: $emoji) {
       description
       keywords
-    }
-  }
-`
-
-export const GENERATE_SUBCATEGORY_PROMPT = gql`
-  query GenerateSubcategoryPrompt($nameChinese: String!, $emoji: String, $islandName: String) {
-    generateSubcategoryPrompt(nameChinese: $nameChinese, emoji: $emoji, islandName: $islandName) {
-      description
-      keywords
-      systemPrompt
-      personality
-      chatStyle
     }
   }
 `
@@ -233,12 +127,10 @@ export interface Island {
   positionX: number
   positionY: number
   positionZ: number
-  subcategoryCount: number
   memoryCount: number
   isActive: boolean
   createdAt: string
   updatedAt: string
-  subcategories?: Subcategory[]
 
   // 3D 配置（可選）
   customShapeData?: string | null
@@ -246,36 +138,8 @@ export interface Island {
   islandBevel?: number | null
 }
 
-export interface Subcategory {
-  id: string
-  userId: string
-  islandId: string
-  position: number
-  name: string | null
-  nameChinese: string
-  emoji: string
-  color: string
-  description?: string
-  systemPrompt: string
-  personality: string
-  chatStyle: string
-  keywords: string[]
-  memoryCount: number
-  chatCount: number
-  isActive: boolean
-  createdAt: string
-  updatedAt: string
-  island?: {
-    id: string
-    nameChinese: string
-    emoji: string
-    color: string
-  }
-}
-
 export interface CategoryStats {
   islandsCount: number
-  subcategoriesCount: number
   totalMemories: number
 }
 
@@ -305,32 +169,4 @@ export interface UpdateIslandInput {
   customShapeData?: string | null
   islandHeight?: number | null
   islandBevel?: number | null
-}
-
-export interface CreateSubcategoryInput {
-  islandId: string
-  name?: string | null
-  nameChinese: string
-  emoji?: string
-  color?: string
-  description?: string
-  keywords?: string[]
-  systemPrompt: string
-  personality: string
-  chatStyle: string
-}
-
-export interface UpdateSubcategoryInput {
-  islandId?: string
-  name?: string
-  nameChinese?: string
-  emoji?: string
-  color?: string
-  description?: string
-  keywords?: string[]
-  systemPrompt?: string
-  personality?: string
-  chatStyle?: string
-  position?: number
-  isActive?: boolean
 }

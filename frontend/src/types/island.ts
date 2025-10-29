@@ -3,8 +3,7 @@
  *
  * 新架構（與資料庫 schema 一致）：
  * - Island = 用戶自定義的主要知識領域（大類別，如：工作島、學習島）
- * - Subcategory = 島嶼下的小類別（SubAgent）
- * - Memory = 屬於某個 Subcategory 的記憶
+ * - Memory = 屬於某個 Island 的記憶
  */
 
 // 記憶類別（對應資料庫的 AssistantType/MemoryCategory）
@@ -22,7 +21,7 @@ export type IslandCategory =
 export interface Memory {
   id: string
   title: string | null
-  importance: number // @deprecated 已移除，固定為 5。樹的顏色由 subcategory 決定
+  importance: number // @deprecated 已移除，固定為 5
   category: IslandCategory // 傳統記憶類別（向後兼容）
   content?: string
   tags?: string[]
@@ -32,11 +31,7 @@ export interface Memory {
   // UI 顯示相關
   emoji?: string
   summary?: string | null
-  color?: string // 樹的顏色（從 subcategory.color 獲取）
-
-  // 新增：關聯到自訂小類別
-  subcategoryId?: string | null
-  subcategory?: Subcategory | null
+  color?: string
 
   // AI 深度分析
   detailedSummary?: string
@@ -48,41 +43,6 @@ export interface Memory {
   aiFeedback?: string  // [AI 回饋] 建議或安撫
   socialSkillTags?: string[]  // [社交能力標籤]
   progressChange?: number  // [進度變化] +1/0/-1
-}
-
-// 小類別（SubAgent）- 與資料庫 schema 一致
-export interface Subcategory {
-  id: string
-  userId: string
-  islandId: string
-  position: number
-
-  // 自訂資訊
-  name: string | null
-  nameChinese: string
-  emoji: string
-  color: string
-  description?: string | null
-
-  // AI 設定
-  systemPrompt: string
-  personality: string
-  chatStyle: string
-  keywords: string[]
-
-  // 統計
-  memoryCount: number
-  chatCount: number
-
-  // 狀態
-  isActive: boolean
-
-  // Timestamps
-  createdAt: string
-  updatedAt: string
-
-  // Relations
-  memories?: Memory[]
 }
 
 // 島嶼（大類別）- 與資料庫 schema 一致
@@ -104,7 +64,6 @@ export interface Island {
   positionZ: number
 
   // 統計
-  subcategoryCount: number
   memoryCount: number
 
   // 狀態
@@ -114,10 +73,7 @@ export interface Island {
   createdAt: string
   updatedAt: string
 
-  // Relations
-  subcategories?: Subcategory[]
-
-  // 記憶列表（從所有 subcategories 中的記憶聚合而來）
+  // 記憶列表
   memories: Memory[]
 
   // 自訂形狀和 3D 配置（可選）
@@ -130,7 +86,7 @@ export interface Island {
 }
 
 /**
- * 注意：預設島嶼和小類別現在由資料庫管理
+ * 注意：預設島嶼現在由資料庫管理
  * 使用 GET_ISLANDS GraphQL query 來獲取用戶的島嶼資料
- * 首次登入時，backend 會自動初始化預設的島嶼和小類別
+ * 首次登入時，backend 會自動初始化預設的島嶼
  */

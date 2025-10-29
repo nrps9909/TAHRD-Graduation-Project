@@ -15,7 +15,7 @@ import axios from 'axios'
 import { callGeminiAPI } from '../utils/geminiAPI'
 import { assistantService } from './assistantService'
 import { multimodalProcessor } from './multimodalProcessor'
-import { dynamicSubAgentService, DynamicSubAgent } from './dynamicSubAgentService'
+import { dynamicSubAgentService } from './dynamicSubAgentService'
 
 const prisma = new PrismaClient()
 
@@ -775,13 +775,13 @@ ${assistant.type === 'SOCIAL' ? `
   }
 
   /**
-   * 處理知識分發（使用動態 SubAgent）
-   * 與 processDistribution 類似，但使用 Subcategory 配置
+   * 處理知識分發（使用 Island-based SubAgent）
+   * 與 processDistribution 類似，但使用 Island 配置映射到對應的 Assistant
    */
-  async processDistributionWithDynamicSubAgents(
+  async processDistributionWithIslands(
     userId: string,
     distributionId: string,
-    subcategoryIds: string[]
+    islandIds: string[]
   ) {
     try {
       // 獲取分發記錄
@@ -793,33 +793,41 @@ ${assistant.type === 'SOCIAL' ? `
         throw new Error(`Distribution not found: ${distributionId}`)
       }
 
-      logger.info(`[Dynamic Sub-Agents] 開始處理分發記錄 ${distributionId}，相關 SubAgent 數量: ${subcategoryIds.length}`)
+      logger.info(`[Island Sub-Agents] 開始處理分發記錄 ${distributionId}，相關 Island 數量: ${islandIds.length}`)
 
       const agentDecisions: any[] = []
       const memoriesCreated: any[] = []
 
-      // 並發評估所有相關 SubAgent
+      // 並發評估所有相關 Island（映射到對應的 Assistant）
       const evaluations = await Promise.all(
-        subcategoryIds.map(async (subcategoryId) => {
+        islandIds.map(async (islandId) => {
           try {
-            // 載入 SubAgent 配置
-            const subAgent = await dynamicSubAgentService.getSubAgentById(subcategoryId)
-            if (!subAgent) {
-              logger.error(`[Dynamic Sub-Agent] SubAgent not found: ${subcategoryId}`)
+            // 載入 Island 配置
+            const island = await dynamicSubAgentService.getIslandById(islandId)
+            if (!island) {
+              logger.error(`[Island Sub-Agent] Island not found: ${islandId}`)
               return null
             }
 
-            // 評估相關性（使用動態配置）
-            const evaluation = await this.evaluateKnowledgeWithDynamicSubAgent(
-              subAgent,
+            // 根據 Island 類型映射到對應的 Assistant
+            const assistant = await assistantService.getAssistantByType(island.name as any)
+            if (!assistant) {
+              logger.error(`[Island Sub-Agent] No assistant found for island type: ${island.name}`)
+              return null
+            }
+
+            // 評估相關性（使用 Island 配置，但通過 Assistant 處理）
+            const evaluation = await this.evaluateKnowledgeWithIsland(
+              assistant,
+              island,
               distribution
             )
 
-            // 創建決策記錄（注意：動態 SubAgent 不使用 assistantId）
+            // 創建決策記錄（使用 assistantId）
             const decision = await prisma.agentDecision.create({
               data: {
                 distributionId,
-                // assistantId 省略，因為動態 SubAgent 不使用 Assistant
+                assistantId: assistant.id,
                 relevanceScore: evaluation.relevanceScore,
                 shouldStore: evaluation.shouldStore,
                 reasoning: evaluation.reasoning,
@@ -832,52 +840,47 @@ ${assistant.type === 'SOCIAL' ? `
 
             agentDecisions.push(decision)
 
-            // 如果決定儲存，創建記憶（使用 subcategoryId）
+            // 如果決定儲存，創建記憶（使用 assistantId）
             if (evaluation.shouldStore) {
-              const memory = await this.createMemoryWithDynamicSubAgent(
+              const memory = await this.createMemory(
                 userId,
-                subcategoryId,
+                assistant.id,
                 distribution,
                 evaluation,
-                distributionId,
-                subAgent
+                distributionId
               )
               memoriesCreated.push(memory)
-
-              // 更新 SubAgent 統計
-              await dynamicSubAgentService.incrementStats(subcategoryId, 'memory')
             }
 
-            return { subcategoryId, decision, memory: evaluation.shouldStore }
+            return { islandId, assistantId: assistant.id, decision, memory: evaluation.shouldStore }
           } catch (error) {
-            logger.error(`[Dynamic Sub-Agent] 處理 SubAgent ${subcategoryId} 失敗:`, error)
+            logger.error(`[Island Sub-Agent] 處理 Island ${islandId} 失敗:`, error)
             return null
           }
         })
       )
 
-      // 更新分發記錄的 storedBy 列表
+      // 更新分發記錄的 storedBy 列表（使用 assistantIds）
       const storedByIds = evaluations
         .filter(e => e && e.memory)
-        .map(e => e!.subcategoryId)
+        .map(e => e!.assistantId)
 
       await prisma.knowledgeDistribution.update({
         where: { id: distributionId },
         data: { storedBy: storedByIds },
       })
 
-      logger.info(`[Dynamic Sub-Agents] 分發處理完成 - 決策數: ${agentDecisions.length}, 創建記憶數: ${memoriesCreated.length}`)
+      logger.info(`[Island Sub-Agents] 分發處理完成 - 決策數: ${agentDecisions.length}, 創建記憶數: ${memoriesCreated.length}`)
 
-      // 獲取記憶的分類信息（Subcategory 名稱）
+      // 獲取記憶的分類信息（Assistant 名稱）
       const categoriesInfo = await Promise.all(
         memoriesCreated.map(async (memory) => {
-          if (memory.subcategoryId) {
-            const subAgent = await dynamicSubAgentService.getSubAgentById(memory.subcategoryId)
+          if (memory.assistantId) {
+            const assistant = await assistantService.getAssistantById(memory.assistantId)
             return {
               memoryId: memory.id,
-              categoryName: subAgent?.nameChinese || '未知分類',
-              categoryEmoji: subAgent?.emoji || '📝',
-              islandName: subAgent?.island?.nameChinese
+              categoryName: assistant?.nameChinese || '未知分類',
+              categoryEmoji: assistant?.emoji || '📝'
             }
           }
           return null
@@ -891,26 +894,27 @@ ${assistant.type === 'SOCIAL' ? `
         categoriesInfo, // 新增：記憶的分類信息
       }
     } catch (error) {
-      logger.error('[Dynamic Sub-Agents] 處理知識分發失敗:', error)
+      logger.error('[Island Sub-Agents] 處理知識分發失敗:', error)
       throw new Error('處理知識分發失敗')
     }
   }
 
   /**
-   * 評估知識相關性（使用動態 SubAgent 配置）
+   * 評估知識相關性（使用 Island 配置）
    */
-  private async evaluateKnowledgeWithDynamicSubAgent(
-    subAgent: DynamicSubAgent,
+  private async evaluateKnowledgeWithIsland(
+    assistant: any,
+    island: any,
     distributionInput: DistributionInput
   ): Promise<EvaluationResult> {
     try {
-      logger.info(`[${subAgent.nameChinese}] 開始評估知識相關性`)
+      logger.info(`[${island.nameChinese}] 開始評估知識相關性`)
 
-      // 構建動態評估提示詞
-      const prompt = this.buildDynamicEvaluationPrompt(subAgent, distributionInput)
+      // 構建 Island-based 評估提示詞
+      const prompt = this.buildIslandEvaluationPrompt(assistant, island, distributionInput)
 
-      // 調用 MCP 服務進行評估（使用 subAgent.id）
-      const response = await this.callMCP(prompt, subAgent.id)
+      // 調用 MCP 服務進行評估（使用 assistant.id）
+      const response = await this.callMCP(prompt, assistant.id)
       const parsed = this.parseJSON(response)
 
       const relevanceScore = typeof parsed.relevanceScore === 'number'
@@ -926,7 +930,7 @@ ${assistant.type === 'SOCIAL' ? `
         relevanceScore,
         confidence,
         parsed.shouldStore,
-        distributionInput // 傳入 distribution 用於檢查是否為資源連結
+        distributionInput
       )
 
       const evaluation: EvaluationResult = {
@@ -934,7 +938,7 @@ ${assistant.type === 'SOCIAL' ? `
         shouldStore,
         reasoning: parsed.reasoning || '無評估說明',
         confidence,
-        suggestedCategory: AssistantType.RESOURCES, // 動態 SubAgent 使用 RESOURCES 作為預設
+        suggestedCategory: assistant.type,
         suggestedTags: Array.isArray(parsed.suggestedTags) ? parsed.suggestedTags : [],
         keyInsights: Array.isArray(parsed.keyInsights) ? parsed.keyInsights : [],
         // SubAgent 深度分析結果
@@ -945,22 +949,23 @@ ${assistant.type === 'SOCIAL' ? `
         actionableAdvice: parsed.actionableAdvice,
       }
 
-      logger.info(`[${subAgent.nameChinese}] 評估完成 - 相關性: ${evaluation.relevanceScore.toFixed(2)}, 是否儲存: ${evaluation.shouldStore}`)
+      logger.info(`[${island.nameChinese}] 評估完成 - 相關性: ${evaluation.relevanceScore.toFixed(2)}, 是否儲存: ${evaluation.shouldStore}`)
 
       return evaluation
     } catch (error) {
-      logger.error(`[Dynamic Sub-Agent] 評估失敗:`, error)
+      logger.error(`[Island Sub-Agent] 評估失敗:`, error)
 
       // 降級方案：使用關鍵字匹配
-      return this.fallbackDynamicEvaluation(subAgent, distributionInput)
+      return this.fallbackIslandEvaluation(assistant, island, distributionInput)
     }
   }
 
   /**
-   * 構建動態評估提示詞（使用 Subcategory 的 systemPrompt + @url）
+   * 構建 Island-based 評估提示詞（使用 Island + Assistant 的配置 + @url）
    */
-  private buildDynamicEvaluationPrompt(
-    subAgent: DynamicSubAgent,
+  private buildIslandEvaluationPrompt(
+    assistant: any,
+    island: any,
     distribution: DistributionInput
   ): string {
     // 檢查是否有連結，如果有，使用 @url 語法讓 Gemini 直接存取
@@ -973,18 +978,15 @@ ${assistant.type === 'SOCIAL' ? `
       })
     }
 
-    return `${subAgent.systemPrompt}
+    return `${assistant.systemPrompt}
 
-你是 ${subAgent.nameChinese} (${subAgent.name})，專注於 ${subAgent.island?.nameChinese || '知識管理'} 領域。
+你是 ${assistant.nameChinese} (${assistant.name})，專注於 ${island.nameChinese || assistant.type} 領域。
 
-**你的個性：**
-${subAgent.personality}
+**Island 背景：**
+${island.description || `${island.nameChinese} 島嶼的知識管理`}
 
-**你的對話風格：**
-${subAgent.chatStyle}
-
-**你的專業關鍵字：**
-${subAgent.keywords.join('、')}
+**專業關鍵字：**
+${island.keywords?.join('、') || assistant.type}
 
 **你的任務：**
 作為 Gemini 2.5 Flash，你需要對以下知識進行深度分析和整理，決定是否存儲並生成完整的知識結構。
@@ -1002,7 +1004,7 @@ ${linkAnalysisSection}
 ${distribution.chiefSummary}
 
 **你需要提供深度分析，包括：**
-1. **相關性評估** - 這個知識與你的專長領域的關聯程度
+1. **相關性評估** - 這個知識與 ${island.nameChinese} 領域的關聯程度
    ${distribution.links.length > 0 ? '   ⚠️ 如果有連結，請直接存取網址內容進行評估（使用 @url）' : ''}
 2. **詳細摘要** - 用 2-3 句話總結核心內容和價值
    ${distribution.links.length > 0 ? '   ⚠️ 對於連結內容，請基於實際存取的內容撰寫摘要' : ''}
@@ -1034,7 +1036,7 @@ ${distribution.chiefSummary}
 }
 
 **評估準則：**
-- **高度相關 (>0.7)**: 核心內容完全匹配你的專長領域，具有長期價值
+- **高度相關 (>0.7)**: 核心內容完全匹配 ${island.nameChinese} 領域，具有長期價值
 - **中度相關 (0.4-0.7)**: 部分內容與領域相關，有參考價值
 - **低相關 (<0.4)**: 與領域關聯較弱，不建議存儲
 
@@ -1050,101 +1052,35 @@ ${distribution.chiefSummary}
 - 識別隱含的知識價值和長期意義
 - 考慮這個知識在未來可能的應用場景
 - 對於資源連結，重點看連結內容的實用性和相關性
-- 根據你的個性和對話風格提供有洞察力和可執行的建議
+- 提供有洞察力和可執行的建議
 `
   }
 
   /**
-   * 創建記憶（使用動態 SubAgent 配置）
+   * 降級方案：基於關鍵字的 Island 評估
    */
-  private async createMemoryWithDynamicSubAgent(
-    userId: string,
-    subcategoryId: string,
-    distribution: any,
-    evaluation: EvaluationResult,
-    distributionId: string,
-    subAgent: DynamicSubAgent
-  ) {
-    try {
-      // 解析深度分析結果
-      const detailedSummary = evaluation.detailedSummary || distribution.chiefSummary
-      const suggestedTitle = evaluation.suggestedTitle || `${subAgent.nameChinese}的記憶`
-      const sentiment = evaluation.sentiment || 'neutral'
-      const importanceScore = evaluation.importanceScore || Math.round(evaluation.relevanceScore * 10)
-      const actionableAdvice = evaluation.actionableAdvice
-
-      // 創建完整的記憶記錄（使用 subcategoryId）
-      const memory = await prisma.memory.create({
-        data: {
-          user: {
-            connect: { id: userId }
-          },
-          subcategory: {
-            connect: { id: subcategoryId }
-          },
-          rawContent: distribution.rawContent,
-          title: suggestedTitle,
-          summary: distribution.chiefSummary, // Chief 的簡要摘要
-          contentType: distribution.contentType,
-          fileUrls: distribution.fileUrls,
-          fileNames: distribution.fileNames,
-          fileTypes: distribution.fileTypes,
-          links: distribution.links,
-          linkTitles: distribution.linkTitles,
-          keyPoints: evaluation.keyInsights,
-          aiSentiment: sentiment,
-          aiAnalysis: evaluation.reasoning,
-          category: AssistantType.RESOURCES, // 動態 SubAgent 使用 RESOURCES 作為預設
-          tags: [...new Set([...distribution.suggestedTags, ...evaluation.suggestedTags, ...subAgent.keywords])].slice(0, 5), // 最多5個標籤
-
-          // === 新增：SubAgent 深度分析結果 ===
-          detailedSummary: detailedSummary, // SubAgent 的詳細摘要（2-3句話）
-          importanceScore: importanceScore, // 1-10 重要性評分
-          actionableAdvice: actionableAdvice, // 行動建議
-
-          distribution: {
-            connect: { id: distributionId }
-          },
-          relevanceScore: evaluation.relevanceScore,
-        },
-      })
-
-      logger.info(`[${subAgent.nameChinese}] 創建深度分析記憶: ${memory.id}`)
-      logger.info(`  - 標題: ${suggestedTitle}`)
-      logger.info(`  - 重要性: ${importanceScore}/10`)
-      logger.info(`  - 情感: ${sentiment}`)
-      logger.info(`  - 標籤: ${memory.tags.join(', ')}`)
-
-      return memory
-    } catch (error) {
-      logger.error('[Dynamic Sub-Agent] 創建記憶失敗:', error)
-      throw error
-    }
-  }
-
-  /**
-   * 降級方案：基於關鍵字的動態 SubAgent 評估
-   */
-  private fallbackDynamicEvaluation(
-    subAgent: DynamicSubAgent,
+  private fallbackIslandEvaluation(
+    assistant: any,
+    island: any,
     distribution: DistributionInput
   ): EvaluationResult {
     const content = distribution.rawContent.toLowerCase()
-    const keywords = subAgent.keywords
+    const keywords = island.keywords || []
 
     // 計算關鍵字匹配度
-    const matchCount = keywords.filter(kw => content.includes(kw.toLowerCase())).length
-    const relevanceScore = Math.min(matchCount / Math.max(keywords.length, 1), 1)
+    const matchCount = keywords.filter((kw: string) => content.includes(kw.toLowerCase())).length
+    const relevanceScore = keywords.length > 0 ? Math.min(matchCount / keywords.length, 1) : 0.5
     // ⚠️ 移除相關性門檻 - 所有內容都儲存
     const shouldStore = true
 
-    logger.info(`[Fallback Dynamic Evaluation] ✅ 降級評估（動態 SubAgent）：所有對話都記錄 - 相關性 (${relevanceScore.toFixed(2)}) → 儲存`)
+    logger.info(`[Fallback Island Evaluation] ✅ 降級評估（Island-based）：所有對話都記錄 - 相關性 (${relevanceScore.toFixed(2)}) → 儲存`)
 
     return {
       relevanceScore,
       shouldStore,
-      reasoning: `基於降級評估，此內容歸類到 ${subAgent.nameChinese}`,
+      reasoning: `基於降級評估，此內容歸類到 ${island.nameChinese}`,
       confidence: 0.3,
+      suggestedCategory: assistant.type,
       suggestedTags: distribution.suggestedTags.slice(0, 3),
       keyInsights: [`關鍵字匹配數: ${matchCount}/${keywords.length}`],
     }

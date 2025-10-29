@@ -1,14 +1,12 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useMutation, useQuery } from '@apollo/client'
 import { UPDATE_MEMORY, GET_MEMORY } from '../graphql/memory'
-import { GET_SUBCATEGORIES, Subcategory } from '../graphql/category'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
 import rehypeSanitize from 'rehype-sanitize'
 import SaveStatusIndicator from './Editor/SaveStatusIndicator'
 import TagManager from './Editor/TagManager'
-import CategorySelector from './Editor/CategorySelector'
 import ViewModeToggle, { type ViewMode } from './Editor/ViewModeToggle'
 
 interface SimpleMemoryEditorProps {
@@ -19,7 +17,6 @@ interface SimpleMemoryEditorProps {
 export default function SimpleMemoryEditor({ memoryId, onClose }: SimpleMemoryEditorProps) {
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
-  const [subcategoryId, setSubcategoryId] = useState<string | null>(null)
   const [tags, setTags] = useState<string[]>([])
   const [isSaving, setIsSaving] = useState(false)
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
@@ -33,16 +30,12 @@ export default function SimpleMemoryEditor({ memoryId, onClose }: SimpleMemoryEd
     skip: !memoryId, // 如果沒有 memoryId 就跳過
   })
 
-  // 載入自訂分類
-  const { data: subcategoriesData } = useQuery(GET_SUBCATEGORIES)
-  const subcategories: Subcategory[] = subcategoriesData?.subcategories || []
-
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const previewRef = useRef<HTMLDivElement>(null)
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // 用 ref 追蹤最新的編輯器狀態，避免閉包問題
-  const latestStateRef = useRef({ title, content, subcategoryId, tags })
+  const latestStateRef = useRef({ title, content, tags })
 
   // 追蹤是否有進行中的保存請求
   const savingInProgressRef = useRef(false)
@@ -59,15 +52,14 @@ export default function SimpleMemoryEditor({ memoryId, onClose }: SimpleMemoryEd
       console.log('📖 載入記憶資料', memory)
       setTitle(memory.title || '')
       setContent(memory.rawContent || '')
-      setSubcategoryId(memory.subcategoryId || null)
       setTags(memory.tags || [])
     }
   }, [memoryData, memoryLoading])
 
   // 更新最新狀態的 ref
   useEffect(() => {
-    latestStateRef.current = { title, content, subcategoryId, tags }
-  }, [title, content, subcategoryId, tags])
+    latestStateRef.current = { title, content, tags }
+  }, [title, content, tags])
 
   // 鎖定背景滾動
   useEffect(() => {
@@ -126,7 +118,6 @@ export default function SimpleMemoryEditor({ memoryId, onClose }: SimpleMemoryEd
           input: {
             title: currentState.title || null,
             rawContent: currentState.content,
-            subcategoryId: currentState.subcategoryId,
             tags: currentState.tags,
           },
         },
@@ -200,7 +191,7 @@ export default function SimpleMemoryEditor({ memoryId, onClose }: SimpleMemoryEd
     }
     // 注意：不要把 autoSave 放在依賴中，避免無限循環
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [title, content, subcategoryId, tags, memoryId])
+  }, [title, content, tags, memoryId])
 
   // 瀏覽器關閉前警告（如果有未保存的變更）
   useEffect(() => {
@@ -338,16 +329,6 @@ export default function SimpleMemoryEditor({ memoryId, onClose }: SimpleMemoryEd
                     }}
                   />
 
-                  {/* 分類選擇器 */}
-                  <div className="mb-4">
-                    <label className="text-xs text-gray-400 mb-2 block">分類</label>
-                    <CategorySelector
-                      subcategories={subcategories}
-                      selectedSubcategoryId={subcategoryId}
-                      onSelectSubcategory={setSubcategoryId}
-                    />
-                  </div>
-
                   {/* 標籤 */}
                   <div className="mb-6">
                     <TagManager
@@ -422,16 +403,6 @@ export default function SimpleMemoryEditor({ memoryId, onClose }: SimpleMemoryEd
                         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif',
                       }}
                     />
-
-                    {/* 分類選擇器 */}
-                    <div className="mb-4">
-                      <label className="text-xs text-gray-400 mb-2 block">分類</label>
-                      <CategorySelector
-                        subcategories={subcategories}
-                        selectedSubcategoryId={subcategoryId}
-                        onSelectSubcategory={setSubcategoryId}
-                      />
-                    </div>
 
                     {/* 標籤 */}
                     <div className="mb-6">

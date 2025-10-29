@@ -2,8 +2,8 @@
 /**
  * Dynamic SubAgent Service
  *
- * 從資料庫的 Subcategory 動態載入 SubAgent 配置
- * 取代原本固定的 AssistantType 枚舉系統
+ * 從資料庫的 Island 動態載入配置
+ * Islands 作為知識分類的主要單位，取代 Subcategories
  */
 
 import { PrismaClient } from '@prisma/client'
@@ -11,118 +11,97 @@ import { logger } from '../utils/logger'
 
 const prisma = new PrismaClient()
 
-export interface DynamicSubAgent {
+export interface IslandConfig {
   id: string
   userId: string
-  islandId: string
   position: number
   name: string | null
   nameChinese: string
   emoji: string
   color: string
   description?: string
-  systemPrompt: string
-  personality: string
-  chatStyle: string
-  keywords: string[]
+  keywords?: string[]
   memoryCount: number
-  chatCount: number
   isActive: boolean
   createdAt: Date
   updatedAt: Date
-  island?: {
-    id: string
-    nameChinese: string
-    emoji: string
-    color: string
-  }
+  positionX: number
+  positionY: number
+  positionZ: number
 }
 
 export class DynamicSubAgentService {
-  // 快取：userId -> SubAgent[]
-  private userSubAgentsCache: Map<string, DynamicSubAgent[]> = new Map()
+  // 快取：userId -> Islands[]
+  private userIslandsCache: Map<string, IslandConfig[]> = new Map()
 
-  // 快取：subcategoryId -> SubAgent
-  private subAgentByIdCache: Map<string, DynamicSubAgent> = new Map()
+  // 快取：islandId -> Island
+  private islandByIdCache: Map<string, IslandConfig> = new Map()
 
   // 快取過期時間（5分鐘）
   private cacheExpiry: Map<string, number> = new Map()
   private CACHE_TTL = 5 * 60 * 1000 // 5 minutes
 
   constructor() {
-    logger.info('[DynamicSubAgent] Service initialized')
+    logger.info('[DynamicSubAgent] Service initialized (Island-based)')
   }
 
   /**
-   * 獲取用戶的所有 SubAgent
+   * 獲取用戶的所有 Islands
    */
-  async getUserSubAgents(userId: string, forceRefresh = false): Promise<DynamicSubAgent[]> {
+  async getUserIslands(userId: string, forceRefresh = false): Promise<IslandConfig[]> {
     // 檢查快取
     if (!forceRefresh && this.isCacheValid(userId)) {
-      const cached = this.userSubAgentsCache.get(userId)
+      const cached = this.userIslandsCache.get(userId)
       if (cached) {
-        logger.info(`[DynamicSubAgent] 從快取載入 ${cached.length} 個 SubAgent (userId: ${userId})`)
+        logger.info(`[DynamicSubAgent] 從快取載入 ${cached.length} 個 Island (userId: ${userId})`)
         return cached
       }
     }
 
     try {
-      // 從資料庫載入
-      const subcategories = await prisma.subcategory.findMany({
+      // 從資料庫載入 Islands
+      const islands = await prisma.island.findMany({
         where: {
           userId,
           isActive: true,
         },
         orderBy: { position: 'asc' },
-        include: {
-          island: {
-            select: {
-              id: true,
-              nameChinese: true,
-              emoji: true,
-              color: true,
-            },
-          },
-        },
       })
 
-      const subAgents: DynamicSubAgent[] = subcategories.map((sub) => ({
-        id: sub.id,
-        userId: sub.userId,
-        islandId: sub.islandId,
-        position: sub.position,
-        name: sub.name,
-        nameChinese: sub.nameChinese,
-        emoji: sub.emoji,
-        color: sub.color,
-        description: sub.description || undefined,
-        systemPrompt: sub.systemPrompt,
-        personality: sub.personality,
-        chatStyle: sub.chatStyle,
-        keywords: sub.keywords,
-        memoryCount: sub.memoryCount,
-        chatCount: sub.chatCount,
-        isActive: sub.isActive,
-        createdAt: sub.createdAt,
-        updatedAt: sub.updatedAt,
-        island: sub.island,
+      const islandConfigs: IslandConfig[] = islands.map((island) => ({
+        id: island.id,
+        userId: island.userId,
+        position: island.position,
+        name: island.name,
+        nameChinese: island.nameChinese,
+        emoji: island.emoji,
+        color: island.color,
+        description: island.description || undefined,
+        keywords: island.keywords || undefined,
+        memoryCount: island.memoryCount,
+        isActive: island.isActive,
+        createdAt: island.createdAt,
+        updatedAt: island.updatedAt,
+        positionX: island.positionX,
+        positionY: island.positionY,
+        positionZ: island.positionZ,
       }))
 
       // 更新快取
-      this.userSubAgentsCache.set(userId, subAgents)
+      this.userIslandsCache.set(userId, islandConfigs)
       this.cacheExpiry.set(userId, Date.now() + this.CACHE_TTL)
 
       // 更新 ID 索引快取
-      subAgents.forEach((agent) => {
-        this.subAgentByIdCache.set(agent.id, agent)
+      islandConfigs.forEach((island) => {
+        this.islandByIdCache.set(island.id, island)
       })
 
-      logger.info(`[DynamicSubAgent] 從資料庫載入 ${subAgents.length} 個 SubAgent (userId: ${userId})`)
+      logger.info(`[DynamicSubAgent] 從資料庫載入 ${islandConfigs.length} 個 Island (userId: ${userId})`)
 
-      return subAgents
+      return islandConfigs
     } catch (error) {
-      logger.error('[DynamicSubAgent] 載入 SubAgent 失敗:', error)
-      throw new Error('載入 SubAgent 配置失敗')
+      logger.error('[DynamicSubAgent] 載入 Islands 失敗:', error)
+      throw new Error('載入 Island 配置失敗')
     }
   }
 

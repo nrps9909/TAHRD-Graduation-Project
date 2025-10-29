@@ -686,9 +686,9 @@ ${contextInfo}
 
       logger.info(`[白噗噗] 開始快速分類`)
 
-      // === 檢查用戶是否有自訂 SubAgent ===
-      const userSubAgents = await dynamicSubAgentService.getUserSubAgents(userId)
-      const hasCustomCategories = userSubAgents.length > 0
+      // === 檢查用戶是否有自訂 Islands ===
+      const userIslands = await dynamicSubAgentService.getUserIslands(userId)
+      const hasCustomCategories = userIslands.length > 0
 
       // === 優化：移除連結提取，提升響應速度 ===
       // 連結標題提取改由後台 SubAgent 處理（詳細分析階段）
@@ -707,7 +707,7 @@ ${contextInfo}
 
       // 構建智能分類 Prompt（動態版：根據用戶自訂類別調整）
       const prompt = hasCustomCategories
-        ? this.buildDynamicClassificationPrompt(enrichedContent, input, userSubAgents)
+        ? this.buildDynamicClassificationPrompt(enrichedContent, input, userIslands)
         : this.buildDefaultClassificationPrompt(enrichedContent, input)
 
       // 使用 Gemini 2.5 Flash (快速模型)
@@ -962,11 +962,11 @@ ${input.content}
     try {
       logger.info(`[Chief Agent] 開始處理知識上傳，用戶: ${userId}`)
 
-      // === 檢查用戶是否有自訂 Subcategory ===
-      const userSubAgents = await dynamicSubAgentService.getUserSubAgents(userId)
-      const useDynamicSubAgents = userSubAgents.length > 0
+      // === 檢查用戶是否有自訂 Islands ===
+      const userIslands = await dynamicSubAgentService.getUserIslands(userId)
+      const useDynamicSubAgents = userIslands.length > 0
 
-      logger.info(`[Chief Agent] 用戶有 ${userSubAgents.length} 個自訂 SubAgent，使用${useDynamicSubAgents ? '動態' : '預設'}系統`)
+      logger.info(`[Chief Agent] 用戶有 ${userIslands.length} 個自訂 Island，使用${useDynamicSubAgents ? 'Island-based' : '預設'}系統`)
 
       // === 階段 1: 白噗噗快速分類（Gemini 2.5 Flash）===
       const quickResult = await this.quickClassifyForTororo(userId, input)
@@ -977,23 +977,23 @@ ${input.content}
       // 2. 確定內容類型
       const contentType = this.determineContentType(input)
 
-      // === 動態 SubAgent 路徑 ===
+      // === Island-based SubAgent 路徑（使用 Islands 而非 Subcategories）===
       if (useDynamicSubAgents) {
-        logger.info('[Chief Agent] 使用動態 SubAgent 系統')
+        logger.info('[Chief Agent] 使用 Island-based SubAgent 系統')
 
-        // 使用關鍵字匹配找到最相關的 SubAgent
-        const relevantSubAgents = await dynamicSubAgentService.findRelevantSubAgents(
+        // 使用關鍵字匹配找到最相關的 Island
+        const relevantIslands = await dynamicSubAgentService.findRelevantIslands(
           userId,
           input.content,
           3 // 取前 3 個最相關的
         )
 
-        if (relevantSubAgents.length === 0) {
-          logger.warn('[Chief Agent] 沒有找到相關的 SubAgent，降級到預設系統')
+        if (relevantIslands.length === 0) {
+          logger.warn('[Chief Agent] 沒有找到相關的 Island，降級到預設系統')
           // 降級到舊系統
         } else {
-          const targetSubAgent = relevantSubAgents[0]
-          logger.info(`[Chief Agent] 選擇 SubAgent: ${targetSubAgent.nameChinese} (${targetSubAgent.id})`)
+          const targetIsland = relevantIslands[0]
+          logger.info(`[Chief Agent] 選擇 Island: ${targetIsland.nameChinese} (${targetIsland.id})`)
 
           // 優化：直接使用原始內容（連結提取由 SubAgent 處理）
           const contentForDistribution = input.content
@@ -1001,23 +1001,23 @@ ${input.content}
           // 優化：使用簡單的連結標題（詳細元數據由 SubAgent 提取）
           const enrichedLinkTitles = input.links?.map(l => l.title || l.url) || []
 
-          // 創建知識分發記錄（使用 subcategoryId）
+          // 創建知識分發記錄（使用 Island-based assistant）
           // 優化：移除 include（不需要立即載入關聯，提升寫入速度）
           const distribution = await prisma.knowledgeDistribution.create({
             data: {
               userId,
-              rawContent: contentForDistribution, // 使用豐富化內容
+              rawContent: contentForDistribution,
               contentType,
               fileUrls: input.files?.map(f => f.url) || [],
               fileNames: input.files?.map(f => f.name) || [],
               fileTypes: input.files?.map(f => f.type) || [],
               links: input.links?.map(l => l.url) || [],
-              linkTitles: enrichedLinkTitles, // 使用提取的標題
-              chiefAnalysis: `白噗噗快速分類 → 動態 SubAgent: ${targetSubAgent.nameChinese}`,
+              linkTitles: enrichedLinkTitles,
+              chiefAnalysis: `白噗噗快速分類 → Island: ${targetIsland.nameChinese}`,
               chiefSummary: quickResult.quickSummary,
-              identifiedTopics: [targetSubAgent.nameChinese],
-              suggestedTags: targetSubAgent.keywords,
-              distributedTo: [], // 動態 SubAgent 不使用 Assistant ID
+              identifiedTopics: [targetIsland.nameChinese],
+              suggestedTags: targetIsland.keywords || [],
+              distributedTo: [], // 使用 Island ID（稍後在任務處理時映射到 assistant）
               storedBy: [],
               processingTime: Date.now() - startTime,
             }
@@ -1025,42 +1025,42 @@ ${input.content}
 
           logger.info(`[Chief Agent] 知識分發記錄創建完成，ID: ${distribution.id}`)
 
-          // 加入任務隊列，但傳遞 subcategoryId 而非 assistantId
+          // 加入任務隊列，傳遞 Island ID
           const taskId = await taskQueueService.addTask(
             userId,
             distribution.id,
-            [targetSubAgent.id], // 傳遞 subcategoryId
+            [targetIsland.id], // 傳遞 Island ID
             TaskPriority.NORMAL,
-            { useDynamicSubAgent: true } // 標記使用動態 SubAgent
+            { useIslandSubAgent: true } // 標記使用 Island-based SubAgent
           )
 
-          logger.info(`[Chief Agent] 動態 SubAgent 任務已加入隊列，TaskID: ${taskId}`)
+          logger.info(`[Chief Agent] Island-based SubAgent 任務已加入隊列，TaskID: ${taskId}`)
 
-          // 返回白噗噗的溫暖回應 + SubAgent 資訊
+          // 返回白噗噗的溫暖回應 + Island 資訊
           return {
             distribution: {
               ...distribution,
-              agentDecisions: [], // 補充空陣列（因優化移除了 include）
-              memories: []        // 補充空陣列（因優化移除了 include）
+              agentDecisions: [],
+              memories: []
             },
             tororoResponse: {
-              warmMessage: `${quickResult.warmResponse}\n由 ${targetSubAgent.emoji} ${targetSubAgent.nameChinese} 來處理喔！`,
+              warmMessage: `${quickResult.warmResponse}\n由 ${targetIsland.emoji} ${targetIsland.nameChinese} 來處理喔！`,
               category: quickResult.category,
               quickSummary: quickResult.quickSummary,
               confidence: quickResult.confidence,
               reasoning: quickResult.reasoning,
-              subAgent: {
-                id: targetSubAgent.id,
-                name: targetSubAgent.nameChinese,
-                emoji: targetSubAgent.emoji,
-                color: targetSubAgent.color
+              island: {
+                id: targetIsland.id,
+                name: targetIsland.nameChinese,
+                emoji: targetIsland.emoji,
+                color: targetIsland.color
               }
             },
             agentDecisions: [],
             memoriesCreated: [],
             processingTime: Date.now() - startTime,
             backgroundProcessing: true,
-            useDynamicSubAgent: true
+            useIslandSubAgent: true
           }
         }
       }
@@ -1410,33 +1410,33 @@ ${input.files && input.files.length > 0 ? `📎 附件：${input.files.length}�
   }
 
   /**
-   * 構建動態分類 Prompt（使用用戶自訂類別）
+   * 構建動態分類 Prompt（使用用戶自訂 Islands）
    */
   private buildDynamicClassificationPrompt(
     content: string,
     input: UploadKnowledgeInput,
-    userSubAgents: any[]
+    userIslands: any[]
   ): string {
-    // 生成類別列表
-    const categoryList = userSubAgents
-      .map((sub, index) => {
-        const keywords = sub.keywords && sub.keywords.length > 0
-          ? `\n   - 關鍵字：${sub.keywords.join('、')}`
+    // 生成類別列表（Islands）
+    const categoryList = userIslands
+      .map((island, index) => {
+        const keywords = island.keywords && island.keywords.length > 0
+          ? `\n   - 關鍵字：${island.keywords.join('、')}`
           : ''
-        const description = sub.description
-          ? `\n   - 說明：${sub.description}`
+        const description = island.description
+          ? `\n   - 說明：${island.description}`
           : ''
 
-        return `${index + 1}️⃣ ${sub.emoji} ${sub.nameChinese}${description}${keywords}`
+        return `${index + 1}️⃣ ${island.emoji} ${island.nameChinese}${description}${keywords}`
       })
       .join('\n\n')
 
     // 生成範例（使用前 3 個類別）
-    const examples = userSubAgents
-      .slice(0, Math.min(3, userSubAgents.length))
-      .map((sub) => {
-        const keyword = sub.keywords && sub.keywords[0] ? sub.keywords[0] : sub.nameChinese
-        return `輸入：「${keyword}相關的內容」\n→ ${sub.nameChinese} (${sub.emoji})`
+    const examples = userIslands
+      .slice(0, Math.min(3, userIslands.length))
+      .map((island) => {
+        const keyword = island.keywords && island.keywords[0] ? island.keywords[0] : island.nameChinese
+        return `輸入：「${keyword}相關的內容」\n→ ${island.nameChinese} (${island.emoji})`
       })
       .join('\n\n')
 
@@ -1471,7 +1471,7 @@ ${examples}
 }
 
 ⚠️ 重要：
-1. category 必須使用上述自訂類別的「中文名稱」（如：${userSubAgents[0]?.nameChinese || '學習成長'}）
+1. category 必須使用上述自訂類別的「中文名稱」（如：${userIslands[0]?.nameChinese || '學習成長'}）
 2. confidence 要誠實評估（0.5-1.0）
 3. reasoning 要說明匹配了哪些關鍵字或為什麼選擇這個類別
 4. warmResponse 要符合白貓個性（溫柔、可愛、鼓勵）
