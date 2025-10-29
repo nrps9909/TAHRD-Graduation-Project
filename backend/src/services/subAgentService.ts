@@ -869,6 +869,37 @@ ${assistant.type === 'SOCIAL' ? `
   }
 
   /**
+   * 智能匹配自定義島嶼到合適的 AssistantType
+   * 根據島嶼名稱和描述中的關鍵字，選擇最合適的預設類別
+   */
+  private matchIslandToAssistantType(island: any): string {
+    const text = `${island.nameChinese} ${island.description || ''}`.toLowerCase()
+
+    // 關鍵字匹配規則（按優先級排序）
+    const patterns = [
+      { keywords: ['學習', '知識', '教育', '課程', '讀書', '研究'], type: 'LEARNING' },
+      { keywords: ['工作', '職業', '事業', '專案', '任務', '會議'], type: 'WORK' },
+      { keywords: ['社交', '人際', '朋友', '關係', '交友', '聊天'], type: 'SOCIAL' },
+      { keywords: ['目標', '規劃', '夢想', '計畫', '願望', '理想'], type: 'GOALS' },
+      { keywords: ['資源', '收藏', '連結', '工具', '參考', '素材'], type: 'RESOURCES' },
+      { keywords: ['靈感', '創意', '藝術', '音樂', '設計', '興趣', '娛樂', '偶像'], type: 'INSPIRATION' },
+      { keywords: ['生活', '日常', '健康', '飲食', '運動', '休閒'], type: 'LIFE' },
+    ]
+
+    // 嘗試匹配關鍵字
+    for (const pattern of patterns) {
+      if (pattern.keywords.some(keyword => text.includes(keyword))) {
+        logger.info(`[Island Matcher] 島嶼 "${island.nameChinese}" 匹配到類別: ${pattern.type} (關鍵字匹配)`)
+        return pattern.type
+      }
+    }
+
+    // 無法匹配時，使用 MISC（雜項）而不是 LIFE
+    logger.info(`[Island Matcher] 島嶼 "${island.nameChinese}" 無法匹配到特定類別，使用 MISC`)
+    return 'MISC'
+  }
+
+  /**
    * 處理知識分發（使用 Island-based SubAgent）
    * 與 processDistribution 類似，但使用 Island 配置映射到對應的 Assistant
    */
@@ -904,13 +935,17 @@ ${assistant.type === 'SOCIAL' ? `
             }
 
             // 根據 Island 類型映射到對應的 Assistant
-            let assistant = await assistantService.getAssistantByType(island.name as any)
+            // 首先嘗試直接匹配（適用於預設島嶼，如 LEARNING_ISLAND）
+            const islandType = island.name?.replace('_ISLAND', '') || island.name
+            let assistant = await assistantService.getAssistantByType(islandType as any)
+
             if (!assistant) {
-              // 降級：使用 LIFE Assistant（生活記錄）作為備選，因為它是最通用的分類
-              logger.warn(`[Island Sub-Agent] No assistant found for island type: ${island.name}, using LIFE as fallback`)
-              assistant = await assistantService.getAssistantByType('LIFE')
+              // 對於自定義島嶼，使用智能匹配邏輯
+              const matchedType = this.matchIslandToAssistantType(island)
+              assistant = await assistantService.getAssistantByType(matchedType as any)
+
               if (!assistant) {
-                logger.error(`[Island Sub-Agent] LIFE assistant not found, cannot create memory`)
+                logger.error(`[Island Sub-Agent] 無法找到 Assistant，島嶼: ${island.nameChinese}, 匹配類型: ${matchedType}`)
                 return null
               }
             }
