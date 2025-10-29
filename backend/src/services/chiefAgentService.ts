@@ -668,6 +668,7 @@ ${contextInfo}
     recordReason?: string // 保留字段以保持向下兼容
     enrichedContent?: string // 豐富化的內容（包含連結元數據）
     linkMetadata?: Array<{ url: string, title: string, description: string }> // 連結元數據
+    aiSelectedIslandName?: string // AI 選擇的島嶼名稱（用於自訂島嶼）
   }> {
     try {
       // 優化：檢查緩存（相同內容直接返回）
@@ -745,7 +746,8 @@ ${contextInfo}
         shouldRecord: true, // ⚠️ 固定為 true，所有對話都記錄到資料庫
         recordReason: undefined, // 不再需要記錄原因
         enrichedContent: undefined, // 優化：不再同步豐富化內容
-        linkMetadata: undefined // 優化：連結元數據由 SubAgent 提取
+        linkMetadata: undefined, // 優化：連結元數據由 SubAgent 提取
+        aiSelectedIslandName: hasCustomCategories ? result.category : undefined // 新增：AI 選擇的島嶼名稱
       }
 
       // 優化：保存到緩存
@@ -981,19 +983,42 @@ ${input.content}
       if (useDynamicSubAgents) {
         logger.info('[Chief Agent] 使用 Island-based SubAgent 系統')
 
-        // 使用關鍵字匹配找到最相關的 Island
-        const relevantIslands = await dynamicSubAgentService.findRelevantIslands(
-          userId,
-          input.content,
-          3 // 取前 3 個最相關的
-        )
+        // 優先使用 AI 選擇的島嶼名稱
+        let targetIsland = null
 
-        if (relevantIslands.length === 0) {
+        if (quickResult.aiSelectedIslandName) {
+          // AI 已經選擇了島嶼，直接使用
+          const userIslands = await dynamicSubAgentService.getUserIslands(userId)
+          targetIsland = userIslands.find(
+            island => island.nameChinese === quickResult.aiSelectedIslandName
+          )
+
+          if (targetIsland) {
+            logger.info(`[Chief Agent] 使用 AI 選擇的 Island: ${targetIsland.nameChinese} (${targetIsland.id})`)
+          } else {
+            logger.warn(`[Chief Agent] AI 選擇的 Island "${quickResult.aiSelectedIslandName}" 不存在，使用關鍵字匹配`)
+          }
+        }
+
+        // 如果 AI 沒有選擇或島嶼不存在，使用關鍵字匹配作為後備
+        if (!targetIsland) {
+          const relevantIslands = await dynamicSubAgentService.findRelevantIslands(
+            userId,
+            input.content,
+            3 // 取前 3 個最相關的
+          )
+
+          if (relevantIslands.length > 0) {
+            targetIsland = relevantIslands[0]
+            logger.info(`[Chief Agent] 使用關鍵字匹配選擇 Island: ${targetIsland.nameChinese} (${targetIsland.id})`)
+          }
+        }
+
+        if (!targetIsland) {
           logger.warn('[Chief Agent] 沒有找到相關的 Island，降級到預設系統')
           // 降級到舊系統
         } else {
-          const targetIsland = relevantIslands[0]
-          logger.info(`[Chief Agent] 選擇 Island: ${targetIsland.nameChinese} (${targetIsland.id})`)
+          logger.info(`[Chief Agent] 最終選擇 Island: ${targetIsland.nameChinese} (${targetIsland.id})`)
 
           // 優化：直接使用原始內容（連結提取由 SubAgent 處理）
           const contentForDistribution = input.content

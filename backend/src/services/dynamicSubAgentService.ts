@@ -185,15 +185,6 @@ export class DynamicSubAgentService {
         })
       }
 
-      // 關鍵字匹配（如果有設置）
-      if (island.keywords && Array.isArray(island.keywords)) {
-        island.keywords.forEach((keyword: string) => {
-          if (contentLower.includes(keyword.toLowerCase())) {
-            score += 3
-          }
-        })
-      }
-
       return { island, score }
     })
 

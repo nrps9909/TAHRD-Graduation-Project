@@ -348,12 +348,8 @@ export class SubAgentService {
       // 創建完整的記憶記錄（包含 Sub-Agent 的深度分析）
       const memory = await prisma.memory.create({
         data: {
-          user: {
-            connect: { id: userId }
-          },
-          assistant: {
-            connect: { id: assistantId }
-          },
+          userId,
+          assistantId,
           rawContent: distribution.rawContent,
           title: suggestedTitle, // 使用 Sub-Agent 建議的標題
           summary: distribution.chiefSummary, // Chief 的簡要摘要
@@ -381,9 +377,7 @@ export class SubAgentService {
           socialSkillTags: socialSkillTags, // [社交能力標籤]
           progressChange: progressChange, // [進度變化] +1/0/-1
 
-          distribution: {
-            connect: { id: distributionId }
-          },
+          distributionId,
           relevanceScore: evaluation.relevanceScore,
         },
       })
@@ -438,15 +432,9 @@ export class SubAgentService {
       // 創建完整的記憶記錄（包含 Sub-Agent 的深度分析和 islandId）
       const memory = await prisma.memory.create({
         data: {
-          user: {
-            connect: { id: userId }
-          },
-          assistant: {
-            connect: { id: assistantId }
-          },
-          island: {
-            connect: { id: islandId }  // 新增：關聯到島嶼
-          },
+          userId,
+          assistantId,
+          islandId,  // 新增：關聯到島嶼
           rawContent: distribution.rawContent,
           title: suggestedTitle, // 使用 Sub-Agent 建議的標題
           summary: distribution.chiefSummary, // Chief 的簡要摘要
@@ -474,9 +462,7 @@ export class SubAgentService {
           socialSkillTags: socialSkillTags, // [社交能力標籤]
           progressChange: progressChange, // [進度變化] +1/0/-1
 
-          distribution: {
-            connect: { id: distributionId }
-          },
+          distributionId,
           relevanceScore: evaluation.relevanceScore,
         },
       })
