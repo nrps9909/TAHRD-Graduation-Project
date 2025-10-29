@@ -256,13 +256,14 @@ jobs:
                 exit 1
               fi
 
-              # 檢查後端健康
-              if curl -f -s http://localhost/health > /dev/null; then
-                echo "✅ 後端健康檢查通過"
+              # 檢查後端健康（允許重定向，檢查最終響應）
+              HTTP_CODE=$(curl -L -s -o /dev/null -w "%{http_code}" http://localhost/health)
+              if [ "$HTTP_CODE" = "200" ]; then
+                echo "✅ 後端健康檢查通過 (HTTP $HTTP_CODE)"
                 BACKEND_HEALTHY=true
                 break
               else
-                echo "⚠️ 後端健康檢查失敗，等待 10 秒後重試..."
+                echo "⚠️ 後端健康檢查失敗 (HTTP $HTTP_CODE)，等待 10 秒後重試..."
                 sleep 10
               fi
             done
