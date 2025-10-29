@@ -264,7 +264,6 @@ export const memoryResolvers = {
           },
           include: {
             assistant: true,
-            subcategory: true,
             user: true
           }
         })

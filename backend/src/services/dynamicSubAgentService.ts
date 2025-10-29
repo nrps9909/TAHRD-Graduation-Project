@@ -3,7 +3,7 @@
  * Dynamic SubAgent Service
  *
  * 從資料庫的 Island 動態載入配置
- * Islands 作為知識分類的主要單位，取代 Subcategories
+ * Islands 作為知識分類的主要單位
  */
 
 import { PrismaClient } from '@prisma/client'
@@ -20,7 +20,6 @@ export interface IslandConfig {
   emoji: string
   color: string
   description?: string
-  keywords?: string[]
   memoryCount: number
   isActive: boolean
   createdAt: Date
@@ -77,7 +76,6 @@ export class DynamicSubAgentService {
         emoji: island.emoji,
         color: island.color,
         description: island.description || undefined,
-        keywords: island.keywords || undefined,
         memoryCount: island.memoryCount,
         isActive: island.isActive,
         createdAt: island.createdAt,
@@ -97,155 +95,147 @@ export class DynamicSubAgentService {
       })
 
       logger.info(`[DynamicSubAgent] 從資料庫載入 ${islandConfigs.length} 個 Island (userId: ${userId})`)
-
       return islandConfigs
     } catch (error) {
-      logger.error('[DynamicSubAgent] 載入 Islands 失敗:', error)
-      throw new Error('載入 Island 配置失敗')
+      logger.error('[DynamicSubAgent] 獲取 Islands 失敗:', error)
+      return []
     }
   }
 
   /**
-   * 根據 ID 獲取 SubAgent
+   * 根據 ID 獲取 Island
    */
-  async getSubAgentById(subcategoryId: string): Promise<DynamicSubAgent | null> {
+  async getIslandById(islandId: string): Promise<IslandConfig | null> {
     // 檢查快取
-    const cached = this.subAgentByIdCache.get(subcategoryId)
+    const cached = this.islandByIdCache.get(islandId)
     if (cached) {
       return cached
     }
 
     try {
-      const subcategory = await prisma.subcategory.findUnique({
-        where: { id: subcategoryId },
-        include: {
-          island: {
-            select: {
-              id: true,
-              nameChinese: true,
-              emoji: true,
-              color: true,
-            },
-          },
-        },
+      const island = await prisma.island.findUnique({
+        where: { id: islandId },
       })
 
-      if (!subcategory) {
+      if (!island) {
         return null
       }
 
-      const subAgent: DynamicSubAgent = {
-        id: subcategory.id,
-        userId: subcategory.userId,
-        islandId: subcategory.islandId,
-        position: subcategory.position,
-        name: subcategory.name,
-        nameChinese: subcategory.nameChinese,
-        emoji: subcategory.emoji,
-        color: subcategory.color,
-        description: subcategory.description || undefined,
-        systemPrompt: subcategory.systemPrompt,
-        personality: subcategory.personality,
-        chatStyle: subcategory.chatStyle,
-        keywords: subcategory.keywords,
-        memoryCount: subcategory.memoryCount,
-        chatCount: subcategory.chatCount,
-        isActive: subcategory.isActive,
-        createdAt: subcategory.createdAt,
-        updatedAt: subcategory.updatedAt,
-        island: subcategory.island,
+      const islandConfig: IslandConfig = {
+        id: island.id,
+        userId: island.userId,
+        position: island.position,
+        name: island.name,
+        nameChinese: island.nameChinese,
+        emoji: island.emoji,
+        color: island.color,
+        description: island.description || undefined,
+        memoryCount: island.memoryCount,
+        isActive: island.isActive,
+        createdAt: island.createdAt,
+        updatedAt: island.updatedAt,
+        positionX: island.positionX,
+        positionY: island.positionY,
+        positionZ: island.positionZ,
       }
 
       // 更新快取
-      this.subAgentByIdCache.set(subcategoryId, subAgent)
+      this.islandByIdCache.set(islandId, islandConfig)
 
-      return subAgent
+      return islandConfig
     } catch (error) {
-      logger.error(`[DynamicSubAgent] 獲取 SubAgent ${subcategoryId} 失敗:`, error)
+      logger.error(`[DynamicSubAgent] 獲取 Island ${islandId} 失敗:`, error)
       return null
     }
   }
 
   /**
-   * 根據關鍵字找到最相關的 SubAgent
+   * 根據內容找到最相關的 Islands
    */
-  async findRelevantSubAgents(
+  async findRelevantIslands(
     userId: string,
     content: string,
     topN = 3
-  ): Promise<DynamicSubAgent[]> {
-    const subAgents = await this.getUserSubAgents(userId)
+  ): Promise<IslandConfig[]> {
+    const islands = await this.getUserIslands(userId)
 
-    if (subAgents.length === 0) {
-      logger.warn(`[DynamicSubAgent] 用戶 ${userId} 沒有可用的 SubAgent`)
+    if (islands.length === 0) {
+      logger.warn(`[DynamicSubAgent] 用戶 ${userId} 沒有可用的 Island`)
       return []
     }
 
     const contentLower = content.toLowerCase()
 
-    // 計算每個 SubAgent 的相關性分數
-    const scoredAgents = subAgents.map((agent) => {
+    // 計算每個 Island 的相關性分數
+    const scoredIslands = islands.map((island) => {
       let score = 0
 
-      // 關鍵字匹配
-      agent.keywords.forEach((keyword) => {
-        if (contentLower.includes(keyword.toLowerCase())) {
-          score += 2 // 關鍵字匹配權重
-        }
-      })
-
       // 名稱匹配
-      if (contentLower.includes(agent.nameChinese.toLowerCase())) {
+      if (contentLower.includes(island.nameChinese.toLowerCase())) {
         score += 3
       }
 
       // 描述匹配
-      if (agent.description && contentLower.includes(agent.description.toLowerCase())) {
+      if (island.description && contentLower.includes(island.description.toLowerCase())) {
         score += 1
       }
 
-      return { agent, score }
+      return { island, score }
     })
 
     // 排序並取前 N 個
-    const topAgents = scoredAgents
-      .filter((item) => item.score > 0) // 只返回有相關性的
-      .sort((a, b) => b.score - a.score)
+    const topIslands = scoredIslands
+      .sort((a, b) => {
+        // 如果分數相同，按記憶數量排序（更常用的島嶼優先）
+        if (b.score === a.score) {
+          return b.island.memoryCount - a.island.memoryCount
+        }
+        return b.score - a.score
+      })
       .slice(0, topN)
-      .map((item) => item.agent)
-
-    // 如果沒有匹配的，返回前 N 個活躍的
-    if (topAgents.length === 0) {
-      logger.info(`[DynamicSubAgent] 沒有關鍵字匹配，返回前 ${topN} 個 SubAgent`)
-      return subAgents.slice(0, topN)
-    }
+      .map((item) => item.island)
 
     logger.info(
-      `[DynamicSubAgent] 找到 ${topAgents.length} 個相關 SubAgent: ${topAgents
-        .map((a) => a.nameChinese)
+      `[DynamicSubAgent] 找到 ${topIslands.length} 個相關 Island: ${topIslands
+        .map((i) => i.nameChinese)
         .join(', ')}`
     )
 
-    return topAgents
+    return topIslands
+  }
+
+  /**
+   * 增加 Island 統計
+   */
+  async incrementStats(
+    islandId: string,
+    type: 'memory' | 'chat'
+  ): Promise<void> {
+    try {
+      if (type === 'memory') {
+        await prisma.island.update({
+          where: { id: islandId },
+          data: { memoryCount: { increment: 1 } },
+        })
+      }
+
+      // 清除快取，下次會重新載入
+      const island = this.islandByIdCache.get(islandId)
+      if (island) {
+        this.clearUserCache(island.userId)
+      }
+    } catch (error) {
+      logger.error(`[DynamicSubAgent] 更新統計失敗 (${islandId}):`, error)
+    }
   }
 
   /**
    * 清除用戶快取
    */
-  clearUserCache(userId: string) {
-    this.userSubAgentsCache.delete(userId)
+  clearUserCache(userId: string): void {
+    this.userIslandsCache.delete(userId)
     this.cacheExpiry.delete(userId)
-    logger.info(`[DynamicSubAgent] 清除用戶 ${userId} 的快取`)
-  }
-
-  /**
-   * 清除所有快取
-   */
-  clearAllCache() {
-    this.userSubAgentsCache.clear()
-    this.subAgentByIdCache.clear()
-    this.cacheExpiry.clear()
-    logger.info('[DynamicSubAgent] 清除所有快取')
+    logger.info(`[DynamicSubAgent] 清除快取 (userId: ${userId})`)
   }
 
   /**
@@ -255,60 +245,6 @@ export class DynamicSubAgentService {
     const expiry = this.cacheExpiry.get(userId)
     if (!expiry) return false
     return Date.now() < expiry
-  }
-
-  /**
-   * 增加 SubAgent 統計
-   */
-  async incrementStats(
-    subcategoryId: string,
-    type: 'memory' | 'chat'
-  ): Promise<void> {
-    try {
-      if (type === 'memory') {
-        await prisma.subcategory.update({
-          where: { id: subcategoryId },
-          data: { memoryCount: { increment: 1 } },
-        })
-      } else if (type === 'chat') {
-        await prisma.subcategory.update({
-          where: { id: subcategoryId },
-          data: { chatCount: { increment: 1 } },
-        })
-      }
-
-      // 清除快取，下次會重新載入
-      const subAgent = this.subAgentByIdCache.get(subcategoryId)
-      if (subAgent) {
-        this.clearUserCache(subAgent.userId)
-      }
-    } catch (error) {
-      logger.error(`[DynamicSubAgent] 更新統計失敗 (${subcategoryId}):`, error)
-    }
-  }
-
-  /**
-   * 構建 SubAgent 的完整提示詞
-   */
-  buildPrompt(
-    subAgent: DynamicSubAgent,
-    userMessage: string,
-    context?: string
-  ): string {
-    return `${subAgent.systemPrompt}
-
-**你的身份：**
-- 名稱：${subAgent.nameChinese} (${subAgent.name})
-- 專長領域：${subAgent.island?.nameChinese || '知識管理'}
-- 個性：${subAgent.personality}
-- 對話風格：${subAgent.chatStyle}
-
-**用戶的訊息：**
-${userMessage}
-
-${context ? `\n**相關背景：**\n${context}\n` : ''}
-
-請根據你的專業和個性，提供有幫助的回應。`
   }
 }
 

@@ -63,5 +63,4 @@ export const resolvers = {
 
   // Type resolvers - Category System
   Island: categoryResolvers.Island,
-  Subcategory: categoryResolvers.Subcategory,
 }

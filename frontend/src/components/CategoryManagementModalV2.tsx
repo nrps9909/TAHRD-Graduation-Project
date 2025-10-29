@@ -35,7 +35,6 @@ export const CategoryManagementModalV2: React.FC<CategoryManagementModalV2Props>
   onClose,
 }) => {
   const [editState, setEditState] = useState<EditState | null>(null)
-  const [expandedIslands, setExpandedIslands] = useState<Set<string>>(new Set())
 
   // GraphQL
   const { data, loading, refetch } = useQuery(GET_ISLANDS)

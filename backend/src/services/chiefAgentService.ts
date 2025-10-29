@@ -1016,7 +1016,7 @@ ${input.content}
               chiefAnalysis: `白噗噗快速分類 → Island: ${targetIsland.nameChinese}`,
               chiefSummary: quickResult.quickSummary,
               identifiedTopics: [targetIsland.nameChinese],
-              suggestedTags: targetIsland.keywords || [],
+              suggestedTags: [],
               distributedTo: [], // 使用 Island ID（稍後在任務處理時映射到 assistant）
               storedBy: [],
               processingTime: Date.now() - startTime,
@@ -1420,14 +1420,11 @@ ${input.files && input.files.length > 0 ? `📎 附件：${input.files.length}�
     // 生成類別列表（Islands）
     const categoryList = userIslands
       .map((island, index) => {
-        const keywords = island.keywords && island.keywords.length > 0
-          ? `\n   - 關鍵字：${island.keywords.join('、')}`
-          : ''
         const description = island.description
           ? `\n   - 說明：${island.description}`
           : ''
 
-        return `${index + 1}️⃣ ${island.emoji} ${island.nameChinese}${description}${keywords}`
+        return `${index + 1}️⃣ ${island.emoji} ${island.nameChinese}${description}`
       })
       .join('\n\n')
 
@@ -1435,8 +1432,7 @@ ${input.files && input.files.length > 0 ? `📎 附件：${input.files.length}�
     const examples = userIslands
       .slice(0, Math.min(3, userIslands.length))
       .map((island) => {
-        const keyword = island.keywords && island.keywords[0] ? island.keywords[0] : island.nameChinese
-        return `輸入：「${keyword}相關的內容」\n→ ${island.nameChinese} (${island.emoji})`
+        return `輸入：「${island.nameChinese}相關的內容」\n→ ${island.nameChinese} (${island.emoji})`
       })
       .join('\n\n')
 

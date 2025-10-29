@@ -42,7 +42,7 @@ interface EditModalProps {
 
 export const EditModal: React.FC<EditModalProps> = ({
   editState,
-  islands,
+  islands: _islands,
   onClose,
   onCreate,
   onUpdate,
@@ -211,7 +211,7 @@ export const EditModal: React.FC<EditModalProps> = ({
                   value={formData.emoji}
                   onChange={(e) => setFormData((prev) => ({ ...prev, emoji: e.target.value }))}
                   className="w-full px-3 py-2 bg-[#1E1E1E] border-2 border-gray-700 rounded-lg text-2xl text-center focus:border-[#d8c47e] focus:outline-none"
-                  placeholder={mode === 'island' ? '🏝️' : '📚'}
+                  placeholder="🏝️"
                 />
               </div>
               <div>

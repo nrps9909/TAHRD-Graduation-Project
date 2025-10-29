@@ -225,4 +225,13 @@ export const categoryResolvers = {
       }
     },
   },
+
+  // Type resolvers
+  Island: {
+    user: async (parent: any, _: any, { prisma }: any) => {
+      return prisma.user.findUnique({
+        where: { id: parent.userId }
+      })
+    },
+  },
 }
