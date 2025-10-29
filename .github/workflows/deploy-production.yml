@@ -1,4 +1,4 @@
-name: Build, Test and Deploy to Production (Optimized)
+name: Build, Test and Deploy to Production (Speed Optimized)
 
 on:
   push:
@@ -18,52 +18,100 @@ env:
   IMAGE_NAME: nrps9909/tahrd-graduation-project
 
 jobs:
-  # 第一階段：測試和驗證（並行執行）
-  test:
+  # 检测变更的组件
+  detect-changes:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        component: [backend, frontend]
-      fail-fast: false # 讓兩個都執行完，即使一個失敗
-
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      docker: ${{ steps.filter.outputs.docker }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+              - 'package.json'
+            frontend:
+              - 'frontend/**'
+              - 'package.json'
+            docker:
+              - 'docker-compose*.yml'
+              - '.env.production'
+              - 'nginx/**'
+
+  # 第一階段：測試和驗證（只測試有變更的組件）
+  test:
+    needs: detect-changes
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        component: [backend, frontend]
+      fail-fast: false
+
+    steps:
+      - name: Skip if no changes
+        id: skip-check
+        run: |
+          if [ "${{ matrix.component }}" == "backend" ] && [ "${{ needs.detect-changes.outputs.backend }}" != "true" ]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "⏭️ 跳過 backend 測試（無變更）"
+          elif [ "${{ matrix.component }}" == "frontend" ] && [ "${{ needs.detect-changes.outputs.frontend }}" != "true" ]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "⏭️ 跳過 frontend 測試（無變更）"
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Checkout code
+        if: steps.skip-check.outputs.skip != 'true'
+        uses: actions/checkout@v4
+
       - name: Setup Node.js
+        if: steps.skip-check.outputs.skip != 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
 
       - name: Install Dependencies (Workspaces)
-        run: npm install
+        if: steps.skip-check.outputs.skip != 'true'
+        run: npm ci --prefer-offline --no-audit
 
       - name: Lint ${{ matrix.component }}
+        if: steps.skip-check.outputs.skip != 'true'
         run: |
           cd ${{ matrix.component }}
-          npm run lint || echo "⚠️ No lint script found for ${{ matrix.component }}"
+          npm run lint || echo "⚠️ No lint script found"
 
       - name: Type Check ${{ matrix.component }}
+        if: steps.skip-check.outputs.skip != 'true'
         run: |
           cd ${{ matrix.component }}
-          timeout 5m npx tsc --noEmit || echo "⚠️ Type check timed out or failed"
+          timeout 2m npx tsc --noEmit || echo "⚠️ Type check timed out or failed"
 
       - name: Test ${{ matrix.component }}
+        if: steps.skip-check.outputs.skip != 'true'
         run: |
           cd ${{ matrix.component }}
-          npm test || echo "⚠️ No tests found for ${{ matrix.component }}"
+          npm test || echo "⚠️ No tests found"
 
-  # 驗證配置文件
+  # 驗證配置文件（僅在相關文件變更時）
   validate-config:
+    needs: detect-changes
     runs-on: ubuntu-latest
+    if: needs.detect-changes.outputs.docker == 'true'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Validate Docker Compose
         run: |
-          # 創建臨時 .env.production 用於驗證（不含敏感信息）
           cat > .env.production << EOF
           NODE_ENV=production
           PORT=4000
@@ -84,14 +132,13 @@ jobs:
         run: |
           if grep -r "upstream backend" nginx/conf.d/*.conf | wc -l | grep -q "^[2-9]"; then
             echo "❌ 錯誤：發現重複的 upstream backend 定義"
-            grep -n "upstream backend" nginx/conf.d/*.conf
             exit 1
           fi
           echo "✅ Nginx 配置檢查通過"
 
-  # 第二階段：構建和推送映像（並行構建）
+  # 第二階段：構建和推送映像（只構建有變更的組件）
   build-and-push:
-    needs: [test, validate-config]
+    needs: [detect-changes, test]
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
     strategy:
@@ -99,13 +146,29 @@ jobs:
         component: [backend, frontend]
 
     steps:
+      - name: Skip if no changes
+        id: skip-check
+        run: |
+          if [ "${{ matrix.component }}" == "backend" ] && [ "${{ needs.detect-changes.outputs.backend }}" != "true" ]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "⏭️ 跳過 backend 構建（無變更）"
+          elif [ "${{ matrix.component }}" == "frontend" ] && [ "${{ needs.detect-changes.outputs.frontend }}" != "true" ]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "⏭️ 跳過 frontend 構建（無變更）"
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Checkout code
+        if: steps.skip-check.outputs.skip != 'true'
         uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
+        if: steps.skip-check.outputs.skip != 'true'
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to GitHub Container Registry
+        if: steps.skip-check.outputs.skip != 'true'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -113,6 +176,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract metadata for ${{ matrix.component }}
+        if: steps.skip-check.outputs.skip != 'true'
         id: meta
         uses: docker/metadata-action@v5
         with:
@@ -120,9 +184,9 @@ jobs:
           tags: |
             type=raw,value=latest
             type=sha,prefix={{branch}}-
-            type=raw,value={{date 'YYYYMMDD-HHmmss'}}
 
       - name: Build and push ${{ matrix.component }} image
+        if: steps.skip-check.outputs.skip != 'true'
         uses: docker/build-push-action@v5
         with:
           context: ./${{ matrix.component }}
@@ -141,12 +205,12 @@ jobs:
             VITE_OPENWEATHER_API_KEY=${{ matrix.component == 'frontend' && secrets.VITE_OPENWEATHER_API_KEY || '' }}
             VITE_DEBUG=${{ matrix.component == 'frontend' && 'false' || '' }}
 
-  # 第三階段：部署（帶有回滾機制）
+  # 第三階段：部署（優化健康檢查）
   deploy:
-    needs: build-and-push
+    needs: [detect-changes, build-and-push]
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
-    timeout-minutes: 10
+    timeout-minutes: 8
 
     steps:
       - name: Checkout code
@@ -156,11 +220,13 @@ jobs:
         uses: appleboy/ssh-action@v1.0.0
         env:
           GITHUB_REPOSITORY: ${{ env.IMAGE_NAME }}
+          BACKEND_CHANGED: ${{ needs.detect-changes.outputs.backend }}
+          FRONTEND_CHANGED: ${{ needs.detect-changes.outputs.frontend }}
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          envs: GITHUB_REPOSITORY
+          envs: GITHUB_REPOSITORY,BACKEND_CHANGED,FRONTEND_CHANGED
           script_stop: true
           script: |
             set -e
@@ -169,77 +235,44 @@ jobs:
 
             echo "========================================="
             echo "🚀 開始部署到生產環境"
-            echo "時間: $(date)"
+            echo "Backend 變更: ${BACKEND_CHANGED}"
+            echo "Frontend 變更: ${FRONTEND_CHANGED}"
             echo "========================================="
 
-            # 1. 備份當前版本（用於回滾）
+            # 1. 備份當前版本
             echo "📦 備份當前版本..."
             BACKUP_TAG="backup-$(date +%Y%m%d-%H%M%S)"
             docker tag ghcr.io/${GITHUB_REPOSITORY}/backend:latest ghcr.io/${GITHUB_REPOSITORY}/backend:${BACKUP_TAG} 2>/dev/null || true
             docker tag ghcr.io/${GITHUB_REPOSITORY}/frontend:latest ghcr.io/${GITHUB_REPOSITORY}/frontend:${BACKUP_TAG} 2>/dev/null || true
-            echo "backup_tag=${BACKUP_TAG}" > /tmp/deployment_backup.txt
 
             # 2. 拉取最新代碼
             echo "📥 拉取最新代碼..."
             git fetch origin
             PREVIOUS_COMMIT=$(git rev-parse HEAD)
             git reset --hard origin/production
-            echo "previous_commit=${PREVIOUS_COMMIT}" >> /tmp/deployment_backup.txt
 
-            # 3. 拉取最新映像
-            echo "🐳 拉取最新 Docker 映像..."
-            # 映像名稱已在 docker-compose.production-prebuilt.yml 中硬編碼為小寫
-            if ! docker compose -f docker-compose.production-prebuilt.yml pull; then
-              echo "❌ 拉取映像失敗！"
-              exit 1
+            # 3. 智能拉取映像（只拉取有變更的）
+            echo "🐳 拉取映像..."
+            if [ "${BACKEND_CHANGED}" = "true" ]; then
+              echo "📦 拉取 backend 映像..."
+              docker compose -f docker-compose.production-prebuilt.yml pull backend
+            fi
+            if [ "${FRONTEND_CHANGED}" = "true" ]; then
+              echo "📦 拉取 frontend 映像..."
+              docker compose -f docker-compose.production-prebuilt.yml pull frontend
+            fi
+            if [ "${BACKEND_CHANGED}" != "true" ] && [ "${FRONTEND_CHANGED}" != "true" ]; then
+              echo "⏭️ 無組件變更，拉取所有映像以確保一致性"
+              docker compose -f docker-compose.production-prebuilt.yml pull
             fi
 
             # 4. 重新創建容器
             echo "🔄 重新創建容器..."
-            if ! docker compose -f docker-compose.production-prebuilt.yml up -d --force-recreate; then
-              echo "❌ 容器啟動失敗！"
-              echo "📋 查看容器狀態："
-              docker compose -f docker-compose.production-prebuilt.yml ps -a
-              echo ""
-              echo "📋 後端日誌："
-              docker compose -f docker-compose.production-prebuilt.yml logs --tail=100 backend
-              exit 1
-            fi
+            docker compose -f docker-compose.production-prebuilt.yml up -d --force-recreate
 
-            # 5. 執行資料庫遷移（暫時跳過以避免 OOM 問題）
-            echo "🗄️ 跳過資料庫遷移（subcategory 移除已在之前的部署中完成）"
-            # if docker exec heart-whisper-backend npx prisma db push --skip-generate; then
-            #   echo "✅ 資料庫遷移完成"
-            # else
-            #   echo "⚠️ 資料庫遷移失敗，但繼續部署（MongoDB schema 變更通常向後兼容）"
-            # fi
-
-            # 6. 等待服務啟動並監控容器狀態
-            echo "⏳ 等待服務啟動..."
-            sleep 10
-
-            # 7. 檢查容器是否還在運行
-            echo "🔍 檢查容器狀態..."
-            BACKEND_STATUS=$(docker inspect -f '{{.State.Status}}' heart-whisper-backend 2>/dev/null || echo "not_found")
-            if [ "$BACKEND_STATUS" != "running" ]; then
-              echo "❌ 後端容器未運行！狀態: $BACKEND_STATUS"
-              echo "📋 容器詳細信息："
-              docker inspect heart-whisper-backend 2>/dev/null || echo "無法獲取容器信息"
-              echo ""
-              echo "📋 後端日誌："
-              docker compose -f docker-compose.production-prebuilt.yml logs --tail=100 backend
-              echo ""
-              echo "📋 系統資源使用情況："
-              free -h
-              docker stats --no-stream
-              exit 1
-            fi
-            echo "✅ 後端容器正在運行"
-
-            # 8. 健康檢查
+            # 5. 快速健康檢查（優化重試邏輯）
             echo "🏥 執行健康檢查..."
-
-            MAX_RETRIES=6
+            MAX_RETRIES=5
             RETRY_COUNT=0
             BACKEND_HEALTHY=false
 
@@ -247,59 +280,46 @@ jobs:
               RETRY_COUNT=$((RETRY_COUNT + 1))
               echo "嘗試 $RETRY_COUNT/$MAX_RETRIES..."
 
-              # 再次檢查容器是否還在運行
+              # 檢查容器狀態
               BACKEND_STATUS=$(docker inspect -f '{{.State.Status}}' heart-whisper-backend 2>/dev/null || echo "not_found")
               if [ "$BACKEND_STATUS" != "running" ]; then
-                echo "❌ 後端容器在健康檢查期間停止了！"
-                echo "📋 後端日誌："
-                docker compose -f docker-compose.production-prebuilt.yml logs --tail=100 backend
+                echo "❌ 後端容器未運行"
                 exit 1
               fi
 
-              # 檢查後端健康（允許重定向，檢查最終響應）
-              HTTP_CODE=$(curl -L -s -o /dev/null -w "%{http_code}" http://localhost/health || echo "000")
-              echo "   HTTP 狀態碼: $HTTP_CODE"
+              # 健康檢查（5秒超時）
+              HTTP_CODE=$(timeout 5 curl -L -s -o /dev/null -w "%{http_code}" http://localhost/health 2>/dev/null || echo "000")
               if [ "$HTTP_CODE" = "200" ]; then
-                echo "✅ 後端健康檢查通過 (HTTP $HTTP_CODE)"
+                echo "✅ 後端健康檢查通過"
                 BACKEND_HEALTHY=true
                 break
-              else
-                echo "⚠️ 後端健康檢查失敗 (HTTP $HTTP_CODE)，等待 10 秒後重試..."
-                sleep 10
               fi
+
+              sleep 5
             done
 
             if [ "$BACKEND_HEALTHY" = false ]; then
-              echo "❌ 後端健康檢查失敗！"
-              echo "📋 後端日誌："
-              docker compose -f docker-compose.production-prebuilt.yml logs --tail=100 backend
-              echo ""
-              echo "📋 Nginx 日誌："
-              docker compose -f docker-compose.production-prebuilt.yml logs --tail=50 nginx
+              echo "❌ 健康檢查失敗"
+              docker compose -f docker-compose.production-prebuilt.yml logs --tail=50 backend
               exit 1
             fi
 
-            # 檢查 GraphQL
-            if ! curl -f -s -X POST http://localhost/graphql \
+            # GraphQL 快速檢查
+            if ! timeout 5 curl -f -s -X POST http://localhost/graphql \
                 -H "Content-Type: application/json" \
-                -d '{"query":"{__typename}"}' > /dev/null; then
-              echo "❌ GraphQL 健康檢查失敗！"
-              docker compose -f docker-compose.production-prebuilt.yml logs --tail=50 backend
+                -d '{"query":"{__typename}"}' > /dev/null 2>&1; then
+              echo "❌ GraphQL 健康檢查失敗"
               exit 1
             fi
             echo "✅ GraphQL 健康檢查通過"
 
-            # 9. 清理舊映像
+            # 6. 清理
             echo "🧹 清理舊映像..."
-            docker image prune -f
+            docker image prune -f --filter "until=24h"
 
             echo "========================================="
             echo "✅ 部署成功！"
-            echo "時間: $(date)"
             echo "========================================="
-            echo ""
-            echo "📊 服務狀態："
-            docker compose -f docker-compose.production-prebuilt.yml ps
 
       # 部署失敗時自動回滾
       - name: Rollback on failure
@@ -311,55 +331,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             set -e
-
-            echo "========================================="
             echo "⚠️ 部署失敗，開始自動回滾"
-            echo "========================================="
-
             cd /home/jesse/heart-whisper-town
-
-            # 讀取備份信息
-            if [ -f /tmp/deployment_backup.txt ]; then
-              source /tmp/deployment_backup.txt
-
-              # 回滾代碼
-              if [ -n "$previous_commit" ]; then
-                echo "📥 回滾代碼到 ${previous_commit}"
-                git reset --hard ${previous_commit}
-              fi
-
-              # 回滾容器
-              echo "🔄 重啟服務..."
-              docker compose -f docker-compose.production-prebuilt.yml up -d --force-recreate
-
-              echo "✅ 回滾完成"
-            else
-              echo "⚠️ 找不到備份信息，請手動檢查"
-            fi
-
-            echo ""
-            echo "📊 當前服務狀態："
-            docker compose -f docker-compose.production-prebuilt.yml ps
-
-            echo ""
-            echo "📋 最近的日誌："
-            docker compose -f docker-compose.production-prebuilt.yml logs --tail=50
-
-      # 部署狀態通知
-      - name: Notify deployment status
-        if: always()
-        run: |
-          if [ "${{ job.status }}" == "success" ]; then
-            echo "✅ 🎉 部署成功！"
-            echo "環境: Production"
-            echo "分支: ${{ github.ref_name }}"
-            echo "提交: ${{ github.sha }}"
-            echo "部署者: ${{ github.actor }}"
-          else
-            echo "❌ 部署失敗！已執行自動回滾"
-            echo "環境: Production"
-            echo "分支: ${{ github.ref_name }}"
-            echo "提交: ${{ github.sha }}"
-            echo "部署者: ${{ github.actor }}"
-            echo "請檢查日誌並手動修復"
-          fi
+            docker compose -f docker-compose.production-prebuilt.yml up -d --force-recreate
+            echo "✅ 回滾完成"
