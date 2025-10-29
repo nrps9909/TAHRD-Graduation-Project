@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { useQuery, useMutation } from '@apollo/client'
 import { useNavigate } from 'react-router-dom'
 import { GET_MEMORIES, PIN_MEMORY, UNPIN_MEMORY, DELETE_MEMORY, CREATE_MEMORY_DIRECT } from '../../graphql/memory'
+import { GET_ISLANDS, Island } from '../../graphql/category'
 import { Memory, MemoryCategory } from '../../types/memory'
 import SimpleMemoryEditor from '../../components/SimpleMemoryEditor'
 import MemoryEditor from '../../components/MemoryEditor'
@@ -18,9 +19,23 @@ import { CSS } from '@dnd-kit/utilities'
 
 type SortField = 'createdAt' | 'title' | 'custom'
 
+// 岛屿名称到 Category 的映射（基于常见的岛屿命名）
+function getIslandCategory(islandName: string): MemoryCategory | null {
+  const name = islandName.toLowerCase()
+  if (name.includes('学习') || name.includes('學習')) return 'LEARNING'
+  if (name.includes('灵感') || name.includes('靈感') || name.includes('创意') || name.includes('創意')) return 'INSPIRATION'
+  if (name.includes('工作') || name.includes('职业') || name.includes('職業')) return 'WORK'
+  if (name.includes('社交') || name.includes('人际') || name.includes('人際') || name.includes('关系') || name.includes('關係')) return 'SOCIAL'
+  if (name.includes('生活') || name.includes('日常')) return 'LIFE'
+  if (name.includes('目标') || name.includes('目標') || name.includes('规划') || name.includes('規劃')) return 'GOALS'
+  if (name.includes('资源') || name.includes('資源') || name.includes('收藏')) return 'RESOURCES'
+  return null
+}
+
 export default function CuteDatabaseView() {
   const navigate = useNavigate()
   const [selectedCategory, setSelectedCategory] = useState<MemoryCategory | null>(null)
+  const [selectedIslandId, setSelectedIslandId] = useState<string | null>(null) // 新增：选中的岛屿 ID
   const [searchQuery, setSearchQuery] = useState('')
   const debouncedSearch = useDebounce(searchQuery, 300)
   const [sortField, setSortField] = useState<SortField>('createdAt')
@@ -57,6 +72,13 @@ export default function CuteDatabaseView() {
     onError: (error) => {
       console.error('Failed to load memories:', error)
       toast.error('載入記憶失敗，請檢查網路連線 😢')
+    },
+  })
+
+  // 獲取所有島嶼
+  const { data: islandsData, loading: islandsLoading } = useQuery(GET_ISLANDS, {
+    onError: (error) => {
+      console.error('Failed to load islands:', error)
     },
   })
 
@@ -122,11 +144,24 @@ export default function CuteDatabaseView() {
     { value: 'RESOURCES', label: '資源', emoji: '📦', color: '#E5B3FF' },
   ]
 
+  // 獲取島嶼列表
+  const islands: Island[] = islandsData?.islands || []
+
   const filteredMemories = useMemo(() => {
     let filtered = memoriesData?.memories || []
 
+    // 島嶼過濾（優先於傳統分類）
+    if (selectedIslandId) {
+      const selectedIsland = islands.find(i => i.id === selectedIslandId)
+      if (selectedIsland) {
+        const category = getIslandCategory(selectedIsland.nameChinese)
+        if (category) {
+          filtered = filtered.filter((m: Memory) => m.category === category)
+        }
+      }
+    }
     // 大類別（傳統分類）過濾
-    if (selectedCategory) {
+    else if (selectedCategory) {
       filtered = filtered.filter((m: Memory) => m.category === selectedCategory)
     }
 
@@ -169,7 +204,7 @@ export default function CuteDatabaseView() {
     })
 
     return filtered
-  }, [memoriesData?.memories, selectedCategory, debouncedSearch, sortField, customOrder])
+  }, [memoriesData?.memories, selectedCategory, selectedIslandId, islands, debouncedSearch, sortField, customOrder])
 
   const handleTogglePin = async (memory: Memory, e?: React.MouseEvent) => {
     e?.stopPropagation()
@@ -290,16 +325,17 @@ export default function CuteDatabaseView() {
           </button>
         </div>
 
-        {/* 分類篩選 */}
+        {/* 分類篩選 - 島嶼列表 */}
         <div className="flex-1 overflow-y-auto px-3 py-3">
           <div className="space-y-1.5">
             {/* 全部按鈕 */}
             <button
               onClick={() => {
                 setSelectedCategory(null)
+                setSelectedIslandId(null)
               }}
               className="w-full text-left px-3 py-2.5 rounded-2xl text-sm font-bold transition-all hover:scale-[1.02]"
-              style={!selectedCategory ? {
+              style={!selectedCategory && !selectedIslandId ? {
                 background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.3) 0%, rgba(251, 146, 60, 0.3) 100%)',
                 color: '#fef3c7',
                 border: '2px solid rgba(251, 191, 36, 0.4)',
@@ -317,35 +353,61 @@ export default function CuteDatabaseView() {
               </div>
             </button>
 
-            {/* 分類列表 */}
-            {categories.map((cat) => {
-              const count = (memoriesData?.memories || []).filter((m: Memory) => m.category === cat.value).length
-              if (count === 0) return null
-              const isSelected = selectedCategory === cat.value
-              return (
+            {/* 島嶼列表 */}
+            {islandsLoading ? (
+              <div className="text-center py-4 text-xs" style={{ color: '#94a3b8' }}>載入中...</div>
+            ) : islands.length === 0 ? (
+              <div className="text-center py-4 text-xs" style={{ color: '#94a3b8' }}>
+                尚未建立島嶼分類
+                <br />
                 <button
-                  key={cat.value}
-                  onClick={() => {
-                    setSelectedCategory(cat.value)
-                  }}
-                  className="w-full text-left px-3 py-2.5 rounded-2xl text-sm font-bold transition-all hover:scale-[1.02]"
-                  style={isSelected ? {
-                    background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.3) 0%, rgba(251, 146, 60, 0.3) 100%)',
-                    color: '#fef3c7',
-                    border: '2px solid rgba(251, 191, 36, 0.4)',
-                  } : {
-                    background: 'rgba(30, 41, 59, 0.6)',
-                    color: '#cbd5e1',
-                    border: '2px solid rgba(251, 191, 36, 0.15)',
-                  }}
+                  onClick={() => setShowCategoryModal(true)}
+                  className="mt-2 text-xs hover:underline"
+                  style={{ color: '#fbbf24' }}
                 >
-                  <div className="flex items-center justify-between">
-                    <span>{cat.emoji} {cat.label}</span>
-                    <span className="text-xs opacity-90 font-bold">{count}</span>
-                  </div>
+                  點擊設定分類
                 </button>
-              )
-            })}
+              </div>
+            ) : (
+              islands.map((island) => {
+                const category = getIslandCategory(island.nameChinese)
+                const count = category
+                  ? (memoriesData?.memories || []).filter((m: Memory) => m.category === category).length
+                  : 0
+                const isSelected = selectedIslandId === island.id
+
+                return (
+                  <button
+                    key={island.id}
+                    onClick={() => {
+                      setSelectedIslandId(island.id)
+                      setSelectedCategory(null)
+                    }}
+                    className="w-full text-left px-3 py-2.5 rounded-2xl text-sm font-bold transition-all hover:scale-[1.02]"
+                    style={isSelected ? {
+                      background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.3) 0%, rgba(251, 146, 60, 0.3) 100%)',
+                      color: '#fef3c7',
+                      borderTop: '2px solid rgba(251, 191, 36, 0.4)',
+                      borderRight: '2px solid rgba(251, 191, 36, 0.4)',
+                      borderBottom: '2px solid rgba(251, 191, 36, 0.4)',
+                      borderLeft: `4px solid ${island.color}`,
+                    } : {
+                      background: 'rgba(30, 41, 59, 0.6)',
+                      color: '#fef3c7',
+                      borderTop: '2px solid rgba(251, 191, 36, 0.15)',
+                      borderRight: '2px solid rgba(251, 191, 36, 0.15)',
+                      borderBottom: '2px solid rgba(251, 191, 36, 0.15)',
+                      borderLeft: `4px solid ${island.color}`,
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span>{island.emoji} {island.nameChinese}</span>
+                      <span className="text-xs opacity-90 font-bold">{count}</span>
+                    </div>
+                  </button>
+                )
+              })
+            )}
           </div>
         </div>
       </div>
