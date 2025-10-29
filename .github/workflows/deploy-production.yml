@@ -257,7 +257,8 @@ jobs:
               fi
 
               # 檢查後端健康（允許重定向，檢查最終響應）
-              HTTP_CODE=$(curl -L -s -o /dev/null -w "%{http_code}" http://localhost/health)
+              HTTP_CODE=$(curl -L -s -o /dev/null -w "%{http_code}" http://localhost/health || echo "000")
+              echo "   HTTP 狀態碼: $HTTP_CODE"
               if [ "$HTTP_CODE" = "200" ]; then
                 echo "✅ 後端健康檢查通過 (HTTP $HTTP_CODE)"
                 BACKEND_HEALTHY=true
