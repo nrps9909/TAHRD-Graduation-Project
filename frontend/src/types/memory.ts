@@ -33,6 +33,8 @@ export interface Memory {
   isArchived: boolean
   createdAt: string
   updatedAt: string
+  // 新增：島嶼關聯
+  islandId?: string  // 記憶所屬的島嶼 ID（用於自定義島嶼）
   assistant?: {
     id: string
     name: string

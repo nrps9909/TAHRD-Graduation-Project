@@ -19,6 +19,7 @@ export const GET_ALL_MEMORIES = gql`
       tags
       emoji
       createdAt
+      islandId
       assistant {
         id
         nameChinese

@@ -69,18 +69,10 @@ export default function CuteDatabaseView() {
       filter: {},  // 不過濾分類，獲取所有記憶
       limit: 1000,  // 增加限制以獲取更多記憶
     },
-    onError: (error) => {
-      console.error('Failed to load memories:', error)
-      toast.error('載入記憶失敗，請檢查網路連線 😢')
-    },
   })
 
   // 獲取所有島嶼
-  const { data: islandsData, loading: islandsLoading } = useQuery(GET_ISLANDS, {
-    onError: (error) => {
-      console.error('Failed to load islands:', error)
-    },
-  })
+  const { data: islandsData, loading: islandsLoading, error: islandsError } = useQuery(GET_ISLANDS)
 
   const [pinMemory] = useMutation(PIN_MEMORY, { refetchQueries: ['GetMemories'] })
   const [unpinMemory] = useMutation(UNPIN_MEMORY, { refetchQueries: ['GetMemories'] })
@@ -134,6 +126,21 @@ export default function CuteDatabaseView() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [searchQuery, handleCreateNewMemory])
 
+  // 處理記憶查詢錯誤
+  useEffect(() => {
+    if (error) {
+      console.error('Failed to load memories:', error)
+      toast.error('載入記憶失敗，請檢查網路連線 😢')
+    }
+  }, [error, toast])
+
+  // 處理島嶼查詢錯誤
+  useEffect(() => {
+    if (islandsError) {
+      console.error('Failed to load islands:', islandsError)
+    }
+  }, [islandsError])
+
   // 獲取島嶼列表（使用 useMemo 避免每次渲染都改變）
   const islands: Island[] = useMemo(() => {
     return islandsData?.islands || []
@@ -144,13 +151,24 @@ export default function CuteDatabaseView() {
 
     // 島嶼過濾（優先於傳統分類）
     if (selectedIslandId) {
-      const selectedIsland = islands.find(i => i.id === selectedIslandId)
-      if (selectedIsland) {
-        const category = getIslandCategory(selectedIsland.nameChinese)
-        if (category) {
-          filtered = filtered.filter((m: Memory) => m.category === category)
+      // 使用 islandId 精確過濾記憶
+      filtered = filtered.filter((m: Memory) => {
+        // 優先使用 islandId 匹配
+        if (m.islandId) {
+          return m.islandId === selectedIslandId
         }
-      }
+
+        // 舊邏輯：使用 category 匹配（向後兼容沒有 islandId 的舊記憶）
+        const selectedIsland = islands.find(i => i.id === selectedIslandId)
+        if (selectedIsland) {
+          const category = getIslandCategory(selectedIsland.nameChinese)
+          if (category) {
+            return m.category === category
+          }
+        }
+
+        return false
+      })
     }
     // 大類別（傳統分類）過濾
     else if (selectedCategory) {

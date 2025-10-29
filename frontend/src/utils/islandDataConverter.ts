@@ -32,9 +32,20 @@ export function convertGraphQLIslandToIsland(
   graphQLIsland: GraphQLIsland,
   allMemories: GraphQLMemory[]
 ): Island {
-  // 將所有記憶轉換為島嶼記憶格式
-  // 所有記憶都屬於島嶼
-  const islandMemories = allMemories.map(convertGraphQLMemoryToIslandMemory)
+  // 根據島嶼 ID 過濾屬於該島嶼的記憶
+  // 優先使用 islandId，如果沒有則退回到舊的 category 匹配邏輯（向後兼容）
+  const filteredMemories = allMemories.filter(memory => {
+    // 新邏輯：使用 islandId 精確匹配
+    if (memory.islandId) {
+      return memory.islandId === graphQLIsland.id
+    }
+
+    // 舊邏輯：使用 category 匹配（向後兼容沒有 islandId 的舊記憶）
+    const islandType = graphQLIsland.name?.replace('_ISLAND', '')
+    return memory.category === islandType
+  })
+
+  const islandMemories = filteredMemories.map(convertGraphQLMemoryToIslandMemory)
 
   return {
     id: graphQLIsland.id,

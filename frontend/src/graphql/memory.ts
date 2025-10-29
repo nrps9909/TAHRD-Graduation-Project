@@ -47,6 +47,8 @@ export const MEMORY_FRAGMENT = gql`
       emoji
       color
     }
+    # 新增：島嶼關聯
+    islandId
   }
 `
 

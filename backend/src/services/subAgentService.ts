@@ -405,6 +405,100 @@ export class SubAgentService {
   }
 
   /**
+   * 創建記憶（Island-based，包含 islandId）
+   */
+  private async createMemoryWithIsland(
+    userId: string,
+    assistantId: string,
+    islandId: string,
+    distribution: any,
+    evaluation: EvaluationResult,
+    distributionId: string
+  ) {
+    try {
+      const assistant = await assistantService.getAssistantById(assistantId)
+      if (!assistant) {
+        throw new Error(`Assistant not found: ${assistantId}`)
+      }
+
+      // 解析 Sub-Agent 的深度分析結果
+      const detailedSummary = evaluation.detailedSummary || distribution.chiefSummary
+      const suggestedTitle = evaluation.suggestedTitle || `${assistant.nameChinese}的記憶`
+      const sentiment = evaluation.sentiment || 'neutral'
+      const importanceScore = evaluation.importanceScore || Math.round(evaluation.relevanceScore * 10)
+      const actionableAdvice = evaluation.actionableAdvice
+
+      // 解析社交成長紀錄專用字段（針對 SOCIAL 分類）
+      const socialContext = evaluation.socialContext
+      const userReaction = evaluation.userReaction
+      const aiFeedback = evaluation.aiFeedback
+      const socialSkillTags = evaluation.socialSkillTags || []
+      const progressChange = evaluation.progressChange
+
+      // 創建完整的記憶記錄（包含 Sub-Agent 的深度分析和 islandId）
+      const memory = await prisma.memory.create({
+        data: {
+          user: {
+            connect: { id: userId }
+          },
+          assistant: {
+            connect: { id: assistantId }
+          },
+          island: {
+            connect: { id: islandId }  // 新增：關聯到島嶼
+          },
+          rawContent: distribution.rawContent,
+          title: suggestedTitle, // 使用 Sub-Agent 建議的標題
+          summary: distribution.chiefSummary, // Chief 的簡要摘要
+          contentType: distribution.contentType,
+          fileUrls: distribution.fileUrls,
+          fileNames: distribution.fileNames,
+          fileTypes: distribution.fileTypes,
+          links: distribution.links,
+          linkTitles: distribution.linkTitles,
+          keyPoints: evaluation.keyInsights,
+          aiSentiment: sentiment, // 使用情感分析結果
+          aiAnalysis: evaluation.reasoning, // 使用 Sub-Agent 的評估說明
+          category: evaluation.suggestedCategory || assistant.type,
+          tags: [...new Set([...distribution.suggestedTags, ...evaluation.suggestedTags])].slice(0, 5), // 合併並去重標籤，最多5個
+
+          // === 新增：SubAgent 深度分析結果 ===
+          detailedSummary: detailedSummary, // SubAgent 的詳細摘要（2-3句話）
+          importanceScore: importanceScore, // 1-10 重要性評分
+          actionableAdvice: actionableAdvice, // 行動建議
+
+          // === 新增：社交成長紀錄專用字段 ===
+          socialContext: socialContext, // [情境] 簡述當下發生什麼
+          userReaction: userReaction, // [使用者反應] 情緒或行為反應
+          aiFeedback: aiFeedback, // [AI 回饋] 建議或安撫
+          socialSkillTags: socialSkillTags, // [社交能力標籤]
+          progressChange: progressChange, // [進度變化] +1/0/-1
+
+          distribution: {
+            connect: { id: distributionId }
+          },
+          relevanceScore: evaluation.relevanceScore,
+        },
+      })
+
+      // 更新助手統計
+      await assistantService.incrementAssistantStats(assistantId, 'memory')
+
+      logger.info(`[${assistant.name}] 創建深度分析記憶 (Island-based): ${memory.id}`)
+      logger.info(`  - Island ID: ${islandId}`)
+      logger.info(`  - 標題: ${suggestedTitle}`)
+      logger.info(`  - 重要性: ${importanceScore}/10`)
+      logger.info(`  - 情感: ${sentiment}`)
+      logger.info(`  - 標籤: ${memory.tags.join(', ')}`)
+
+      return memory
+    } catch (error) {
+      logger.error('[Sub-Agent] 創建記憶失敗 (Island-based):', error)
+      throw error
+    }
+  }
+
+  /**
    * 構建評估提示詞
    */
   /**
@@ -812,11 +906,11 @@ ${assistant.type === 'SOCIAL' ? `
             // 根據 Island 類型映射到對應的 Assistant
             let assistant = await assistantService.getAssistantByType(island.name as any)
             if (!assistant) {
-              // 降級：使用 MISC Assistant（雜項分類）作為備選
-              logger.warn(`[Island Sub-Agent] No assistant found for island type: ${island.name}, using MISC as fallback`)
-              assistant = await assistantService.getAssistantByType('MISC')
+              // 降級：使用 LIFE Assistant（生活記錄）作為備選，因為它是最通用的分類
+              logger.warn(`[Island Sub-Agent] No assistant found for island type: ${island.name}, using LIFE as fallback`)
+              assistant = await assistantService.getAssistantByType('LIFE')
               if (!assistant) {
-                logger.error(`[Island Sub-Agent] MISC assistant not found, cannot create memory`)
+                logger.error(`[Island Sub-Agent] LIFE assistant not found, cannot create memory`)
                 return null
               }
             }
@@ -845,16 +939,20 @@ ${assistant.type === 'SOCIAL' ? `
 
             agentDecisions.push(decision)
 
-            // 如果決定儲存，創建記憶（使用 assistantId）
+            // 如果決定儲存，創建記憶（使用 assistantId 和 islandId）
             if (evaluation.shouldStore) {
-              const memory = await this.createMemory(
+              const memory = await this.createMemoryWithIsland(
                 userId,
                 assistant.id,
+                islandId,  // 新增：傳遞 islandId
                 distribution,
                 evaluation,
                 distributionId
               )
               memoriesCreated.push(memory)
+
+              // 更新 Island 統計
+              await dynamicSubAgentService.incrementStats(islandId, 'memory')
             }
 
             return { islandId, assistantId: assistant.id, decision, memory: evaluation.shouldStore }

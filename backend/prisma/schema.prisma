@@ -143,6 +143,7 @@ model Memory {
   id               String   @id @default(auto()) @map("_id") @db.ObjectId
   userId           String   @map("user_id") @db.ObjectId
   assistantId      String?  @map("assistant_id") @db.ObjectId  // Optional: null for dynamic SubAgents
+  islandId         String?  @map("island_id") @db.ObjectId     // 新增：記憶所屬的島嶼 ID（用於自定義島嶼）
 
   // Content
   rawContent       String   @map("raw_content") @db.String
@@ -203,6 +204,7 @@ model Memory {
   // Relations
   user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   assistant        Assistant? @relation(fields: [assistantId], references: [id], onDelete: Cascade)
+  island           Island?  @relation(fields: [islandId], references: [id], onDelete: Cascade)
   chatMessages     ChatMessage[]
   distribution     KnowledgeDistribution? @relation(fields: [distributionId], references: [id])
 
@@ -210,6 +212,8 @@ model Memory {
   @@index([userId, category])
   @@index([userId, createdAt(sort: Desc)])  // 時間倒序查詢
   @@index([userId, assistantId])
+  @@index([userId, islandId])  // 新增：按島嶼過濾記憶
+  @@index([userId, islandId, createdAt(sort: Desc)])  // 新增：特定島嶼的最新記憶
   @@index([userId, assistantId, createdAt(sort: Desc)])  // 複合索引：特定助手的最新記憶
   @@index([userId, category, createdAt(sort: Desc)])  // 複合索引：特定分類的最新記憶
   @@index([tags])  // 標籤搜索
@@ -614,6 +618,7 @@ model Island {
 
   // Relations
   user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  memories         Memory[]
 
   @@index([userId, position])
   @@index([userId])
