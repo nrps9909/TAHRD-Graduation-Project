@@ -206,13 +206,13 @@ jobs:
               exit 1
             fi
 
-            # 5. 執行資料庫遷移
-            echo "🗄️ 執行資料庫遷移..."
-            if docker exec heart-whisper-backend npx prisma db push --skip-generate; then
-              echo "✅ 資料庫遷移完成"
-            else
-              echo "⚠️ 資料庫遷移失敗，但繼續部署（MongoDB schema 變更通常向後兼容）"
-            fi
+            # 5. 執行資料庫遷移（暫時跳過以避免 OOM 問題）
+            echo "🗄️ 跳過資料庫遷移（subcategory 移除已在之前的部署中完成）"
+            # if docker exec heart-whisper-backend npx prisma db push --skip-generate; then
+            #   echo "✅ 資料庫遷移完成"
+            # else
+            #   echo "⚠️ 資料庫遷移失敗，但繼續部署（MongoDB schema 變更通常向後兼容）"
+            # fi
 
             # 6. 等待服務啟動並監控容器狀態
             echo "⏳ 等待服務啟動..."
