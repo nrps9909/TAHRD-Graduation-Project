@@ -810,10 +810,15 @@ ${assistant.type === 'SOCIAL' ? `
             }
 
             // 根據 Island 類型映射到對應的 Assistant
-            const assistant = await assistantService.getAssistantByType(island.name as any)
+            let assistant = await assistantService.getAssistantByType(island.name as any)
             if (!assistant) {
-              logger.error(`[Island Sub-Agent] No assistant found for island type: ${island.name}`)
-              return null
+              // 降級：使用 MISC Assistant（雜項分類）作為備選
+              logger.warn(`[Island Sub-Agent] No assistant found for island type: ${island.name}, using MISC as fallback`)
+              assistant = await assistantService.getAssistantByType('MISC')
+              if (!assistant) {
+                logger.error(`[Island Sub-Agent] MISC assistant not found, cannot create memory`)
+                return null
+              }
             }
 
             // 評估相關性（使用 Island 配置，但通過 Assistant 處理）
