@@ -170,28 +170,45 @@ export class DynamicSubAgentService {
     const scoredIslands = islands.map((island) => {
       let score = 0
 
-      // 名稱匹配
+      // 名稱匹配（精確匹配）
       if (contentLower.includes(island.nameChinese.toLowerCase())) {
-        score += 3
+        score += 10  // 提高權重
       }
 
-      // 描述匹配
-      if (island.description && contentLower.includes(island.description.toLowerCase())) {
-        score += 1
+      // 描述關鍵字匹配
+      if (island.description) {
+        const descWords = island.description.toLowerCase().split(/[、，。！？\s]+/)
+        descWords.forEach(word => {
+          if (word.length >= 2 && contentLower.includes(word)) {
+            score += 2
+          }
+        })
+      }
+
+      // 關鍵字匹配（如果有設置）
+      if (island.keywords && Array.isArray(island.keywords)) {
+        island.keywords.forEach((keyword: string) => {
+          if (contentLower.includes(keyword.toLowerCase())) {
+            score += 3
+          }
+        })
       }
 
       return { island, score }
     })
 
+    // 過濾掉分數為 0 的島嶼（完全不相關）
+    const filteredIslands = scoredIslands.filter(item => item.score > 0)
+
+    // 如果沒有任何島嶼匹配，返回空數組（讓 Chief Agent 降級處理）
+    if (filteredIslands.length === 0) {
+      logger.info(`[DynamicSubAgent] 沒有找到相關的 Island（所有分數為 0）`)
+      return []
+    }
+
     // 排序並取前 N 個
-    const topIslands = scoredIslands
-      .sort((a, b) => {
-        // 如果分數相同，按記憶數量排序（更常用的島嶼優先）
-        if (b.score === a.score) {
-          return b.island.memoryCount - a.island.memoryCount
-        }
-        return b.score - a.score
-      })
+    const topIslands = filteredIslands
+      .sort((a, b) => b.score - a.score)  // 只按分數排序
       .slice(0, topN)
       .map((item) => item.island)
 
