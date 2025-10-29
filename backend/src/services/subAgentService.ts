@@ -1076,7 +1076,7 @@ ${assistant.type === 'SOCIAL' ? `
         shouldStore,
         reasoning: parsed.reasoning || '無評估說明',
         confidence,
-        suggestedCategory: assistant.type,
+        suggestedCategory: parsed.suggestedCategory || assistant.type,  // 優先使用 AI 建議，否則使用 assistant.type
         suggestedTags: Array.isArray(parsed.suggestedTags) ? parsed.suggestedTags : [],
         keyInsights: Array.isArray(parsed.keyInsights) ? parsed.keyInsights : [],
         // SubAgent 深度分析結果
@@ -1144,15 +1144,16 @@ ${distribution.chiefSummary}
 **你需要提供深度分析，包括：**
 1. **相關性評估** - 這個知識與 ${island.nameChinese} 領域的關聯程度
    ${distribution.links.length > 0 ? '   ⚠️ 如果有連結，請直接存取網址內容進行評估（使用 @url）' : ''}
-2. **詳細摘要** - 用 2-3 句話總結核心內容和價值
+2. **內容分類** - 根據內容語義，從以下類別中選擇最合適的：LEARNING（學習）、INSPIRATION（靈感）、WORK（工作）、SOCIAL（社交）、LIFE（生活）、GOALS（目標）、RESOURCES（資源）、MISC（雜項）
+3. **詳細摘要** - 用 2-3 句話總結核心內容和價值
    ${distribution.links.length > 0 ? '   ⚠️ 對於連結內容，請基於實際存取的內容撰寫摘要' : ''}
-3. **關鍵洞察** - 提取 3-5 個重要的知識點或洞察
+4. **關鍵洞察** - 提取 3-5 個重要的知識點或洞察
    ${distribution.links.length > 0 ? '   ⚠️ 如果是影片/文章，請提取內容中的關鍵要點' : ''}
-4. **精準標籤** - 產生 3-5 個描述性標籤
-5. **標題建議** - 為這個記憶創建一個清晰的標題（10字以內）
-6. **情感分析** - 判斷內容的情感傾向
-7. **重要性評分** - 1-10分，評估這個知識的重要程度
-8. **行動建議** - 如果適用，提供後續行動建議
+5. **精準標籤** - 產生 3-5 個描述性標籤
+6. **標題建議** - 為這個記憶創建一個清晰的標題（10字以內）
+7. **情感分析** - 判斷內容的情感傾向
+8. **重要性評分** - 1-10分，評估這個知識的重要程度
+9. **行動建議** - 如果適用，提供後續行動建議
 
 請以 JSON 格式返回完整分析（只返回 JSON，不要其他文字）：
 {
@@ -1160,6 +1161,7 @@ ${distribution.chiefSummary}
   "shouldStore": true,
   "reasoning": "這是一個關於XXX的重要知識，因為...，對用戶的XXX方面有幫助",
   "confidence": 0.9,
+  "suggestedCategory": "INSPIRATION",
   "suggestedTags": ["標籤1", "標籤2", "標籤3"],
   "keyInsights": [
     "關鍵洞察1：...",
