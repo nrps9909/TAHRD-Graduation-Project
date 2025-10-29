@@ -869,37 +869,6 @@ ${assistant.type === 'SOCIAL' ? `
   }
 
   /**
-   * 智能匹配自定義島嶼到合適的 AssistantType
-   * 根據島嶼名稱和描述中的關鍵字，選擇最合適的預設類別
-   */
-  private matchIslandToAssistantType(island: any): string {
-    const text = `${island.nameChinese} ${island.description || ''}`.toLowerCase()
-
-    // 關鍵字匹配規則（按優先級排序）
-    const patterns = [
-      { keywords: ['學習', '知識', '教育', '課程', '讀書', '研究'], type: 'LEARNING' },
-      { keywords: ['工作', '職業', '事業', '專案', '任務', '會議'], type: 'WORK' },
-      { keywords: ['社交', '人際', '朋友', '關係', '交友', '聊天'], type: 'SOCIAL' },
-      { keywords: ['目標', '規劃', '夢想', '計畫', '願望', '理想'], type: 'GOALS' },
-      { keywords: ['資源', '收藏', '連結', '工具', '參考', '素材'], type: 'RESOURCES' },
-      { keywords: ['靈感', '創意', '藝術', '音樂', '設計', '興趣', '娛樂', '偶像'], type: 'INSPIRATION' },
-      { keywords: ['生活', '日常', '健康', '飲食', '運動', '休閒'], type: 'LIFE' },
-    ]
-
-    // 嘗試匹配關鍵字
-    for (const pattern of patterns) {
-      if (pattern.keywords.some(keyword => text.includes(keyword))) {
-        logger.info(`[Island Matcher] 島嶼 "${island.nameChinese}" 匹配到類別: ${pattern.type} (關鍵字匹配)`)
-        return pattern.type
-      }
-    }
-
-    // 無法匹配時，使用 MISC（雜項）而不是 LIFE
-    logger.info(`[Island Matcher] 島嶼 "${island.nameChinese}" 無法匹配到特定類別，使用 MISC`)
-    return 'MISC'
-  }
-
-  /**
    * 處理知識分發（使用 Island-based SubAgent）
    * 與 processDistribution 類似，但使用 Island 配置映射到對應的 Assistant
    */
@@ -935,17 +904,13 @@ ${assistant.type === 'SOCIAL' ? `
             }
 
             // 根據 Island 類型映射到對應的 Assistant
-            // 首先嘗試直接匹配（適用於預設島嶼，如 LEARNING_ISLAND）
-            const islandType = island.name?.replace('_ISLAND', '') || island.name
-            let assistant = await assistantService.getAssistantByType(islandType as any)
-
+            let assistant = await assistantService.getAssistantByType(island.name as any)
             if (!assistant) {
-              // 對於自定義島嶼，使用智能匹配邏輯
-              const matchedType = this.matchIslandToAssistantType(island)
-              assistant = await assistantService.getAssistantByType(matchedType as any)
-
+              // 降級：使用 LIFE Assistant（生活記錄）作為備選，因為它是最通用的分類
+              logger.warn(`[Island Sub-Agent] No assistant found for island type: ${island.name}, using LIFE as fallback`)
+              assistant = await assistantService.getAssistantByType('LIFE')
               if (!assistant) {
-                logger.error(`[Island Sub-Agent] 無法找到 Assistant，島嶼: ${island.nameChinese}, 匹配類型: ${matchedType}`)
+                logger.error(`[Island Sub-Agent] LIFE assistant not found, cannot create memory`)
                 return null
               }
             }
@@ -1076,7 +1041,7 @@ ${assistant.type === 'SOCIAL' ? `
         shouldStore,
         reasoning: parsed.reasoning || '無評估說明',
         confidence,
-        suggestedCategory: parsed.suggestedCategory || assistant.type,  // 優先使用 AI 建議，否則使用 assistant.type
+        suggestedCategory: assistant.type,
         suggestedTags: Array.isArray(parsed.suggestedTags) ? parsed.suggestedTags : [],
         keyInsights: Array.isArray(parsed.keyInsights) ? parsed.keyInsights : [],
         // SubAgent 深度分析結果
@@ -1144,16 +1109,15 @@ ${distribution.chiefSummary}
 **你需要提供深度分析，包括：**
 1. **相關性評估** - 這個知識與 ${island.nameChinese} 領域的關聯程度
    ${distribution.links.length > 0 ? '   ⚠️ 如果有連結，請直接存取網址內容進行評估（使用 @url）' : ''}
-2. **內容分類** - 根據內容語義，從以下類別中選擇最合適的：LEARNING（學習）、INSPIRATION（靈感）、WORK（工作）、SOCIAL（社交）、LIFE（生活）、GOALS（目標）、RESOURCES（資源）、MISC（雜項）
-3. **詳細摘要** - 用 2-3 句話總結核心內容和價值
+2. **詳細摘要** - 用 2-3 句話總結核心內容和價值
    ${distribution.links.length > 0 ? '   ⚠️ 對於連結內容，請基於實際存取的內容撰寫摘要' : ''}
-4. **關鍵洞察** - 提取 3-5 個重要的知識點或洞察
+3. **關鍵洞察** - 提取 3-5 個重要的知識點或洞察
    ${distribution.links.length > 0 ? '   ⚠️ 如果是影片/文章，請提取內容中的關鍵要點' : ''}
-5. **精準標籤** - 產生 3-5 個描述性標籤
-6. **標題建議** - 為這個記憶創建一個清晰的標題（10字以內）
-7. **情感分析** - 判斷內容的情感傾向
-8. **重要性評分** - 1-10分，評估這個知識的重要程度
-9. **行動建議** - 如果適用，提供後續行動建議
+4. **精準標籤** - 產生 3-5 個描述性標籤
+5. **標題建議** - 為這個記憶創建一個清晰的標題（10字以內）
+6. **情感分析** - 判斷內容的情感傾向
+7. **重要性評分** - 1-10分，評估這個知識的重要程度
+8. **行動建議** - 如果適用，提供後續行動建議
 
 請以 JSON 格式返回完整分析（只返回 JSON，不要其他文字）：
 {
@@ -1161,7 +1125,6 @@ ${distribution.chiefSummary}
   "shouldStore": true,
   "reasoning": "這是一個關於XXX的重要知識，因為...，對用戶的XXX方面有幫助",
   "confidence": 0.9,
-  "suggestedCategory": "INSPIRATION",
   "suggestedTags": ["標籤1", "標籤2", "標籤3"],
   "keyInsights": [
     "關鍵洞察1：...",
