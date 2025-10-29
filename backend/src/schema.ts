@@ -529,6 +529,27 @@ const baseTypeDefs = gql`
     islandName: String
   }
 
+  # ============ Island Types (島嶼分類系統) ============
+
+  type Island {
+    id: ID!
+    userId: ID!
+    position: Int!
+    name: String
+    nameChinese: String!
+    emoji: String!
+    color: String!
+    description: String
+    positionX: Float!
+    positionY: Float!
+    positionZ: Float!
+    memoryCount: Int!
+    isActive: Boolean!
+    createdAt: DateTime!
+    updatedAt: DateTime!
+    user: User!
+  }
+
   # ============ RAG System Types (小黑知識庫) ============
 
   type HijikiChatResponse {
