@@ -380,10 +380,16 @@ export default function CuteDatabaseView() {
               </div>
             ) : (
               islands.map((island) => {
-                const category = getIslandCategory(island.nameChinese)
-                const count = category
-                  ? (memoriesData?.memories || []).filter((m: Memory) => m.category === category).length
-                  : 0
+                // 計算該島嶼的記憶數量（使用 islandId 精確匹配）
+                const count = (memoriesData?.memories || []).filter((m: Memory) => {
+                  // 優先使用 islandId 匹配
+                  if (m.islandId) {
+                    return m.islandId === island.id
+                  }
+                  // 向後兼容：使用 category 匹配舊記憶
+                  const category = getIslandCategory(island.nameChinese)
+                  return category ? m.category === category : false
+                }).length
                 const isSelected = selectedIslandId === island.id
 
                 return (
