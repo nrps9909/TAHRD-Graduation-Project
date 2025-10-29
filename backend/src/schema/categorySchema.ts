@@ -38,6 +38,9 @@ export const categoryTypeDefs = gql`
     # Timestamps
     createdAt: DateTime!
     updatedAt: DateTime!
+
+    # Relations
+    user: User!
   }
 
   # 分類統計
