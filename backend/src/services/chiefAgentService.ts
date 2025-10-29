@@ -945,13 +945,13 @@ ${input.content}
   }
 
   /**
-   * 上傳知識到分發系統（新架構 - 雙階段處理 + 動態 SubAgent）
+   * 上傳知識到分發系統（新架構 - 雙階段處理 + Island-based SubAgent）
    * 階段1: 白噗噗快速分類 + 即時回應（前端立即顯示）
    * 階段2: Sub-Agent 深度分析 + 寫入知識庫（後端非同步處理）
    *
-   * 支援雙軌系統：
-   * - 用戶有自訂 Subcategory → 使用動態 SubAgent
-   * - 用戶無自訂 Subcategory → 使用預設 Assistant
+   * 使用 Island-based SubAgent 系統：
+   * - 基於用戶自訂的 Islands（島嶼）進行動態分類
+   * - 每個 Island 對應一個動態 SubAgent
    */
   async uploadKnowledge(
     userId: string,

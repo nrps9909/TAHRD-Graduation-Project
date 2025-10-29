@@ -17,14 +17,6 @@ export interface IslandPromptSuggestion {
   keywords: string[]
 }
 
-export interface SubcategoryPromptSuggestion {
-  description: string
-  keywords: string[]
-  systemPrompt: string
-  personality: string
-  chatStyle: string
-}
-
 export class PromptGeneratorService {
   /**
    * 根據島嶼名稱生成建議內容
@@ -83,84 +75,6 @@ ${userHint ? `- 使用者補充說明：${userHint}` : ''}
       return {
         description: `${nameChinese}相關的知識和記錄`,
         keywords: [nameChinese, '筆記', '記錄', '知識']
-      }
-    }
-  }
-
-  /**
-   * 根據小類別名稱生成建議內容
-   * @param nameChinese 小類別名稱
-   * @param emoji 表情符號
-   * @param islandName 所屬島嶼名稱（可選）
-   * @param userHints 使用者提供的提示（可選）
-   */
-  async generateSubcategoryPrompt(
-    nameChinese: string,
-    emoji: string = '📚',
-    islandName?: string,
-    userHints?: { description?: string; systemPrompt?: string }
-  ): Promise<SubcategoryPromptSuggestion> {
-    try {
-      logger.info(`[PromptGenerator] 生成小類別提示詞: ${nameChinese} ${emoji}${userHints ? ' (使用者提供提示)' : ''}`)
-
-      const islandContext = islandName ? `\n- 所屬島嶼：${islandName}` : ''
-      const userHintContext = userHints?.description ? `\n- 使用者補充說明：${userHints.description}` : ''
-      const systemPromptHint = userHints?.systemPrompt ? `\n- 使用者期望的系統提示：${userHints.systemPrompt}` : ''
-
-      const prompt = `你是一個專業的 AI 助手設計師，幫助用戶設計知識分類的 AI 助手。
-
-用戶想要創建一個小類別（SubAgent）：
-- 名稱：${nameChinese}
-- 表情符號：${emoji}${islandContext}${userHintContext}${systemPromptHint}
-
-請根據這個名稱${userHints ? '和使用者的補充說明' : ''}，生成適合的：
-1. 描述（description）：簡短說明這個類別適合存放什麼知識（1句話，15-30字）${userHints?.description ? '，請結合使用者的補充說明' : ''}
-2. 關鍵字（keywords）：5-8個相關關鍵字，用於自動分類
-3. 系統提示詞（systemPrompt）：AI 助手的角色定位和職責（50-100字）${userHints?.systemPrompt ? '，請基於使用者提供的期望進行擴展和優化' : ''}
-4. 個性設定（personality）：AI 的性格特點（20-40字）
-5. 對話風格（chatStyle）：如何與用戶互動（20-40字）
-
-📋 範例：
-如果小類別名稱是「技術學習」：
-- description: "程式設計、框架學習、技術文章和開發筆記"
-- keywords: ["技術", "程式", "開發", "coding", "學習", "框架", "教學", "文檔"]
-- systemPrompt: "我是你的技術學習助手，專門幫助你整理程式設計筆記、技術文章和開發經驗。我會用清晰的方式組織技術知識，並提供相關的學習建議。"
-- personality: "專業、耐心、樂於分享，善於將複雜概念簡化說明"
-- chatStyle: "使用技術術語但確保易懂，常提供程式碼範例和實用建議"
-
-🎯 回應格式（必須是有效的 JSON）：
-{
-  "description": "簡短描述",
-  "keywords": ["關鍵字1", "關鍵字2", "..."],
-  "systemPrompt": "系統提示詞",
-  "personality": "個性描述",
-  "chatStyle": "對話風格"
-}
-
-請直接回傳 JSON，不要其他文字：`
-
-      const response = await callGeminiAPI(prompt, {
-        model: 'gemini-2.0-flash-exp',
-        temperature: 0.7,
-        maxOutputTokens: 1024,
-        timeout: 15000
-      })
-
-      const result = this.parseJSON(response)
-
-      logger.info(`[PromptGenerator] 小類別提示詞生成成功: ${nameChinese}`)
-      return result
-
-    } catch (error: any) {
-      logger.error(`[PromptGenerator] 生成小類別提示詞失敗:`, error)
-
-      // 返回預設值
-      return {
-        description: `${nameChinese}相關的知識和記錄`,
-        keywords: [nameChinese, '筆記', '記錄'],
-        systemPrompt: `我是你的${nameChinese}助手，專門幫助你整理和管理${nameChinese}相關的知識。`,
-        personality: '友善、專業、樂於助人',
-        chatStyle: '清晰明瞭，提供實用建議'
       }
     }
   }
