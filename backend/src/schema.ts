@@ -529,27 +529,6 @@ const baseTypeDefs = gql`
     islandName: String
   }
 
-  # ============ Island Types (島嶼分類系統) ============
-
-  type Island {
-    id: ID!
-    userId: ID!
-    position: Int!
-    name: String
-    nameChinese: String!
-    emoji: String!
-    color: String!
-    description: String
-    positionX: Float!
-    positionY: Float!
-    positionZ: Float!
-    memoryCount: Int!
-    isActive: Boolean!
-    createdAt: DateTime!
-    updatedAt: DateTime!
-    user: User!
-  }
-
   # ============ RAG System Types (小黑知識庫) ============
 
   type HijikiChatResponse {
@@ -717,44 +696,6 @@ const baseTypeDefs = gql`
     end: DateTime!
   }
 
-  # ============ Island (Category) Inputs & Types ============
-
-  input CreateIslandInput {
-    name: String!
-    nameChinese: String!
-    emoji: String
-    color: String
-    description: String
-    positionX: Float
-    positionY: Float
-    positionZ: Float
-  }
-
-  input UpdateIslandInput {
-    name: String
-    nameChinese: String
-    emoji: String
-    color: String
-    description: String
-    positionX: Float
-    positionY: Float
-    positionZ: Float
-    position: Int
-    customShapeData: String
-    islandHeight: Float
-    islandBevel: Float
-  }
-
-  type IslandPromptSuggestion {
-    description: String!
-    keywords: [String!]!
-  }
-
-  type CategorySummary {
-    islandsCount: Int!
-    totalMemories: Int!
-  }
-
   # ============ Queries ============
 
   type Query {
@@ -811,12 +752,6 @@ const baseTypeDefs = gql`
     # ===== Task History Queries =====
     taskHistories(limit: Int = 50, offset: Int = 0): [TaskHistory!]!
     taskHistory(id: ID!): TaskHistory
-
-    # ===== Island (Category) Queries =====
-    islands: [Island!]!
-    island(id: ID!): Island
-    categoryStats: CategorySummary!
-    generateIslandPrompt(nameChinese: String!, emoji: String, userHint: String): IslandPromptSuggestion!
   }
 
   # ============ Mutations ============
@@ -870,13 +805,6 @@ const baseTypeDefs = gql`
 
     # ===== Settings Mutations =====
     updateUserSettings(theme: String, language: String, defaultView: String): UserSettings!
-
-    # ===== Island (Category) Mutations =====
-    initializeCategories: CategorySummary!
-    createIsland(input: CreateIslandInput!): Island!
-    updateIsland(id: ID!, input: UpdateIslandInput!): Island!
-    deleteIsland(id: ID!): Boolean!
-    reorderIslands(islandIds: [ID!]!): Boolean!
 
     # ===== Cat Agent Mutations (Tororo) =====
     createMemoryWithTororo(content: String!, files: [TororoFileInput!], links: [TororoLinkInput!]): TororoResponse!

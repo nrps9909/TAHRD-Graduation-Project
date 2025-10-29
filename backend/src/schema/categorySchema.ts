@@ -93,7 +93,7 @@ export const categoryTypeDefs = gql`
     categoryStats: CustomCategoryStats!
 
     # AI 提示詞生成
-    generateIslandPrompt(nameChinese: String!, emoji: String): IslandPromptSuggestion!
+    generateIslandPrompt(nameChinese: String!, emoji: String, userHint: String): IslandPromptSuggestion!
   }
 
   extend type Mutation {
