@@ -81,7 +81,7 @@ jobs:
 
       - name: Install Dependencies (Workspaces)
         if: steps.skip-check.outputs.skip != 'true'
-        run: npm ci --prefer-offline --no-audit
+        run: npm install --prefer-offline --no-audit
 
       - name: Lint ${{ matrix.component }}
         if: steps.skip-check.outputs.skip != 'true'
