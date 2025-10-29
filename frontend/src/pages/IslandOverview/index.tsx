@@ -185,7 +185,6 @@ export default function IslandOverview() {
             color={getCurrentIsland()!.color}
             description={getCurrentIsland()!.description || ''}
             memoryCount={getCurrentIsland()!.memoryCount}
-            categories={[getCurrentIsland()!.type]}
             updatedAt={new Date(getCurrentIsland()!.updatedAt)}
             onEditClick={handleEditIsland}
             onBackClick={resetToOverview}
