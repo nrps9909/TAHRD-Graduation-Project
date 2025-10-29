@@ -134,18 +134,10 @@ export default function CuteDatabaseView() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [searchQuery, handleCreateNewMemory])
 
-  const categories: { value: MemoryCategory; label: string; emoji: string; color: string }[] = [
-    { value: 'LEARNING', label: '學習', emoji: '📚', color: '#FFB3D9' },
-    { value: 'INSPIRATION', label: '靈感', emoji: '💡', color: '#FFFACD' },
-    { value: 'WORK', label: '工作', emoji: '💼', color: '#B3D9FF' },
-    { value: 'SOCIAL', label: '社交', emoji: '👥', color: '#D9FFB3' },
-    { value: 'LIFE', label: '生活', emoji: '🌱', color: '#FFE5B3' },
-    { value: 'GOALS', label: '目標', emoji: '🎯', color: '#FFB3B3' },
-    { value: 'RESOURCES', label: '資源', emoji: '📦', color: '#E5B3FF' },
-  ]
-
-  // 獲取島嶼列表
-  const islands: Island[] = islandsData?.islands || []
+  // 獲取島嶼列表（使用 useMemo 避免每次渲染都改變）
+  const islands: Island[] = useMemo(() => {
+    return islandsData?.islands || []
+  }, [islandsData?.islands])
 
   const filteredMemories = useMemo(() => {
     let filtered = memoriesData?.memories || []
