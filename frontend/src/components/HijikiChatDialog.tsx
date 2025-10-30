@@ -112,18 +112,31 @@ export const HijikiChatDialog: React.FC<HijikiChatDialogProps> = ({ onClose }) =
         <div className="absolute bottom-40 right-32 text-3xl animate-pulse" style={{ animationDuration: '4.5s' }}>💫</div>
       </div>
 
-      {/* 主對話容器 - 左右分欄佈局 */}
-      <div className="relative w-full max-w-6xl h-full flex gap-6 p-6">
-        {/* 左側：Live2D 模型 */}
-        <div className="flex-shrink-0 flex flex-col items-center justify-center" style={{ width: '400px' }}>
+      {/* 主對話容器 - 上下佈局：模型在中上，對話在中下 */}
+      <div className="relative w-full max-w-5xl h-full flex flex-col p-6">
+        {/* 關閉按鈕 - 固定在右上角 */}
+        <div className="absolute top-6 right-6 z-10">
+          <button
+            onClick={() => {
+              play('button_click')
+              onClose()
+            }}
+            className="text-white/70 hover:text-white transition-colors text-3xl"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* 上方：Live2D 模型 + 標題 */}
+        <div className="flex flex-col items-center pt-4 pb-6">
           <Live2DDisplay
             modelPath="/models/hijiki/hijiki.model3.json"
-            width={400}
-            height={500}
+            width={350}
+            height={400}
             isThinking={false}
             isSpeaking={!!currentResponse}
           />
-          <div className="mt-4 text-center">
+          <div className="mt-2 text-center">
             <h2 className="text-2xl font-bold text-white flex items-center justify-center gap-2">
               <span className="text-3xl">🌙</span>
               黑噗噗
@@ -132,20 +145,8 @@ export const HijikiChatDialog: React.FC<HijikiChatDialogProps> = ({ onClose }) =
           </div>
         </div>
 
-        {/* 右側：對話區域 */}
-        <div className="flex-1 flex flex-col min-w-0">
-          {/* 關閉按鈕 */}
-          <div className="flex justify-end mb-4">
-            <button
-              onClick={() => {
-                play('button_click')
-                onClose()
-              }}
-              className="text-white/70 hover:text-white transition-colors text-3xl"
-            >
-              ✕
-            </button>
-          </div>
+        {/* 下方：對話區域 */}
+        <div className="flex-1 flex flex-col min-h-0">
 
         {/* 對話歷史 - 簡化顯示，聚焦在黑噗噗的回應 */}
         {conversationHistory.length > 0 && (
@@ -165,26 +166,21 @@ export const HijikiChatDialog: React.FC<HijikiChatDialogProps> = ({ onClose }) =
                   </div>
                 </div>
 
-                {/* 黑噗噗回答 - 像是從左側模型說出來 */}
-                <div className="flex items-start gap-3">
-                  {/* 視覺指向箭頭 */}
-                  <div className="text-2xl mt-2 animate-pulse" style={{ animationDuration: '2s' }}>
-                    💬
-                  </div>
-
+                {/* 黑噗噗回答 - 從上方模型說出來的感覺 */}
+                <div className="flex justify-center">
                   <div
-                    className="flex-1 rounded-2xl px-5 py-4 relative"
+                    className="max-w-[85%] rounded-2xl px-6 py-4 relative"
                     style={{
-                      background: 'linear-gradient(135deg, rgba(67, 56, 202, 0.7) 0%, rgba(79, 70, 229, 0.6) 100%)',
+                      background: 'linear-gradient(135deg, rgba(67, 56, 202, 0.8) 0%, rgba(79, 70, 229, 0.7) 100%)',
                       backdropFilter: 'blur(15px)',
-                      boxShadow: '0 8px 32px rgba(99, 102, 241, 0.3)'
+                      boxShadow: '0 8px 32px rgba(99, 102, 241, 0.4), 0 0 20px rgba(139, 92, 246, 0.2)'
                     }}
                   >
-                    {/* 對話氣泡尾巴 */}
+                    {/* 對話氣泡尾巴 - 指向上方 */}
                     <div
-                      className="absolute -left-2 top-6 w-4 h-4 rotate-45"
+                      className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-4 h-4 rotate-45"
                       style={{
-                        background: 'rgba(67, 56, 202, 0.7)'
+                        background: 'rgba(67, 56, 202, 0.8)'
                       }}
                     />
 
@@ -209,30 +205,31 @@ export const HijikiChatDialog: React.FC<HijikiChatDialogProps> = ({ onClose }) =
           </div>
         )}
 
-        {/* 當前回應區域（打字機效果） - 強調黑噗噗正在說話 */}
+        {/* 當前回應區域（打字機效果） - 黑噗噗正在說話 */}
         {currentResponse && (
           <div className="mb-6">
-            <div className="flex items-start gap-3">
-              {/* 動態說話圖標 */}
-              <div className="text-2xl mt-2 animate-bounce">
-                🗣️
-              </div>
-
+            <div className="flex justify-center animate-fadeIn">
               <div
-                className="flex-1 rounded-2xl px-5 py-4 relative animate-fadeIn"
+                className="max-w-[85%] rounded-2xl px-6 py-4 relative"
                 style={{
-                  background: 'linear-gradient(135deg, rgba(67, 56, 202, 0.8) 0%, rgba(79, 70, 229, 0.7) 100%)',
+                  background: 'linear-gradient(135deg, rgba(67, 56, 202, 0.9) 0%, rgba(79, 70, 229, 0.8) 100%)',
                   backdropFilter: 'blur(15px)',
-                  boxShadow: '0 8px 32px rgba(99, 102, 241, 0.4), 0 0 20px rgba(139, 92, 246, 0.3)'
+                  boxShadow: '0 8px 32px rgba(99, 102, 241, 0.5), 0 0 30px rgba(139, 92, 246, 0.4)',
+                  animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
                 }}
               >
-                {/* 對話氣泡尾巴 */}
+                {/* 對話氣泡尾巴 - 指向上方 */}
                 <div
-                  className="absolute -left-2 top-6 w-4 h-4 rotate-45"
+                  className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-4 h-4 rotate-45"
                   style={{
-                    background: 'rgba(67, 56, 202, 0.8)'
+                    background: 'rgba(67, 56, 202, 0.9)'
                   }}
                 />
+
+                {/* 說話中指示器 */}
+                <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 text-2xl animate-bounce">
+                  🗣️
+                </div>
 
                 <div className="text-white prose prose-sm max-w-none prose-invert">
                   <ReactMarkdown
@@ -246,7 +243,7 @@ export const HijikiChatDialog: React.FC<HijikiChatDialogProps> = ({ onClose }) =
                   >
                     {currentResponse}
                   </ReactMarkdown>
-                  {/* 打字游標 - 更明顯 */}
+                  {/* 打字游標 */}
                   <span className="inline-block w-2 h-5 ml-1 bg-white animate-pulse" style={{ animationDuration: '0.8s' }} />
                 </div>
               </div>

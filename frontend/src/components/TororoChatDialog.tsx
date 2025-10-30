@@ -260,18 +260,31 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
         <div className="absolute bottom-40 right-32 text-3xl animate-bounce" style={{ animationDuration: '4.5s' }}>☁️</div>
       </div>
 
-      {/* 主對話容器 - 左右分欄佈局 */}
-      <div className="relative w-full max-w-6xl h-full flex gap-6 p-6">
-        {/* 左側：Live2D 模型 */}
-        <div className="flex-shrink-0 flex flex-col items-center justify-center" style={{ width: '400px' }}>
+      {/* 主對話容器 - 上下佈局：模型在中上，對話在中下 */}
+      <div className="relative w-full max-w-5xl h-full flex flex-col p-6">
+        {/* 關閉按鈕 - 固定在右上角 */}
+        <div className="absolute top-6 right-6 z-10">
+          <button
+            onClick={() => {
+              play('button_click')
+              onClose()
+            }}
+            className="text-amber-900/70 hover:text-amber-900 transition-colors text-3xl"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* 上方：Live2D 模型 + 標題 */}
+        <div className="flex flex-col items-center pt-4 pb-6">
           <Live2DDisplay
             modelPath="/models/tororo_white/tororo.model3.json"
-            width={400}
-            height={500}
+            width={350}
+            height={400}
             isThinking={false}
             isSpeaking={isProcessing}
           />
-          <div className="mt-4 text-center">
+          <div className="mt-2 text-center">
             <h2 className="text-2xl font-bold flex items-center justify-center gap-2" style={{ color: '#8B5C2E' }}>
               <span className="text-3xl">☁️</span>
               白噗噗
@@ -280,20 +293,8 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
           </div>
         </div>
 
-        {/* 右側：對話區域 */}
-        <div className="flex-1 flex flex-col min-w-0">
-          {/* 關閉按鈕 */}
-          <div className="flex justify-end mb-4">
-            <button
-              onClick={() => {
-                play('button_click')
-                onClose()
-              }}
-              className="text-amber-900/70 hover:text-amber-900 transition-colors text-3xl"
-            >
-              ✕
-            </button>
-          </div>
+        {/* 下方：對話區域 */}
+        <div className="flex-1 flex flex-col min-h-0">
 
         {/* 聊天歷史 */}
         <div className="flex-1 overflow-y-auto mb-6 space-y-4">
@@ -352,27 +353,22 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
                       )}
                     </div>
                   ) : (
-                    // 白噗噗回答 - 像是從左側模型說出來
-                    <>
-                      {/* 視覺指向圖標 */}
-                      <div className="text-2xl mt-2 animate-pulse" style={{ animationDuration: '2s' }}>
-                        💬
-                      </div>
-
+                    // 白噗噗回答 - 從上方模型說出來的感覺
+                    <div className="flex justify-center w-full">
                       <div
-                        className="flex-1 rounded-2xl px-5 py-4 relative"
+                        className="max-w-[85%] rounded-2xl px-6 py-4 relative"
                         style={{
-                          background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(254, 252, 247, 0.85) 100%)',
+                          background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(254, 252, 247, 0.9) 100%)',
                           backdropFilter: 'blur(15px)',
-                          boxShadow: '0 8px 32px rgba(251, 191, 36, 0.3)',
+                          boxShadow: '0 8px 32px rgba(251, 191, 36, 0.4), 0 0 20px rgba(245, 158, 11, 0.2)',
                           color: '#5D3A1A'
                         }}
                       >
-                        {/* 對話氣泡尾巴 */}
+                        {/* 對話氣泡尾巴 - 指向上方 */}
                         <div
-                          className="absolute -left-2 top-6 w-4 h-4 rotate-45"
+                          className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-4 h-4 rotate-45"
                           style={{
-                            background: 'rgba(255, 255, 255, 0.9)'
+                            background: 'rgba(255, 255, 255, 0.95)'
                           }}
                         />
 
@@ -380,7 +376,7 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
                           {item.content}
                         </div>
                       </div>
-                    </>
+                    </div>
                   )}
                 </motion.div>
               ))}
