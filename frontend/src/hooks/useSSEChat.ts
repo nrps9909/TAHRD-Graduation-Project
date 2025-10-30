@@ -158,6 +158,7 @@ export const useSSEChat = () => {
 
         let buffer = ''
 
+        // eslint-disable-next-line no-constant-condition
         while (true) {
           const { done, value } = await reader.read()
 
@@ -173,7 +174,10 @@ export const useSSEChat = () => {
           for (const line of lines) {
             if (!line.trim()) continue
 
-            const [eventLine, dataLine] = line.split('\n')
+            const lineParts = line.split('\n')
+            const eventLine = lineParts[0]
+            const dataLine = lineParts[1]
+
             if (!eventLine || !dataLine) continue
 
             const event = eventLine.replace('event: ', '')
