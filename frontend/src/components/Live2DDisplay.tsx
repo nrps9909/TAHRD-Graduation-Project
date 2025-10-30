@@ -63,7 +63,12 @@ export const Live2DDisplay: React.FC<Live2DDisplayProps> = ({
 
         // 加載 Live2D 模型
         const model = await Live2DModel.from(modelPath)
-        model.scale.set(0.15)
+
+        // 設置錨點為中心
+        model.anchor.set(0.5, 0.5)
+
+        // 調整縮放和位置
+        model.scale.set(0.18)
         model.x = width / 2
         model.y = height / 2
 
