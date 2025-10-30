@@ -12,6 +12,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeSanitize from 'rehype-sanitize'
 import { Z_INDEX_CLASSES } from '../constants/zIndex'
+import { Live2DDisplay } from './Live2DDisplay'
 
 interface HijikiChatDialogProps {
   onClose: () => void
@@ -111,28 +112,40 @@ export const HijikiChatDialog: React.FC<HijikiChatDialogProps> = ({ onClose }) =
         <div className="absolute bottom-40 right-32 text-3xl animate-pulse" style={{ animationDuration: '4.5s' }}>💫</div>
       </div>
 
-      {/* 主對話容器 */}
-      <div className="relative w-full max-w-4xl h-full flex flex-col p-6">
-        {/* 標題 */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <span className="text-5xl">🌙</span>
-            <div>
-              <h2 className="text-2xl font-bold text-white">黑噗噗</h2>
-              <p className="text-sm text-indigo-300">知識管理員・隨時為你解答</p>
-            </div>
+      {/* 主對話容器 - 左右分欄佈局 */}
+      <div className="relative w-full max-w-6xl h-full flex gap-6 p-6">
+        {/* 左側：Live2D 模型 */}
+        <div className="flex-shrink-0 flex flex-col items-center justify-center" style={{ width: '400px' }}>
+          <Live2DDisplay
+            modelPath="/models/hijiki/hijiki.model3.json"
+            width={400}
+            height={500}
+            isThinking={false}
+            isSpeaking={!!currentResponse}
+          />
+          <div className="mt-4 text-center">
+            <h2 className="text-2xl font-bold text-white flex items-center justify-center gap-2">
+              <span className="text-3xl">🌙</span>
+              黑噗噗
+            </h2>
+            <p className="text-sm text-indigo-300">知識管理員・隨時為你解答</p>
           </div>
-
-          <button
-            onClick={() => {
-              play('button_click')
-              onClose()
-            }}
-            className="text-white/70 hover:text-white transition-colors text-3xl"
-          >
-            ✕
-          </button>
         </div>
+
+        {/* 右側：對話區域 */}
+        <div className="flex-1 flex flex-col min-w-0">
+          {/* 關閉按鈕 */}
+          <div className="flex justify-end mb-4">
+            <button
+              onClick={() => {
+                play('button_click')
+                onClose()
+              }}
+              className="text-white/70 hover:text-white transition-colors text-3xl"
+            >
+              ✕
+            </button>
+          </div>
 
         {/* 對話歷史（可選顯示） */}
         {conversationHistory.length > 0 && (
@@ -277,6 +290,7 @@ export const HijikiChatDialog: React.FC<HijikiChatDialogProps> = ({ onClose }) =
               {isStreaming ? '思考中...' : '發送 ✨'}
             </button>
           </div>
+        </div>
         </div>
       </div>
     </div>

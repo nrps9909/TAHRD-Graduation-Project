@@ -13,6 +13,7 @@ import { Z_INDEX_CLASSES } from '../constants/zIndex'
 import { API_ENDPOINTS } from '../config/api'
 import axios from 'axios'
 import { useAuthStore } from '../stores/authStore'
+import { Live2DDisplay } from './Live2DDisplay'
 
 interface TororoChatDialogProps {
   onClose: () => void
@@ -259,28 +260,40 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
         <div className="absolute bottom-40 right-32 text-3xl animate-bounce" style={{ animationDuration: '4.5s' }}>☁️</div>
       </div>
 
-      {/* 主對話容器 */}
-      <div className="relative w-full max-w-4xl h-full flex flex-col p-6">
-        {/* 標題 */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <span className="text-5xl">☁️</span>
-            <div>
-              <h2 className="text-2xl font-bold" style={{ color: '#8B5C2E' }}>白噗噗</h2>
-              <p className="text-sm" style={{ color: '#A67C52' }}>知識園丁・幫你整理一切</p>
-            </div>
+      {/* 主對話容器 - 左右分欄佈局 */}
+      <div className="relative w-full max-w-6xl h-full flex gap-6 p-6">
+        {/* 左側：Live2D 模型 */}
+        <div className="flex-shrink-0 flex flex-col items-center justify-center" style={{ width: '400px' }}>
+          <Live2DDisplay
+            modelPath="/models/tororo_white/tororo.model3.json"
+            width={400}
+            height={500}
+            isThinking={false}
+            isSpeaking={isProcessing}
+          />
+          <div className="mt-4 text-center">
+            <h2 className="text-2xl font-bold flex items-center justify-center gap-2" style={{ color: '#8B5C2E' }}>
+              <span className="text-3xl">☁️</span>
+              白噗噗
+            </h2>
+            <p className="text-sm" style={{ color: '#A67C52' }}>知識園丁・幫你整理一切</p>
           </div>
-
-          <button
-            onClick={() => {
-              play('button_click')
-              onClose()
-            }}
-            className="text-amber-900/70 hover:text-amber-900 transition-colors text-3xl"
-          >
-            ✕
-          </button>
         </div>
+
+        {/* 右側：對話區域 */}
+        <div className="flex-1 flex flex-col min-w-0">
+          {/* 關閉按鈕 */}
+          <div className="flex justify-end mb-4">
+            <button
+              onClick={() => {
+                play('button_click')
+                onClose()
+              }}
+              className="text-amber-900/70 hover:text-amber-900 transition-colors text-3xl"
+            >
+              ✕
+            </button>
+          </div>
 
         {/* 聊天歷史 */}
         <div className="flex-1 overflow-y-auto mb-6 space-y-4">
@@ -454,6 +467,7 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
           onChange={handleFileSelect}
           className="hidden"
         />
+        </div>
       </div>
     </div>
   )
