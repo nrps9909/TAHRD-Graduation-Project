@@ -21,6 +21,7 @@ interface SSECompleteData {
 
 interface SSEChatOptions {
   onChunk?: (chunk: string) => void
+  onSentenceComplete?: () => void  // 句子完成回調
   onComplete?: (data: SSECompleteData) => void
   onError?: (error: string) => void
 }
@@ -188,6 +189,8 @@ export const useSSEChat = () => {
 
               if (event === 'chunk') {
                 options.onChunk?.(parsed.content)
+              } else if (event === 'sentence-complete') {
+                options.onSentenceComplete?.()  // 調用句子完成回調
               } else if (event === 'complete') {
                 options.onComplete?.(parsed)
               } else if (event === 'error') {

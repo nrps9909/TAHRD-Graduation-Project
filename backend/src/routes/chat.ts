@@ -147,7 +147,7 @@ router.post('/upload-stream', async (req: Request, res: Response) => {
     logger.info(`[SSE Upload] Starting stream for user ${userId}`)
 
     // === 第一步：立即發送罐頭回應 ===
-    const canResponse = '收到了'
+    const canResponse = '收到了。'
     const canWords = canResponse.split('')
 
     for (let i = 0; i < canWords.length; i++) {
@@ -163,11 +163,13 @@ router.post('/upload-stream', async (req: Request, res: Response) => {
       await new Promise(resolve => setTimeout(resolve, delay))
     }
 
-    // 罐頭回應完成，加個換行
-    res.write(`event: chunk\ndata: ${JSON.stringify({
-      content: '\n\n',
-      phase: 'can'
+    // 罐頭回應完成，發送分段標記（開始新泡泡）
+    res.write(`event: sentence-complete\ndata: ${JSON.stringify({
+      message: '罐頭回應完成'
     })}\n\n`)
+
+    // 稍微停頓一下，讓用戶看到分段效果
+    await new Promise(resolve => setTimeout(resolve, 300))
 
     logger.info(`[SSE Upload] 罐頭回應完成，開始處理知識...`)
 
@@ -179,24 +181,51 @@ router.post('/upload-stream', async (req: Request, res: Response) => {
       contentType
     })
 
-    // === 第三步：打字機效果顯示 Gemini 的溫暖回應 ===
+    // === 第三步：打字機效果顯示 Gemini 的溫暖回應，按句號分段 ===
     const warmResponse = result.tororoResponse?.warmMessage ||
                         result.quickClassifyResult?.warmResponse ||
                         '已經幫你處理好了～✨'
-    const words = warmResponse.split('')
 
-    for (let i = 0; i < words.length; i++) {
-      const char = words[i]
+    // 按句號、問號、驚嘆號分段
+    const sentences = warmResponse.split(/([。！？!?])/).filter(s => s.length > 0)
 
-      res.write(`event: chunk\ndata: ${JSON.stringify({
-        content: char,
-        index: i,
-        total: words.length,
-        phase: 'gemini' // 標記這是 Gemini 回應
-      })}\n\n`)
+    // 將標點符號合併到前一個句子
+    const mergedSentences: string[] = []
+    for (let i = 0; i < sentences.length; i++) {
+      if (/[。！？!?]/.test(sentences[i]) && mergedSentences.length > 0) {
+        mergedSentences[mergedSentences.length - 1] += sentences[i]
+      } else {
+        mergedSentences.push(sentences[i])
+      }
+    }
 
-      const delay = /[\u4e00-\u9fa5]/.test(char) ? 50 : 30
-      await new Promise(resolve => setTimeout(resolve, delay))
+    // 逐句發送，每句結束後發送分段標記
+    for (const sentence of mergedSentences) {
+      const words = sentence.split('')
+
+      for (let i = 0; i < words.length; i++) {
+        const char = words[i]
+
+        res.write(`event: chunk\ndata: ${JSON.stringify({
+          content: char,
+          index: i,
+          total: words.length,
+          phase: 'gemini' // 標記這是 Gemini 回應
+        })}\n\n`)
+
+        const delay = /[\u4e00-\u9fa5]/.test(char) ? 50 : 30
+        await new Promise(resolve => setTimeout(resolve, delay))
+      }
+
+      // 句子完成，發送分段標記（開始新泡泡）
+      if (/[。！？!?]$/.test(sentence)) {
+        res.write(`event: sentence-complete\ndata: ${JSON.stringify({
+          message: '句子完成'
+        })}\n\n`)
+
+        // 稍微停頓一下，讓用戶看到分段效果
+        await new Promise(resolve => setTimeout(resolve, 300))
+      }
     }
 
     // 發送完成事件（包含分發記錄資訊和完整結果）

@@ -29,6 +29,7 @@ interface ChatItem {
     type: string
   }>
   timestamp: Date
+  isComplete?: boolean  // 標記訊息是否完成（用於分段泡泡）
 }
 
 interface UploadedFile {
@@ -173,13 +174,14 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
     setUploadedFiles([])
     setIsProcessing(true)
 
-    // 創建白噗噗訊息用於顯示打字機效果
-    const tororoMessageId = `tororo-${Date.now()}`
+    // 創建第一個白噗噗訊息用於顯示打字機效果
+    let currentMessageId = `tororo-${Date.now()}`
     const tororoMessage: ChatItem = {
-      id: tororoMessageId,
+      id: currentMessageId,
       type: 'tororo',
       content: '',
-      timestamp: new Date()
+      timestamp: new Date(),
+      isComplete: false
     }
     setChatHistory(prev => [...prev, tororoMessage])
 
@@ -207,13 +209,46 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
             accumulatedResponse += chunk
             setChatHistory(prev =>
               prev.map(msg =>
-                msg.id === tororoMessageId
+                msg.id === currentMessageId
                   ? { ...msg, content: accumulatedResponse }
                   : msg
               )
             )
           },
+          onSentenceComplete: () => {
+            // 句子完成，標記當前泡泡為完成並創建新泡泡
+            setChatHistory(prev =>
+              prev.map(msg =>
+                msg.id === currentMessageId
+                  ? { ...msg, isComplete: true }
+                  : msg
+              )
+            )
+
+            // 重置累積文字，創建新泡泡
+            accumulatedResponse = ''
+            currentMessageId = `tororo-${Date.now()}-${Math.random()}`
+
+            setChatHistory(prev => [
+              ...prev,
+              {
+                id: currentMessageId,
+                type: 'tororo' as const,
+                content: '',
+                timestamp: new Date(),
+                isComplete: false
+              }
+            ])
+          },
           onComplete: () => {
+            // 標記最後一個泡泡為完成
+            setChatHistory(prev =>
+              prev.map(msg =>
+                msg.id === currentMessageId
+                  ? { ...msg, isComplete: true }
+                  : msg
+              )
+            )
             resolve()
             play('message_received')
             playRandomMeow()
@@ -226,11 +261,11 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
     } catch (error) {
       console.error('上傳失敗:', error)
 
-      // 更新為錯誤訊息
+      // 更新為錯誤訊息（使用最新的 messageId）
       setChatHistory(prev =>
         prev.map(msg =>
-          msg.id === tororoMessageId
-            ? { ...msg, content: '喵嗚~ 處理失敗了... 請稍後再試 😿' }
+          msg.id === currentMessageId
+            ? { ...msg, content: '喵嗚~ 處理失敗了... 請稍後再試 😿', isComplete: true }
             : msg
         )
       )
@@ -263,7 +298,7 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
       </div>
 
       {/* 主對話容器 - 左右佈局：充分利用橫向空間 */}
-      <div className="relative w-full max-w-7xl h-full flex p-6 gap-8">
+      <div className="relative w-full max-w-6xl h-full flex p-4 gap-6">
         {/* 關閉按鈕 - 固定在右上角 */}
         <div className="absolute top-6 right-6 z-10">
           <button
@@ -278,11 +313,11 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
         </div>
 
         {/* 左側：Live2D 模型 - 固定寬度，垂直置中 */}
-        <div className="flex-shrink-0 flex flex-col items-center justify-center" style={{ width: '400px' }}>
+        <div className="flex-shrink-0 flex flex-col items-center justify-center" style={{ width: '350px' }}>
           <Live2DDisplay
             modelPath="/models/tororo_white/tororo.model3.json"
-            width={400}
-            height={500}
+            width={350}
+            height={450}
             isThinking={false}
             isSpeaking={isProcessing}
           />
@@ -366,19 +401,25 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
                           border: '2px solid rgba(251, 191, 36, 0.3)'
                         }}
                       >
-                        {/* 對話氣泡尾巴 - 指向左側 */}
-                        <div
-                          className="absolute -left-3 top-8 w-6 h-6 rotate-45"
-                          style={{
-                            background: 'rgba(255, 255, 255, 0.98)',
-                            border: '2px solid rgba(251, 191, 36, 0.3)',
-                            borderRight: 'none',
-                            borderTop: 'none'
-                          }}
-                        />
+                        {/* 對話氣泡尾巴 - 只在第一個泡泡顯示 */}
+                        {index === chatHistory.findIndex(msg => msg.type === 'tororo') && (
+                          <div
+                            className="absolute -left-3 top-8 w-6 h-6 rotate-45"
+                            style={{
+                              background: 'rgba(255, 255, 255, 0.98)',
+                              border: '2px solid rgba(251, 191, 36, 0.3)',
+                              borderRight: 'none',
+                              borderTop: 'none'
+                            }}
+                          />
+                        )}
 
                         <div className="whitespace-pre-wrap text-base" style={{ lineHeight: '1.8', fontSize: '16px' }}>
                           {item.content}
+                          {/* 只在未完成的泡泡顯示打字機游標 */}
+                          {!item.isComplete && item.content && (
+                            <span className="inline-block w-0.5 h-5 bg-amber-500 ml-1 animate-pulse" />
+                          )}
                         </div>
                       </div>
                     </div>
