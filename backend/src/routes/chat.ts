@@ -151,7 +151,7 @@ router.get('/upload-stream', async (req: Request, res: Response) => {
     })
 
     // 模擬白噗噗打字效果
-    const warmResponse = result.warmResponse || '收到了～ ☁️'
+    const warmResponse = result.tororoResponse?.warmMessage || '收到了～ ☁️'
     const words = warmResponse.split('')
 
     for (let i = 0; i < words.length; i++) {
@@ -169,8 +169,7 @@ router.get('/upload-stream', async (req: Request, res: Response) => {
 
     // 發送完成事件（包含分發記錄資訊）
     res.write(`event: complete\ndata: ${JSON.stringify({
-      distributionId: result.distributionId,
-      taskId: result.taskId,
+      distributionId: result.distribution.id,
       totalChars: warmResponse.length
     })}\n\n`)
 
