@@ -4,10 +4,10 @@
  */
 
 import { useState, useRef, useEffect } from 'react'
-import { useMutation, useQuery } from '@apollo/client'
-import { UPLOAD_KNOWLEDGE, GET_CHIEF_ASSISTANT } from '../graphql/knowledge'
-import type { UploadKnowledgeInput } from '../graphql/knowledge'
+import { useQuery } from '@apollo/client'
+import { GET_CHIEF_ASSISTANT } from '../graphql/knowledge'
 import { useSound } from '../hooks/useSound'
+import { useSSEChat } from '../hooks/useSSEChat'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Z_INDEX_CLASSES } from '../constants/zIndex'
 import { API_ENDPOINTS } from '../config/api'
@@ -47,7 +47,7 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
   const [isProcessing, setIsProcessing] = useState(false)
 
-  const [uploadKnowledge] = useMutation(UPLOAD_KNOWLEDGE)
+  const { uploadKnowledge: uploadKnowledgeSSE } = useSSEChat()
   useQuery(GET_CHIEF_ASSISTANT) // Load chief assistant data
   const { play, playRandomMeow } = useSound()
   const { token } = useAuthStore()
@@ -173,65 +173,67 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
     setUploadedFiles([])
     setIsProcessing(true)
 
+    // 創建白噗噗訊息用於顯示打字機效果
+    const tororoMessageId = `tororo-${Date.now()}`
+    const tororoMessage: ChatItem = {
+      id: tororoMessageId,
+      type: 'tororo',
+      content: '',
+      timestamp: new Date()
+    }
+    setChatHistory(prev => [...prev, tororoMessage])
+
     try {
-      const input: UploadKnowledgeInput = {
-        content: userContent,
-        files: completedFiles.map(f => ({
-          url: f.url,
-          name: f.name,
-          type: f.type
-        })),
-        contentType: completedFiles.some(f => f.type.startsWith('image/'))
-          ? 'IMAGE'
-          : completedFiles.some(f => f.type.includes('pdf'))
-          ? 'DOCUMENT'
-          : 'TEXT'
-      }
+      const contentTypeValue = completedFiles.some(f => f.type.startsWith('image/'))
+        ? 'IMAGE'
+        : completedFiles.some(f => f.type.includes('pdf'))
+        ? 'DOCUMENT'
+        : 'TEXT'
 
-      const { data } = await uploadKnowledge({
-        variables: { input }
+      let accumulatedResponse = ''
+
+      await new Promise<void>((resolve, reject) => {
+        uploadKnowledgeSSE({
+          content: userContent,
+          files: completedFiles.map(f => ({
+            url: f.url,
+            name: f.name,
+            type: f.type
+          })),
+          contentType: contentTypeValue
+        }, {
+          onChunk: (chunk) => {
+            // 累積回應文字並顯示打字機效果
+            accumulatedResponse += chunk
+            setChatHistory(prev =>
+              prev.map(msg =>
+                msg.id === tororoMessageId
+                  ? { ...msg, content: accumulatedResponse }
+                  : msg
+              )
+            )
+          },
+          onComplete: () => {
+            resolve()
+            play('message_received')
+            playRandomMeow()
+          },
+          onError: (error) => {
+            reject(new Error(error))
+          }
+        })
       })
-
-      if (data?.uploadKnowledge) {
-        const result = data.uploadKnowledge
-
-        // 構建白噗噗的回應
-        let tororoResponse = result.distribution.warmResponse || '喵~ 我收到了！✨\n\n'
-
-        if (result.memoriesCreated.length > 0) {
-          tororoResponse += `💾 **已儲存到 ${result.memoriesCreated.length} 個島嶼:**\n`
-          result.memoriesCreated.forEach((memory: { assistant: { emoji?: string; nameChinese: string } }) => {
-            tororoResponse += `  ${memory.assistant.emoji} ${memory.assistant.nameChinese}\n`
-          })
-        }
-
-        if (result.distribution.identifiedTopics?.length > 0) {
-          tororoResponse += `\n🏷️ **識別主題:** ${result.distribution.identifiedTopics.join('、')}`
-        }
-
-        const tororoMessage: ChatItem = {
-          id: `tororo-${Date.now()}`,
-          type: 'tororo',
-          content: tororoResponse,
-          timestamp: new Date()
-        }
-
-        setChatHistory(prev => [...prev, tororoMessage])
-
-        play('message_received')
-        playRandomMeow()
-      }
     } catch (error) {
       console.error('上傳失敗:', error)
 
-      const errorMessage: ChatItem = {
-        id: `tororo-${Date.now()}`,
-        type: 'tororo',
-        content: '喵嗚~ 處理失敗了... 請稍後再試 😿',
-        timestamp: new Date()
-      }
-
-      setChatHistory(prev => [...prev, errorMessage])
+      // 更新為錯誤訊息
+      setChatHistory(prev =>
+        prev.map(msg =>
+          msg.id === tororoMessageId
+            ? { ...msg, content: '喵嗚~ 處理失敗了... 請稍後再試 😿' }
+            : msg
+        )
+      )
     } finally {
       setIsProcessing(false)
     }
