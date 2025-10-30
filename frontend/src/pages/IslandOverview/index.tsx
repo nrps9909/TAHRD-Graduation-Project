@@ -7,6 +7,7 @@ import { IslandScene } from '../../components/3D/IslandScene'
 import Live2DCat from '../../components/Live2DCat'
 import TororoKnowledgeAssistant from '../../components/TororoKnowledgeAssistant'
 import { HijikiChatDialog } from '../../components/HijikiChatDialog'
+import { TororoChatDialog } from '../../components/TororoChatDialog'
 import { MiniMap } from '../../components/MiniMap'
 import SettingsMenu from '../../components/SettingsMenu'
 import { IslandStatusCard } from '../../components/IslandStatusCard'
@@ -205,10 +206,7 @@ export default function IslandOverview() {
       {showLive2D && currentLive2DModel && (
         <>
           {currentLive2DModel.includes('tororo') ? (
-            <TororoKnowledgeAssistant
-              modelPath={currentLive2DModel}
-              onClose={handleCloseLive2D}
-            />
+            <TororoChatDialog onClose={handleCloseLive2D} />
           ) : currentLive2DModel.includes('hijiki') ? (
             <HijikiChatDialog onClose={handleCloseLive2D} />
           ) : (
