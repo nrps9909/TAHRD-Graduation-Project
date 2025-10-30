@@ -21,6 +21,7 @@
     "@react-three/drei": "^9.88.13",
     "@react-three/fiber": "^8.15.11",
     "@react-three/postprocessing": "^2.16.2",
+    "axios": "^1.13.1",
     "cannon-es": "^0.20.0",
     "chart.js": "^4.5.0",
     "class-variance-authority": "^0.7.0",
