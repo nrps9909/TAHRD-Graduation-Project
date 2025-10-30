@@ -66,7 +66,7 @@ export const HijikiChatDialog: React.FC<HijikiChatDialogProps> = ({ onClose }) =
         fullResponse += chunk
         setCurrentResponse((prev) => prev + chunk)
       },
-      onComplete: (data) => {
+      onComplete: (_data) => {
         // 完成後，將對話加入歷史記錄
         setConversationHistory((prev) => [
           ...prev,
@@ -166,10 +166,10 @@ export const HijikiChatDialog: React.FC<HijikiChatDialogProps> = ({ onClose }) =
                       rehypePlugins={[rehypeSanitize]}
                       className="text-white text-sm prose prose-sm max-w-none prose-invert"
                       components={{
-                        p: ({ node, ...props }) => <p style={{ color: '#FFFFFF', marginBottom: '0.5em' }} {...props} />,
-                        strong: ({ node, ...props }) => <strong style={{ color: '#E0E7FF', fontWeight: 'bold' }} {...props} />,
-                        em: ({ node, ...props }) => <em style={{ color: '#C7D2FE' }} {...props} />,
-                        a: ({ node, ...props }) => <a style={{ color: '#A5B4FC', textDecoration: 'underline' }} {...props} />,
+                        p: ({ ...props }) => <p style={{ color: '#FFFFFF', marginBottom: '0.5em' }} {...props} />,
+                        strong: ({ ...props }) => <strong style={{ color: '#E0E7FF', fontWeight: 'bold' }} {...props} />,
+                        em: ({ ...props }) => <em style={{ color: '#C7D2FE' }} {...props} />,
+                        a: ({ ...props }) => <a style={{ color: '#A5B4FC', textDecoration: 'underline' }} {...props} />,
                       }}
                     >
                       {conv.answer}
@@ -197,9 +197,9 @@ export const HijikiChatDialog: React.FC<HijikiChatDialogProps> = ({ onClose }) =
                   rehypePlugins={[rehypeSanitize]}
                   className="text-white text-sm prose prose-sm max-w-none prose-invert"
                   components={{
-                    p: ({ node, ...props }) => <p style={{ color: '#FFFFFF', marginBottom: '0.5em' }} {...props} />,
-                    strong: ({ node, ...props }) => <strong style={{ color: '#E0E7FF', fontWeight: 'bold' }} {...props} />,
-                    em: ({ node, ...props }) => <em style={{ color: '#C7D2FE' }} {...props} />,
+                    p: ({ ...props }) => <p style={{ color: '#FFFFFF', marginBottom: '0.5em' }} {...props} />,
+                    strong: ({ ...props }) => <strong style={{ color: '#E0E7FF', fontWeight: 'bold' }} {...props} />,
+                    em: ({ ...props }) => <em style={{ color: '#C7D2FE' }} {...props} />,
                   }}
                 >
                   {currentResponse}

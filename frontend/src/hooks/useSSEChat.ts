@@ -6,9 +6,16 @@ import { useState, useCallback } from 'react'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 
+interface SSECompleteData {
+  messageId?: string
+  totalChars?: number
+  distributionId?: string
+  taskId?: string
+}
+
 interface SSEChatOptions {
   onChunk?: (chunk: string) => void
-  onComplete?: (data: any) => void
+  onComplete?: (data: SSECompleteData) => void
   onError?: (error: string) => void
 }
 
@@ -64,10 +71,11 @@ export const useSSEChat = () => {
           }
         })
 
-        eventSource.addEventListener('error', (event: any) => {
+        eventSource.addEventListener('error', (event: Event) => {
           try {
-            if (event.data) {
-              const data = JSON.parse(event.data)
+            const messageEvent = event as MessageEvent
+            if (messageEvent.data) {
+              const data = JSON.parse(messageEvent.data)
               options.onError?.(data.error || '對話失敗')
             } else {
               options.onError?.('連接失敗')
@@ -90,9 +98,10 @@ export const useSSEChat = () => {
           eventSource.close()
           setIsStreaming(false)
         }
-      } catch (error: any) {
+      } catch (error) {
         console.error('SSE Chat 錯誤:', error)
-        options.onError?.(error.message || '對話失敗')
+        const errorMessage = error instanceof Error ? error.message : '對話失敗'
+        options.onError?.(errorMessage)
         setIsStreaming(false)
       }
     },
@@ -143,10 +152,11 @@ export const useSSEChat = () => {
           }
         })
 
-        eventSource.addEventListener('error', (event: any) => {
+        eventSource.addEventListener('error', (event: Event) => {
           try {
-            if (event.data) {
-              const data = JSON.parse(event.data)
+            const messageEvent = event as MessageEvent
+            if (messageEvent.data) {
+              const data = JSON.parse(messageEvent.data)
               options.onError?.(data.error || '上傳失敗')
             } else {
               options.onError?.('連接失敗')
@@ -167,9 +177,10 @@ export const useSSEChat = () => {
           eventSource.close()
           setIsStreaming(false)
         }
-      } catch (error: any) {
+      } catch (error) {
         console.error('SSE Upload 錯誤:', error)
-        options.onError?.(error.message || '上傳失敗')
+        const errorMessage = error instanceof Error ? error.message : '上傳失敗'
+        options.onError?.(errorMessage)
         setIsStreaming(false)
       }
     },
