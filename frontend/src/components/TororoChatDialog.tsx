@@ -362,7 +362,7 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
             </div>
           ) : (
             <AnimatePresence>
-              {chatHistory.map((item) => (
+              {chatHistory.map((item, index) => (
                 <motion.div
                   key={item.id}
                   initial={{ opacity: 0, y: 20 }}
