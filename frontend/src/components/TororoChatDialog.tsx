@@ -392,7 +392,7 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
                     // 白噗噗回答 - 從左側模型說出來
                     <div className="flex justify-start">
                       <div
-                        className="max-w-[85%] rounded-3xl px-8 py-6 relative"
+                        className="max-w-[45%] rounded-2xl px-5 py-3 relative"
                         style={{
                           background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(254, 252, 247, 0.95) 100%)',
                           backdropFilter: 'blur(20px)',
@@ -414,7 +414,7 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
                           />
                         )}
 
-                        <div className="whitespace-pre-wrap text-base" style={{ lineHeight: '1.8', fontSize: '16px' }}>
+                        <div className="whitespace-pre-wrap text-base" style={{ lineHeight: '1.6', fontSize: '16px' }}>
                           {item.content}
                           {/* 只在未完成的泡泡顯示打字機游標 */}
                           {!item.isComplete && item.content && (
