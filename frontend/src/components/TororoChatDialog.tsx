@@ -330,40 +330,58 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
                   key={item.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className={`flex ${item.type === 'user' ? 'justify-end' : 'justify-start'}`}
+                  className={item.type === 'user' ? 'flex justify-end mb-2' : 'flex items-start gap-3 mb-4'}
                 >
-                  <div
-                    className={`max-w-[80%] rounded-2xl px-4 py-3 ${
-                      item.type === 'user' ? '' : ''
-                    }`}
-                    style={{
-                      background: item.type === 'user'
-                        ? 'linear-gradient(135deg, rgba(251, 191, 36, 0.5) 0%, rgba(245, 158, 11, 0.4) 100%)'
-                        : 'linear-gradient(135deg, rgba(255, 255, 255, 0.8) 0%, rgba(254, 252, 247, 0.7) 100%)',
-                      backdropFilter: 'blur(10px)',
-                      color: '#5D3A1A'
-                    }}
-                  >
-                    <div className="whitespace-pre-wrap text-sm">{item.content}</div>
-
-                    {/* 檔案附件 */}
-                    {item.files && item.files.length > 0 && (
-                      <div className="mt-2 space-y-1">
-                        {item.files.map((file, idx) => (
-                          <div
-                            key={idx}
-                            className="text-xs px-2 py-1 rounded"
-                            style={{
-                              background: 'rgba(251, 191, 36, 0.2)',
-                              color: '#8B5C2E'
-                            }}
-                          >
-                            📎 {file.name}
-                          </div>
-                        ))}
+                  {item.type === 'user' ? (
+                    // 用戶訊息 - 更小更簡潔
+                    <div
+                      className="max-w-[60%] rounded-xl px-3 py-2 text-xs opacity-60"
+                      style={{
+                        background: 'rgba(251, 191, 36, 0.3)',
+                        backdropFilter: 'blur(5px)',
+                        color: '#8B5C2E'
+                      }}
+                    >
+                      <div className="whitespace-pre-wrap">{item.content}</div>
+                      {item.files && item.files.length > 0 && (
+                        <div className="mt-1 space-y-1">
+                          {item.files.map((file, idx) => (
+                            <div key={idx} className="text-xs">📎 {file.name}</div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    // 白噗噗回答 - 像是從左側模型說出來
+                    <>
+                      {/* 視覺指向圖標 */}
+                      <div className="text-2xl mt-2 animate-pulse" style={{ animationDuration: '2s' }}>
+                        💬
                       </div>
-                    )}
-                  </div>
+
+                      <div
+                        className="flex-1 rounded-2xl px-5 py-4 relative"
+                        style={{
+                          background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(254, 252, 247, 0.85) 100%)',
+                          backdropFilter: 'blur(15px)',
+                          boxShadow: '0 8px 32px rgba(251, 191, 36, 0.3)',
+                          color: '#5D3A1A'
+                        }}
+                      >
+                        {/* 對話氣泡尾巴 */}
+                        <div
+                          className="absolute -left-2 top-6 w-4 h-4 rotate-45"
+                          style={{
+                            background: 'rgba(255, 255, 255, 0.9)'
+                          }}
+                        />
+
+                        <div className="whitespace-pre-wrap text-sm" style={{ lineHeight: '1.6' }}>
+                          {item.content}
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </motion.div>
               ))}
             </AnimatePresence>

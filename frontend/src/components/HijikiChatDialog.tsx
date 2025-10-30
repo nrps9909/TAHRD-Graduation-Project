@@ -147,39 +147,53 @@ export const HijikiChatDialog: React.FC<HijikiChatDialogProps> = ({ onClose }) =
             </button>
           </div>
 
-        {/* 對話歷史（可選顯示） */}
+        {/* 對話歷史 - 簡化顯示，聚焦在黑噗噗的回應 */}
         {conversationHistory.length > 0 && (
           <div className="flex-1 overflow-y-auto mb-6 space-y-4">
             {conversationHistory.map((conv, index) => (
-              <div key={index} className="space-y-3">
-                {/* 用戶問題 */}
+              <div key={index} className="space-y-2">
+                {/* 用戶問題 - 更小更簡潔 */}
                 <div className="flex justify-end">
                   <div
-                    className="max-w-[70%] rounded-2xl px-4 py-3"
+                    className="max-w-[60%] rounded-xl px-3 py-2 text-xs opacity-60"
                     style={{
-                      background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.6) 0%, rgba(99, 102, 241, 0.5) 100%)',
-                      backdropFilter: 'blur(10px)'
+                      background: 'rgba(139, 92, 246, 0.3)',
+                      backdropFilter: 'blur(5px)'
                     }}
                   >
-                    <p className="text-white text-sm">{conv.question}</p>
+                    <p className="text-white">{conv.question}</p>
                   </div>
                 </div>
 
-                {/* 黑噗噗回答 */}
-                <div className="flex justify-start">
+                {/* 黑噗噗回答 - 像是從左側模型說出來 */}
+                <div className="flex items-start gap-3">
+                  {/* 視覺指向箭頭 */}
+                  <div className="text-2xl mt-2 animate-pulse" style={{ animationDuration: '2s' }}>
+                    💬
+                  </div>
+
                   <div
-                    className="max-w-[80%] rounded-2xl px-4 py-3"
+                    className="flex-1 rounded-2xl px-5 py-4 relative"
                     style={{
-                      background: 'linear-gradient(135deg, rgba(67, 56, 202, 0.5) 0%, rgba(79, 70, 229, 0.4) 100%)',
-                      backdropFilter: 'blur(10px)'
+                      background: 'linear-gradient(135deg, rgba(67, 56, 202, 0.7) 0%, rgba(79, 70, 229, 0.6) 100%)',
+                      backdropFilter: 'blur(15px)',
+                      boxShadow: '0 8px 32px rgba(99, 102, 241, 0.3)'
                     }}
                   >
-                    <div className="text-white text-sm prose prose-sm max-w-none prose-invert">
+                    {/* 對話氣泡尾巴 */}
+                    <div
+                      className="absolute -left-2 top-6 w-4 h-4 rotate-45"
+                      style={{
+                        background: 'rgba(67, 56, 202, 0.7)'
+                      }}
+                    />
+
+                    <div className="text-white prose prose-sm max-w-none prose-invert">
                       <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
                         rehypePlugins={[rehypeSanitize]}
                         components={{
-                          p: ({ ...props }) => <p style={{ color: '#FFFFFF', marginBottom: '0.5em' }} {...props} />,
+                          p: ({ ...props }) => <p style={{ color: '#FFFFFF', marginBottom: '0.5em', lineHeight: '1.6' }} {...props} />,
                           strong: ({ ...props }) => <strong style={{ color: '#E0E7FF', fontWeight: 'bold' }} {...props} />,
                           em: ({ ...props }) => <em style={{ color: '#C7D2FE' }} {...props} />,
                           a: ({ ...props }) => <a style={{ color: '#A5B4FC', textDecoration: 'underline' }} {...props} />,
@@ -195,31 +209,45 @@ export const HijikiChatDialog: React.FC<HijikiChatDialogProps> = ({ onClose }) =
           </div>
         )}
 
-        {/* 當前回應區域（打字機效果） */}
+        {/* 當前回應區域（打字機效果） - 強調黑噗噗正在說話 */}
         {currentResponse && (
           <div className="mb-6">
-            <div className="flex justify-start">
+            <div className="flex items-start gap-3">
+              {/* 動態說話圖標 */}
+              <div className="text-2xl mt-2 animate-bounce">
+                🗣️
+              </div>
+
               <div
-                className="max-w-[80%] rounded-2xl px-4 py-3"
+                className="flex-1 rounded-2xl px-5 py-4 relative animate-fadeIn"
                 style={{
-                  background: 'linear-gradient(135deg, rgba(67, 56, 202, 0.5) 0%, rgba(79, 70, 229, 0.4) 100%)',
-                  backdropFilter: 'blur(10px)'
+                  background: 'linear-gradient(135deg, rgba(67, 56, 202, 0.8) 0%, rgba(79, 70, 229, 0.7) 100%)',
+                  backdropFilter: 'blur(15px)',
+                  boxShadow: '0 8px 32px rgba(99, 102, 241, 0.4), 0 0 20px rgba(139, 92, 246, 0.3)'
                 }}
               >
-                <div className="text-white text-sm prose prose-sm max-w-none prose-invert">
+                {/* 對話氣泡尾巴 */}
+                <div
+                  className="absolute -left-2 top-6 w-4 h-4 rotate-45"
+                  style={{
+                    background: 'rgba(67, 56, 202, 0.8)'
+                  }}
+                />
+
+                <div className="text-white prose prose-sm max-w-none prose-invert">
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
                     rehypePlugins={[rehypeSanitize]}
                     components={{
-                      p: ({ ...props }) => <p style={{ color: '#FFFFFF', marginBottom: '0.5em' }} {...props} />,
+                      p: ({ ...props }) => <p style={{ color: '#FFFFFF', marginBottom: '0.5em', lineHeight: '1.6' }} {...props} />,
                       strong: ({ ...props }) => <strong style={{ color: '#E0E7FF', fontWeight: 'bold' }} {...props} />,
                       em: ({ ...props }) => <em style={{ color: '#C7D2FE' }} {...props} />,
                     }}
                   >
                     {currentResponse}
                   </ReactMarkdown>
-                  {/* 打字游標 */}
-                  <span className="inline-block w-2 h-4 ml-1 bg-white/70 animate-pulse" />
+                  {/* 打字游標 - 更明顯 */}
+                  <span className="inline-block w-2 h-5 ml-1 bg-white animate-pulse" style={{ animationDuration: '0.8s' }} />
                 </div>
               </div>
             </div>
