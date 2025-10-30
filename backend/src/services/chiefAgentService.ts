@@ -581,7 +581,7 @@ ${contextInfo}
         model: this.geminiModel,
         temperature: 0.2, // 降低 temperature 提升分類準確度（原 0.7）
         maxOutputTokens: 2048,
-        timeout: 15000 // 15 秒超時
+        timeout: 60000 // 60 秒超時 - 增加以應對複雜對話
       })
 
       return response

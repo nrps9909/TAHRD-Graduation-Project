@@ -246,7 +246,7 @@ ${context ? `\n用戶備註: ${context}` : ''}
         model: this.geminiModel,
         temperature: 0.7,
         maxOutputTokens: 512,
-        timeout: 15000
+        timeout: 60000 // 60 秒超時 - 增加以應對複雜媒體分析
       })
       const analysis = this.parseJSON(analysisText)
 
