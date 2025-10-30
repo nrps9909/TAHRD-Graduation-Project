@@ -1081,6 +1081,7 @@ ${input.content}
                 color: targetIsland.color
               }
             },
+            quickClassifyResult: quickResult, // 添加完整分類結果（用於 SSE）
             agentDecisions: [],
             memoriesCreated: [],
             processingTime: Date.now() - startTime,
@@ -1156,6 +1157,7 @@ ${input.content}
           confidence: quickResult.confidence,
           reasoning: quickResult.reasoning
         },
+        quickClassifyResult: quickResult, // 添加完整分類結果（用於 SSE）
         // 暫時沒有深度分析結果（正在後台處理中）
         agentDecisions: [],
         memoriesCreated: [],

@@ -145,13 +145,40 @@ router.get('/upload-stream', async (req: Request, res: Response) => {
 
     logger.info(`[SSE Upload] Starting stream for user ${userId}`)
 
-    // 調用知識上傳（獲取白噗噗的回應）
+    // === 第一步：立即發送罐頭回應 ===
+    const canResponse = '謝謝你～收到了！☁️'
+    const canWords = canResponse.split('')
+
+    for (let i = 0; i < canWords.length; i++) {
+      const char = canWords[i]
+      res.write(`event: chunk\ndata: ${JSON.stringify({
+        content: char,
+        index: i,
+        total: canWords.length,
+        phase: 'can' // 標記這是罐頭回應
+      })}\n\n`)
+
+      const delay = /[\u4e00-\u9fa5]/.test(char) ? 30 : 20 // 罐頭回應快一點
+      await new Promise(resolve => setTimeout(resolve, delay))
+    }
+
+    // 罐頭回應完成，加個換行
+    res.write(`event: chunk\ndata: ${JSON.stringify({
+      content: '\n\n',
+      phase: 'can'
+    })}\n\n`)
+
+    logger.info(`[SSE Upload] 罐頭回應完成，開始處理知識...`)
+
+    // === 第二步：調用 Chief Agent 進行分類和處理 ===
     const result = await chiefAgentService.uploadKnowledge(userId, {
       content: content as string
     })
 
-    // 模擬白噗噗打字效果
-    const warmResponse = result.tororoResponse?.warmMessage || '收到了～ ☁️'
+    // === 第三步：打字機效果顯示 Gemini 的溫暖回應 ===
+    const warmResponse = result.tororoResponse?.warmMessage ||
+                        result.quickClassifyResult?.warmResponse ||
+                        '已經幫你處理好了～✨'
     const words = warmResponse.split('')
 
     for (let i = 0; i < words.length; i++) {
@@ -160,7 +187,8 @@ router.get('/upload-stream', async (req: Request, res: Response) => {
       res.write(`event: chunk\ndata: ${JSON.stringify({
         content: char,
         index: i,
-        total: words.length
+        total: words.length,
+        phase: 'gemini' // 標記這是 Gemini 回應
       })}\n\n`)
 
       const delay = /[\u4e00-\u9fa5]/.test(char) ? 50 : 30
@@ -170,7 +198,8 @@ router.get('/upload-stream', async (req: Request, res: Response) => {
     // 發送完成事件（包含分發記錄資訊）
     res.write(`event: complete\ndata: ${JSON.stringify({
       distributionId: result.distribution.id,
-      totalChars: warmResponse.length
+      totalChars: canResponse.length + warmResponse.length,
+      memoriesCreated: result.memoriesCreated?.length || 0
     })}\n\n`)
 
     logger.info(`[SSE Upload] Stream completed for user ${userId}`)
