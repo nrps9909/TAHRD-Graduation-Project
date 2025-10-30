@@ -46,7 +46,6 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
   const [inputText, setInputText] = useState('')
   const [chatHistory, setChatHistory] = useState<ChatItem[]>([])
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
-  const [isProcessing, setIsProcessing] = useState(false)
 
   const { uploadKnowledge: uploadKnowledgeSSE } = useSSEChat()
   useQuery(GET_CHIEF_ASSISTANT) // Load chief assistant data
@@ -147,7 +146,7 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
   }
 
   const handleSubmit = async () => {
-    if ((!inputText.trim() && uploadedFiles.length === 0) || isProcessing) return
+    if (!inputText.trim() && uploadedFiles.length === 0) return
 
     const userContent = inputText.trim() || '上傳了檔案'
     const completedFiles = uploadedFiles.filter(f => f.status === 'completed')
@@ -169,10 +168,9 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
 
     setChatHistory(prev => [...prev, userMessage])
 
-    // 清空輸入
+    // 立即清空輸入，讓用戶可以繼續輸入下一個（像 IG 一樣）
     setInputText('')
     setUploadedFiles([])
-    setIsProcessing(true)
 
     // 創建第一個白噗噗訊息用於顯示打字機效果
     let currentMessageId = `tororo-${Date.now()}`
@@ -185,7 +183,9 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
     }
     setChatHistory(prev => [...prev, tororoMessage])
 
-    try {
+    // 在背景處理，不阻塞用戶輸入（非阻塞式）
+    ;(async () => {
+      try {
       const contentTypeValue = completedFiles.some(f => f.type.startsWith('image/'))
         ? 'IMAGE'
         : completedFiles.some(f => f.type.includes('pdf'))
@@ -258,20 +258,19 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
           }
         })
       })
-    } catch (error) {
-      console.error('上傳失敗:', error)
+      } catch (error) {
+        console.error('上傳失敗:', error)
 
-      // 更新為錯誤訊息（使用最新的 messageId）
-      setChatHistory(prev =>
-        prev.map(msg =>
-          msg.id === currentMessageId
-            ? { ...msg, content: '喵嗚~ 處理失敗了... 請稍後再試 😿', isComplete: true }
-            : msg
+        // 更新為錯誤訊息（使用最新的 messageId）
+        setChatHistory(prev =>
+          prev.map(msg =>
+            msg.id === currentMessageId
+              ? { ...msg, content: '喵嗚~ 處理失敗了... 請稍後再試 😿', isComplete: true }
+              : msg
+          )
         )
-      )
-    } finally {
-      setIsProcessing(false)
-    }
+      }
+    })()
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -319,7 +318,7 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
             width={350}
             height={450}
             isThinking={false}
-            isSpeaking={isProcessing}
+            isSpeaking={chatHistory.some(msg => msg.type === 'tororo' && !msg.isComplete)}
           />
           <div className="mt-4 text-center">
             <h2 className="text-2xl font-bold flex items-center justify-center gap-2" style={{ color: '#8B5C2E' }}>
@@ -480,8 +479,7 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
             {/* 附件按鈕 */}
             <button
               onClick={() => fileInputRef.current?.click()}
-              disabled={isProcessing}
-              className="p-3 rounded-xl transition-all disabled:opacity-50"
+              className="p-3 rounded-xl transition-all"
               style={{
                 background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.3) 0%, rgba(245, 158, 11, 0.25) 100%)'
               }}
@@ -495,8 +493,7 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               onKeyDown={handleKeyDown}
-              disabled={isProcessing}
-              placeholder={isProcessing ? "白噗噗正在處理中..." : "告訴我你想記錄什麼..."}
+              placeholder="告訴我你想記錄什麼..."
               className="flex-1 bg-transparent outline-none resize-none min-h-[60px] max-h-[120px]"
               style={{
                 color: '#5D3A1A',
@@ -506,16 +503,16 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
 
             <button
               onClick={handleSubmit}
-              disabled={(!inputText.trim() && uploadedFiles.filter(f => f.status === 'completed').length === 0) || isProcessing}
+              disabled={!inputText.trim() && uploadedFiles.filter(f => f.status === 'completed').length === 0}
               className="px-6 py-3 rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               style={{
-                background: (inputText.trim() || uploadedFiles.some(f => f.status === 'completed')) && !isProcessing
+                background: (inputText.trim() || uploadedFiles.some(f => f.status === 'completed'))
                   ? 'linear-gradient(135deg, rgba(251, 191, 36, 0.8) 0%, rgba(245, 158, 11, 0.7) 100%)'
                   : 'rgba(251, 191, 36, 0.2)',
                 color: '#5D3A1A'
               }}
             >
-              {isProcessing ? '處理中...' : '發送 ✨'}
+              發送 ✨
             </button>
           </div>
           </div>
