@@ -43,7 +43,7 @@ export const useSSEChat = () => {
       setIsStreaming(true)
 
       try {
-        const url = new URL(`${API_BASE_URL}/api/chat/stream`)
+        const url = new URL(`${API_BASE_URL}/chat/stream`)
         url.searchParams.append('message', message)
         url.searchParams.append('assistantId', assistantId)
         url.searchParams.append('token', token)
@@ -125,7 +125,7 @@ export const useSSEChat = () => {
       setIsStreaming(true)
 
       try {
-        const url = new URL(`${API_BASE_URL}/api/chat/upload-stream`)
+        const url = new URL(`${API_BASE_URL}/chat/upload-stream`)
         url.searchParams.append('content', content)
         url.searchParams.append('token', token)
 
