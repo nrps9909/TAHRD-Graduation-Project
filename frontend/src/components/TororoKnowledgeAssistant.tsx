@@ -863,7 +863,7 @@ export default function TororoKnowledgeAssistant({
             onComplete: (data) => {
               // SSE 完成，返回結果
               resolve({
-                distribution: { id: data.distributionId },
+                distribution: { id: data.distributionId || '' },
                 backgroundProcessing: true,
                 skipRecording: data.skipRecording,
                 tororoResponse: data.tororoResponse,
