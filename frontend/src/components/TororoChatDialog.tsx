@@ -356,23 +356,27 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
                     // 白噗噗回答 - 從上方模型說出來的感覺
                     <div className="flex justify-center w-full">
                       <div
-                        className="max-w-[85%] rounded-2xl px-6 py-4 relative"
+                        className="w-full rounded-3xl px-8 py-6 relative"
                         style={{
-                          background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(254, 252, 247, 0.9) 100%)',
-                          backdropFilter: 'blur(15px)',
-                          boxShadow: '0 8px 32px rgba(251, 191, 36, 0.4), 0 0 20px rgba(245, 158, 11, 0.2)',
-                          color: '#5D3A1A'
+                          background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(254, 252, 247, 0.95) 100%)',
+                          backdropFilter: 'blur(20px)',
+                          boxShadow: '0 12px 48px rgba(251, 191, 36, 0.5), 0 0 30px rgba(245, 158, 11, 0.3)',
+                          color: '#5D3A1A',
+                          border: '2px solid rgba(251, 191, 36, 0.3)'
                         }}
                       >
                         {/* 對話氣泡尾巴 - 指向上方 */}
                         <div
-                          className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-4 h-4 rotate-45"
+                          className="absolute -top-3 left-1/2 transform -translate-x-1/2 w-6 h-6 rotate-45"
                           style={{
-                            background: 'rgba(255, 255, 255, 0.95)'
+                            background: 'rgba(255, 255, 255, 0.98)',
+                            border: '2px solid rgba(251, 191, 36, 0.3)',
+                            borderRight: 'none',
+                            borderBottom: 'none'
                           }}
                         />
 
-                        <div className="whitespace-pre-wrap text-sm" style={{ lineHeight: '1.6' }}>
+                        <div className="whitespace-pre-wrap text-base" style={{ lineHeight: '1.8', fontSize: '16px' }}>
                           {item.content}
                         </div>
                       </div>

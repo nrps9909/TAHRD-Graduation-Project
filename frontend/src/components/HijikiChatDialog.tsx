@@ -169,27 +169,31 @@ export const HijikiChatDialog: React.FC<HijikiChatDialogProps> = ({ onClose }) =
                 {/* 黑噗噗回答 - 從上方模型說出來的感覺 */}
                 <div className="flex justify-center">
                   <div
-                    className="max-w-[85%] rounded-2xl px-6 py-4 relative"
+                    className="w-full rounded-3xl px-8 py-6 relative"
                     style={{
-                      background: 'linear-gradient(135deg, rgba(67, 56, 202, 0.8) 0%, rgba(79, 70, 229, 0.7) 100%)',
-                      backdropFilter: 'blur(15px)',
-                      boxShadow: '0 8px 32px rgba(99, 102, 241, 0.4), 0 0 20px rgba(139, 92, 246, 0.2)'
+                      background: 'linear-gradient(135deg, rgba(67, 56, 202, 0.9) 0%, rgba(79, 70, 229, 0.85) 100%)',
+                      backdropFilter: 'blur(20px)',
+                      boxShadow: '0 12px 48px rgba(99, 102, 241, 0.5), 0 0 30px rgba(139, 92, 246, 0.3)',
+                      border: '2px solid rgba(139, 92, 246, 0.4)'
                     }}
                   >
                     {/* 對話氣泡尾巴 - 指向上方 */}
                     <div
-                      className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-4 h-4 rotate-45"
+                      className="absolute -top-3 left-1/2 transform -translate-x-1/2 w-6 h-6 rotate-45"
                       style={{
-                        background: 'rgba(67, 56, 202, 0.8)'
+                        background: 'rgba(67, 56, 202, 0.9)',
+                        border: '2px solid rgba(139, 92, 246, 0.4)',
+                        borderRight: 'none',
+                        borderBottom: 'none'
                       }}
                     />
 
-                    <div className="text-white prose prose-sm max-w-none prose-invert">
+                    <div className="text-white prose prose-base max-w-none prose-invert">
                       <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
                         rehypePlugins={[rehypeSanitize]}
                         components={{
-                          p: ({ ...props }) => <p style={{ color: '#FFFFFF', marginBottom: '0.5em', lineHeight: '1.6' }} {...props} />,
+                          p: ({ ...props }) => <p style={{ color: '#FFFFFF', marginBottom: '0.5em', lineHeight: '1.8', fontSize: '16px' }} {...props} />,
                           strong: ({ ...props }) => <strong style={{ color: '#E0E7FF', fontWeight: 'bold' }} {...props} />,
                           em: ({ ...props }) => <em style={{ color: '#C7D2FE' }} {...props} />,
                           a: ({ ...props }) => <a style={{ color: '#A5B4FC', textDecoration: 'underline' }} {...props} />,
@@ -210,33 +214,37 @@ export const HijikiChatDialog: React.FC<HijikiChatDialogProps> = ({ onClose }) =
           <div className="mb-6">
             <div className="flex justify-center animate-fadeIn">
               <div
-                className="max-w-[85%] rounded-2xl px-6 py-4 relative"
+                className="w-full rounded-3xl px-8 py-6 relative"
                 style={{
-                  background: 'linear-gradient(135deg, rgba(67, 56, 202, 0.9) 0%, rgba(79, 70, 229, 0.8) 100%)',
-                  backdropFilter: 'blur(15px)',
-                  boxShadow: '0 8px 32px rgba(99, 102, 241, 0.5), 0 0 30px rgba(139, 92, 246, 0.4)',
+                  background: 'linear-gradient(135deg, rgba(67, 56, 202, 0.95) 0%, rgba(79, 70, 229, 0.9) 100%)',
+                  backdropFilter: 'blur(20px)',
+                  boxShadow: '0 12px 48px rgba(99, 102, 241, 0.6), 0 0 40px rgba(139, 92, 246, 0.5)',
+                  border: '2px solid rgba(139, 92, 246, 0.5)',
                   animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
                 }}
               >
                 {/* 對話氣泡尾巴 - 指向上方 */}
                 <div
-                  className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-4 h-4 rotate-45"
+                  className="absolute -top-3 left-1/2 transform -translate-x-1/2 w-6 h-6 rotate-45"
                   style={{
-                    background: 'rgba(67, 56, 202, 0.9)'
+                    background: 'rgba(67, 56, 202, 0.95)',
+                    border: '2px solid rgba(139, 92, 246, 0.5)',
+                    borderRight: 'none',
+                    borderBottom: 'none'
                   }}
                 />
 
                 {/* 說話中指示器 */}
-                <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 text-2xl animate-bounce">
+                <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 text-3xl animate-bounce">
                   🗣️
                 </div>
 
-                <div className="text-white prose prose-sm max-w-none prose-invert">
+                <div className="text-white prose prose-base max-w-none prose-invert">
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
                     rehypePlugins={[rehypeSanitize]}
                     components={{
-                      p: ({ ...props }) => <p style={{ color: '#FFFFFF', marginBottom: '0.5em', lineHeight: '1.6' }} {...props} />,
+                      p: ({ ...props }) => <p style={{ color: '#FFFFFF', marginBottom: '0.5em', lineHeight: '1.8', fontSize: '16px' }} {...props} />,
                       strong: ({ ...props }) => <strong style={{ color: '#E0E7FF', fontWeight: 'bold' }} {...props} />,
                       em: ({ ...props }) => <em style={{ color: '#C7D2FE' }} {...props} />,
                     }}
@@ -244,7 +252,7 @@ export const HijikiChatDialog: React.FC<HijikiChatDialogProps> = ({ onClose }) =
                     {currentResponse}
                   </ReactMarkdown>
                   {/* 打字游標 */}
-                  <span className="inline-block w-2 h-5 ml-1 bg-white animate-pulse" style={{ animationDuration: '0.8s' }} />
+                  <span className="inline-block w-2 h-6 ml-1 bg-white animate-pulse" style={{ animationDuration: '0.8s' }} />
                 </div>
               </div>
             </div>

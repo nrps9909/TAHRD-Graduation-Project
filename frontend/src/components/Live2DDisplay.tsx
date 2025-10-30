@@ -48,6 +48,11 @@ export const Live2DDisplay: React.FC<Live2DDisplayProps> = ({
 
     const initLive2D = async () => {
       try {
+        if (!canvasRef.current) {
+          console.error('[Live2D] Canvas ref 未準備好')
+          return
+        }
+
         // 創建 PIXI Application
         const app = new PIXI.Application({
           view: document.createElement('canvas'),
@@ -58,27 +63,43 @@ export const Live2DDisplay: React.FC<Live2DDisplayProps> = ({
           antialias: true
         })
 
-        canvasRef.current?.appendChild(app.view as HTMLCanvasElement)
+        // 確保 canvas 添加成功
+        if (canvasRef.current) {
+          canvasRef.current.appendChild(app.view as HTMLCanvasElement)
+        }
         appRef.current = app
+
+        // 等待下一個 tick 確保 stage 準備好
+        await new Promise(resolve => setTimeout(resolve, 100))
+
+        // 確認 stage 存在
+        if (!app.stage) {
+          console.error('[Live2D] PIXI stage 未初始化')
+          return
+        }
 
         // 加載 Live2D 模型
         const model = await Live2DModel.from(modelPath)
 
         // 設置錨點為中心
-        model.anchor.set(0.5, 0.5)
+        if (model.anchor) {
+          model.anchor.set(0.5, 0.5)
+        }
 
         // 調整縮放和位置
         model.scale.set(0.18)
         model.x = width / 2
         model.y = height / 2
 
-        app.stage.addChild(model as PIXI.DisplayObject)
-        modelRef.current = model
+        // 安全地添加到 stage
+        if (app.stage) {
+          app.stage.addChild(model as PIXI.DisplayObject)
+          modelRef.current = model
+          setIsLoaded(true)
 
-        setIsLoaded(true)
-
-        // 播放閒置動作
-        playMotion('Idle')
+          // 播放閒置動作
+          playMotion('Idle')
+        }
       } catch (error) {
         console.error('[Live2D] 加載失敗:', error)
       }
