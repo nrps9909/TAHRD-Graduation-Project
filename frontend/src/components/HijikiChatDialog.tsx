@@ -127,30 +127,27 @@ export const HijikiChatDialog: React.FC<HijikiChatDialogProps> = ({ onClose }) =
           </button>
         </div>
 
-        {/* 上方：Live2D 模型 + 標題 */}
-        <div className="flex flex-col items-center pt-4 pb-6">
+        {/* 上方：Live2D 模型 + 標題 - 固定高度 */}
+        <div className="flex-shrink-0 flex flex-col items-center pt-4 pb-4">
           <Live2DDisplay
             modelPath="/models/hijiki/hijiki.model3.json"
-            width={350}
-            height={400}
+            width={300}
+            height={350}
             isThinking={false}
             isSpeaking={!!currentResponse}
           />
           <div className="mt-2 text-center">
-            <h2 className="text-2xl font-bold text-white flex items-center justify-center gap-2">
-              <span className="text-3xl">🌙</span>
+            <h2 className="text-xl font-bold text-white flex items-center justify-center gap-2">
+              <span className="text-2xl">🌙</span>
               黑噗噗
             </h2>
-            <p className="text-sm text-indigo-300">知識管理員・隨時為你解答</p>
+            <p className="text-xs text-indigo-300">知識管理員・隨時為你解答</p>
           </div>
         </div>
 
-        {/* 下方：對話區域 */}
-        <div className="flex-1 flex flex-col min-h-0">
-
-        {/* 對話歷史 - 簡化顯示，聚焦在黑噗噗的回應 */}
+        {/* 中間：對話歷史 - 限制最大高度 */}
         {conversationHistory.length > 0 && (
-          <div className="flex-1 overflow-y-auto mb-6 space-y-4">
+          <div className="overflow-y-auto mb-4 space-y-4" style={{ maxHeight: '300px' }}>
             {conversationHistory.map((conv, index) => (
               <div key={index} className="space-y-2">
                 {/* 用戶問題 - 更小更簡潔 */}
@@ -288,15 +285,16 @@ export const HijikiChatDialog: React.FC<HijikiChatDialogProps> = ({ onClose }) =
           </div>
         )}
 
-        {/* 輸入區域 */}
-        <div
-          className="rounded-2xl p-4"
-          style={{
-            background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(99, 102, 241, 0.15) 100%)',
-            backdropFilter: 'blur(20px)',
-            border: '2px solid rgba(139, 92, 246, 0.3)'
-          }}
-        >
+        {/* 下方：輸入區域 - 固定不被壓縮 */}
+        <div className="flex-shrink-0 mt-auto">
+          <div
+            className="rounded-2xl p-4"
+            style={{
+              background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(99, 102, 241, 0.15) 100%)',
+              backdropFilter: 'blur(20px)',
+              border: '2px solid rgba(139, 92, 246, 0.3)'
+            }}
+          >
           <div className="flex gap-3 items-end">
             <textarea
               ref={inputRef}

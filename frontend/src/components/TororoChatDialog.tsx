@@ -275,29 +275,26 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
           </button>
         </div>
 
-        {/* 上方：Live2D 模型 + 標題 */}
-        <div className="flex flex-col items-center pt-4 pb-6">
+        {/* 上方：Live2D 模型 + 標題 - 固定高度 */}
+        <div className="flex-shrink-0 flex flex-col items-center pt-4 pb-4">
           <Live2DDisplay
             modelPath="/models/tororo_white/tororo.model3.json"
-            width={350}
-            height={400}
+            width={300}
+            height={350}
             isThinking={false}
             isSpeaking={isProcessing}
           />
           <div className="mt-2 text-center">
-            <h2 className="text-2xl font-bold flex items-center justify-center gap-2" style={{ color: '#8B5C2E' }}>
-              <span className="text-3xl">☁️</span>
+            <h2 className="text-xl font-bold flex items-center justify-center gap-2" style={{ color: '#8B5C2E' }}>
+              <span className="text-2xl">☁️</span>
               白噗噗
             </h2>
-            <p className="text-sm" style={{ color: '#A67C52' }}>知識園丁・幫你整理一切</p>
+            <p className="text-xs" style={{ color: '#A67C52' }}>知識園丁・幫你整理一切</p>
           </div>
         </div>
 
-        {/* 下方：對話區域 */}
-        <div className="flex-1 flex flex-col min-h-0">
-
-        {/* 聊天歷史 */}
-        <div className="flex-1 overflow-y-auto mb-6 space-y-4">
+        {/* 中間：對話歷史 - 限制最大高度 */}
+        <div className="overflow-y-auto mb-4 space-y-4" style={{ maxHeight: '300px' }}>
           {chatHistory.length === 0 ? (
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center space-y-4">
@@ -389,49 +386,51 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
           <div ref={chatEndRef} />
         </div>
 
-        {/* 已上傳檔案列表 */}
-        {uploadedFiles.length > 0 && (
-          <div className="mb-3 flex flex-wrap gap-2">
-            {uploadedFiles.map((file) => (
-              <div
-                key={file.id}
-                className="px-3 py-2 rounded-lg flex items-center gap-2 text-sm"
-                style={{
-                  background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.2) 0%, rgba(245, 158, 11, 0.15) 100%)',
-                  backdropFilter: 'blur(10px)',
-                  color: '#8B5C2E'
-                }}
-              >
-                {file.status === 'uploading' && (
-                  <div className="w-4 h-4 border-2 border-amber-600 border-t-transparent rounded-full animate-spin" />
-                )}
-                {file.status === 'completed' && <span>✅</span>}
-                {file.status === 'error' && <span>❌</span>}
+        {/* 下方：輸入區域 - 固定不被壓縮 */}
+        <div className="flex-shrink-0 mt-auto">
+          {/* 已上傳檔案列表 */}
+          {uploadedFiles.length > 0 && (
+            <div className="mb-3 flex flex-wrap gap-2">
+              {uploadedFiles.map((file) => (
+                <div
+                  key={file.id}
+                  className="px-3 py-2 rounded-lg flex items-center gap-2 text-sm"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.2) 0%, rgba(245, 158, 11, 0.15) 100%)',
+                    backdropFilter: 'blur(10px)',
+                    color: '#8B5C2E'
+                  }}
+                >
+                  {file.status === 'uploading' && (
+                    <div className="w-4 h-4 border-2 border-amber-600 border-t-transparent rounded-full animate-spin" />
+                  )}
+                  {file.status === 'completed' && <span>✅</span>}
+                  {file.status === 'error' && <span>❌</span>}
 
-                <span className="truncate max-w-[150px]">{file.name}</span>
+                  <span className="truncate max-w-[150px]">{file.name}</span>
 
-                {file.status === 'completed' && (
-                  <button
-                    onClick={() => removeFile(file.id)}
-                    className="ml-auto text-amber-900/50 hover:text-amber-900"
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
+                  {file.status === 'completed' && (
+                    <button
+                      onClick={() => removeFile(file.id)}
+                      className="ml-auto text-amber-900/50 hover:text-amber-900"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
 
-        {/* 輸入區域 */}
-        <div
-          className="rounded-2xl p-4"
-          style={{
-            background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.2) 0%, rgba(245, 158, 11, 0.15) 100%)',
-            backdropFilter: 'blur(20px)',
-            border: '2px solid rgba(251, 191, 36, 0.3)'
-          }}
-        >
+          {/* 輸入區域 */}
+          <div
+            className="rounded-2xl p-4"
+            style={{
+              background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.2) 0%, rgba(245, 158, 11, 0.15) 100%)',
+              backdropFilter: 'blur(20px)',
+              border: '2px solid rgba(251, 191, 36, 0.3)'
+            }}
+          >
           <div className="flex gap-3 items-end">
             {/* 附件按鈕 */}
             <button
@@ -474,17 +473,17 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
               {isProcessing ? '處理中...' : '發送 ✨'}
             </button>
           </div>
-        </div>
+          </div>
 
-        {/* 隱藏的檔案輸入 */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          accept="image/*,.pdf,.doc,.docx,.txt"
-          onChange={handleFileSelect}
-          className="hidden"
-        />
+          {/* 隱藏的檔案輸入 */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept="image/*,.pdf,.doc,.docx,.txt"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
         </div>
       </div>
     </div>
