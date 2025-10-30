@@ -9,6 +9,7 @@ import { multimodalProcessor } from './multimodalProcessor'
 import { chatSessionService } from './chatSessionService'
 import { taskQueueService, TaskPriority } from './taskQueueService'
 import { dynamicSubAgentService } from './dynamicSubAgentService'
+import { vectorService } from './vectorService'
 
 const prisma = new PrismaClient()
 
@@ -509,31 +510,94 @@ ${topTags.map(t => `- ${t.tag}: ${t.count} 次`).join('\n')}
   }
 
   /**
-   * 與 Chief Agent 對話
+   * 與 Chief Agent 對話（RAG 增強版）
+   *
+   * 雙重檢索策略：
+   * 1. 語意搜索：找出與問題最相關的記憶（top 10）
+   * 2. 時間維度：最近 10 條記憶（保持時間脈絡）
+   * 3. 合併去重：優先語意相關，保留時間新鮮度
    */
   async chatWithChief(userId: string, message: string) {
     try {
+      const startTime = Date.now()
       const chief = await assistantService.getChiefAssistant()
       if (!chief) {
         throw new Error('Chief assistant not found')
       }
 
-      // 獲取用戶的整體資訊
+      logger.info(`[Chat with Chief] User ${userId} asks: "${message.substring(0, 50)}..."`)
+
+      // === 雙重檢索策略 ===
+
+      // 1️⃣ 語意搜索：找出語意相關的記憶（相似度 > 0.6）
+      let semanticMemories: Array<{ memoryId: string; similarity: number; textContent: string }> = []
+      try {
+        const semanticStartTime = Date.now()
+        semanticMemories = await vectorService.semanticSearch(
+          userId,
+          message,
+          10, // 取前 10 條
+          0.6 // 相似度閾值 0.6
+        )
+        const semanticTime = Date.now() - semanticStartTime
+        logger.info(`[Chat with Chief] Semantic search completed in ${semanticTime}ms, found ${semanticMemories.length} relevant memories`)
+      } catch (error) {
+        logger.warn('[Chat with Chief] Semantic search failed, falling back to temporal only:', error)
+      }
+
+      // 2️⃣ 時間維度：最近 10 條記憶
+      const temporalStartTime = Date.now()
       const recentMemories = await memoryService.getMemories({
         userId,
         limit: 10
       })
+      const temporalTime = Date.now() - temporalStartTime
+      logger.info(`[Chat with Chief] Temporal search completed in ${temporalTime}ms, found ${recentMemories.length} recent memories`)
 
-      const contextInfo = recentMemories.length > 0
-        ? `\n\n用戶最近的記錄：\n${recentMemories.map(m => `[${m.category}] ${m.summary || m.rawContent.substring(0, 40)}`).join('\n')}`
-        : ''
+      // 3️⃣ 合併去重：優先語意相關 + 補充時間維度
+      const semanticMemoryIds = new Set(semanticMemories.map(m => m.memoryId))
+      const mergedMemoryIds = [
+        ...semanticMemoryIds, // 語意相關的記憶
+        ...recentMemories
+          .filter(m => !semanticMemoryIds.has(m.id)) // 排除已包含的
+          .slice(0, 5) // 最多補充 5 條最近記憶
+          .map(m => m.id)
+      ]
+
+      // 4️⃣ 獲取完整記憶資訊
+      const contextMemories = await prisma.memory.findMany({
+        where: {
+          id: { in: mergedMemoryIds },
+          userId
+        },
+        select: {
+          id: true,
+          category: true,
+          summary: true,
+          rawContent: true,
+          title: true,
+          createdAt: true,
+          tags: true
+        },
+        orderBy: { createdAt: 'desc' }
+      })
+
+      // 5️⃣ 構建上下文資訊（標註來源）
+      const contextInfo = contextMemories.length > 0
+        ? `\n\n【知識庫上下文】以下是與你的問題相關的記憶：\n${contextMemories.map((m, i) => {
+            const isSemanticMatch = semanticMemoryIds.has(m.id)
+            const label = isSemanticMatch ? '🔍 語意相關' : '🕒 最近記錄'
+            const content = m.summary || m.rawContent.substring(0, 100)
+            return `${i + 1}. [${label}] [${m.category}] ${m.title || content}...\n   ${content}`
+          }).join('\n\n')}`
+        : '\n\n【知識庫上下文】目前沒有找到相關記憶。'
 
       const prompt = `${chief.systemPrompt}
 
 用戶詢問：${message}
 ${contextInfo}
 
-請基於你對用戶所有記錄的了解來回答。`
+請基於提供的知識庫上下文來回答用戶的問題。如果上下文中沒有相關資訊，請誠實告知並給予溫暖的回應。`
 
       const response = await this.callMCP(prompt, chief.id)
 
@@ -561,6 +625,9 @@ ${contextInfo}
       await chatSessionService.updateLastMessageAt(session.id)
 
       await assistantService.incrementAssistantStats(chief.id, 'chat')
+
+      const totalTime = Date.now() - startTime
+      logger.info(`[Chat with Chief] Chat completed in ${totalTime}ms, used ${contextMemories.length} memories (${semanticMemories.length} semantic + ${contextMemories.length - semanticMemories.length} temporal)`)
 
       return chatMessage
     } catch (error) {

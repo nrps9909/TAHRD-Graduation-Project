@@ -16,6 +16,7 @@ import { callGeminiAPI } from '../utils/geminiAPI'
 import { assistantService } from './assistantService'
 import { multimodalProcessor } from './multimodalProcessor'
 import { dynamicSubAgentService } from './dynamicSubAgentService'
+import { vectorService } from './vectorService'
 
 const prisma = new PrismaClient()
 
@@ -391,6 +392,15 @@ export class SubAgentService {
       logger.info(`  - 情感: ${sentiment}`)
       logger.info(`  - 標籤: ${memory.tags.join(', ')}`)
 
+      // === 異步生成向量嵌入（RAG 支持）===
+      vectorService.generateEmbedding(memory.id, userId)
+        .then(() => {
+          logger.info(`[${assistant.name}] 向量嵌入生成成功: ${memory.id}`)
+        })
+        .catch((error) => {
+          logger.error(`[${assistant.name}] 向量嵌入生成失敗: ${memory.id}`, error)
+        })
+
       return memory
     } catch (error) {
       logger.error('[Sub-Agent] 創建記憶失敗:', error)
@@ -476,6 +486,15 @@ export class SubAgentService {
       logger.info(`  - 重要性: ${importanceScore}/10`)
       logger.info(`  - 情感: ${sentiment}`)
       logger.info(`  - 標籤: ${memory.tags.join(', ')}`)
+
+      // === 異步生成向量嵌入（RAG 支持）===
+      vectorService.generateEmbedding(memory.id, userId)
+        .then(() => {
+          logger.info(`[${assistant.name}] 向量嵌入生成成功 (Island-based): ${memory.id}`)
+        })
+        .catch((error) => {
+          logger.error(`[${assistant.name}] 向量嵌入生成失敗 (Island-based): ${memory.id}`, error)
+        })
 
       return memory
     } catch (error) {
