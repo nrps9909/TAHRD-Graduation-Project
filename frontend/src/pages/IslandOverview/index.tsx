@@ -6,6 +6,7 @@ import { GET_ISLANDS } from '../../graphql/category'
 import { IslandScene } from '../../components/3D/IslandScene'
 import Live2DCat from '../../components/Live2DCat'
 import TororoKnowledgeAssistant from '../../components/TororoKnowledgeAssistant'
+import { HijikiChatDialog } from '../../components/HijikiChatDialog'
 import { MiniMap } from '../../components/MiniMap'
 import SettingsMenu from '../../components/SettingsMenu'
 import { IslandStatusCard } from '../../components/IslandStatusCard'
@@ -208,6 +209,8 @@ export default function IslandOverview() {
               modelPath={currentLive2DModel}
               onClose={handleCloseLive2D}
             />
+          ) : currentLive2DModel.includes('hijiki') ? (
+            <HijikiChatDialog onClose={handleCloseLive2D} />
           ) : (
             <Live2DCat
               modelPath={currentLive2DModel}

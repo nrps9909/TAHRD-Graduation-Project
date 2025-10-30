@@ -27,6 +27,7 @@ import { socketHandler } from './socket'
 import { logger } from './utils/logger'
 // import trackingRoutes from './routes/trackingRoutes' // Removed - old tracking system
 import uploadRoutes from './routes/upload'
+import chatRoutes from './routes/chat'
 import { connectRedis } from './utils/redis'
 import { PrismaClient } from '@prisma/client'
 import { taskQueueService } from './services/taskQueueService'
@@ -187,6 +188,9 @@ async function startServer() {
     app.use('/api/speech-to-text', aiLimiter)
     app.use('/api/audio-dialog', aiLimiter)
     app.use('/api', uploadRoutes)
+
+    // SSE 聊天路由（帶速率限制）
+    app.use('/api/chat', aiLimiter, chatRoutes)
 
     // 啟動服務器
     httpServer.listen(PORT, () => {
