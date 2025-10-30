@@ -161,19 +161,20 @@ export const HijikiChatDialog: React.FC<HijikiChatDialogProps> = ({ onClose }) =
                       backdropFilter: 'blur(10px)'
                     }}
                   >
-                    <ReactMarkdown
-                      remarkPlugins={[remarkGfm]}
-                      rehypePlugins={[rehypeSanitize]}
-                      className="text-white text-sm prose prose-sm max-w-none prose-invert"
-                      components={{
-                        p: ({ ...props }) => <p style={{ color: '#FFFFFF', marginBottom: '0.5em' }} {...props} />,
-                        strong: ({ ...props }) => <strong style={{ color: '#E0E7FF', fontWeight: 'bold' }} {...props} />,
-                        em: ({ ...props }) => <em style={{ color: '#C7D2FE' }} {...props} />,
-                        a: ({ ...props }) => <a style={{ color: '#A5B4FC', textDecoration: 'underline' }} {...props} />,
-                      }}
-                    >
-                      {conv.answer}
-                    </ReactMarkdown>
+                    <div className="text-white text-sm prose prose-sm max-w-none prose-invert">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        rehypePlugins={[rehypeSanitize]}
+                        components={{
+                          p: ({ ...props }) => <p style={{ color: '#FFFFFF', marginBottom: '0.5em' }} {...props} />,
+                          strong: ({ ...props }) => <strong style={{ color: '#E0E7FF', fontWeight: 'bold' }} {...props} />,
+                          em: ({ ...props }) => <em style={{ color: '#C7D2FE' }} {...props} />,
+                          a: ({ ...props }) => <a style={{ color: '#A5B4FC', textDecoration: 'underline' }} {...props} />,
+                        }}
+                      >
+                        {conv.answer}
+                      </ReactMarkdown>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -192,20 +193,21 @@ export const HijikiChatDialog: React.FC<HijikiChatDialogProps> = ({ onClose }) =
                   backdropFilter: 'blur(10px)'
                 }}
               >
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  rehypePlugins={[rehypeSanitize]}
-                  className="text-white text-sm prose prose-sm max-w-none prose-invert"
-                  components={{
-                    p: ({ ...props }) => <p style={{ color: '#FFFFFF', marginBottom: '0.5em' }} {...props} />,
-                    strong: ({ ...props }) => <strong style={{ color: '#E0E7FF', fontWeight: 'bold' }} {...props} />,
-                    em: ({ ...props }) => <em style={{ color: '#C7D2FE' }} {...props} />,
-                  }}
-                >
-                  {currentResponse}
-                </ReactMarkdown>
-                {/* 打字游標 */}
-                <span className="inline-block w-2 h-4 ml-1 bg-white/70 animate-pulse" />
+                <div className="text-white text-sm prose prose-sm max-w-none prose-invert">
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    rehypePlugins={[rehypeSanitize]}
+                    components={{
+                      p: ({ ...props }) => <p style={{ color: '#FFFFFF', marginBottom: '0.5em' }} {...props} />,
+                      strong: ({ ...props }) => <strong style={{ color: '#E0E7FF', fontWeight: 'bold' }} {...props} />,
+                      em: ({ ...props }) => <em style={{ color: '#C7D2FE' }} {...props} />,
+                    }}
+                  >
+                    {currentResponse}
+                  </ReactMarkdown>
+                  {/* 打字游標 */}
+                  <span className="inline-block w-2 h-4 ml-1 bg-white/70 animate-pulse" />
+                </div>
               </div>
             </div>
             <div ref={responseEndRef} />

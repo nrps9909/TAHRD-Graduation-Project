@@ -103,7 +103,7 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
             'Content-Type': 'multipart/form-data',
             Authorization: `Bearer ${token}`
           },
-          onUploadProgress: (progressEvent) => {
+          onUploadProgress: (progressEvent: { loaded: number; total?: number }) => {
             const progress = progressEvent.total
               ? Math.round((progressEvent.loaded * 100) / progressEvent.total)
               : 0
