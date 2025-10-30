@@ -11,6 +11,12 @@ interface SSECompleteData {
   totalChars?: number
   distributionId?: string
   taskId?: string
+  memoriesCreated?: number
+  skipRecording?: boolean
+  tororoResponse?: {
+    shouldRecord?: boolean
+    warmMessage?: string
+  }
 }
 
 interface SSEChatOptions {

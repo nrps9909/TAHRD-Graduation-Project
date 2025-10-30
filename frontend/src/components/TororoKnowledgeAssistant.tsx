@@ -121,7 +121,7 @@ export default function TororoKnowledgeAssistant({
   const textareaRef = useRef<HTMLTextAreaElement>(null) // Textarea 引用，用於自動調整高度
 
   // SSE Chat Hook
-  const { uploadKnowledge: uploadKnowledgeSSE, isStreaming } = useSSEChat()
+  const { uploadKnowledge: uploadKnowledgeSSE } = useSSEChat()
 
   // GraphQL (only for queries)
   useQuery(GET_CHIEF_ASSISTANT) // Load chief assistant data
@@ -846,7 +846,14 @@ export default function TororoKnowledgeAssistant({
         let accumulatedResponse = ''
 
         // 調用 SSE 上傳
-        await new Promise<any>((resolve, reject) => {
+        await new Promise<{
+          distribution: { id: string }
+          backgroundProcessing: boolean
+          skipRecording?: boolean
+          tororoResponse?: { shouldRecord?: boolean; warmMessage?: string }
+          memoriesCreated: never[]
+          createdMemories: never[]
+        }>((resolve, reject) => {
           uploadKnowledgeSSE(input, {
             onChunk: (chunk) => {
               // 累積回應文字並顯示打字機效果
@@ -955,7 +962,7 @@ export default function TororoKnowledgeAssistant({
         })
       }
     })()
-  }, [inputText, uploadedCloudinaryFiles, uploadKnowledge, play, playRandomMeow, isUploading])
+  }, [inputText, uploadedCloudinaryFiles, uploadKnowledgeSSE, play, playRandomMeow, isUploading])
 
   const handleReset = useCallback(() => {
     setViewMode('main')

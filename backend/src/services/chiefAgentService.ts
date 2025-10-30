@@ -1153,7 +1153,8 @@ ${input.content}
             memoriesCreated: [],
             processingTime: Date.now() - startTime,
             backgroundProcessing: true,
-            useIslandSubAgent: true
+            useIslandSubAgent: true,
+            skipRecording: false // 所有內容都會被記錄
           }
         }
       }
@@ -1229,7 +1230,8 @@ ${input.content}
         agentDecisions: [],
         memoriesCreated: [],
         processingTime: Date.now() - startTime,
-        backgroundProcessing: true // 標記後台正在處理
+        backgroundProcessing: true, // 標記後台正在處理
+        skipRecording: false // 所有內容都會被記錄
       }
     } catch (error) {
       logger.error('[Chief Agent] 上傳知識失敗:', error)
