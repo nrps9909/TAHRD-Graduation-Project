@@ -147,7 +147,7 @@ router.post('/upload-stream', async (req: Request, res: Response) => {
     logger.info(`[SSE Upload] Starting stream for user ${userId}`)
 
     // === 第一步：立即發送罐頭回應 ===
-    const canResponse = '謝謝你～收到了！☁️'
+    const canResponse = '收到了'
     const canWords = canResponse.split('')
 
     for (let i = 0; i < canWords.length; i++) {
