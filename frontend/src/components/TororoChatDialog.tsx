@@ -47,7 +47,7 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
   const [isProcessing, setIsProcessing] = useState(false)
 
   const [uploadKnowledge] = useMutation(UPLOAD_KNOWLEDGE)
-  const { data: chiefData } = useQuery(GET_CHIEF_ASSISTANT)
+  useQuery(GET_CHIEF_ASSISTANT) // Load chief assistant data
   const { play, playRandomMeow } = useSound()
   const { token } = useAuthStore()
 
@@ -98,7 +98,7 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
         const formData = new FormData()
         formData.append('file', file)
 
-        const response = await axios.post(`${API_ENDPOINTS.UPLOAD}/single`, formData, {
+        const response = await axios.post(API_ENDPOINTS.UPLOAD_SINGLE, formData, {
           headers: {
             'Content-Type': 'multipart/form-data',
             Authorization: `Bearer ${token}`
@@ -199,7 +199,7 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
 
         if (result.memoriesCreated.length > 0) {
           tororoResponse += `💾 **已儲存到 ${result.memoriesCreated.length} 個島嶼:**\n`
-          result.memoriesCreated.forEach((memory: any) => {
+          result.memoriesCreated.forEach((memory: { assistant: { emoji?: string; nameChinese: string } }) => {
             tororoResponse += `  ${memory.assistant.emoji} ${memory.assistant.nameChinese}\n`
           })
         }
