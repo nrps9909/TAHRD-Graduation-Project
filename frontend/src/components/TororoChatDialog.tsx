@@ -260,8 +260,8 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
         <div className="absolute bottom-40 right-32 text-3xl animate-bounce" style={{ animationDuration: '4.5s' }}>☁️</div>
       </div>
 
-      {/* 主對話容器 - 上下佈局：模型在中上，對話在中下 */}
-      <div className="relative w-full max-w-5xl h-full flex flex-col p-6">
+      {/* 主對話容器 - 左右佈局：充分利用橫向空間 */}
+      <div className="relative w-full max-w-7xl h-full flex p-6 gap-8">
         {/* 關閉按鈕 - 固定在右上角 */}
         <div className="absolute top-6 right-6 z-10">
           <button
@@ -275,26 +275,28 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
           </button>
         </div>
 
-        {/* 上方：Live2D 模型 + 標題 - 固定高度 */}
-        <div className="flex-shrink-0 flex flex-col items-center pt-4 pb-4">
+        {/* 左側：Live2D 模型 - 固定寬度，垂直置中 */}
+        <div className="flex-shrink-0 flex flex-col items-center justify-center" style={{ width: '400px' }}>
           <Live2DDisplay
             modelPath="/models/tororo_white/tororo.model3.json"
-            width={300}
-            height={350}
+            width={400}
+            height={500}
             isThinking={false}
             isSpeaking={isProcessing}
           />
-          <div className="mt-2 text-center">
-            <h2 className="text-xl font-bold flex items-center justify-center gap-2" style={{ color: '#8B5C2E' }}>
-              <span className="text-2xl">☁️</span>
+          <div className="mt-4 text-center">
+            <h2 className="text-2xl font-bold flex items-center justify-center gap-2" style={{ color: '#8B5C2E' }}>
+              <span className="text-3xl">☁️</span>
               白噗噗
             </h2>
-            <p className="text-xs" style={{ color: '#A67C52' }}>知識園丁・幫你整理一切</p>
+            <p className="text-sm" style={{ color: '#A67C52' }}>知識園丁・幫你整理一切</p>
           </div>
         </div>
 
-        {/* 中間：對話歷史 - 限制最大高度 */}
-        <div className="overflow-y-auto mb-4 space-y-4" style={{ maxHeight: '300px' }}>
+        {/* 右側：對話區域 - 彈性寬度 */}
+        <div className="flex-1 flex flex-col min-w-0">
+          {/* 對話歷史 - 佔據剩餘空間 */}
+        <div className="flex-1 overflow-y-auto mb-6 space-y-4">
           {chatHistory.length === 0 ? (
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center space-y-4">
@@ -350,10 +352,10 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
                       )}
                     </div>
                   ) : (
-                    // 白噗噗回答 - 從上方模型說出來的感覺
-                    <div className="flex justify-center w-full">
+                    // 白噗噗回答 - 從左側模型說出來
+                    <div className="flex justify-start">
                       <div
-                        className="w-full rounded-3xl px-8 py-6 relative"
+                        className="max-w-[85%] rounded-3xl px-8 py-6 relative"
                         style={{
                           background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(254, 252, 247, 0.95) 100%)',
                           backdropFilter: 'blur(20px)',
@@ -362,14 +364,14 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
                           border: '2px solid rgba(251, 191, 36, 0.3)'
                         }}
                       >
-                        {/* 對話氣泡尾巴 - 指向上方 */}
+                        {/* 對話氣泡尾巴 - 指向左側 */}
                         <div
-                          className="absolute -top-3 left-1/2 transform -translate-x-1/2 w-6 h-6 rotate-45"
+                          className="absolute -left-3 top-8 w-6 h-6 rotate-45"
                           style={{
                             background: 'rgba(255, 255, 255, 0.98)',
                             border: '2px solid rgba(251, 191, 36, 0.3)',
                             borderRight: 'none',
-                            borderBottom: 'none'
+                            borderTop: 'none'
                           }}
                         />
 
@@ -484,6 +486,7 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
             onChange={handleFileSelect}
             className="hidden"
           />
+        </div>
         </div>
       </div>
     </div>

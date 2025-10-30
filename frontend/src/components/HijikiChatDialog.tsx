@@ -112,8 +112,8 @@ export const HijikiChatDialog: React.FC<HijikiChatDialogProps> = ({ onClose }) =
         <div className="absolute bottom-40 right-32 text-3xl animate-pulse" style={{ animationDuration: '4.5s' }}>💫</div>
       </div>
 
-      {/* 主對話容器 - 上下佈局：模型在中上，對話在中下 */}
-      <div className="relative w-full max-w-5xl h-full flex flex-col p-6">
+      {/* 主對話容器 - 左右佈局：充分利用橫向空間 */}
+      <div className="relative w-full max-w-7xl h-full flex p-6 gap-8">
         {/* 關閉按鈕 - 固定在右上角 */}
         <div className="absolute top-6 right-6 z-10">
           <button
@@ -127,27 +127,29 @@ export const HijikiChatDialog: React.FC<HijikiChatDialogProps> = ({ onClose }) =
           </button>
         </div>
 
-        {/* 上方：Live2D 模型 + 標題 - 固定高度 */}
-        <div className="flex-shrink-0 flex flex-col items-center pt-4 pb-4">
+        {/* 左側：Live2D 模型 - 固定寬度，垂直置中 */}
+        <div className="flex-shrink-0 flex flex-col items-center justify-center" style={{ width: '400px' }}>
           <Live2DDisplay
             modelPath="/models/hijiki/hijiki.model3.json"
-            width={300}
-            height={350}
+            width={400}
+            height={500}
             isThinking={false}
             isSpeaking={!!currentResponse}
           />
-          <div className="mt-2 text-center">
-            <h2 className="text-xl font-bold text-white flex items-center justify-center gap-2">
-              <span className="text-2xl">🌙</span>
+          <div className="mt-4 text-center">
+            <h2 className="text-2xl font-bold text-white flex items-center justify-center gap-2">
+              <span className="text-3xl">🌙</span>
               黑噗噗
             </h2>
-            <p className="text-xs text-indigo-300">知識管理員・隨時為你解答</p>
+            <p className="text-sm text-indigo-300">知識管理員・隨時為你解答</p>
           </div>
         </div>
 
-        {/* 中間：對話歷史 - 限制最大高度 */}
+        {/* 右側：對話區域 - 彈性寬度 */}
+        <div className="flex-1 flex flex-col min-w-0">
+          {/* 對話歷史 - 佔據剩餘空間 */}
         {conversationHistory.length > 0 && (
-          <div className="overflow-y-auto mb-4 space-y-4" style={{ maxHeight: '300px' }}>
+          <div className="flex-1 overflow-y-auto mb-6 space-y-4">
             {conversationHistory.map((conv, index) => (
               <div key={index} className="space-y-2">
                 {/* 用戶問題 - 更小更簡潔 */}
@@ -163,10 +165,10 @@ export const HijikiChatDialog: React.FC<HijikiChatDialogProps> = ({ onClose }) =
                   </div>
                 </div>
 
-                {/* 黑噗噗回答 - 從上方模型說出來的感覺 */}
-                <div className="flex justify-center">
+                {/* 黑噗噗回答 - 從左側模型說出來 */}
+                <div className="flex justify-start">
                   <div
-                    className="w-full rounded-3xl px-8 py-6 relative"
+                    className="max-w-[85%] rounded-3xl px-8 py-6 relative"
                     style={{
                       background: 'linear-gradient(135deg, rgba(67, 56, 202, 0.9) 0%, rgba(79, 70, 229, 0.85) 100%)',
                       backdropFilter: 'blur(20px)',
@@ -174,14 +176,14 @@ export const HijikiChatDialog: React.FC<HijikiChatDialogProps> = ({ onClose }) =
                       border: '2px solid rgba(139, 92, 246, 0.4)'
                     }}
                   >
-                    {/* 對話氣泡尾巴 - 指向上方 */}
+                    {/* 對話氣泡尾巴 - 指向左側 */}
                     <div
-                      className="absolute -top-3 left-1/2 transform -translate-x-1/2 w-6 h-6 rotate-45"
+                      className="absolute -left-3 top-8 w-6 h-6 rotate-45"
                       style={{
                         background: 'rgba(67, 56, 202, 0.9)',
                         border: '2px solid rgba(139, 92, 246, 0.4)',
                         borderRight: 'none',
-                        borderBottom: 'none'
+                        borderTop: 'none'
                       }}
                     />
 
@@ -209,9 +211,9 @@ export const HijikiChatDialog: React.FC<HijikiChatDialogProps> = ({ onClose }) =
         {/* 當前回應區域（打字機效果） - 黑噗噗正在說話 */}
         {currentResponse && (
           <div className="mb-6">
-            <div className="flex justify-center animate-fadeIn">
+            <div className="flex justify-start animate-fadeIn">
               <div
-                className="w-full rounded-3xl px-8 py-6 relative"
+                className="max-w-[85%] rounded-3xl px-8 py-6 relative"
                 style={{
                   background: 'linear-gradient(135deg, rgba(67, 56, 202, 0.95) 0%, rgba(79, 70, 229, 0.9) 100%)',
                   backdropFilter: 'blur(20px)',
@@ -220,19 +222,19 @@ export const HijikiChatDialog: React.FC<HijikiChatDialogProps> = ({ onClose }) =
                   animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
                 }}
               >
-                {/* 對話氣泡尾巴 - 指向上方 */}
+                {/* 對話氣泡尾巴 - 指向左側 */}
                 <div
-                  className="absolute -top-3 left-1/2 transform -translate-x-1/2 w-6 h-6 rotate-45"
+                  className="absolute -left-3 top-8 w-6 h-6 rotate-45"
                   style={{
                     background: 'rgba(67, 56, 202, 0.95)',
                     border: '2px solid rgba(139, 92, 246, 0.5)',
                     borderRight: 'none',
-                    borderBottom: 'none'
+                    borderTop: 'none'
                   }}
                 />
 
                 {/* 說話中指示器 */}
-                <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 text-3xl animate-bounce">
+                <div className="absolute -left-12 top-6 text-3xl animate-bounce">
                   🗣️
                 </div>
 
@@ -321,6 +323,7 @@ export const HijikiChatDialog: React.FC<HijikiChatDialogProps> = ({ onClose }) =
               {isStreaming ? '思考中...' : '發送 ✨'}
             </button>
           </div>
+        </div>
         </div>
         </div>
       </div>
