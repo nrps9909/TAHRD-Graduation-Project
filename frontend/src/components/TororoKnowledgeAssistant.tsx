@@ -13,10 +13,10 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import * as PIXI from 'pixi.js'
 import { Live2DModel } from 'pixi-live2d-display/cubism4'
-import { useMutation, useQuery, useLazyQuery } from '@apollo/client'
-import { UPLOAD_KNOWLEDGE, GET_CHIEF_ASSISTANT, GET_KNOWLEDGE_DISTRIBUTION } from '../graphql/knowledge'
-import type { UploadKnowledgeInput } from '../graphql/knowledge'
+import { useQuery, useLazyQuery } from '@apollo/client'
+import { GET_CHIEF_ASSISTANT, GET_KNOWLEDGE_DISTRIBUTION } from '../graphql/knowledge'
 import { useSound } from '../hooks/useSound'
+import { useSSEChat } from '../hooks/useSSEChat'
 import { motion, AnimatePresence } from 'framer-motion'
 import { generateTororoResponse, detectEmotion, type UserAction } from '../services/tororoAI'
 import { Z_INDEX_CLASSES } from '../constants/zIndex'
@@ -120,8 +120,10 @@ export default function TororoKnowledgeAssistant({
   const socketRef = useRef<Socket | null>(null) // WebSocket 連接引用
   const textareaRef = useRef<HTMLTextAreaElement>(null) // Textarea 引用，用於自動調整高度
 
-  // GraphQL
-  const [uploadKnowledge] = useMutation(UPLOAD_KNOWLEDGE)
+  // SSE Chat Hook
+  const { uploadKnowledge: uploadKnowledgeSSE, isStreaming } = useSSEChat()
+
+  // GraphQL (only for queries)
   useQuery(GET_CHIEF_ASSISTANT) // Load chief assistant data
   const [getDistribution] = useLazyQuery(GET_KNOWLEDGE_DISTRIBUTION)
 
@@ -832,18 +834,41 @@ export default function TororoKnowledgeAssistant({
           title: url.includes('youtube.com') || url.includes('youtu.be') ? 'YouTube 影片' : '連結'
         }))
 
-        // 3️⃣ 準備 GraphQL 輸入
-        const input: UploadKnowledgeInput = {
+        // 3️⃣ 準備 SSE 輸入
+        const input = {
           content: textWithoutUrls || (links.length > 0 ? '分享連結' : '快速記錄'),
           files: uploadedFileUrls,
           links: links.length > 0 ? links : undefined,
           contentType: uploadedFileUrls.some(f => f.type === 'image') ? 'IMAGE' : uploadedFileUrls.length > 0 ? 'DOCUMENT' : links.length > 0 ? 'LINK' : 'TEXT',
         }
 
-        const { data } = await uploadKnowledge({ variables: { input } })
+        // 用於累積打字機效果的文字
+        let accumulatedResponse = ''
 
-        if (data?.uploadKnowledge) {
-          const result = data.uploadKnowledge
+        // 調用 SSE 上傳
+        await new Promise<any>((resolve, reject) => {
+          uploadKnowledgeSSE(input, {
+            onChunk: (chunk) => {
+              // 累積回應文字並顯示打字機效果
+              accumulatedResponse += chunk
+              setAudioDialogResponse(accumulatedResponse)
+            },
+            onComplete: (data) => {
+              // SSE 完成，返回結果
+              resolve({
+                distribution: { id: data.distributionId },
+                backgroundProcessing: true,
+                skipRecording: data.skipRecording,
+                tororoResponse: data.tororoResponse,
+                memoriesCreated: [],
+                createdMemories: []
+              })
+            },
+            onError: (error) => {
+              reject(new Error(error))
+            }
+          })
+        }).then(result => {
           const tororoResponse = result.tororoResponse
 
           // === 處理 Chief Agent 拒絕的情況 ===
@@ -900,14 +925,9 @@ export default function TororoKnowledgeAssistant({
           })
 
           playRandomMeow()
-          // 顯示 Tororo 的溫暖回應
-          if (tororoResponse?.warmMessage) {
-            setAudioDialogResponse(tororoResponse.warmMessage)
-          }
-
           play('notification')
           console.log('✅ 知識已加入處理隊列:', result.distribution?.id)
-        }
+        })
       } catch (error) {
         console.error('❌ 上傳失敗:', error)
         const errorMessage = error instanceof Error ? error.message : '未知錯誤'

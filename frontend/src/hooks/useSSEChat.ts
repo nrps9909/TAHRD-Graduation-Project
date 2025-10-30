@@ -109,11 +109,16 @@ export const useSSEChat = () => {
   )
 
   /**
-   * 上傳知識（SSE 打字機效果）
+   * 上傳知識（SSE 打字機效果 - 使用 POST + fetch）
    */
   const uploadKnowledge = useCallback(
     async (
-      content: string,
+      input: {
+        content: string
+        files?: Array<{ url: string; name: string; type: string }>
+        links?: Array<{ url: string; title: string }>
+        contentType?: string
+      },
       options: SSEChatOptions = {}
     ): Promise<void> => {
       const token = getToken()
@@ -125,57 +130,63 @@ export const useSSEChat = () => {
       setIsStreaming(true)
 
       try {
-        const url = new URL(`${API_BASE_URL}/chat/upload-stream`)
-        url.searchParams.append('content', content)
-        url.searchParams.append('token', token)
-
-        const eventSource = new EventSource(url.toString())
-
-        eventSource.addEventListener('chunk', (event) => {
-          try {
-            const data = JSON.parse(event.data)
-            options.onChunk?.(data.content)
-          } catch (error) {
-            console.error('解析 chunk 失敗:', error)
-          }
+        const response = await fetch(`${API_BASE_URL}/chat/upload-stream`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(input)
         })
 
-        eventSource.addEventListener('complete', (event) => {
-          try {
-            const data = JSON.parse(event.data)
-            options.onComplete?.(data)
-          } catch (error) {
-            console.error('解析 complete 失敗:', error)
-          } finally {
-            eventSource.close()
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`)
+        }
+
+        const reader = response.body?.getReader()
+        const decoder = new TextDecoder()
+
+        if (!reader) {
+          throw new Error('無法讀取響應')
+        }
+
+        let buffer = ''
+
+        while (true) {
+          const { done, value } = await reader.read()
+
+          if (done) {
             setIsStreaming(false)
+            break
           }
-        })
 
-        eventSource.addEventListener('error', (event: Event) => {
-          try {
-            const messageEvent = event as MessageEvent
-            if (messageEvent.data) {
-              const data = JSON.parse(messageEvent.data)
-              options.onError?.(data.error || '上傳失敗')
-            } else {
-              options.onError?.('連接失敗')
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split('\n\n')
+          buffer = lines.pop() || ''
+
+          for (const line of lines) {
+            if (!line.trim()) continue
+
+            const [eventLine, dataLine] = line.split('\n')
+            if (!eventLine || !dataLine) continue
+
+            const event = eventLine.replace('event: ', '')
+            const data = dataLine.replace('data: ', '')
+
+            try {
+              const parsed = JSON.parse(data)
+
+              if (event === 'chunk') {
+                options.onChunk?.(parsed.content)
+              } else if (event === 'complete') {
+                options.onComplete?.(parsed)
+              } else if (event === 'error') {
+                options.onError?.(parsed.error || '上傳失敗')
+              }
+            } catch (error) {
+              console.error('解析 SSE 訊息失敗:', error, line)
             }
-          } catch (error) {
-            options.onError?.('上傳失敗')
-          } finally {
-            eventSource.close()
-            setIsStreaming(false)
           }
-        })
-
-        eventSource.onerror = () => {
-          if (eventSource.readyState === EventSource.CLOSED) {
-            return
-          }
-          options.onError?.('連接中斷')
-          eventSource.close()
-          setIsStreaming(false)
         }
       } catch (error) {
         console.error('SSE Upload 錯誤:', error)

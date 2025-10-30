@@ -114,9 +114,9 @@ router.get('/stream', async (req: Request, res: Response) => {
 
 /**
  * SSE 知識上傳端點 - 白噗噗回應打字機效果
- * GET /api/chat/upload-stream
+ * POST /api/chat/upload-stream
  */
-router.get('/upload-stream', async (req: Request, res: Response) => {
+router.post('/upload-stream', async (req: Request, res: Response) => {
   // 設置 SSE headers
   res.setHeader('Content-Type', 'text/event-stream')
   res.setHeader('Cache-Control', 'no-cache')
@@ -124,7 +124,8 @@ router.get('/upload-stream', async (req: Request, res: Response) => {
   res.setHeader('X-Accel-Buffering', 'no')
 
   try {
-    const { content, token } = req.query
+    const { content, files, links, contentType } = req.body
+    const token = req.headers.authorization?.replace('Bearer ', '')
 
     if (!content || !token) {
       res.write(`event: error\ndata: ${JSON.stringify({ error: '缺少必要參數' })}\n\n`)
@@ -172,7 +173,10 @@ router.get('/upload-stream', async (req: Request, res: Response) => {
 
     // === 第二步：調用 Chief Agent 進行分類和處理 ===
     const result = await chiefAgentService.uploadKnowledge(userId, {
-      content: content as string
+      content: content as string,
+      files,
+      links,
+      contentType
     })
 
     // === 第三步：打字機效果顯示 Gemini 的溫暖回應 ===
@@ -195,11 +199,13 @@ router.get('/upload-stream', async (req: Request, res: Response) => {
       await new Promise(resolve => setTimeout(resolve, delay))
     }
 
-    // 發送完成事件（包含分發記錄資訊）
+    // 發送完成事件（包含分發記錄資訊和完整結果）
     res.write(`event: complete\ndata: ${JSON.stringify({
       distributionId: result.distribution.id,
       totalChars: canResponse.length + warmResponse.length,
-      memoriesCreated: result.memoriesCreated?.length || 0
+      memoriesCreated: result.memoriesCreated?.length || 0,
+      skipRecording: result.skipRecording || false,
+      tororoResponse: result.tororoResponse
     })}\n\n`)
 
     logger.info(`[SSE Upload] Stream completed for user ${userId}`)
