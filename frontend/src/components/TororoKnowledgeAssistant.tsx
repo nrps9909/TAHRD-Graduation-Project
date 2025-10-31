@@ -1436,7 +1436,13 @@ export default function TororoKnowledgeAssistant({
                         autoResizeTextarea()
                       }}
                       onKeyPress={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey && (inputText.trim() || uploadedCloudinaryFiles.length > 0) && !isUploading) {
+                        if (
+                          e.key === 'Enter' &&
+                          !e.shiftKey &&
+                          (inputText.trim() || uploadedCloudinaryFiles.length > 0) &&
+                          !isUploading &&
+                          !uploadedCloudinaryFiles.some(f => f.status === 'uploading')
+                        ) {
                           e.preventDefault()
                           handleSubmit()
                         }
@@ -1536,7 +1542,11 @@ export default function TororoKnowledgeAssistant({
                       {/* 發送按鈕 */}
                       <button
                         onClick={handleSubmit}
-                        disabled={(!inputText.trim() && uploadedCloudinaryFiles.length === 0) || isUploading}
+                        disabled={
+                          (!inputText.trim() && uploadedCloudinaryFiles.length === 0) ||
+                          isUploading ||
+                          uploadedCloudinaryFiles.some(f => f.status === 'uploading')
+                        }
                         className="px-3 py-1.5 md:px-4 md:py-2 bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-500 hover:to-yellow-500 disabled:from-gray-200 disabled:to-gray-300 text-white disabled:text-gray-400 rounded-lg font-bold text-sm md:text-base transition-all active:scale-95 disabled:cursor-not-allowed shadow-md hover:shadow-lg border border-amber-500/30 disabled:border-gray-300 flex items-center gap-1.5"
                       >
                         <span className="hidden md:inline">發送</span>
