@@ -49,6 +49,10 @@ export default function CuteDatabaseView() {
   const toast = useToast()
   const { confirmState, confirm } = useConfirm()
 
+  // 批量選擇模式
+  const [bulkSelectMode, setBulkSelectMode] = useState(false)
+  const [selectedMemoryIds, setSelectedMemoryIds] = useState<Set<string>>(new Set())
+
   // 響應式：小螢幕預設收起側邊欄，中螢幕以上預設打開
   useEffect(() => {
     const handleResize = () => {
@@ -252,6 +256,64 @@ export default function CuteDatabaseView() {
     } catch (error) {
       console.error('Delete error:', error)
       toast.error('刪除失敗，請稍後再試 😢')
+    }
+  }
+
+  // 批量操作：切換選擇
+  const toggleSelectMemory = (memoryId: string) => {
+    setSelectedMemoryIds(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(memoryId)) {
+        newSet.delete(memoryId)
+      } else {
+        newSet.add(memoryId)
+      }
+      return newSet
+    })
+  }
+
+  // 批量操作：全選
+  const handleSelectAll = () => {
+    setSelectedMemoryIds(new Set(allMemories.map(m => m.id)))
+  }
+
+  // 批量操作：取消全選
+  const handleDeselectAll = () => {
+    setSelectedMemoryIds(new Set())
+  }
+
+  // 批量操作：刪除選中的記憶
+  const handleBulkDelete = async () => {
+    if (selectedMemoryIds.size === 0) {
+      toast.error('請先選擇要刪除的記憶')
+      return
+    }
+
+    const confirmed = await confirm({
+      title: '批量刪除記憶',
+      message: `確定要刪除 ${selectedMemoryIds.size} 條記憶嗎？此操作無法復原。`,
+      confirmText: '確定刪除',
+      cancelText: '取消',
+      type: 'danger',
+    })
+
+    if (!confirmed) return
+
+    try {
+      // 並發刪除所有選中的記憶
+      await Promise.all(
+        Array.from(selectedMemoryIds).map(id =>
+          deleteMemory({ variables: { id } })
+        )
+      )
+
+      toast.success(`成功刪除 ${selectedMemoryIds.size} 條記憶 🗑️`)
+      setSelectedMemoryIds(new Set())
+      setBulkSelectMode(false)
+      refetch()
+    } catch (error) {
+      console.error('Bulk delete error:', error)
+      toast.error('批量刪除失敗，請稍後再試 😢')
     }
   }
 
@@ -656,14 +718,113 @@ export default function CuteDatabaseView() {
             )}
           </div>
         ) : (
-          <SimpleGalleryView
-            memories={allMemories}
-            onTogglePin={handleTogglePin}
-            onSelectMemory={setSelectedMemory}
-            onDelete={handleDelete}
-            isDraggable={sortField === 'custom'}
-            onReorder={(newOrder) => setCustomOrder(newOrder)}
-          />
+          <>
+            {/* 批量操作工具欄 */}
+            <div className="sticky top-0 z-10 mb-4 p-3 rounded-2xl flex items-center justify-between gap-3" style={{
+              background: 'rgba(30, 41, 59, 0.95)',
+              backdropFilter: 'blur(12px)',
+              border: '2px solid rgba(251, 191, 36, 0.3)',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+            }}>
+              {!bulkSelectMode ? (
+                <>
+                  <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: '#94a3b8' }}>
+                    <span className="text-lg">📊</span>
+                    <span>共 {allMemories.length} 條記憶</span>
+                  </div>
+                  <button
+                    onClick={() => setBulkSelectMode(true)}
+                    className="px-4 py-2 rounded-xl font-bold transition-all hover:scale-105 active:scale-95"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.3) 0%, rgba(245, 158, 11, 0.25) 100%)',
+                      color: '#fbbf24',
+                      border: '2px solid rgba(251, 191, 36, 0.4)',
+                    }}
+                  >
+                    ☑️ 批量選擇
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => {
+                        setBulkSelectMode(false)
+                        setSelectedMemoryIds(new Set())
+                      }}
+                      className="px-3 py-1.5 rounded-lg font-semibold transition-all hover:scale-105 active:scale-95 text-sm"
+                      style={{
+                        background: 'rgba(100, 116, 139, 0.3)',
+                        color: '#cbd5e1',
+                        border: '1px solid rgba(148, 163, 184, 0.4)',
+                      }}
+                    >
+                      ✕ 取消
+                    </button>
+                    <div className="h-6 w-px" style={{ background: 'rgba(251, 191, 36, 0.3)' }} />
+                    <span className="text-sm font-bold" style={{ color: '#fbbf24' }}>
+                      已選擇 {selectedMemoryIds.size} / {allMemories.length}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {selectedMemoryIds.size === allMemories.length ? (
+                      <button
+                        onClick={handleDeselectAll}
+                        className="px-3 py-1.5 rounded-lg font-semibold transition-all hover:scale-105 active:scale-95 text-sm"
+                        style={{
+                          background: 'rgba(251, 191, 36, 0.2)',
+                          color: '#fbbf24',
+                          border: '1px solid rgba(251, 191, 36, 0.4)',
+                        }}
+                      >
+                        ☐ 取消全選
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleSelectAll}
+                        className="px-3 py-1.5 rounded-lg font-semibold transition-all hover:scale-105 active:scale-95 text-sm"
+                        style={{
+                          background: 'rgba(251, 191, 36, 0.2)',
+                          color: '#fbbf24',
+                          border: '1px solid rgba(251, 191, 36, 0.4)',
+                        }}
+                      >
+                        ☑️ 全選
+                      </button>
+                    )}
+                    <button
+                      onClick={handleBulkDelete}
+                      disabled={selectedMemoryIds.size === 0}
+                      className="px-4 py-1.5 rounded-lg font-bold transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                      style={{
+                        background: selectedMemoryIds.size > 0
+                          ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.8) 0%, rgba(220, 38, 38, 0.8) 100%)'
+                          : 'rgba(100, 116, 139, 0.3)',
+                        color: selectedMemoryIds.size > 0 ? '#fff' : '#64748b',
+                        border: selectedMemoryIds.size > 0
+                          ? '2px solid rgba(239, 68, 68, 0.6)'
+                          : '2px solid rgba(100, 116, 139, 0.3)',
+                      }}
+                    >
+                      🗑️ 刪除 ({selectedMemoryIds.size})
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <SimpleGalleryView
+              memories={allMemories}
+              onTogglePin={handleTogglePin}
+              onSelectMemory={setSelectedMemory}
+              onDelete={handleDelete}
+              isDraggable={sortField === 'custom'}
+              onReorder={(newOrder) => setCustomOrder(newOrder)}
+              bulkSelectMode={bulkSelectMode}
+              selectedMemoryIds={selectedMemoryIds}
+              onToggleSelect={toggleSelectMemory}
+            />
+          </>
         )}
         </div>
       </div>
@@ -736,9 +897,22 @@ interface SimpleGalleryViewProps {
   onDelete: (memory: Memory, e: React.MouseEvent) => void
   isDraggable?: boolean
   onReorder?: (newOrder: string[]) => void
+  bulkSelectMode?: boolean
+  selectedMemoryIds?: Set<string>
+  onToggleSelect?: (memoryId: string) => void
 }
 
-function SimpleGalleryView({ memories, onTogglePin, onSelectMemory, onDelete, isDraggable = false, onReorder }: SimpleGalleryViewProps) {
+function SimpleGalleryView({
+  memories,
+  onTogglePin,
+  onSelectMemory,
+  onDelete,
+  isDraggable = false,
+  onReorder,
+  bulkSelectMode = false,
+  selectedMemoryIds = new Set(),
+  onToggleSelect
+}: SimpleGalleryViewProps) {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     return {
@@ -778,6 +952,9 @@ function SimpleGalleryView({ memories, onTogglePin, onSelectMemory, onDelete, is
             onSelectMemory={onSelectMemory}
             onDelete={onDelete}
             formatDate={formatDate}
+            bulkSelectMode={bulkSelectMode}
+            isSelected={selectedMemoryIds.has(memory.id)}
+            onToggleSelect={onToggleSelect}
           />
         ))}
       </div>
@@ -800,6 +977,9 @@ function SimpleGalleryView({ memories, onTogglePin, onSelectMemory, onDelete, is
               onSelectMemory={onSelectMemory}
               onDelete={onDelete}
               formatDate={formatDate}
+              bulkSelectMode={bulkSelectMode}
+              isSelected={selectedMemoryIds.has(memory.id)}
+              onToggleSelect={onToggleSelect}
             />
           ))}
         </div>
@@ -815,9 +995,21 @@ interface DraggableMemoryCardProps {
   onSelectMemory: (memory: Memory) => void
   onDelete: (memory: Memory, e: React.MouseEvent) => void
   formatDate: (dateString: string) => { date: string; time: string }
+  bulkSelectMode?: boolean
+  isSelected?: boolean
+  onToggleSelect?: (memoryId: string) => void
 }
 
-function DraggableMemoryCard({ memory, onTogglePin, onSelectMemory, onDelete, formatDate }: DraggableMemoryCardProps) {
+function DraggableMemoryCard({
+  memory,
+  onTogglePin,
+  onSelectMemory,
+  onDelete,
+  formatDate,
+  bulkSelectMode = false,
+  isSelected = false,
+  onToggleSelect
+}: DraggableMemoryCardProps) {
   const {
     attributes,
     listeners,
@@ -846,42 +1038,73 @@ function DraggableMemoryCard({ memory, onTogglePin, onSelectMemory, onDelete, fo
       <div
         onClick={() => {
           if (!isDragging) {
-            onSelectMemory(memory)
+            if (bulkSelectMode && onToggleSelect) {
+              onToggleSelect(memory.id)
+            } else {
+              onSelectMemory(memory)
+            }
           }
         }}
         className="group relative rounded-2xl p-3 sm:p-4 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] flex flex-col"
         style={{
-          background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(26, 26, 46, 0.6) 100%)',
+          background: isSelected
+            ? 'linear-gradient(135deg, rgba(251, 191, 36, 0.25) 0%, rgba(251, 146, 60, 0.25) 100%)'
+            : 'linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(26, 26, 46, 0.6) 100%)',
           backdropFilter: 'blur(12px) saturate(150%)',
           WebkitBackdropFilter: 'blur(12px) saturate(150%)',
-          border: '2px solid rgba(251, 191, 36, 0.2)',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+          border: isSelected ? '2px solid rgba(251, 191, 36, 0.8)' : '2px solid rgba(251, 191, 36, 0.2)',
+          boxShadow: isSelected ? '0 8px 24px rgba(251, 191, 36, 0.4)' : '0 4px 12px rgba(0, 0, 0, 0.3)',
           minHeight: '180px',
         }}
         onMouseEnter={(e) => {
-          if (!isDragging) {
+          if (!isDragging && !isSelected) {
             e.currentTarget.style.boxShadow = '0 8px 24px rgba(251, 191, 36, 0.3)'
             e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.5)'
           }
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)'
-          e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.2)'
+          if (!isSelected) {
+            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)'
+            e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.2)'
+          }
         }}
       >
-        {/* 拖動提示 */}
-        <div className="absolute top-2 left-2 z-10">
-          <div className="px-2 py-1 rounded-lg text-xs font-bold" style={{
-            background: 'rgba(251, 191, 36, 0.3)',
-            color: '#fef3c7',
-            border: '1px solid rgba(251, 191, 36, 0.5)',
+        {/* 複選框（批量選擇模式） */}
+        {bulkSelectMode && (
+          <div className="absolute top-2 left-2 z-20" onClick={(e) => {
+            e.stopPropagation()
+            onToggleSelect?.(memory.id)
           }}>
-            ✋ 拖動
+            <div className={`w-6 h-6 rounded-md flex items-center justify-center cursor-pointer transition-all ${
+              isSelected ? 'scale-110' : 'hover:scale-110'
+            }`} style={{
+              background: isSelected
+                ? 'linear-gradient(135deg, #fbbf24 0%, #fb923c 100%)'
+                : 'rgba(30, 41, 59, 0.95)',
+              border: isSelected
+                ? '2px solid rgba(251, 191, 36, 0.8)'
+                : '2px solid rgba(251, 191, 36, 0.4)',
+            }}>
+              {isSelected && <span className="text-sm">✓</span>}
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* 拖動提示 */}
+        {!bulkSelectMode && (
+          <div className="absolute top-2 left-2 z-10">
+            <div className="px-2 py-1 rounded-lg text-xs font-bold" style={{
+              background: 'rgba(251, 191, 36, 0.3)',
+              color: '#fef3c7',
+              border: '1px solid rgba(251, 191, 36, 0.5)',
+            }}>
+              ✋ 拖動
+            </div>
+          </div>
+        )}
 
         {/* 釘選按鈕 */}
-        {memory.isPinned && (
+        {memory.isPinned && !bulkSelectMode && (
           <div className="absolute top-2 sm:top-3 right-2 sm:right-3 z-10">
             <button
               onClick={(e) => {
@@ -976,31 +1199,33 @@ function DraggableMemoryCard({ memory, onTogglePin, onSelectMemory, onDelete, fo
           </div>
         </div>
 
-        {/* 刪除按鈕 */}
-        <div className="absolute bottom-2 sm:bottom-3 left-2 sm:left-3 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              onDelete(memory, e)
-            }}
-            className="p-1.5 rounded-lg transition-all hover:scale-110 active:scale-95 text-sm"
-            style={{
-              background: 'rgba(30, 41, 59, 0.95)',
-              border: '2px solid rgba(251, 146, 60, 0.4)',
-            }}
-            title="刪除"
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(251, 146, 60, 0.4)'
-              e.currentTarget.style.borderColor = 'rgba(251, 146, 60, 0.7)'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'rgba(30, 41, 59, 0.95)'
-              e.currentTarget.style.borderColor = 'rgba(251, 146, 60, 0.4)'
-            }}
-          >
-            🗑️
-          </button>
-        </div>
+        {/* 刪除按鈕（批量模式下隱藏） */}
+        {!bulkSelectMode && (
+          <div className="absolute bottom-2 sm:bottom-3 left-2 sm:left-3 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onDelete(memory, e)
+              }}
+              className="p-1.5 rounded-lg transition-all hover:scale-110 active:scale-95 text-sm"
+              style={{
+                background: 'rgba(30, 41, 59, 0.95)',
+                border: '2px solid rgba(251, 146, 60, 0.4)',
+              }}
+              title="刪除"
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(251, 146, 60, 0.4)'
+                e.currentTarget.style.borderColor = 'rgba(251, 146, 60, 0.7)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(30, 41, 59, 0.95)'
+                e.currentTarget.style.borderColor = 'rgba(251, 146, 60, 0.4)'
+              }}
+            >
+              🗑️
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -1013,34 +1238,92 @@ interface MemoryCardProps {
   onSelectMemory: (memory: Memory) => void
   onDelete: (memory: Memory, e: React.MouseEvent) => void
   formatDate: (dateString: string) => { date: string; time: string }
+  bulkSelectMode?: boolean
+  isSelected?: boolean
+  onToggleSelect?: (memoryId: string) => void
 }
 
-function MemoryCard({ memory, onTogglePin, onSelectMemory, onDelete, formatDate }: MemoryCardProps) {
+function MemoryCard({
+  memory,
+  onTogglePin,
+  onSelectMemory,
+  onDelete,
+  formatDate,
+  bulkSelectMode = false,
+  isSelected = false,
+  onToggleSelect
+}: MemoryCardProps) {
   const { date, time } = formatDate(memory.createdAt)
+
+  // 批量選擇模式下，點擊卡片應該切換選擇狀態，而非打開記憶
+  const handleClick = () => {
+    if (bulkSelectMode && onToggleSelect) {
+      onToggleSelect(memory.id)
+    } else {
+      onSelectMemory(memory)
+    }
+  }
 
   return (
     <div
-      onClick={() => onSelectMemory(memory)}
+      onClick={handleClick}
       className="group relative rounded-2xl p-3 sm:p-4 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] flex flex-col"
       style={{
-        background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(26, 26, 46, 0.6) 100%)',
+        background: isSelected
+          ? 'linear-gradient(135deg, rgba(251, 191, 36, 0.25) 0%, rgba(251, 146, 60, 0.25) 100%)'
+          : 'linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(26, 26, 46, 0.6) 100%)',
         backdropFilter: 'blur(12px) saturate(150%)',
         WebkitBackdropFilter: 'blur(12px) saturate(150%)',
-        border: '2px solid rgba(251, 191, 36, 0.2)',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+        border: isSelected
+          ? '2px solid rgba(251, 191, 36, 0.8)'
+          : '2px solid rgba(251, 191, 36, 0.2)',
+        boxShadow: isSelected
+          ? '0 8px 24px rgba(251, 191, 36, 0.4)'
+          : '0 4px 12px rgba(0, 0, 0, 0.3)',
         minHeight: '180px',
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.boxShadow = '0 8px 24px rgba(251, 191, 36, 0.3)'
-        e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.5)'
+        if (!isSelected) {
+          e.currentTarget.style.boxShadow = '0 8px 24px rgba(251, 191, 36, 0.3)'
+          e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.5)'
+        }
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)'
-        e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.2)'
+        if (!isSelected) {
+          e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)'
+          e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.2)'
+        }
       }}
     >
+      {/* 複選框（批量選擇模式） */}
+      {bulkSelectMode && (
+        <div
+          className="absolute top-2 left-2 z-20"
+          onClick={(e) => {
+            e.stopPropagation()
+            onToggleSelect?.(memory.id)
+          }}
+        >
+          <div
+            className={`w-6 h-6 rounded-md flex items-center justify-center cursor-pointer transition-all ${
+              isSelected ? 'scale-110' : 'hover:scale-110'
+            }`}
+            style={{
+              background: isSelected
+                ? 'linear-gradient(135deg, #fbbf24 0%, #fb923c 100%)'
+                : 'rgba(30, 41, 59, 0.95)',
+              border: isSelected
+                ? '2px solid rgba(251, 191, 36, 0.8)'
+                : '2px solid rgba(251, 191, 36, 0.4)',
+            }}
+          >
+            {isSelected && <span className="text-sm">✓</span>}
+          </div>
+        </div>
+      )}
+
       {/* 釘選按鈕 */}
-      {memory.isPinned && (
+      {memory.isPinned && !bulkSelectMode && (
         <div className="absolute top-2 sm:top-3 right-2 sm:right-3 z-10">
           <button
             onClick={(e) => onTogglePin(memory, e)}
@@ -1133,28 +1416,30 @@ function MemoryCard({ memory, onTogglePin, onSelectMemory, onDelete, formatDate 
         </div>
       </div>
 
-      {/* 刪除按鈕 */}
-      <div className="absolute bottom-2 sm:bottom-3 left-2 sm:left-3 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button
-          onClick={(e) => onDelete(memory, e)}
-          className="p-1.5 rounded-lg transition-all hover:scale-110 active:scale-95 text-sm"
-          style={{
-            background: 'rgba(30, 41, 59, 0.95)',
-            border: '2px solid rgba(251, 146, 60, 0.4)',
-          }}
-          title="刪除"
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'rgba(251, 146, 60, 0.4)'
-            e.currentTarget.style.borderColor = 'rgba(251, 146, 60, 0.7)'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'rgba(30, 41, 59, 0.95)'
-            e.currentTarget.style.borderColor = 'rgba(251, 146, 60, 0.4)'
-          }}
-        >
-          🗑️
-        </button>
-      </div>
+      {/* 刪除按鈕（批量模式下隱藏） */}
+      {!bulkSelectMode && (
+        <div className="absolute bottom-2 sm:bottom-3 left-2 sm:left-3 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            onClick={(e) => onDelete(memory, e)}
+            className="p-1.5 rounded-lg transition-all hover:scale-110 active:scale-95 text-sm"
+            style={{
+              background: 'rgba(30, 41, 59, 0.95)',
+              border: '2px solid rgba(251, 146, 60, 0.4)',
+            }}
+            title="刪除"
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(251, 146, 60, 0.4)'
+              e.currentTarget.style.borderColor = 'rgba(251, 146, 60, 0.7)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(30, 41, 59, 0.95)'
+              e.currentTarget.style.borderColor = 'rgba(251, 146, 60, 0.4)'
+            }}
+          >
+            🗑️
+          </button>
+        </div>
+      )}
     </div>
   )
 }
