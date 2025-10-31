@@ -50,7 +50,7 @@ export const useSSEChat = () => {
       setIsStreaming(true)
 
       try {
-        const url = new URL(`${API_BASE_URL}/chat/stream`)
+        const url = new URL(`${API_BASE_URL}/api/chat/stream`)
         url.searchParams.append('message', message)
         url.searchParams.append('assistantId', assistantId)
         url.searchParams.append('token', token)
@@ -137,7 +137,7 @@ export const useSSEChat = () => {
       setIsStreaming(true)
 
       try {
-        const response = await fetch(`${API_BASE_URL}/chat/upload-stream`, {
+        const response = await fetch(`${API_BASE_URL}/api/chat/upload-stream`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
