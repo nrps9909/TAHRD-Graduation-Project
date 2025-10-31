@@ -367,7 +367,7 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
                   key={item.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className={item.type === 'user' ? 'flex justify-end mb-2' : 'flex items-start gap-3 mb-4'}
+                  className={item.type === 'user' ? 'flex justify-end mb-2' : 'flex justify-start mb-4'}
                 >
                   {item.type === 'user' ? (
                     // 用戶訊息 - 統一樣式
@@ -390,17 +390,16 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
                     </div>
                   ) : (
                     // 白噗噗回答 - 從左側模型說出來
-                    <div className="flex justify-start">
-                      <div
-                        className="max-w-[75%] rounded-2xl px-4 py-3 relative"
-                        style={{
-                          background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(254, 252, 247, 0.95) 100%)',
-                          backdropFilter: 'blur(20px)',
-                          boxShadow: '0 12px 48px rgba(251, 191, 36, 0.5), 0 0 30px rgba(245, 158, 11, 0.3)',
-                          color: '#5D3A1A',
-                          border: '2px solid rgba(251, 191, 36, 0.3)'
-                        }}
-                      >
+                    <div
+                      className="max-w-[75%] rounded-2xl px-4 py-3 relative"
+                      style={{
+                        background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(254, 252, 247, 0.95) 100%)',
+                        backdropFilter: 'blur(20px)',
+                        boxShadow: '0 12px 48px rgba(251, 191, 36, 0.5), 0 0 30px rgba(245, 158, 11, 0.3)',
+                        color: '#5D3A1A',
+                        border: '2px solid rgba(251, 191, 36, 0.3)'
+                      }}
+                    >
                         {/* 對話氣泡尾巴 - 只在第一個泡泡顯示 */}
                         {index === chatHistory.findIndex(msg => msg.type === 'tororo') && (
                           <div
@@ -414,13 +413,12 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
                           />
                         )}
 
-                        <div className="whitespace-pre-wrap text-base" style={{ lineHeight: '1.6', fontSize: '16px' }}>
-                          {item.content}
-                          {/* 只在未完成的泡泡顯示打字機游標 */}
-                          {!item.isComplete && item.content && (
-                            <span className="inline-block w-0.5 h-5 bg-amber-500 ml-1 animate-pulse" />
-                          )}
-                        </div>
+                      <div className="whitespace-pre-wrap text-base" style={{ lineHeight: '1.6', fontSize: '16px' }}>
+                        {item.content}
+                        {/* 只在未完成的泡泡顯示打字機游標 */}
+                        {!item.isComplete && item.content && (
+                          <span className="inline-block w-0.5 h-5 bg-amber-500 ml-1 animate-pulse" />
+                        )}
                       </div>
                     </div>
                   )}
