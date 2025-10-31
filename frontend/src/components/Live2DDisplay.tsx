@@ -53,9 +53,8 @@ export const Live2DDisplay: React.FC<Live2DDisplayProps> = ({
           return
         }
 
-        // 創建 PIXI Application
+        // 創建 PIXI Application（不傳入 view，讓 PIXI 自動創建）
         const app = new PIXI.Application({
-          view: document.createElement('canvas'),
           width,
           height,
           backgroundColor: 0x000000,
@@ -63,20 +62,17 @@ export const Live2DDisplay: React.FC<Live2DDisplayProps> = ({
           antialias: true
         })
 
-        // 確保 canvas 添加成功
-        if (canvasRef.current) {
+        // PIXI.Application 初始化後 stage 會立即可用
+        if (!app.stage) {
+          console.error('[Live2D] PIXI stage 初始化失敗')
+          return
+        }
+
+        // 將 PIXI 創建的 canvas 添加到 DOM
+        if (canvasRef.current && app.view) {
           canvasRef.current.appendChild(app.view as HTMLCanvasElement)
         }
         appRef.current = app
-
-        // 等待下一個 tick 確保 stage 準備好
-        await new Promise(resolve => setTimeout(resolve, 100))
-
-        // 確認 stage 存在
-        if (!app.stage) {
-          console.error('[Live2D] PIXI stage 未初始化')
-          return
-        }
 
         // 加載 Live2D 模型
         const model = await Live2DModel.from(modelPath)
