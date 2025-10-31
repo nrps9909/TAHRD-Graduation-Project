@@ -852,88 +852,100 @@ export default function Live2DCat({
                       ))}
                       
                       <div className="text-xs sm:text-sm font-medium select-text leading-relaxed prose prose-sm max-w-none">
-                        <ReactMarkdown
-                          remarkPlugins={[remarkGfm]}
-                          rehypePlugins={[rehypeSanitize]}
-                          components={{
-                            p: ({ children }) => (
-                              <p className="mb-2 last:mb-0" style={{ color: isBlackCat ? '#FFFFFF' : 'inherit' }}>
-                                {children}
-                              </p>
-                            ),
-                            ul: ({ children }) => (
-                              <ul className="list-disc ml-4 mb-2" style={{ color: isBlackCat ? '#FFFFFF' : 'inherit' }}>
-                                {children}
-                              </ul>
-                            ),
-                            ol: ({ children }) => (
-                              <ol className="list-decimal ml-4 mb-2" style={{ color: isBlackCat ? '#FFFFFF' : 'inherit' }}>
-                                {children}
-                              </ol>
-                            ),
-                            li: ({ children }) => (
-                              <li className="mb-1" style={{ color: isBlackCat ? '#FFFFFF' : 'inherit' }}>
-                                {children}
-                              </li>
-                            ),
-                            strong: ({ children }) => (
-                              <strong className="font-bold" style={{ color: isBlackCat ? '#FFFFFF' : 'inherit' }}>
-                                {children}
-                              </strong>
-                            ),
-                            em: ({ children }) => (
-                              <em className="italic" style={{ color: isBlackCat ? '#FFFFFF' : 'inherit' }}>
-                                {children}
-                              </em>
-                            ),
-                            code: ({ children }) => (
-                              <code
-                                className="px-1.5 py-0.5 rounded text-xs font-mono"
-                                style={{
-                                  background: isBlackCat ? 'rgba(139, 92, 246, 0.2)' : 'rgba(251, 191, 36, 0.2)',
-                                  color: isBlackCat ? '#FFFFFF' : 'inherit'
-                                }}
-                              >
-                                {children}
-                              </code>
-                            ),
-                            pre: ({ children }) => (
-                              <pre
-                                className="p-3 rounded-lg overflow-x-auto text-xs font-mono my-2"
-                                style={{
-                                  background: isBlackCat ? 'rgba(139, 92, 246, 0.15)' : 'rgba(251, 191, 36, 0.15)',
-                                  color: isBlackCat ? '#FFFFFF' : 'inherit'
-                                }}
-                              >
-                                {children}
-                              </pre>
-                            ),
-                            blockquote: ({ children }) => (
-                              <blockquote
-                                className="border-l-4 pl-3 py-1 my-2"
-                                style={{
-                                  borderColor: isBlackCat ? 'rgba(139, 92, 246, 0.5)' : 'rgba(251, 191, 36, 0.5)',
-                                  color: isBlackCat ? '#FFFFFF' : 'inherit'
-                                }}
-                              >
-                                {children}
-                              </blockquote>
-                            ),
-                            a: ({ href, children }) => (
-                              <a
-                                href={href}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="underline hover:opacity-80 transition-opacity"
-                                style={{ color: isBlackCat ? '#FFFFFF' : 'inherit' }}
-                              >
-                                {children}
-                              </a>
-                            ),
-                          }}
-                        >
-                          {message.content}
-                        </ReactMarkdown>
+                        {message.content ? (
+                          <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            rehypePlugins={[rehypeSanitize]}
+                            components={{
+                              p: ({ children }) => (
+                                <p className="mb-2 last:mb-0" style={{ color: isBlackCat ? '#FFFFFF' : 'inherit' }}>
+                                  {children}
+                                </p>
+                              ),
+                              ul: ({ children }) => (
+                                <ul className="list-disc ml-4 mb-2" style={{ color: isBlackCat ? '#FFFFFF' : 'inherit' }}>
+                                  {children}
+                                </ul>
+                              ),
+                              ol: ({ children }) => (
+                                <ol className="list-decimal ml-4 mb-2" style={{ color: isBlackCat ? '#FFFFFF' : 'inherit' }}>
+                                  {children}
+                                </ol>
+                              ),
+                              li: ({ children }) => (
+                                <li className="mb-1" style={{ color: isBlackCat ? '#FFFFFF' : 'inherit' }}>
+                                  {children}
+                                </li>
+                              ),
+                              strong: ({ children }) => (
+                                <strong className="font-bold" style={{ color: isBlackCat ? '#FFFFFF' : 'inherit' }}>
+                                  {children}
+                                </strong>
+                              ),
+                              em: ({ children }) => (
+                                <em className="italic" style={{ color: isBlackCat ? '#FFFFFF' : 'inherit' }}>
+                                  {children}
+                                </em>
+                              ),
+                              code: ({ children }) => (
+                                <code
+                                  className="px-1.5 py-0.5 rounded text-xs font-mono"
+                                  style={{
+                                    background: isBlackCat ? 'rgba(139, 92, 246, 0.2)' : 'rgba(251, 191, 36, 0.2)',
+                                    color: isBlackCat ? '#FFFFFF' : 'inherit'
+                                  }}
+                                >
+                                  {children}
+                                </code>
+                              ),
+                              pre: ({ children }) => (
+                                <pre
+                                  className="p-3 rounded-lg overflow-x-auto text-xs font-mono my-2"
+                                  style={{
+                                    background: isBlackCat ? 'rgba(139, 92, 246, 0.15)' : 'rgba(251, 191, 36, 0.15)',
+                                    color: isBlackCat ? '#FFFFFF' : 'inherit'
+                                  }}
+                                >
+                                  {children}
+                                </pre>
+                              ),
+                              blockquote: ({ children }) => (
+                                <blockquote
+                                  className="border-l-4 pl-3 py-1 my-2"
+                                  style={{
+                                    borderColor: isBlackCat ? 'rgba(139, 92, 246, 0.5)' : 'rgba(251, 191, 36, 0.5)',
+                                    color: isBlackCat ? '#FFFFFF' : 'inherit'
+                                  }}
+                                >
+                                  {children}
+                                </blockquote>
+                              ),
+                              a: ({ href, children }) => (
+                                <a
+                                  href={href}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="underline hover:opacity-80 transition-opacity"
+                                  style={{ color: isBlackCat ? '#FFFFFF' : 'inherit' }}
+                                >
+                                  {children}
+                                </a>
+                              ),
+                            }}
+                          >
+                            {message.content}
+                          </ReactMarkdown>
+                        ) : (
+                          // 如果內容為空，顯示思考中動畫
+                          <span className="inline-flex items-center gap-1" style={{ color: isBlackCat ? 'rgba(255, 255, 255, 0.7)' : 'rgba(139, 92, 46, 0.7)' }}>
+                            <span className="animate-bounce" style={{ animationDelay: '0ms' }}>思</span>
+                            <span className="animate-bounce" style={{ animationDelay: '150ms' }}>考</span>
+                            <span className="animate-bounce" style={{ animationDelay: '300ms' }}>中</span>
+                            <span className="animate-bounce" style={{ animationDelay: '450ms' }}>.</span>
+                            <span className="animate-bounce" style={{ animationDelay: '600ms' }}>.</span>
+                            <span className="animate-bounce" style={{ animationDelay: '750ms' }}>.</span>
+                          </span>
+                        )}
                       </div>
                       <p className="text-[10px] sm:text-xs mt-1.5 sm:mt-2 opacity-70 select-text font-semibold">
                         {new Date(message.timestamp).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}

@@ -270,7 +270,17 @@ export function HijikiChatPanel({ onClose }: HijikiChatPanelProps) {
                 }
               >
                 <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: '#FFFFFF' }}>
-                  {message.content}
+                  {message.content || (
+                    // 如果內容為空，顯示思考中動畫
+                    <span className="inline-flex items-center gap-1" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                      <span className="animate-bounce" style={{ animationDelay: '0ms' }}>思</span>
+                      <span className="animate-bounce" style={{ animationDelay: '150ms' }}>考</span>
+                      <span className="animate-bounce" style={{ animationDelay: '300ms' }}>中</span>
+                      <span className="animate-bounce" style={{ animationDelay: '450ms' }}>.</span>
+                      <span className="animate-bounce" style={{ animationDelay: '600ms' }}>.</span>
+                      <span className="animate-bounce" style={{ animationDelay: '750ms' }}>.</span>
+                    </span>
+                  )}
                 </p>
                 {message.attachments && message.attachments.length > 0 && (
                   <div className="mt-3 space-y-2">
