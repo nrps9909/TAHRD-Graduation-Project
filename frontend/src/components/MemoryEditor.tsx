@@ -536,6 +536,41 @@ export default function MemoryEditor({ memory, onClose, onUpdate }: MemoryEditor
                         </h3>
                       </div>
                       <div className="p-4 space-y-4">
+                        {/* 圖片顯示 */}
+                        {memory.fileUrls && memory.fileUrls.length > 0 && (
+                          <div>
+                            <h4 className="text-xs font-medium text-gray-400 mb-2 uppercase tracking-wide flex items-center gap-1">
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
+                              附件圖片 ({memory.fileUrls.filter((_, i) => memory.fileTypes[i]?.startsWith('image/')).length})
+                            </h4>
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                              {memory.fileUrls.map((url, index) => {
+                                const isImage = memory.fileTypes[index]?.startsWith('image/')
+                                if (!isImage) return null
+
+                                return (
+                                  <div key={index} className="group relative aspect-square rounded-lg overflow-hidden bg-gray-800 border border-gray-700 hover:border-purple-500 transition-all">
+                                    <img
+                                      src={url}
+                                      alt={memory.fileNames[index] || `圖片 ${index + 1}`}
+                                      className="w-full h-full object-cover cursor-pointer transition-transform group-hover:scale-105"
+                                      onClick={() => window.open(url, '_blank')}
+                                      loading="lazy"
+                                    />
+                                    {memory.fileNames[index] && (
+                                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
+                                        <p className="text-xs text-gray-300 truncate">{memory.fileNames[index]}</p>
+                                      </div>
+                                    )}
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )}
+
                         {memory.detailedSummary && (
                           <div>
                             <h4 className="text-xs font-medium text-gray-400 mb-2 uppercase tracking-wide">詳細摘要</h4>
@@ -647,6 +682,41 @@ export default function MemoryEditor({ memory, onClose, onUpdate }: MemoryEditor
                           </h3>
                         </div>
                         <div className="p-4 space-y-4">
+                          {/* 圖片顯示 */}
+                          {memory.fileUrls && memory.fileUrls.length > 0 && (
+                            <div>
+                              <h4 className="text-xs font-medium text-gray-400 mb-2 uppercase tracking-wide flex items-center gap-1">
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                附件圖片 ({memory.fileUrls.filter((_, i) => memory.fileTypes[i]?.startsWith('image/')).length})
+                              </h4>
+                              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                {memory.fileUrls.map((url, index) => {
+                                  const isImage = memory.fileTypes[index]?.startsWith('image/')
+                                  if (!isImage) return null
+
+                                  return (
+                                    <div key={index} className="group relative aspect-square rounded-lg overflow-hidden bg-gray-800 border border-gray-700 hover:border-purple-500 transition-all">
+                                      <img
+                                        src={url}
+                                        alt={memory.fileNames[index] || `圖片 ${index + 1}`}
+                                        className="w-full h-full object-cover cursor-pointer transition-transform group-hover:scale-105"
+                                        onClick={() => window.open(url, '_blank')}
+                                        loading="lazy"
+                                      />
+                                      {memory.fileNames[index] && (
+                                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
+                                          <p className="text-xs text-gray-300 truncate">{memory.fileNames[index]}</p>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          )}
+
                           {memory.detailedSummary && (
                             <div>
                               <h4 className="text-xs font-medium text-gray-400 mb-2 uppercase tracking-wide">詳細摘要</h4>
