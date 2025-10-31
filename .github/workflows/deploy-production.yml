@@ -199,7 +199,7 @@ jobs:
           build-args: |
             VITE_BACKEND_URL=${{ matrix.component == 'frontend' && 'https://jesse-chen.com' || '' }}
             VITE_GRAPHQL_URL=${{ matrix.component == 'frontend' && 'https://jesse-chen.com/graphql' || '' }}
-            VITE_API_URL=${{ matrix.component == 'frontend' && 'https://jesse-chen.com/api' || '' }}
+            VITE_API_URL=${{ matrix.component == 'frontend' && 'https://jesse-chen.com' || '' }}
             VITE_WS_URL=${{ matrix.component == 'frontend' && 'wss://jesse-chen.com/graphql' || '' }}
             VITE_GEMINI_API_KEY=${{ matrix.component == 'frontend' && secrets.VITE_GEMINI_API_KEY || '' }}
             VITE_OPENWEATHER_API_KEY=${{ matrix.component == 'frontend' && secrets.VITE_OPENWEATHER_API_KEY || '' }}
