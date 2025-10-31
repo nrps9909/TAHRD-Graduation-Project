@@ -16,7 +16,7 @@ import { WeatherSystem, WeatherInfo } from './WeatherEffects'
 import { NaturalSky } from './NaturalSky'
 import { Suspense, useState, useEffect } from 'react'
 import { useIslandStore } from '../../stores/islandStore'
-import { Memory as IslandMemory } from '../../types/island'
+import { Memory as IslandMemory, Island } from '../../types/island'
 
 interface IslandSceneProps {
   onTororoClick?: () => void
@@ -54,6 +54,7 @@ export function IslandScene({
   const { islands, switchIsland, currentIslandId } = useIslandStore()
   const [cameraTarget, setCameraTarget] = useState<[number, number, number] | null>(null)
   const [selectedMemory, setSelectedMemory] = useState<IslandMemory | null>(null)
+  const [selectedMemoryIsland, setSelectedMemoryIsland] = useState<Island | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
 
@@ -92,13 +93,23 @@ export function IslandScene({
 
   const handleMemoryClick = (memory: IslandMemory) => {
     setSelectedMemory(memory)
+
+    // 找到這個記憶所屬的島嶼
+    const memoryIsland = islands.find(island =>
+      island.memories.some(m => m.id === memory.id)
+    )
+    setSelectedMemoryIsland(memoryIsland || null)
+
     setIsModalOpen(true)
   }
 
   const handleCloseModal = () => {
     setIsModalOpen(false)
-    // 延遲清除選中的記憶，等動畫完成
-    setTimeout(() => setSelectedMemory(null), 300)
+    // 延遲清除選中的記憶和島嶼，等動畫完成
+    setTimeout(() => {
+      setSelectedMemory(null)
+      setSelectedMemoryIsland(null)
+    }, 300)
   }
 
   // 視覺效果設定（響應式調整 - 手機端降低效果以提升性能）
@@ -205,7 +216,7 @@ export function IslandScene({
     {/* 記憶詳情彈窗 */}
     <MemoryDetailModal
       memory={selectedMemory}
-      island={currentIslandId && currentIslandId !== 'overview' ? islands.find(i => i.id === currentIslandId) : undefined}
+      island={selectedMemoryIsland}
       isOpen={isModalOpen}
       onClose={handleCloseModal}
     />
