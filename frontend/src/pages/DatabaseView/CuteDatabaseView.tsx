@@ -823,6 +823,7 @@ export default function CuteDatabaseView() {
               bulkSelectMode={bulkSelectMode}
               selectedMemoryIds={selectedMemoryIds}
               onToggleSelect={toggleSelectMemory}
+              islands={islands}
             />
           </>
         )}
@@ -900,6 +901,7 @@ interface SimpleGalleryViewProps {
   bulkSelectMode?: boolean
   selectedMemoryIds?: Set<string>
   onToggleSelect?: (memoryId: string) => void
+  islands?: Island[]
 }
 
 function SimpleGalleryView({
@@ -911,7 +913,8 @@ function SimpleGalleryView({
   onReorder,
   bulkSelectMode = false,
   selectedMemoryIds = new Set(),
-  onToggleSelect
+  onToggleSelect,
+  islands = []
 }: SimpleGalleryViewProps) {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
@@ -955,6 +958,7 @@ function SimpleGalleryView({
             bulkSelectMode={bulkSelectMode}
             isSelected={selectedMemoryIds.has(memory.id)}
             onToggleSelect={onToggleSelect}
+            islands={islands}
           />
         ))}
       </div>
@@ -980,6 +984,7 @@ function SimpleGalleryView({
               bulkSelectMode={bulkSelectMode}
               isSelected={selectedMemoryIds.has(memory.id)}
               onToggleSelect={onToggleSelect}
+              islands={islands}
             />
           ))}
         </div>
@@ -998,6 +1003,7 @@ interface DraggableMemoryCardProps {
   bulkSelectMode?: boolean
   isSelected?: boolean
   onToggleSelect?: (memoryId: string) => void
+  islands?: Island[]
 }
 
 function DraggableMemoryCard({
@@ -1008,7 +1014,8 @@ function DraggableMemoryCard({
   formatDate,
   bulkSelectMode = false,
   isSelected = false,
-  onToggleSelect
+  onToggleSelect,
+  islands = []
 }: DraggableMemoryCardProps) {
   const {
     attributes,
@@ -1027,6 +1034,18 @@ function DraggableMemoryCard({
   }
 
   const { date, time } = formatDate(memory.createdAt)
+
+  // 根據記憶的島嶼 ID 查找對應島嶼顏色
+  const island = memory.islandId ? islands.find(i => i.id === memory.islandId) : null
+  const islandColor = island?.color || '#fbbf24' // 預設金色
+
+  // 將十六進制顏色轉為 rgba
+  const hexToRgba = (hex: string, alpha: number) => {
+    const r = parseInt(hex.slice(1, 3), 16)
+    const g = parseInt(hex.slice(3, 5), 16)
+    const b = parseInt(hex.slice(5, 7), 16)
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`
+  }
 
   return (
     <div
@@ -1048,24 +1067,24 @@ function DraggableMemoryCard({
         className="group relative rounded-2xl p-3 sm:p-4 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] flex flex-col"
         style={{
           background: isSelected
-            ? 'linear-gradient(135deg, rgba(251, 191, 36, 0.25) 0%, rgba(251, 146, 60, 0.25) 100%)'
+            ? `linear-gradient(135deg, ${hexToRgba(islandColor, 0.25)} 0%, ${hexToRgba(islandColor, 0.2)} 100%)`
             : 'linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(26, 26, 46, 0.6) 100%)',
           backdropFilter: 'blur(12px) saturate(150%)',
           WebkitBackdropFilter: 'blur(12px) saturate(150%)',
-          border: isSelected ? '2px solid rgba(251, 191, 36, 0.8)' : '2px solid rgba(251, 191, 36, 0.2)',
-          boxShadow: isSelected ? '0 8px 24px rgba(251, 191, 36, 0.4)' : '0 4px 12px rgba(0, 0, 0, 0.3)',
+          border: isSelected ? `2px solid ${hexToRgba(islandColor, 0.8)}` : `2px solid ${hexToRgba(islandColor, 0.4)}`,
+          boxShadow: isSelected ? `0 8px 24px ${hexToRgba(islandColor, 0.4)}` : '0 4px 12px rgba(0, 0, 0, 0.3)',
           minHeight: '180px',
         }}
         onMouseEnter={(e) => {
           if (!isDragging && !isSelected) {
-            e.currentTarget.style.boxShadow = '0 8px 24px rgba(251, 191, 36, 0.3)'
-            e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.5)'
+            e.currentTarget.style.boxShadow = `0 8px 24px ${hexToRgba(islandColor, 0.3)}`
+            e.currentTarget.style.borderColor = hexToRgba(islandColor, 0.6)
           }
         }}
         onMouseLeave={(e) => {
           if (!isSelected) {
             e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)'
-            e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.2)'
+            e.currentTarget.style.borderColor = hexToRgba(islandColor, 0.4)
           }
         }}
       >
@@ -1241,6 +1260,7 @@ interface MemoryCardProps {
   bulkSelectMode?: boolean
   isSelected?: boolean
   onToggleSelect?: (memoryId: string) => void
+  islands?: Island[]
 }
 
 function MemoryCard({
@@ -1251,9 +1271,22 @@ function MemoryCard({
   formatDate,
   bulkSelectMode = false,
   isSelected = false,
-  onToggleSelect
+  onToggleSelect,
+  islands = []
 }: MemoryCardProps) {
   const { date, time } = formatDate(memory.createdAt)
+
+  // 根據記憶的島嶼 ID 查找對應島嶼顏色
+  const island = memory.islandId ? islands.find(i => i.id === memory.islandId) : null
+  const islandColor = island?.color || '#fbbf24' // 預設金色
+
+  // 將十六進制顏色轉為 rgba
+  const hexToRgba = (hex: string, alpha: number) => {
+    const r = parseInt(hex.slice(1, 3), 16)
+    const g = parseInt(hex.slice(3, 5), 16)
+    const b = parseInt(hex.slice(5, 7), 16)
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`
+  }
 
   // 批量選擇模式下，點擊卡片應該切換選擇狀態，而非打開記憶
   const handleClick = () => {
@@ -1270,28 +1303,28 @@ function MemoryCard({
       className="group relative rounded-2xl p-3 sm:p-4 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] flex flex-col"
       style={{
         background: isSelected
-          ? 'linear-gradient(135deg, rgba(251, 191, 36, 0.25) 0%, rgba(251, 146, 60, 0.25) 100%)'
+          ? `linear-gradient(135deg, ${hexToRgba(islandColor, 0.25)} 0%, ${hexToRgba(islandColor, 0.2)} 100%)`
           : 'linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(26, 26, 46, 0.6) 100%)',
         backdropFilter: 'blur(12px) saturate(150%)',
         WebkitBackdropFilter: 'blur(12px) saturate(150%)',
         border: isSelected
-          ? '2px solid rgba(251, 191, 36, 0.8)'
-          : '2px solid rgba(251, 191, 36, 0.2)',
+          ? `2px solid ${hexToRgba(islandColor, 0.8)}`
+          : `2px solid ${hexToRgba(islandColor, 0.4)}`,
         boxShadow: isSelected
-          ? '0 8px 24px rgba(251, 191, 36, 0.4)'
+          ? `0 8px 24px ${hexToRgba(islandColor, 0.4)}`
           : '0 4px 12px rgba(0, 0, 0, 0.3)',
         minHeight: '180px',
       }}
       onMouseEnter={(e) => {
         if (!isSelected) {
-          e.currentTarget.style.boxShadow = '0 8px 24px rgba(251, 191, 36, 0.3)'
-          e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.5)'
+          e.currentTarget.style.boxShadow = `0 8px 24px ${hexToRgba(islandColor, 0.3)}`
+          e.currentTarget.style.borderColor = hexToRgba(islandColor, 0.6)
         }
       }}
       onMouseLeave={(e) => {
         if (!isSelected) {
           e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)'
-          e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.2)'
+          e.currentTarget.style.borderColor = hexToRgba(islandColor, 0.4)
         }
       }}
     >
