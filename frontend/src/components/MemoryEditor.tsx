@@ -57,14 +57,26 @@ export default function MemoryEditor({ memory, onClose, onUpdate }: MemoryEditor
   const [pinMemory] = useMutation(PIN_MEMORY)
   const [unpinMemory] = useMutation(UNPIN_MEMORY)
 
-  // 初始化完成後設置 isLoading 為 false
+  // 初始化完成後設置 isLoading 為 false，並從 memory 初始化 attachments
   useEffect(() => {
+    // 從 memory 初始化 attachments（避免自動保存時清空 fileUrls）
+    if (memory.fileUrls && memory.fileUrls.length > 0) {
+      const initialAttachments = memory.fileUrls.map((url, index) => ({
+        url,
+        name: memory.fileNames?.[index] || `檔案 ${index + 1}`,
+        type: memory.fileTypes?.[index] || 'application/octet-stream'
+      }))
+      setAttachments(initialAttachments)
+      console.log('📎 初始化附件:', initialAttachments.length, '個檔案')
+    }
+
     // 模擬數據載入完成
     const timer = setTimeout(() => {
       setIsLoading(false)
     }, 100)
     return () => clearTimeout(timer)
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // 只在組件首次掛載時初始化
 
   // 更新最新狀態的 ref
   useEffect(() => {
