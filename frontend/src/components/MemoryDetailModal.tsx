@@ -3,7 +3,7 @@
  * 顯示記憶的完整內容和相關資訊
  */
 
-import { Memory as IslandMemory } from '../types/island'
+import { Memory as IslandMemory, Island } from '../types/island'
 import { formatDistanceToNow } from 'date-fns'
 import { zhTW } from 'date-fns/locale'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -11,6 +11,7 @@ import { Z_INDEX_CLASSES } from '../constants/zIndex'
 
 interface MemoryDetailModalProps {
   memory: IslandMemory | null
+  island?: Island | null  // 記憶所屬的島嶼
   isOpen: boolean
   onClose: () => void
 }
@@ -26,12 +27,21 @@ const CATEGORY_CONFIG: Record<string, { name: string; color: string; emoji: stri
   RESOURCES: { name: '資源', color: '#9B59B6', emoji: '📦' }
 }
 
-export function MemoryDetailModal({ memory, isOpen, onClose }: MemoryDetailModalProps) {
+export function MemoryDetailModal({ memory, island, isOpen, onClose }: MemoryDetailModalProps) {
   if (!memory || !isOpen) return null
 
-  // 轉換 category 類型（移除 MISC）
-  const categoryKey = memory.category === 'MISC' ? 'LEARNING' : memory.category
-  const categoryInfo = CATEGORY_CONFIG[categoryKey] || { name: memory.category, color: '#999', emoji: '📌' }
+  // 優先使用島嶼信息，如果沒有島嶼則使用類別信息
+  const displayInfo = island
+    ? {
+        name: island.name,
+        emoji: island.emoji,
+        color: island.color
+      }
+    : (() => {
+        const categoryKey = memory.category === 'MISC' ? 'LEARNING' : memory.category
+        const categoryInfo = CATEGORY_CONFIG[categoryKey] || { name: memory.category, color: '#999', emoji: '📌' }
+        return categoryInfo
+      })()
 
   return (
     <AnimatePresence>
@@ -64,24 +74,30 @@ export function MemoryDetailModal({ memory, isOpen, onClose }: MemoryDetailModal
               <div
                 className="p-6 text-white relative overflow-hidden"
                 style={{
-                  background: `linear-gradient(135deg, ${categoryInfo.color}dd, ${categoryInfo.color}bb)`
+                  background: `linear-gradient(135deg, ${displayInfo.color}dd, ${displayInfo.color}bb)`
                 }}
               >
-                {/* 裝飾性背景 */}
+                {/* 裝飾性背景 - 使用島嶼顏色 */}
                 <div className="absolute inset-0 opacity-10">
-                  <div className="absolute top-0 right-0 w-40 h-40 rounded-full bg-white transform translate-x-10 -translate-y-10"></div>
-                  <div className="absolute bottom-0 left-0 w-32 h-32 rounded-full bg-white transform -translate-x-8 translate-y-8"></div>
+                  <div
+                    className="absolute top-0 right-0 w-40 h-40 rounded-full transform translate-x-10 -translate-y-10"
+                    style={{ backgroundColor: displayInfo.color }}
+                  ></div>
+                  <div
+                    className="absolute bottom-0 left-0 w-32 h-32 rounded-full transform -translate-x-8 translate-y-8"
+                    style={{ backgroundColor: displayInfo.color }}
+                  ></div>
                 </div>
 
                 <div className="relative">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3 flex-1">
-                      <span className="text-5xl drop-shadow-lg">{categoryInfo.emoji}</span>
+                      <span className="text-5xl drop-shadow-lg">{displayInfo.emoji}</span>
                       <div className="flex-1">
                         <h2 className="text-2xl font-bold drop-shadow-md mb-1">{memory.title}</h2>
                         <div className="flex items-center gap-2 text-sm opacity-90">
-                          <span>{categoryInfo.emoji}</span>
-                          <span>{categoryInfo.name}</span>
+                          <span>{island ? '🏝️' : displayInfo.emoji}</span>
+                          <span>{displayInfo.name}</span>
                         </div>
                       </div>
                     </div>
@@ -222,26 +238,6 @@ export function MemoryDetailModal({ memory, isOpen, onClose }: MemoryDetailModal
                   </div>
                 </div>
 
-                {/* 標籤 */}
-                {memory.tags && memory.tags.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-bold text-gray-400 mb-2 flex items-center gap-2">
-                      <span>🏷️</span>
-                      標籤
-                    </h3>
-                    <div className="flex flex-wrap gap-2">
-                      {memory.tags.map((tag, idx) => (
-                        <span
-                          key={idx}
-                          className="px-4 py-2 rounded-xl text-sm font-medium bg-gray-800 text-gray-300 border-2 border-gray-700"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
                 {/* 時間資訊 */}
                 <div className="flex items-center justify-between text-xs text-gray-400 pt-4 border-t border-gray-800">
                   <div className="flex items-center gap-2">
@@ -265,8 +261,8 @@ export function MemoryDetailModal({ memory, isOpen, onClose }: MemoryDetailModal
                 <button
                   className="px-6 py-3 rounded-2xl font-medium text-white transition-all hover:scale-105 active:scale-95"
                   style={{
-                    background: `linear-gradient(135deg, ${categoryInfo.color}, ${categoryInfo.color}dd)`,
-                    boxShadow: `0 4px 15px ${categoryInfo.color}40`
+                    background: `linear-gradient(135deg, ${displayInfo.color}, ${displayInfo.color}dd)`,
+                    boxShadow: `0 4px 15px ${displayInfo.color}40`
                   }}
                 >
                   編輯記憶

@@ -205,6 +205,7 @@ export function IslandScene({
     {/* 記憶詳情彈窗 */}
     <MemoryDetailModal
       memory={selectedMemory}
+      island={currentIslandId && currentIslandId !== 'overview' ? islands.find(i => i.id === currentIslandId) : undefined}
       isOpen={isModalOpen}
       onClose={handleCloseModal}
     />
