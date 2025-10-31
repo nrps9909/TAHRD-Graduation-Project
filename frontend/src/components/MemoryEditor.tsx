@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useMutation } from '@apollo/client'
 import { UPDATE_MEMORY, DELETE_MEMORY, PIN_MEMORY, UNPIN_MEMORY } from '../graphql/memory'
 import type { Memory } from '../graphql/memory'
+import { Island } from '../graphql/category'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
@@ -14,9 +15,10 @@ interface MemoryEditorProps {
   memory: Memory
   onClose: () => void
   onUpdate: () => void
+  islands?: Island[]
 }
 
-export default function MemoryEditor({ memory, onClose, onUpdate }: MemoryEditorProps) {
+export default function MemoryEditor({ memory, onClose, onUpdate, islands = [] }: MemoryEditorProps) {
   const [title, setTitle] = useState(memory.title || '')
   const [content, setContent] = useState(memory.rawContent || memory.summary || '')
   const [tags, setTags] = useState<string[]>(memory.tags)
@@ -32,6 +34,18 @@ export default function MemoryEditor({ memory, onClose, onUpdate }: MemoryEditor
   const previewRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>()
+
+  // 根據記憶的島嶼 ID 查找對應島嶼
+  const island = memory.islandId ? islands.find(i => i.id === memory.islandId) : null
+  const islandColor = island?.color || '#fbbf24' // 預設金色
+
+  // 將十六進制顏色轉為 rgba
+  const hexToRgba = (hex: string, alpha: number) => {
+    const r = parseInt(hex.slice(1, 3), 16)
+    const g = parseInt(hex.slice(3, 5), 16)
+    const b = parseInt(hex.slice(5, 7), 16)
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`
+  }
 
   // 用 ref 追蹤最新的編輯器狀態，避免閉包問題
   const latestStateRef = useRef({ title, content, tags, attachments })
@@ -488,6 +502,23 @@ export default function MemoryEditor({ memory, onClose, onUpdate }: MemoryEditor
                     }}
                   />
 
+                  {/* 島嶼標籤 */}
+                  {island && (
+                    <div className="mb-3">
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold"
+                        style={{
+                          background: `linear-gradient(135deg, ${hexToRgba(islandColor, 0.25)} 0%, ${hexToRgba(islandColor, 0.15)} 100%)`,
+                          color: islandColor,
+                          border: `1.5px solid ${hexToRgba(islandColor, 0.5)}`,
+                          boxShadow: `0 2px 8px ${hexToRgba(islandColor, 0.2)}`,
+                        }}
+                      >
+                        <span>🏝️</span>
+                        <span>{island.name}</span>
+                      </div>
+                    </div>
+                  )}
+
                   {/* 標籤 */}
                   <div className="mb-6">
                     <TagManager
@@ -521,6 +552,23 @@ export default function MemoryEditor({ memory, onClose, onUpdate }: MemoryEditor
                 <div className="max-w-4xl mx-auto p-4 md:p-8">
                   {/* 標題 */}
                   <h1 className="text-xl md:text-3xl font-bold text-gray-100 mb-3 md:mb-4">{title || '未命名文件'}</h1>
+
+                  {/* 島嶼標籤 */}
+                  {island && (
+                    <div className="mb-3">
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold"
+                        style={{
+                          background: `linear-gradient(135deg, ${hexToRgba(islandColor, 0.25)} 0%, ${hexToRgba(islandColor, 0.15)} 100%)`,
+                          color: islandColor,
+                          border: `1.5px solid ${hexToRgba(islandColor, 0.5)}`,
+                          boxShadow: `0 2px 8px ${hexToRgba(islandColor, 0.2)}`,
+                        }}
+                      >
+                        <span>🏝️</span>
+                        <span>{island.name}</span>
+                      </div>
+                    </div>
+                  )}
 
                   {/* 標籤 */}
                   {tags.length > 0 && (

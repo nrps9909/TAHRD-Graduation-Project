@@ -829,6 +829,7 @@ export default function CuteDatabaseView() {
             refetch()
             setSelectedMemory(null)
           }}
+          islands={islands}
         />
       )}
 
@@ -1154,6 +1155,23 @@ function DraggableMemoryCard({
           )}
         </div>
 
+        {/* 島嶼標籤 */}
+        {island && (
+          <div className="mb-2">
+            <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold"
+              style={{
+                background: `linear-gradient(135deg, ${hexToRgba(islandColor, 0.35)} 0%, ${hexToRgba(islandColor, 0.25)} 100%)`,
+                color: islandColor,
+                border: `1.5px solid ${hexToRgba(islandColor, 0.6)}`,
+                boxShadow: `0 2px 8px ${hexToRgba(islandColor, 0.25)}`,
+              }}
+            >
+              <span>🏝️</span>
+              <span>{island.name}</span>
+            </div>
+          </div>
+        )}
+
         {/* 標籤區 */}
         {memory.tags.length > 0 && (
           <div className="mb-2">
@@ -1384,6 +1402,23 @@ function MemoryCard({
           </div>
         )}
       </div>
+
+      {/* 島嶼標籤 */}
+      {island && (
+        <div className="mb-2">
+          <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold"
+            style={{
+              background: `linear-gradient(135deg, ${hexToRgba(islandColor, 0.35)} 0%, ${hexToRgba(islandColor, 0.25)} 100%)`,
+              color: islandColor,
+              border: `1.5px solid ${hexToRgba(islandColor, 0.6)}`,
+              boxShadow: `0 2px 8px ${hexToRgba(islandColor, 0.25)}`,
+            }}
+          >
+            <span>🏝️</span>
+            <span>{island.name}</span>
+          </div>
+        </div>
+      )}
 
       {/* 標籤區 */}
       {memory.tags.length > 0 && (
