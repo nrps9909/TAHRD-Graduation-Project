@@ -19,6 +19,12 @@ export interface Memory {
   aiSentiment?: string
   aiAnalysis?: string  // SubAgent 的評估說明
   rawData?: string  // 原始對話記錄
+  // 多模態內容（圖片、文件、連結）
+  fileUrls: string[]  // Cloudinary URLs
+  fileNames: string[]  // 原始文件名
+  fileTypes: string[]  // MIME types (e.g., 'image/jpeg')
+  links: string[]  // 外部連結
+  linkTitles: string[]  // 連結標題
   // SubAgent 深度分析結果（新增）
   detailedSummary?: string  // SubAgent 的詳細摘要（2-3句話）
   importanceScore?: number  // 1-10 重要性評分
@@ -103,6 +109,11 @@ export interface UpdateMemoryInput {
   category?: MemoryCategory  // 主分類
   tags?: string[]
   keyPoints?: string[]
+  fileUrls?: string[]  // 多模態內容
+  fileNames?: string[]
+  fileTypes?: string[]
+  links?: string[]
+  linkTitles?: string[]
   isPinned?: boolean
   isArchived?: boolean
 }

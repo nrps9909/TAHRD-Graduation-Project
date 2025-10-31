@@ -83,6 +83,19 @@ const storage = new CloudinaryStorage({
       resourceType = 'raw'
     }
 
+    // 圖片壓縮配置
+    const imageTransformation = resourceType === 'image' ? {
+      transformation: [
+        {
+          quality: 'auto:good',  // 自動調整質量（good = 85%）
+          fetch_format: 'auto',  // 自動選擇最佳格式（WebP/AVIF）
+          width: 2048,           // 最大寬度 2048px
+          height: 2048,          // 最大高度 2048px
+          crop: 'limit'          // 只在超過時才縮放
+        }
+      ]
+    } : {}
+
     return {
       folder: 'tororo-knowledge',
       allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'pdf', 'doc', 'docx', 'txt', 'csv', 'json', 'md'],
@@ -90,7 +103,8 @@ const storage = new CloudinaryStorage({
       // 為非圖片檔案生成唯一檔名
       public_id: resourceType !== 'image'
         ? `${Date.now()}-${file.originalname.replace(/\.[^/.]+$/, '')}`
-        : undefined
+        : undefined,
+      ...imageTransformation
     } as any
   }
 }) as any
