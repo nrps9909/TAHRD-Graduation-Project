@@ -274,7 +274,7 @@ export default function CuteDatabaseView() {
 
   // 批量操作：全選
   const handleSelectAll = () => {
-    setSelectedMemoryIds(new Set(allMemories.map(m => m.id)))
+    setSelectedMemoryIds(new Set(allMemories.map((m: Memory) => m.id)))
   }
 
   // 批量操作：取消全選
