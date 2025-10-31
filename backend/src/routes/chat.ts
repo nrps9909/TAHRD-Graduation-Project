@@ -159,7 +159,7 @@ router.post('/upload-stream', async (req: Request, res: Response) => {
         phase: 'can' // 標記這是罐頭回應
       })}\n\n`)
 
-      const delay = /[\u4e00-\u9fa5]/.test(char) ? 30 : 20 // 罐頭回應快一點
+      const delay = /[\u4e00-\u9fa5]/.test(char) ? 15 : 10 // 優化：罐頭回應更快（30→15ms）
       await new Promise(resolve => setTimeout(resolve, delay))
     }
 
@@ -168,8 +168,8 @@ router.post('/upload-stream', async (req: Request, res: Response) => {
       message: '罐頭回應完成'
     })}\n\n`)
 
-    // 稍微停頓一下，讓用戶看到分段效果
-    await new Promise(resolve => setTimeout(resolve, 300))
+    // 優化：縮短停頓時間（300→150ms）
+    await new Promise(resolve => setTimeout(resolve, 150))
 
     logger.info(`[SSE Upload] 罐頭回應完成，開始處理知識...`)
 
@@ -213,7 +213,8 @@ router.post('/upload-stream', async (req: Request, res: Response) => {
           phase: 'gemini' // 標記這是 Gemini 回應
         })}\n\n`)
 
-        const delay = /[\u4e00-\u9fa5]/.test(char) ? 50 : 30
+        // 優化：加快打字機速度（50→30ms 中文，30→20ms 英文）
+        const delay = /[\u4e00-\u9fa5]/.test(char) ? 30 : 20
         await new Promise(resolve => setTimeout(resolve, delay))
       }
 
@@ -223,8 +224,8 @@ router.post('/upload-stream', async (req: Request, res: Response) => {
           message: '句子完成'
         })}\n\n`)
 
-        // 稍微停頓一下，讓用戶看到分段效果
-        await new Promise(resolve => setTimeout(resolve, 300))
+        // 優化：縮短停頓時間（300→150ms）
+        await new Promise(resolve => setTimeout(resolve, 150))
       }
     }
 
