@@ -381,7 +381,7 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
                         color: '#4A2C0E'
                       }}
                     >
-                      <div className="whitespace-pre-wrap">{item.content}</div>
+                      <div style={{ whiteSpace: 'pre-line' }}>{item.content.trim()}</div>
                       {item.files && item.files.length > 0 && (
                         <div className="mt-1 space-y-1">
                           {item.files.map((file, idx) => (
@@ -415,8 +415,8 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
                           />
                         )}
 
-                      <div className="whitespace-pre-wrap text-base" style={{ lineHeight: '1.6', fontSize: '16px' }}>
-                        {item.content}
+                      <div className="text-base" style={{ lineHeight: '1.6', fontSize: '16px', whiteSpace: 'pre-line' }}>
+                        {item.content.trim()}
                         {/* 只在未完成的泡泡顯示打字機游標 */}
                         {!item.isComplete && item.content && (
                           <span className="inline-block w-0.5 h-5 bg-amber-500 ml-1 animate-pulse" />
