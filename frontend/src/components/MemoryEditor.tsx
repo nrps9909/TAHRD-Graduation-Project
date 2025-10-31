@@ -539,7 +539,7 @@ export default function MemoryEditor({ memory, onClose, onUpdate }: MemoryEditor
                         {memory.detailedSummary && (
                           <div>
                             <h4 className="text-xs font-medium text-gray-400 mb-2 uppercase tracking-wide">詳細摘要</h4>
-                            <p className="text-sm text-gray-300 leading-relaxed">{memory.detailedSummary}</p>
+                            <p className="text-sm text-gray-300 leading-relaxed select-text">{memory.detailedSummary}</p>
                           </div>
                         )}
                         {memory.actionableAdvice && (
@@ -550,7 +550,7 @@ export default function MemoryEditor({ memory, onClose, onUpdate }: MemoryEditor
                               </svg>
                               行動建議
                             </h4>
-                            <p className="text-sm text-gray-300 leading-relaxed">{memory.actionableAdvice}</p>
+                            <p className="text-sm text-gray-300 leading-relaxed select-text">{memory.actionableAdvice}</p>
                           </div>
                         )}
                       </div>
@@ -650,7 +650,7 @@ export default function MemoryEditor({ memory, onClose, onUpdate }: MemoryEditor
                           {memory.detailedSummary && (
                             <div>
                               <h4 className="text-xs font-medium text-gray-400 mb-2 uppercase tracking-wide">詳細摘要</h4>
-                              <p className="text-sm text-gray-300 leading-relaxed">{memory.detailedSummary}</p>
+                              <p className="text-sm text-gray-300 leading-relaxed select-text">{memory.detailedSummary}</p>
                             </div>
                           )}
                           {memory.actionableAdvice && (
@@ -661,7 +661,7 @@ export default function MemoryEditor({ memory, onClose, onUpdate }: MemoryEditor
                                 </svg>
                                 行動建議
                               </h4>
-                              <p className="text-sm text-gray-300 leading-relaxed">{memory.actionableAdvice}</p>
+                              <p className="text-sm text-gray-300 leading-relaxed select-text">{memory.actionableAdvice}</p>
                             </div>
                           )}
                         </div>
