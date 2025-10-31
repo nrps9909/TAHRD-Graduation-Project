@@ -416,10 +416,16 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
                         )}
 
                       <div className="text-base" style={{ lineHeight: '1.6', fontSize: '16px', whiteSpace: 'pre-line' }}>
-                        {item.content.trim()}
-                        {/* 只在未完成的泡泡顯示打字機游標 */}
-                        {!item.isComplete && item.content && (
-                          <span className="inline-block w-0.5 h-5 bg-amber-500 ml-1 animate-pulse" />
+                        {item.content.trim() || (
+                          // 如果內容為空，顯示思考中動畫
+                          <span className="inline-flex items-center gap-1 text-amber-600/70">
+                            <span className="animate-bounce" style={{ animationDelay: '0ms' }}>思</span>
+                            <span className="animate-bounce" style={{ animationDelay: '150ms' }}>考</span>
+                            <span className="animate-bounce" style={{ animationDelay: '300ms' }}>中</span>
+                            <span className="animate-bounce" style={{ animationDelay: '450ms' }}>.</span>
+                            <span className="animate-bounce" style={{ animationDelay: '600ms' }}>.</span>
+                            <span className="animate-bounce" style={{ animationDelay: '750ms' }}>.</span>
+                          </span>
                         )}
                       </div>
                     </div>
