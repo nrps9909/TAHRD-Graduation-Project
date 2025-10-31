@@ -75,9 +75,9 @@ router.get('/stream', async (req: Request, res: Response) => {
             total: words.length
           })}\n\n`)
 
-          // 每個字符之間的延遲（模擬打字速度）
-          // 中文字符慢一點，標點符號快一點
-          const delay = /[\u4e00-\u9fa5]/.test(char) ? 50 : 30
+          // 優化：統一打字機速度（與白噗噗一致）
+          // 中文字符：50ms → 30ms，英文/標點：30ms → 20ms
+          const delay = /[\u4e00-\u9fa5]/.test(char) ? 30 : 20
           await new Promise(resolve => setTimeout(resolve, delay))
         }
 
