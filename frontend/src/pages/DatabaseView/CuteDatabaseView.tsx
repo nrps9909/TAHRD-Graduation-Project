@@ -282,7 +282,7 @@ export default function CuteDatabaseView() {
     setSelectedMemoryIds(new Set())
   }
 
-  // 批量操作：刪除選中的記憶
+  // 批量操作：刪除選中的記憶（批次處理避免服務器過載）
   const handleBulkDelete = async () => {
     if (selectedMemoryIds.size === 0) {
       toast.error('請先選擇要刪除的記憶')
@@ -299,15 +299,46 @@ export default function CuteDatabaseView() {
 
     if (!confirmed) return
 
-    try {
-      // 並發刪除所有選中的記憶
-      await Promise.all(
-        Array.from(selectedMemoryIds).map(id =>
-          deleteMemory({ variables: { id } })
-        )
-      )
+    const idsArray = Array.from(selectedMemoryIds)
+    const batchSize = 3 // 每批處理 3 個，避免服務器過載
+    let deletedCount = 0
+    let failedCount = 0
 
-      toast.success(`成功刪除 ${selectedMemoryIds.size} 條記憶 🗑️`)
+    try {
+      // 分批刪除
+      for (let i = 0; i < idsArray.length; i += batchSize) {
+        const batch = idsArray.slice(i, i + batchSize)
+
+        // 顯示進度
+        toast.info(`正在刪除 ${i + 1}-${Math.min(i + batchSize, idsArray.length)}/${idsArray.length}...`)
+
+        // 批次內並發處理
+        const results = await Promise.allSettled(
+          batch.map(id => deleteMemory({ variables: { id } }))
+        )
+
+        // 統計成功/失敗
+        results.forEach(result => {
+          if (result.status === 'fulfilled') {
+            deletedCount++
+          } else {
+            failedCount++
+          }
+        })
+
+        // 批次間短暫延遲，避免服務器壓力
+        if (i + batchSize < idsArray.length) {
+          await new Promise(resolve => setTimeout(resolve, 300))
+        }
+      }
+
+      // 顯示結果
+      if (failedCount === 0) {
+        toast.success(`成功刪除 ${deletedCount} 條記憶 🗑️`)
+      } else {
+        toast.warning(`刪除完成：成功 ${deletedCount} 條，失敗 ${failedCount} 條`)
+      }
+
       setSelectedMemoryIds(new Set())
       setBulkSelectMode(false)
       refetch()
@@ -598,6 +629,77 @@ export default function CuteDatabaseView() {
               <option value="custom">✋ 自訂</option>
             </select>
 
+            {/* 批量選擇按鈕/工具 */}
+            {!bulkSelectMode ? (
+              <button
+                onClick={() => setBulkSelectMode(true)}
+                className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl font-bold transition-all hover:scale-105 active:scale-95 text-xs sm:text-sm flex items-center gap-1 sm:gap-2 flex-shrink-0"
+                style={{
+                  background: 'rgba(30, 41, 59, 0.7)',
+                  color: '#cbd5e1',
+                  border: '2px solid rgba(251, 191, 36, 0.3)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(251, 191, 36, 0.2)'
+                  e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.5)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(30, 41, 59, 0.7)'
+                  e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.3)'
+                }}
+              >
+                <span className="text-sm sm:text-base">☑️</span>
+                <span className="hidden md:inline">批量</span>
+              </button>
+            ) : (
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+                <button
+                  onClick={() => {
+                    setBulkSelectMode(false)
+                    setSelectedMemoryIds(new Set())
+                  }}
+                  className="px-2 py-1.5 rounded-lg font-medium transition-all hover:scale-105 active:scale-95 text-xs"
+                  style={{
+                    background: 'rgba(100, 116, 139, 0.3)',
+                    color: '#cbd5e1',
+                    border: '1px solid rgba(148, 163, 184, 0.3)',
+                  }}
+                >
+                  ✕
+                </button>
+                <span className="font-bold text-xs sm:text-sm" style={{ color: '#fbbf24' }}>
+                  {selectedMemoryIds.size}/{allMemories.length}
+                </span>
+                <button
+                  onClick={selectedMemoryIds.size === allMemories.length ? handleDeselectAll : handleSelectAll}
+                  className="px-2 py-1 rounded-lg font-medium transition-all hover:scale-105 active:scale-95 text-xs hidden sm:inline-block"
+                  style={{
+                    background: 'rgba(251, 191, 36, 0.25)',
+                    color: '#fbbf24',
+                    border: '1px solid rgba(251, 191, 36, 0.4)',
+                  }}
+                >
+                  {selectedMemoryIds.size === allMemories.length ? '☐ 取消' : '☑️ 全選'}
+                </button>
+                <button
+                  onClick={handleBulkDelete}
+                  disabled={selectedMemoryIds.size === 0}
+                  className="px-2 py-1 rounded-lg font-bold transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed text-xs"
+                  style={{
+                    background: selectedMemoryIds.size > 0
+                      ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.9) 0%, rgba(220, 38, 38, 0.9) 100%)'
+                      : 'rgba(100, 116, 139, 0.3)',
+                    color: selectedMemoryIds.size > 0 ? '#fff' : '#64748b',
+                    border: selectedMemoryIds.size > 0
+                      ? '1px solid rgba(239, 68, 68, 0.6)'
+                      : '1px solid rgba(100, 116, 139, 0.3)',
+                  }}
+                >
+                  🗑️ {selectedMemoryIds.size}
+                </button>
+              </div>
+            )}
+
             {/* 新增按鈕 */}
             <button
               onClick={handleCreateNewMemory}
@@ -719,79 +821,6 @@ export default function CuteDatabaseView() {
           </div>
         ) : (
           <>
-            {/* 批量選擇浮動按鈕/工具面板 */}
-            {!bulkSelectMode ? (
-              /* 浮動批量選擇按鈕 */
-              <button
-                onClick={() => setBulkSelectMode(true)}
-                className="fixed bottom-6 right-6 z-20 px-4 py-3 rounded-xl font-medium transition-all hover:scale-110 active:scale-95 shadow-lg"
-                style={{
-                  background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.9) 0%, rgba(245, 158, 11, 0.9) 100%)',
-                  color: '#ffffff',
-                  border: '2px solid rgba(251, 191, 36, 0.5)',
-                  boxShadow: '0 8px 24px rgba(251, 191, 36, 0.4)',
-                }}
-              >
-                ☑️ 批量選擇
-              </button>
-            ) : (
-              /* 批量模式浮動工具面板 */
-              <div
-                className="fixed bottom-6 right-6 z-20 px-4 py-3 rounded-xl flex items-center gap-3 shadow-lg"
-                style={{
-                  background: 'rgba(30, 41, 59, 0.98)',
-                  backdropFilter: 'blur(20px)',
-                  border: '2px solid rgba(251, 191, 36, 0.4)',
-                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
-                }}
-              >
-                <button
-                  onClick={() => {
-                    setBulkSelectMode(false)
-                    setSelectedMemoryIds(new Set())
-                  }}
-                  className="px-2.5 py-1.5 rounded-lg font-medium transition-all hover:scale-105 active:scale-95"
-                  style={{
-                    background: 'rgba(100, 116, 139, 0.3)',
-                    color: '#cbd5e1',
-                    border: '1px solid rgba(148, 163, 184, 0.3)',
-                  }}
-                >
-                  ✕
-                </button>
-                <span className="font-bold text-base" style={{ color: '#fbbf24' }}>
-                  {selectedMemoryIds.size}/{allMemories.length}
-                </span>
-                <button
-                  onClick={selectedMemoryIds.size === allMemories.length ? handleDeselectAll : handleSelectAll}
-                  className="px-3 py-1.5 rounded-lg font-medium transition-all hover:scale-105 active:scale-95"
-                  style={{
-                    background: 'rgba(251, 191, 36, 0.25)',
-                    color: '#fbbf24',
-                    border: '1px solid rgba(251, 191, 36, 0.4)',
-                  }}
-                >
-                  {selectedMemoryIds.size === allMemories.length ? '☐ 取消' : '☑️ 全選'}
-                </button>
-                <button
-                  onClick={handleBulkDelete}
-                  disabled={selectedMemoryIds.size === 0}
-                  className="px-3 py-1.5 rounded-lg font-bold transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                  style={{
-                    background: selectedMemoryIds.size > 0
-                      ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.9) 0%, rgba(220, 38, 38, 0.9) 100%)'
-                      : 'rgba(100, 116, 139, 0.3)',
-                    color: selectedMemoryIds.size > 0 ? '#fff' : '#64748b',
-                    border: selectedMemoryIds.size > 0
-                      ? '1px solid rgba(239, 68, 68, 0.6)'
-                      : '1px solid rgba(100, 116, 139, 0.3)',
-                  }}
-                >
-                  🗑️ 刪除 ({selectedMemoryIds.size})
-                </button>
-              </div>
-            )}
-
             <SimpleGalleryView
               memories={allMemories}
               onTogglePin={handleTogglePin}
