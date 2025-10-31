@@ -792,21 +792,28 @@ ${contextInfo}
 
         if (mediaFiles.length > 0) {
           logger.info(`[白噗噗] 檢測到 ${mediaFiles.length} 個媒體文件，開始處理...`)
+          logger.info(`[白噗噗] 媒體文件詳情: ${JSON.stringify(mediaFiles.map(f => ({ name: f.name, type: f.type, size: f.size })))}`)
 
-          // 並行下載所有小於 10MB 的媒體檔案
+          // 並行下載所有媒體檔案（優先嘗試下載，下載後再檢查大小）
           const mediaDownloadTasks = mediaFiles.map(async (file) => {
-            // 如果檔案大小未知或超過限制，跳過（只記錄檔名）
-            if (file.size && file.size > MAX_FILE_SIZE_FOR_INLINE) {
-              logger.info(`[白噗噗] 檔案 ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB) 超過 10MB，僅提供元數據`)
-              return null
-            }
-
             try {
+              logger.info(`[白噗噗] 開始下載: ${file.name} (${file.url})`)
+
               const response = await axios.get(file.url, {
                 responseType: 'arraybuffer',
                 timeout: 30000, // 影片/音頻可能較大，增加超時時間
-                maxContentLength: MAX_FILE_SIZE_FOR_INLINE
+                maxContentLength: MAX_FILE_SIZE_FOR_INLINE,
+                maxRedirects: 5
               })
+
+              const downloadedSize = response.data.byteLength
+              logger.info(`[白噗噗] 下載完成: ${file.name}, 實際大小: ${(downloadedSize / 1024 / 1024).toFixed(2)}MB`)
+
+              // 下載後檢查實際大小（Cloudinary 壓縮後可能更小）
+              if (downloadedSize > MAX_FILE_SIZE_FOR_INLINE) {
+                logger.info(`[白噗噗] 檔案 ${file.name} 下載後大小 (${(downloadedSize / 1024 / 1024).toFixed(2)}MB) 超過 10MB，跳過分析`)
+                return null
+              }
 
               const base64Data = Buffer.from(response.data).toString('base64')
 
@@ -815,7 +822,11 @@ ${contextInfo}
                 data: base64Data
               }
             } catch (error: any) {
-              logger.error(`[白噗噗] 下載媒體檔案失敗 (${file.name}):`, error.message)
+              logger.error(`[白噗噗] 下載媒體檔案失敗 (${file.name}):`, {
+                message: error.message,
+                code: error.code,
+                status: error.response?.status
+              })
               return null
             }
           })
@@ -827,7 +838,10 @@ ${contextInfo}
             if (media) images.push(media)
           })
 
-          logger.info(`[白噗噗] 成功下載並轉換 ${images.length}/${mediaFiles.length} 個媒體檔案（小於 10MB）`)
+          logger.info(`[白噗噗] ✅ 成功下載並轉換 ${images.length}/${mediaFiles.length} 個媒體檔案`)
+          if (images.length === 0 && mediaFiles.length > 0) {
+            logger.warn(`[白噗噗] ⚠️ 所有媒體檔案下載失敗或過大，無法提供給 Gemini 分析`)
+          }
         }
       }
 

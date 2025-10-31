@@ -822,7 +822,8 @@ export default function TororoKnowledgeAssistant({
           .map(f => ({
             url: f.url,
             name: f.name,
-            type: f.type.startsWith('image/') ? 'image' : 'file'
+            type: f.type.startsWith('image/') ? 'image' : 'file',
+            size: f.size // 新增：傳遞檔案大小資訊
           }))
 
         // 2️⃣ 檢查輸入文字中是否包含 URL
