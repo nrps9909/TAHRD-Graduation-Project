@@ -720,93 +720,78 @@ export default function CuteDatabaseView() {
         ) : (
           <>
             {/* 批量操作工具欄 */}
-            <div className="sticky top-0 z-10 mb-4 p-3 rounded-2xl flex items-center justify-between gap-3" style={{
+            <div className="sticky top-0 z-10 mb-3 px-2 py-1.5 rounded-xl flex items-center justify-between gap-2 text-xs" style={{
               background: 'rgba(30, 41, 59, 0.95)',
               backdropFilter: 'blur(12px)',
-              border: '2px solid rgba(251, 191, 36, 0.3)',
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+              border: '1px solid rgba(251, 191, 36, 0.25)',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
             }}>
               {!bulkSelectMode ? (
                 <>
-                  <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: '#94a3b8' }}>
-                    <span className="text-lg">📊</span>
-                    <span>共 {allMemories.length} 條記憶</span>
+                  <div className="flex items-center gap-1.5 font-medium" style={{ color: '#94a3b8' }}>
+                    <span>📊</span>
+                    <span>{allMemories.length} 條</span>
                   </div>
                   <button
                     onClick={() => setBulkSelectMode(true)}
-                    className="px-4 py-2 rounded-xl font-bold transition-all hover:scale-105 active:scale-95"
+                    className="px-2.5 py-1 rounded-lg font-medium transition-all hover:scale-105 active:scale-95"
                     style={{
-                      background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.3) 0%, rgba(245, 158, 11, 0.25) 100%)',
+                      background: 'rgba(251, 191, 36, 0.25)',
                       color: '#fbbf24',
-                      border: '2px solid rgba(251, 191, 36, 0.4)',
+                      border: '1px solid rgba(251, 191, 36, 0.3)',
                     }}
                   >
-                    ☑️ 批量選擇
+                    ☑️ 批量
                   </button>
                 </>
               ) : (
                 <>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
                     <button
                       onClick={() => {
                         setBulkSelectMode(false)
                         setSelectedMemoryIds(new Set())
                       }}
-                      className="px-3 py-1.5 rounded-lg font-semibold transition-all hover:scale-105 active:scale-95 text-sm"
+                      className="px-2 py-0.5 rounded-md font-medium transition-all hover:scale-105 active:scale-95"
                       style={{
-                        background: 'rgba(100, 116, 139, 0.3)',
+                        background: 'rgba(100, 116, 139, 0.25)',
                         color: '#cbd5e1',
-                        border: '1px solid rgba(148, 163, 184, 0.4)',
+                        border: '1px solid rgba(148, 163, 184, 0.3)',
                       }}
                     >
-                      ✕ 取消
+                      ✕
                     </button>
-                    <div className="h-6 w-px" style={{ background: 'rgba(251, 191, 36, 0.3)' }} />
-                    <span className="text-sm font-bold" style={{ color: '#fbbf24' }}>
-                      已選擇 {selectedMemoryIds.size} / {allMemories.length}
+                    <span className="font-semibold" style={{ color: '#fbbf24' }}>
+                      {selectedMemoryIds.size}/{allMemories.length}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {selectedMemoryIds.size === allMemories.length ? (
-                      <button
-                        onClick={handleDeselectAll}
-                        className="px-3 py-1.5 rounded-lg font-semibold transition-all hover:scale-105 active:scale-95 text-sm"
-                        style={{
-                          background: 'rgba(251, 191, 36, 0.2)',
-                          color: '#fbbf24',
-                          border: '1px solid rgba(251, 191, 36, 0.4)',
-                        }}
-                      >
-                        ☐ 取消全選
-                      </button>
-                    ) : (
-                      <button
-                        onClick={handleSelectAll}
-                        className="px-3 py-1.5 rounded-lg font-semibold transition-all hover:scale-105 active:scale-95 text-sm"
-                        style={{
-                          background: 'rgba(251, 191, 36, 0.2)',
-                          color: '#fbbf24',
-                          border: '1px solid rgba(251, 191, 36, 0.4)',
-                        }}
-                      >
-                        ☑️ 全選
-                      </button>
-                    )}
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={selectedMemoryIds.size === allMemories.length ? handleDeselectAll : handleSelectAll}
+                      className="px-2 py-0.5 rounded-md font-medium transition-all hover:scale-105 active:scale-95"
+                      style={{
+                        background: 'rgba(251, 191, 36, 0.2)',
+                        color: '#fbbf24',
+                        border: '1px solid rgba(251, 191, 36, 0.3)',
+                      }}
+                    >
+                      {selectedMemoryIds.size === allMemories.length ? '☐' : '☑️'}
+                    </button>
                     <button
                       onClick={handleBulkDelete}
                       disabled={selectedMemoryIds.size === 0}
-                      className="px-4 py-1.5 rounded-lg font-bold transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                      className="px-2.5 py-0.5 rounded-md font-semibold transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                       style={{
                         background: selectedMemoryIds.size > 0
                           ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.8) 0%, rgba(220, 38, 38, 0.8) 100%)'
-                          : 'rgba(100, 116, 139, 0.3)',
+                          : 'rgba(100, 116, 139, 0.25)',
                         color: selectedMemoryIds.size > 0 ? '#fff' : '#64748b',
                         border: selectedMemoryIds.size > 0
-                          ? '2px solid rgba(239, 68, 68, 0.6)'
-                          : '2px solid rgba(100, 116, 139, 0.3)',
+                          ? '1px solid rgba(239, 68, 68, 0.5)'
+                          : '1px solid rgba(100, 116, 139, 0.25)',
                       }}
                     >
-                      🗑️ 刪除 ({selectedMemoryIds.size})
+                      🗑️ {selectedMemoryIds.size}
                     </button>
                   </div>
                 </>
