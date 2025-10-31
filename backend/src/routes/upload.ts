@@ -98,7 +98,16 @@ const storage = new CloudinaryStorage({
 
     return {
       folder: 'tororo-knowledge',
-      allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'pdf', 'doc', 'docx', 'txt', 'csv', 'json', 'md'],
+      allowed_formats: [
+        // 圖片
+        'jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'heif',
+        // 影片
+        'mp4', 'mpeg', 'mov', 'avi', 'flv', 'mpg', 'webm', 'wmv', '3gp',
+        // 音頻
+        'wav', 'mp3', 'aiff', 'aac', 'ogg', 'flac',
+        // 文件
+        'pdf', 'doc', 'docx', 'txt', 'csv', 'json', 'md'
+      ],
       resource_type: resourceType,
       // 為非圖片檔案生成唯一檔名
       public_id: resourceType !== 'image'
@@ -113,15 +122,39 @@ const storage = new CloudinaryStorage({
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 10 * 1024 * 1024 // 10MB 限制
+    fileSize: 500 * 1024 * 1024 // 500MB 限制（單次上傳最大值）
   },
   fileFilter: (req: any, file: any, cb: any) => {
-    // 允許的檔案類型
+    // 允許的檔案類型（支援 Gemini 2.5 Flash 所有支援格式）
     const allowedMimes = [
+      // 圖片
       'image/jpeg',
       'image/jpg',
       'image/png',
       'image/gif',
+      'image/webp',
+      'image/heic',
+      'image/heif',
+      // 影片
+      'video/mp4',
+      'video/mpeg',
+      'video/mov',
+      'video/avi',
+      'video/x-flv',
+      'video/mpg',
+      'video/webm',
+      'video/wmv',
+      'video/3gpp',
+      'video/quicktime',
+      // 音頻
+      'audio/wav',
+      'audio/mp3',
+      'audio/mpeg',
+      'audio/aiff',
+      'audio/aac',
+      'audio/ogg',
+      'audio/flac',
+      // 文件
       'application/pdf',
       'application/msword',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',

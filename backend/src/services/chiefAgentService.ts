@@ -778,21 +778,34 @@ ${contextInfo}
         logger.info(`[白噗噗] 檢測到連結，將由 SubAgent 深度分析（優化：跳過同步提取）`)
       }
 
-      // === 處理圖片文件（多模態支援）===
+      // === 處理多模態文件（圖片、影片、音頻）===
       const images: Array<{ mimeType: string; data: string }> = []
+      const MAX_FILE_SIZE_FOR_INLINE = 10 * 1024 * 1024 // 10MB（Gemini inline_data 限制為 20MB，保守設為 10MB）
 
       if (input.files && input.files.length > 0) {
-        const imageFiles = input.files.filter(f => f.type.startsWith('image/'))
+        // 篩選可直接分析的媒體檔案（圖片、影片、音頻）
+        const mediaFiles = input.files.filter(f =>
+          f.type.startsWith('image/') ||
+          f.type.startsWith('video/') ||
+          f.type.startsWith('audio/')
+        )
 
-        if (imageFiles.length > 0) {
-          logger.info(`[白噗噗] 檢測到 ${imageFiles.length} 個圖片文件，開始下載並轉換...`)
+        if (mediaFiles.length > 0) {
+          logger.info(`[白噗噗] 檢測到 ${mediaFiles.length} 個媒體文件，開始處理...`)
 
-          // 並行下載所有圖片
-          const imageDownloadTasks = imageFiles.map(async (file) => {
+          // 並行下載所有小於 10MB 的媒體檔案
+          const mediaDownloadTasks = mediaFiles.map(async (file) => {
+            // 如果檔案大小未知或超過限制，跳過（只記錄檔名）
+            if (file.size && file.size > MAX_FILE_SIZE_FOR_INLINE) {
+              logger.info(`[白噗噗] 檔案 ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB) 超過 10MB，僅提供元數據`)
+              return null
+            }
+
             try {
               const response = await axios.get(file.url, {
                 responseType: 'arraybuffer',
-                timeout: 10000
+                timeout: 30000, // 影片/音頻可能較大，增加超時時間
+                maxContentLength: MAX_FILE_SIZE_FOR_INLINE
               })
 
               const base64Data = Buffer.from(response.data).toString('base64')
@@ -802,19 +815,19 @@ ${contextInfo}
                 data: base64Data
               }
             } catch (error: any) {
-              logger.error(`[白噗噗] 下載圖片失敗 (${file.name}):`, error.message)
+              logger.error(`[白噗噗] 下載媒體檔案失敗 (${file.name}):`, error.message)
               return null
             }
           })
 
-          const downloadedImages = await Promise.all(imageDownloadTasks)
+          const downloadedMedia = await Promise.all(mediaDownloadTasks)
 
-          // 過濾掉失敗的圖片
-          downloadedImages.forEach(img => {
-            if (img) images.push(img)
+          // 過濾掉失敗或過大的檔案
+          downloadedMedia.forEach(media => {
+            if (media) images.push(media)
           })
 
-          logger.info(`[白噗噗] 成功下載並轉換 ${images.length}/${imageFiles.length} 個圖片`)
+          logger.info(`[白噗噗] 成功下載並轉換 ${images.length}/${mediaFiles.length} 個媒體檔案（小於 10MB）`)
         }
       }
 

@@ -27,10 +27,42 @@ export const GRAPHQL_URL = import.meta.env.VITE_GRAPHQL_URL || `${API_BASE_URL}/
 export const WS_URL = import.meta.env.VITE_WS_URL || `${API_BASE_URL}`
 
 // 文件大小限制
-export const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
+export const MAX_FILE_SIZE = 500 * 1024 * 1024 // 500MB（單次上傳最大值）
 
 // 支援的文件類型
-export const SUPPORTED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif']
+export const SUPPORTED_IMAGE_TYPES = [
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/gif',
+  'image/webp',
+  'image/heic',
+  'image/heif',
+]
+
+export const SUPPORTED_VIDEO_TYPES = [
+  'video/mp4',
+  'video/mpeg',
+  'video/mov',
+  'video/quicktime',
+  'video/avi',
+  'video/x-flv',
+  'video/mpg',
+  'video/webm',
+  'video/wmv',
+  'video/3gpp',
+]
+
+export const SUPPORTED_AUDIO_TYPES = [
+  'audio/wav',
+  'audio/mp3',
+  'audio/mpeg',
+  'audio/aiff',
+  'audio/aac',
+  'audio/ogg',
+  'audio/flac',
+]
+
 export const SUPPORTED_DOCUMENT_TYPES = [
   'application/pdf',
   'application/msword',
@@ -43,5 +75,7 @@ export const SUPPORTED_DOCUMENT_TYPES = [
 
 export const SUPPORTED_FILE_TYPES = [
   ...SUPPORTED_IMAGE_TYPES,
+  ...SUPPORTED_VIDEO_TYPES,
+  ...SUPPORTED_AUDIO_TYPES,
   ...SUPPORTED_DOCUMENT_TYPES,
 ]
