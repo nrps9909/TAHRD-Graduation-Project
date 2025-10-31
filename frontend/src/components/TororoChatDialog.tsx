@@ -476,25 +476,25 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
 
           {/* 輸入區域 */}
           <div
-            className="rounded-2xl p-4"
+            className="rounded-xl md:rounded-2xl p-2 sm:p-3 md:p-4"
             style={{
               background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.2) 0%, rgba(245, 158, 11, 0.15) 100%)',
               backdropFilter: 'blur(20px)',
               border: '2px solid rgba(251, 191, 36, 0.3)'
             }}
           >
-          <div className="flex gap-3 items-end">
+          <div className="flex gap-2 md:gap-3 items-end">
             {/* 附件按鈕 */}
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="p-3 rounded-xl transition-all"
+              className="p-2 md:p-3 rounded-lg md:rounded-xl transition-all flex-shrink-0"
               style={{
                 background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.3) 0%, rgba(245, 158, 11, 0.25) 100%)'
               }}
               title="上傳檔案"
               aria-label="上傳檔案"
             >
-              <span className="text-xl">📎</span>
+              <span className="text-lg md:text-xl">📎</span>
             </button>
 
             <textarea
@@ -503,7 +503,7 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
               onChange={(e) => setInputText(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="告訴我你想記錄什麼..."
-              className="flex-1 bg-transparent outline-none resize-none min-h-[60px] max-h-[120px] tororo-input"
+              className="flex-1 bg-transparent outline-none resize-none min-h-[50px] sm:min-h-[60px] max-h-[100px] sm:max-h-[120px] tororo-input text-sm md:text-base"
               style={{
                 color: '#8B5C2E',
                 fontFamily: 'inherit'
@@ -513,7 +513,7 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
             <button
               onClick={handleSubmit}
               disabled={!inputText.trim() && uploadedFiles.filter(f => f.status === 'completed').length === 0}
-              className="px-6 py-3 rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-3 py-2 sm:px-4 sm:py-2.5 md:px-6 md:py-3 rounded-lg md:rounded-xl font-medium text-sm md:text-base transition-all disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
               style={{
                 background: (inputText.trim() || uploadedFiles.some(f => f.status === 'completed'))
                   ? 'linear-gradient(135deg, rgba(251, 191, 36, 0.8) 0%, rgba(245, 158, 11, 0.7) 100%)'
@@ -522,7 +522,8 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
               }}
               aria-label="發送訊息"
             >
-              發送 ✨
+              <span className="hidden sm:inline">發送 ✨</span>
+              <span className="inline sm:hidden">✨</span>
             </button>
           </div>
           </div>
