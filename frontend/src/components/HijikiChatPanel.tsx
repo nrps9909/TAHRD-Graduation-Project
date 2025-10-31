@@ -215,7 +215,7 @@ export function HijikiChatPanel({ onClose }: HijikiChatPanelProps) {
       {/* 對話區域 */}
       <div
         ref={chatContainerRef}
-        className="flex-1 overflow-y-auto p-4 space-y-4"
+        className="flex-1 overflow-y-auto p-4 space-y-3 sm:space-y-4"
       >
         {chatState.messages.length === 0 && !isTyping && (
           <div className="flex flex-col items-center justify-center h-full text-center px-6">
@@ -358,7 +358,7 @@ export function HijikiChatPanel({ onClose }: HijikiChatPanelProps) {
             onChange={(e) => setHijikiInputText(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="問我知識庫裡的任何問題..."
-            className="flex-1 px-4 py-3 rounded-xl resize-none focus:outline-none"
+            className="flex-1 px-4 py-3 rounded-xl resize-none focus:outline-none hijiki-input"
             style={{
               background: 'rgba(67, 56, 202, 0.2)',
               border: '2px solid rgba(139, 92, 246, 0.4)',

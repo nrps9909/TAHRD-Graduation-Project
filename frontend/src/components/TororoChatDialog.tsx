@@ -306,6 +306,7 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
               onClose()
             }}
             className="text-amber-900/70 hover:text-amber-900 transition-colors text-3xl"
+            aria-label="關閉對話視窗"
           >
             ✕
           </button>
@@ -332,7 +333,7 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
         {/* 右側：對話區域 - 彈性寬度 */}
         <div className="flex-1 flex flex-col min-w-0">
           {/* 對話歷史 - 佔據剩餘空間 */}
-        <div className="flex-1 overflow-y-auto mb-6 space-y-4">
+        <div className="flex-1 overflow-y-auto mb-6 space-y-3 sm:space-y-4">
           {chatHistory.length === 0 ? (
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center space-y-4">
@@ -369,13 +370,13 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
                   className={item.type === 'user' ? 'flex justify-end mb-2' : 'flex items-start gap-3 mb-4'}
                 >
                   {item.type === 'user' ? (
-                    // 用戶訊息 - 更小更簡潔
+                    // 用戶訊息 - 統一樣式
                     <div
-                      className="max-w-[60%] rounded-xl px-3 py-2 text-xs opacity-60"
+                      className="max-w-[75%] rounded-2xl px-4 py-3 text-sm"
                       style={{
-                        background: 'rgba(251, 191, 36, 0.3)',
+                        background: 'rgba(251, 191, 36, 0.5)',
                         backdropFilter: 'blur(5px)',
-                        color: '#8B5C2E'
+                        color: '#4A2C0E'
                       }}
                     >
                       <div className="whitespace-pre-wrap">{item.content}</div>
@@ -391,7 +392,7 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
                     // 白噗噗回答 - 從左側模型說出來
                     <div className="flex justify-start">
                       <div
-                        className="max-w-[45%] rounded-2xl px-5 py-3 relative"
+                        className="max-w-[75%] rounded-2xl px-4 py-3 relative"
                         style={{
                           background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(254, 252, 247, 0.95) 100%)',
                           backdropFilter: 'blur(20px)',
@@ -457,6 +458,7 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
                     <button
                       onClick={() => removeFile(file.id)}
                       className="ml-auto text-amber-900/50 hover:text-amber-900"
+                      aria-label={`移除檔案 ${file.name}`}
                     >
                       ✕
                     </button>
@@ -484,6 +486,7 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
                 background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.3) 0%, rgba(245, 158, 11, 0.25) 100%)'
               }}
               title="上傳檔案"
+              aria-label="上傳檔案"
             >
               <span className="text-xl">📎</span>
             </button>
@@ -494,9 +497,9 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
               onChange={(e) => setInputText(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="告訴我你想記錄什麼..."
-              className="flex-1 bg-transparent outline-none resize-none min-h-[60px] max-h-[120px]"
+              className="flex-1 bg-transparent outline-none resize-none min-h-[60px] max-h-[120px] tororo-input"
               style={{
-                color: '#5D3A1A',
+                color: '#8B5C2E',
                 fontFamily: 'inherit'
               }}
             />
@@ -511,6 +514,7 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
                   : 'rgba(251, 191, 36, 0.2)',
                 color: '#5D3A1A'
               }}
+              aria-label="發送訊息"
             >
               發送 ✨
             </button>

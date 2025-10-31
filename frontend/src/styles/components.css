@@ -90,6 +90,26 @@
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
 }
 
+/* 白噗噗（Tororo）輸入框 placeholder 樣式 */
+.tororo-input::placeholder {
+  color: rgba(139, 92, 46, 0.5);
+  opacity: 1;
+}
+
+.tororo-input:focus::placeholder {
+  color: rgba(139, 92, 46, 0.4);
+}
+
+/* 黑噗噗（Hijiki）輸入框 placeholder 樣式 */
+.hijiki-input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+  opacity: 1;
+}
+
+.hijiki-input:focus::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
 /* 聊天氣泡動畫 */
 .chat-bubble-enter {
   animation: messageSend 0.3s ease-out;

@@ -209,7 +209,7 @@ export default function ChatBubble({
             <div className="h-[2px] rounded-full" style={{ background: theme.divider }} />
 
             {/* 訊息區域 */}
-            <div className="relative overflow-y-auto p-5 space-y-3" style={{ height: '470px' }}>
+            <div className="relative overflow-y-auto p-5 space-y-3 sm:space-y-4" style={{ height: '470px' }}>
               {showHistory ? (
                 <ChatHistoryView
                   chatHistory={chatHistory}
@@ -279,7 +279,7 @@ export default function ChatBubble({
                   onChange={(e) => setInputMessage(e.target.value)}
                   onKeyPress={handleKeyPress}
                   placeholder={`跟 ${theme.name} 說話...`}
-                  className="flex-1 px-4 py-3 rounded-2xl font-medium text-sm focus:outline-none transition-all placeholder-opacity-60"
+                  className={`flex-1 px-4 py-3 rounded-2xl font-medium text-sm focus:outline-none transition-all ${currentCat === CatAgent.HIJIKI ? 'hijiki-input' : 'tororo-input'}`}
                   style={{
                     border: `3px solid ${theme.inputBorder}`,
                     background: theme.inputBg,

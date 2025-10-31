@@ -1089,7 +1089,7 @@ export default function Live2DCat({
                   onKeyPress={(e) => e.key === 'Enter' && !isProcessing && handleSendMessage()}
                   disabled={isProcessing}
                   placeholder={`跟 ${theme.name} 說話...`}
-                  className="flex-1 px-3 py-2 sm:px-4 sm:py-3 rounded-xl sm:rounded-2xl font-medium text-xs sm:text-sm focus:outline-none transition-all"
+                  className={`flex-1 px-3 py-2 sm:px-4 sm:py-3 rounded-xl sm:rounded-2xl font-medium text-xs sm:text-sm focus:outline-none transition-all ${isBlackCat ? 'hijiki-input' : 'tororo-input'}`}
                   style={{
                     border: `2px sm:3px solid ${theme.inputBorder}`,
                     background: theme.inputBg,
