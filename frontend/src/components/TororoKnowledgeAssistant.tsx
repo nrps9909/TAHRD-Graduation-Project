@@ -698,7 +698,7 @@ export default function TororoKnowledgeAssistant({
 
       try {
         const formData = new FormData()
-        formData.append('files', file)
+        formData.append('file', file) // 改用 single upload
 
         // 準備認證標頭
         const headers: HeadersInit = {}
@@ -706,7 +706,7 @@ export default function TororoKnowledgeAssistant({
           headers['Authorization'] = `Bearer ${token}`
         }
 
-        const response = await fetch(API_ENDPOINTS.UPLOAD_MULTIPLE, {
+        const response = await fetch(API_ENDPOINTS.UPLOAD_SINGLE, {
           method: 'POST',
           headers,
           body: formData
@@ -717,7 +717,7 @@ export default function TororoKnowledgeAssistant({
         }
 
         const result = await response.json()
-        const uploadedFile = result.files[0]
+        const uploadedFile = result // single upload 直接返回檔案資訊
 
         // 更新為上傳完成
         setUploadedCloudinaryFiles(prev =>
