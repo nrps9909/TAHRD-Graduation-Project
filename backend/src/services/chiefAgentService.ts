@@ -1636,9 +1636,9 @@ ${input.files && input.files.length > 0 ? `📎 附件：${input.files.map(f => 
 記住：你不只是分類工具，而是一隻真正關心用戶、默默給予支持的貓咪朋友
 
 📝 用戶輸入：「${content}」
-${input.files && input.files.length > 0 ? `📎 附件：${input.files.map(f => f.name).join(', ')}${input.files.some(f => f.type.startsWith('image/')) ? ' (包含圖片，請仔細觀察圖片內容並融入你的分析)' : ''}` : ''}
+${input.files && input.files.length > 0 ? `📎 附件：${input.files.map(f => f.name).join(', ')}${input.files.some(f => f.type.startsWith('image/')) ? ' (包含圖片，請仔細觀察圖片內容，並在 warmResponse 和 quickSummary 中描述你看到的具體內容)' : ''}` : ''}
 
-🎯 任務：精準分類到最合適的類別
+🎯 任務：精準分類到最合適的類別，如果有圖片請描述圖片中的具體內容
 
 📂 用戶自訂的類別：
 
