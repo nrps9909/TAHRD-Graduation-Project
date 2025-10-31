@@ -637,10 +637,14 @@ ${contextInfo}
   }
 
   /**
-   * 調用 Gemini API 生成內容
+   * 調用 Gemini API 生成內容（支持多模態：文本+圖片）
    * 優化：完全使用 REST API，移除不穩定的 CLI
    */
-  private async callMCP(prompt: string, assistantId: string): Promise<string> {
+  private async callMCP(
+    prompt: string,
+    assistantId: string,
+    images?: Array<{ mimeType: string; data: string }>
+  ): Promise<string> {
     try {
       // 直接使用 Gemini REST API（快速、穩定）
       // 對話使用 0.8 temperature 以獲得更有創意和情感的回應
@@ -648,7 +652,8 @@ ${contextInfo}
         model: this.geminiModel,
         temperature: 0.8, // 提升 temperature 增強情感表達和創意
         maxOutputTokens: 2048,
-        timeout: 60000 // 60 秒超時 - 增加以應對複雜對話
+        timeout: 60000, // 60 秒超時 - 增加以應對複雜對話
+        images // 傳遞圖片數據（多模態支援）
       })
 
       return response
@@ -773,6 +778,46 @@ ${contextInfo}
         logger.info(`[白噗噗] 檢測到連結，將由 SubAgent 深度分析（優化：跳過同步提取）`)
       }
 
+      // === 處理圖片文件（多模態支援）===
+      const images: Array<{ mimeType: string; data: string }> = []
+
+      if (input.files && input.files.length > 0) {
+        const imageFiles = input.files.filter(f => f.type.startsWith('image/'))
+
+        if (imageFiles.length > 0) {
+          logger.info(`[白噗噗] 檢測到 ${imageFiles.length} 個圖片文件，開始下載並轉換...`)
+
+          // 並行下載所有圖片
+          const imageDownloadTasks = imageFiles.map(async (file) => {
+            try {
+              const response = await axios.get(file.url, {
+                responseType: 'arraybuffer',
+                timeout: 10000
+              })
+
+              const base64Data = Buffer.from(response.data).toString('base64')
+
+              return {
+                mimeType: file.type,
+                data: base64Data
+              }
+            } catch (error: any) {
+              logger.error(`[白噗噗] 下載圖片失敗 (${file.name}):`, error.message)
+              return null
+            }
+          })
+
+          const downloadedImages = await Promise.all(imageDownloadTasks)
+
+          // 過濾掉失敗的圖片
+          downloadedImages.forEach(img => {
+            if (img) images.push(img)
+          })
+
+          logger.info(`[白噗噗] 成功下載並轉換 ${images.length}/${imageFiles.length} 個圖片`)
+        }
+      }
+
       // 構建智能分類 Prompt（動態版：根據用戶自訂類別調整）
       const prompt = hasCustomCategories
         ? this.buildDynamicClassificationPrompt(enrichedContent, input, userIslands)
@@ -782,7 +827,7 @@ ${contextInfo}
       const oldModel = this.geminiModel
       this.geminiModel = 'gemini-2.5-flash'
 
-      const response = await this.callMCP(prompt, chief.id)
+      const response = await this.callMCP(prompt, chief.id, images.length > 0 ? images : undefined)
       const result = this.parseJSON(response)
 
       this.geminiModel = oldModel // 恢復原模型
@@ -1427,7 +1472,7 @@ ${input.content}
 記住：你不只是分類工具，而是一隻真正關心用戶、默默給予支持的貓咪朋友
 
 📝 用戶輸入：「${content}」
-${input.files && input.files.length > 0 ? `📎 附件：${input.files.length}個文件` : ''}
+${input.files && input.files.length > 0 ? `📎 附件：${input.files.map(f => f.name).join(', ')}${input.files.some(f => f.type.startsWith('image/')) ? ' (包含圖片，請仔細觀察圖片內容並融入你的分析)' : ''}` : ''}
 
 🎯 任務：精準分類到最合適的類別
 
@@ -1564,7 +1609,7 @@ ${input.files && input.files.length > 0 ? `📎 附件：${input.files.length}�
 記住：你不只是分類工具，而是一隻真正關心用戶、默默給予支持的貓咪朋友
 
 📝 用戶輸入：「${content}」
-${input.files && input.files.length > 0 ? `📎 附件：${input.files.length}個文件` : ''}
+${input.files && input.files.length > 0 ? `📎 附件：${input.files.map(f => f.name).join(', ')}${input.files.some(f => f.type.startsWith('image/')) ? ' (包含圖片，請仔細觀察圖片內容並融入你的分析)' : ''}` : ''}
 
 🎯 任務：精準分類到最合適的類別
 

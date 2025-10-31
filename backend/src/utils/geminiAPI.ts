@@ -13,6 +13,12 @@ export interface GeminiAPIConfig {
   temperature?: number
   maxOutputTokens?: number
   timeout?: number
+  images?: GeminiImageData[]  // 支持多模態輸入（圖片）
+}
+
+export interface GeminiImageData {
+  mimeType: string  // 例如: 'image/jpeg', 'image/png'
+  data: string      // Base64 編碼的圖片數據
 }
 
 export interface GeminiAPIResponse {
@@ -21,10 +27,10 @@ export interface GeminiAPIResponse {
 }
 
 /**
- * 調用 Gemini REST API 生成文本
+ * 調用 Gemini REST API 生成文本（支持多模態：文本+圖片）
  *
  * @param prompt 提示詞
- * @param config 配置選項
+ * @param config 配置選項（可包含圖片數據）
  * @returns 生成的文本
  */
 export async function callGeminiAPI(
@@ -35,7 +41,8 @@ export async function callGeminiAPI(
     model = 'gemini-2.5-flash',
     temperature = 0.7,
     maxOutputTokens = 2048,
-    timeout = 30000 // 增加默認超時時間到 30 秒
+    timeout = 30000, // 增加默認超時時間到 30 秒
+    images = []
   } = config
 
   const apiKey = process.env.GEMINI_API_KEY
@@ -46,13 +53,31 @@ export async function callGeminiAPI(
   const startTime = Date.now()
 
   try {
-    logger.info(`[Gemini API] Calling ${model}...`)
+    // 構建 parts 數組（文本 + 可選的圖片）
+    const parts: Array<{ text?: string; inline_data?: { mime_type: string; data: string } }> = [
+      { text: prompt }
+    ]
+
+    // 添加圖片數據（如果有）
+    if (images && images.length > 0) {
+      images.forEach(image => {
+        parts.push({
+          inline_data: {
+            mime_type: image.mimeType,
+            data: image.data
+          }
+        })
+      })
+      logger.info(`[Gemini API] Calling ${model} with ${images.length} image(s)...`)
+    } else {
+      logger.info(`[Gemini API] Calling ${model}...`)
+    }
 
     const response = await axios.post(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
       {
         contents: [{
-          parts: [{ text: prompt }]
+          parts
         }],
         generationConfig: {
           temperature,
