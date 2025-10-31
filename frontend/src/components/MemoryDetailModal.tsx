@@ -93,21 +93,19 @@ export function MemoryDetailModal({ memory, isOpen, onClose }: MemoryDetailModal
                     </button>
                   </div>
 
-                  {/* 標籤和重要度 */}
-                  <div className="flex items-center gap-3 flex-wrap">
-                    {memory.tags && memory.tags.map((tag, idx) => (
-                      <span
-                        key={idx}
-                        className="px-3 py-1 rounded-full text-xs font-medium bg-white/20 backdrop-blur-sm"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                    <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-white/20 backdrop-blur-sm text-xs font-medium">
-                      <span>⭐</span>
-                      <span>重要度: {memory.importance}/10</span>
+                  {/* 標籤 */}
+                  {memory.tags && memory.tags.length > 0 && (
+                    <div className="flex items-center gap-3 flex-wrap">
+                      {memory.tags.map((tag, idx) => (
+                        <span
+                          key={idx}
+                          className="px-3 py-1 rounded-full text-xs font-medium bg-white/20 backdrop-blur-sm"
+                        >
+                          {tag}
+                        </span>
+                      ))}
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
 
