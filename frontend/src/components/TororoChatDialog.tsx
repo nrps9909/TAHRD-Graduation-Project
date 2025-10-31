@@ -241,13 +241,15 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
             ])
           },
           onComplete: () => {
-            // 標記最後一個泡泡為完成
+            // 標記最後一個泡泡為完成，並移除空白泡泡
             setChatHistory(prev =>
-              prev.map(msg =>
-                msg.id === currentMessageId
-                  ? { ...msg, isComplete: true }
-                  : msg
-              )
+              prev
+                .map(msg =>
+                  msg.id === currentMessageId
+                    ? { ...msg, isComplete: true }
+                    : msg
+                )
+                .filter(msg => msg.content.trim() !== '') // 過濾掉空白訊息
             )
             resolve()
             play('message_received')
