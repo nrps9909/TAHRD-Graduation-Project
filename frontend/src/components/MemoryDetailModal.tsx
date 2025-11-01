@@ -8,6 +8,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { zhTW } from 'date-fns/locale'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Z_INDEX_CLASSES } from '../constants/zIndex'
+import { useNavigate } from 'react-router-dom'
 
 interface MemoryDetailModalProps {
   memory: IslandMemory | null
@@ -28,6 +29,8 @@ const CATEGORY_CONFIG: Record<string, { name: string; color: string; emoji: stri
 }
 
 export function MemoryDetailModal({ memory, island, isOpen, onClose }: MemoryDetailModalProps) {
+  const navigate = useNavigate()
+
   if (!memory || !isOpen) return null
 
   // 優先使用島嶼信息，如果沒有島嶼則使用類別信息
@@ -42,6 +45,11 @@ export function MemoryDetailModal({ memory, island, isOpen, onClose }: MemoryDet
         const categoryInfo = CATEGORY_CONFIG[categoryKey] || { name: memory.category, color: '#999', emoji: '📌' }
         return categoryInfo
       })()
+
+  // 處理編輯記憶按鈕點擊
+  const handleEditMemory = () => {
+    navigate(`/database?memoryId=${memory.id}`)
+  }
 
   return (
     <AnimatePresence>
@@ -259,6 +267,7 @@ export function MemoryDetailModal({ memory, island, isOpen, onClose }: MemoryDet
                   關閉
                 </button>
                 <button
+                  onClick={handleEditMemory}
                   className="px-6 py-3 rounded-2xl font-medium text-white transition-all hover:scale-105 active:scale-95"
                   style={{
                     background: `linear-gradient(135deg, ${displayInfo.color}, ${displayInfo.color}dd)`,

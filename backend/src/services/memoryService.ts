@@ -5,7 +5,7 @@ const prisma = new PrismaClient()
 
 export interface MemoryFilterOptions {
   userId: string
-  assistantId?: string
+  islandId?: string  // 支持按 Island 過濾
   category?: AssistantType
   tags?: string[]
   search?: string
@@ -19,7 +19,7 @@ export interface MemoryFilterOptions {
 
 export interface CreateMemoryInput {
   userId: string
-  assistantId: string
+  islandId: string  // Island 系統（必填）
   content: string
   category: AssistantType
   summary?: string
@@ -42,7 +42,7 @@ export class MemoryService {
       const memory = await prisma.memory.create({
         data: {
           userId: input.userId,
-          assistantId: input.assistantId,
+          islandId: input.islandId,  // Island 系統
           rawContent: input.content,
           summary: input.summary || input.content.substring(0, 100),
           keyPoints: input.keyPoints || [],
@@ -56,7 +56,7 @@ export class MemoryService {
           isPinned: false
         },
         include: {
-          assistant: true,
+          island: true,  // 包含 Island 關聯
           user: true
         }
       })
@@ -75,7 +75,7 @@ export class MemoryService {
   async getMemories(filter: MemoryFilterOptions) {
     const {
       userId,
-      assistantId,
+      islandId,
       category,
       tags,
       search,
@@ -91,7 +91,7 @@ export class MemoryService {
       userId
     }
 
-    if (assistantId) where.assistantId = assistantId
+    if (islandId) where.islandId = islandId  // 按 Island 過濾
     if (category) where.category = category
     if (isPinned !== undefined) where.isPinned = isPinned
     if (isArchived !== undefined) where.isArchived = isArchived
@@ -128,7 +128,7 @@ export class MemoryService {
         take: limit,
         skip: offset,
         include: {
-          assistant: true,
+          island: true,  // 包含 Island 關聯
           chatMessages: {
             orderBy: { createdAt: 'desc' },
             take: 3
@@ -151,7 +151,7 @@ export class MemoryService {
       const memory = await prisma.memory.findUnique({
         where: { id },
         include: {
-          assistant: true,
+          island: true,  // 包含 Island 關聯
           user: true,
           chatMessages: {
             orderBy: { createdAt: 'desc' }
@@ -212,7 +212,7 @@ export class MemoryService {
           archivedAt: updates.isArchived ? new Date() : null
         },
         include: {
-          assistant: true
+          island: true
         }
       })
 
@@ -310,7 +310,7 @@ export class MemoryService {
             id: { in: memory.relatedMemoryIds },
             userId
           },
-          include: { assistant: true },
+          include: { island: true },
           take: limit
         })
 
@@ -330,7 +330,7 @@ export class MemoryService {
             { createdAt: 'desc' }
           ],
           take: limit,
-          include: { assistant: true }
+          include: { island: true }
         })
 
         return related
@@ -345,7 +345,7 @@ export class MemoryService {
         },
         orderBy: { createdAt: 'desc' },
         take: limit,
-        include: { assistant: true }
+        include: { island: true }
       })
     } catch (error) {
       logger.error('Failed to get related memories:', error)
@@ -373,7 +373,7 @@ export class MemoryService {
       const updated = await prisma.memory.update({
         where: { id: memoryId },
         data: { relatedMemoryIds: updatedIds },
-        include: { assistant: true }
+        include: { island: true }
       })
 
       logger.info(`Memory links updated: ${memoryId}`)

@@ -55,7 +55,7 @@ export const knowledgeDistributionResolvers = {
             memories: {
               include: {
                 user: true,
-                assistant: true,
+                island: true,
               },
             },
           },
@@ -147,7 +147,7 @@ export const knowledgeDistributionResolvers = {
         where: { distributionId: parent.id },
         include: {
           user: true,
-          assistant: true,
+          island: true,
         },
       })
     },

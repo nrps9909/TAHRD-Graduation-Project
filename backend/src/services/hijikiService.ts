@@ -119,7 +119,7 @@ class HijikiService {
         take: 20,
         orderBy: { createdAt: 'desc' },
         include: {
-          assistant: true
+          island: true
         }
       })
 

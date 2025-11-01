@@ -28,6 +28,9 @@ import { logger } from './utils/logger'
 // import trackingRoutes from './routes/trackingRoutes' // Removed - old tracking system
 import uploadRoutes from './routes/upload'
 import chatRoutes from './routes/chat'
+import knowledgeStreamRoutes from './routes/knowledgeStream'
+import tororoChatRoutes from './routes/tororoChat'
+import lineBotRoutes from './routes/lineBot'
 import { connectRedis } from './utils/redis'
 import { PrismaClient } from '@prisma/client'
 import { taskQueueService } from './services/taskQueueService'
@@ -191,6 +194,15 @@ async function startServer() {
 
     // SSE 聊天路由（帶速率限制）
     app.use('/api/chat', aiLimiter, chatRoutes)
+
+    // SSE 知識上傳路由（Streaming 模式 - 一次 AI 調用）
+    app.use('/api/knowledge', aiLimiter, knowledgeStreamRoutes)
+
+    // 白噗噗對話記錄持久化
+    app.use('/api/tororo-chat', tororoChatRoutes)
+
+    // LINE Bot Webhook
+    app.use('/api/line', lineBotRoutes)
 
     // 啟動服務器
     httpServer.listen(PORT, () => {

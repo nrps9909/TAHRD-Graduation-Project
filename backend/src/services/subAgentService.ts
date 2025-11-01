@@ -14,6 +14,7 @@ import { logger } from '../utils/logger'
 import axios from 'axios'
 import { callGeminiAPI } from '../utils/geminiAPI'
 import { assistantService } from './assistantService'
+import { islandService } from './islandService'  // 新增 - Island 服務
 import { multimodalProcessor } from './multimodalProcessor'
 import { dynamicSubAgentService } from './dynamicSubAgentService'
 import { vectorService } from './vectorService'
@@ -66,25 +67,26 @@ export class SubAgentService {
   }
 
   /**
-   * 評估知識相關性
+   * 評估知識相關性（Island-based）
    */
   async evaluateKnowledge(
-    assistantId: string,
-    distributionInput: DistributionInput
+    islandId: string,
+    distributionInput: DistributionInput,
+    userId: string
   ): Promise<EvaluationResult> {
     try {
-      const assistant = await assistantService.getAssistantById(assistantId)
-      if (!assistant) {
-        throw new Error(`Assistant not found: ${assistantId}`)
+      const island = await islandService.getIslandById(islandId, userId)
+      if (!island) {
+        throw new Error(`Island not found: ${islandId}`)
       }
 
-      logger.info(`[${assistant.name}] 開始評估知識相關性`)
+      logger.info(`[${island.nameChinese}] 開始評估知識相關性`)
 
       // 構建評估提示詞
-      const prompt = this.buildEvaluationPrompt(assistant, distributionInput)
+      const prompt = this.buildEvaluationPrompt(island, distributionInput)
 
       // 調用 MCP 服務進行評估
-      const response = await this.callMCP(prompt, assistantId)
+      const response = await this.callMCP(prompt, islandId)
       const parsed = this.parseJSON(response)
 
       // === Stage 5: 優化儲存決策邏輯 ===
@@ -111,7 +113,7 @@ export class SubAgentService {
         confidence,
         suggestedCategory: this.isValidAssistantType(parsed.suggestedCategory)
           ? parsed.suggestedCategory
-          : assistant.type,
+          : undefined, // Island 不需要 AssistantType
         suggestedTags: Array.isArray(parsed.suggestedTags) ? parsed.suggestedTags : [],
         keyInsights: Array.isArray(parsed.keyInsights) ? parsed.keyInsights : [],
         // SubAgent 深度分析結果
@@ -122,289 +124,14 @@ export class SubAgentService {
         actionableAdvice: parsed.actionableAdvice,
       }
 
-      logger.info(`[${assistant.name}] 評估完成 - 相關性: ${evaluation.relevanceScore.toFixed(2)}, 是否儲存: ${evaluation.shouldStore}`)
+      logger.info(`[${island.nameChinese}] 評估完成 - 相關性: ${evaluation.relevanceScore.toFixed(2)}, 是否儲存: ${evaluation.shouldStore}`)
 
       return evaluation
     } catch (error) {
       logger.error(`[Sub-Agent] 評估失敗:`, error)
 
       // 降級方案：使用關鍵字匹配的簡單評估
-      return this.fallbackEvaluation(assistantId, distributionInput)
-    }
-  }
-
-  /**
-   * 處理知識分發
-   */
-  async processDistribution(
-    userId: string,
-    distributionId: string,
-    assistantIds: string[]
-  ) {
-    try {
-      // 獲取分發記錄
-      const distribution = await prisma.knowledgeDistribution.findUnique({
-        where: { id: distributionId },
-      })
-
-      if (!distribution) {
-        throw new Error(`Distribution not found: ${distributionId}`)
-      }
-
-      logger.info(`[Sub-Agents] 開始處理分發記錄 ${distributionId}，相關助手數量: ${assistantIds.length}`)
-
-      const agentDecisions: any[] = []
-      const memoriesCreated: any[] = []
-
-      // ⚡ 優化：智能優先級評估
-      // 1. 先評估 Chief 推薦的主要助手（distributedTo[0]）
-      const primaryAssistantId = distribution.distributedTo[0]
-      const otherAssistantIds = assistantIds.filter(id => id !== primaryAssistantId)
-
-      let primaryEvaluation: any = null
-
-      // 評估主要助手
-      if (primaryAssistantId && assistantIds.includes(primaryAssistantId)) {
-        try {
-          logger.info(`[Sub-Agents] 優先評估主要助手: ${primaryAssistantId}`)
-          const evaluation = await this.evaluateKnowledge(primaryAssistantId, distribution)
-
-          // 創建決策記錄
-          const decision = await prisma.agentDecision.create({
-            data: {
-              distributionId,
-              assistantId: primaryAssistantId,
-              relevanceScore: evaluation.relevanceScore,
-              shouldStore: evaluation.shouldStore,
-              reasoning: evaluation.reasoning,
-              confidence: evaluation.confidence,
-              suggestedCategory: evaluation.suggestedCategory,
-              suggestedTags: evaluation.suggestedTags,
-              keyInsights: evaluation.keyInsights,
-            },
-          })
-
-          agentDecisions.push(decision)
-
-          // 如果決定儲存，創建記憶
-          if (evaluation.shouldStore) {
-            const memory = await this.createMemory(
-              userId,
-              primaryAssistantId,
-              distribution,
-              evaluation,
-              distributionId
-            )
-            memoriesCreated.push(memory)
-          }
-
-          primaryEvaluation = { assistantId: primaryAssistantId, decision, memory: evaluation.shouldStore, evaluation }
-        } catch (error) {
-          logger.error(`[Sub-Agent] 處理主要助手 ${primaryAssistantId} 失敗:`, error)
-        }
-      }
-
-      // 2. 判斷是否需要評估其他助手
-      // 如果主要助手的相關性很高 (>0.9) 且置信度很高 (>0.9)，跳過其他助手
-      const shouldSkipOthers = primaryEvaluation &&
-        primaryEvaluation.evaluation.relevanceScore >= 0.9 &&
-        primaryEvaluation.evaluation.confidence >= 0.9
-
-      let otherEvaluations: any[] = []
-
-      if (shouldSkipOthers) {
-        logger.info(`[Sub-Agents] 主要助手高相關性 (${primaryEvaluation.evaluation.relevanceScore.toFixed(2)}) + 高置信度 (${primaryEvaluation.evaluation.confidence.toFixed(2)})，跳過其他助手評估`)
-      } else if (otherAssistantIds.length > 0) {
-        // 3. 並發評估其他助手
-        logger.info(`[Sub-Agents] 評估其他 ${otherAssistantIds.length} 個助手`)
-        otherEvaluations = await Promise.all(
-          otherAssistantIds.map(async (assistantId) => {
-            try {
-              // 評估相關性
-              const evaluation = await this.evaluateKnowledge(assistantId, distribution)
-
-              // 創建決策記錄
-              const decision = await prisma.agentDecision.create({
-                data: {
-                  distributionId,
-                  assistantId,
-                  relevanceScore: evaluation.relevanceScore,
-                  shouldStore: evaluation.shouldStore,
-                  reasoning: evaluation.reasoning,
-                  confidence: evaluation.confidence,
-                  suggestedCategory: evaluation.suggestedCategory,
-                  suggestedTags: evaluation.suggestedTags,
-                  keyInsights: evaluation.keyInsights,
-                },
-              })
-
-              agentDecisions.push(decision)
-
-              // 如果決定儲存，創建記憶
-              if (evaluation.shouldStore) {
-                const memory = await this.createMemory(
-                  userId,
-                  assistantId,
-                  distribution,
-                  evaluation,
-                  distributionId
-                )
-                memoriesCreated.push(memory)
-              }
-
-              return { assistantId, decision, memory: evaluation.shouldStore }
-            } catch (error) {
-              logger.error(`[Sub-Agent] 處理助手 ${assistantId} 失敗:`, error)
-              return null
-            }
-          })
-        )
-      }
-
-      // 合併所有評估結果（主要助手 + 其他助手）
-      const evaluations = [
-        ...(primaryEvaluation ? [primaryEvaluation] : []),
-        ...otherEvaluations.filter(e => e !== null)
-      ]
-
-      // 更新分發記錄的 storedBy 列表
-      const storedByIds = evaluations
-        .filter(e => e && e.memory)
-        .map(e => e!.assistantId)
-
-      await prisma.knowledgeDistribution.update({
-        where: { id: distributionId },
-        data: { storedBy: storedByIds },
-      })
-
-      logger.info(`[Sub-Agents] 分發處理完成 - 決策數: ${agentDecisions.length}, 創建記憶數: ${memoriesCreated.length}`)
-
-      // 獲取記憶的分類信息（Assistant 名稱）
-      const categoriesInfo = await Promise.all(
-        memoriesCreated.map(async (memory) => {
-          if (memory.assistantId) {
-            const assistant = await assistantService.getAssistantById(memory.assistantId)
-            const categoryInfo = {
-              memoryId: memory.id,
-              categoryName: assistant?.nameChinese || '未知分類',
-              categoryEmoji: assistant?.emoji || '📝'
-            }
-            logger.info(`[Sub-Agents] 生成分類信息: ${JSON.stringify(categoryInfo)}`)
-            return categoryInfo
-          }
-          logger.warn(`[Sub-Agents] 記憶 ${memory.id} 缺少 assistantId`)
-          return null
-        })
-      ).then(results => results.filter(r => r !== null))
-
-      logger.info(`[Sub-Agents] 🎯 返回結果摘要:`)
-      logger.info(`  - agentDecisions: ${agentDecisions.length}`)
-      logger.info(`  - memoriesCreated: ${memoriesCreated.length}`)
-      logger.info(`  - storedByCount: ${storedByIds.length}`)
-      logger.info(`  - categoriesInfo: ${categoriesInfo.length} 項`)
-      logger.info(`  - categoriesInfo detail: ${JSON.stringify(categoriesInfo)}`)
-
-      return {
-        agentDecisions,
-        memoriesCreated,
-        storedByCount: storedByIds.length,
-        categoriesInfo, // 新增：記憶的分類信息
-      }
-    } catch (error) {
-      logger.error('[Sub-Agents] 處理知識分發失敗:', error)
-      throw new Error('處理知識分發失敗')
-    }
-  }
-
-  /**
-   * 創建記憶（使用 Sub-Agent 的深度分析結果）
-   */
-  private async createMemory(
-    userId: string,
-    assistantId: string,
-    distribution: any,
-    evaluation: EvaluationResult,
-    distributionId: string
-  ) {
-    try {
-      const assistant = await assistantService.getAssistantById(assistantId)
-      if (!assistant) {
-        throw new Error(`Assistant not found: ${assistantId}`)
-      }
-
-      // 解析 Sub-Agent 的深度分析結果
-      const detailedSummary = evaluation.detailedSummary || distribution.chiefSummary
-      const suggestedTitle = evaluation.suggestedTitle || `${assistant.nameChinese}的記憶`
-      const sentiment = evaluation.sentiment || 'neutral'
-      const importanceScore = evaluation.importanceScore || Math.round(evaluation.relevanceScore * 10)
-      const actionableAdvice = evaluation.actionableAdvice
-
-      // 解析社交成長紀錄專用字段（針對 SOCIAL 分類）
-      const socialContext = evaluation.socialContext
-      const userReaction = evaluation.userReaction
-      const aiFeedback = evaluation.aiFeedback
-      const socialSkillTags = evaluation.socialSkillTags || []
-      const progressChange = evaluation.progressChange
-
-      // 創建完整的記憶記錄（包含 Sub-Agent 的深度分析）
-      const memory = await prisma.memory.create({
-        data: {
-          userId,
-          assistantId,
-          rawContent: distribution.rawContent,
-          title: suggestedTitle, // 使用 Sub-Agent 建議的標題
-          summary: distribution.chiefSummary, // Chief 的簡要摘要
-          contentType: distribution.contentType,
-          fileUrls: distribution.fileUrls,
-          fileNames: distribution.fileNames,
-          fileTypes: distribution.fileTypes,
-          links: distribution.links,
-          linkTitles: distribution.linkTitles,
-          keyPoints: evaluation.keyInsights,
-          aiSentiment: sentiment, // 使用情感分析結果
-          aiAnalysis: evaluation.reasoning, // 使用 Sub-Agent 的評估說明
-          category: evaluation.suggestedCategory || assistant.type,
-          tags: [...new Set([...distribution.suggestedTags, ...evaluation.suggestedTags])].slice(0, 5), // 合併並去重標籤，最多5個
-
-          // === 新增：SubAgent 深度分析結果 ===
-          detailedSummary: detailedSummary, // SubAgent 的詳細摘要（2-3句話）
-          importanceScore: importanceScore, // 1-10 重要性評分
-          actionableAdvice: actionableAdvice, // 行動建議
-
-          // === 新增：社交成長紀錄專用字段 ===
-          socialContext: socialContext, // [情境] 簡述當下發生什麼
-          userReaction: userReaction, // [使用者反應] 情緒或行為反應
-          aiFeedback: aiFeedback, // [AI 回饋] 建議或安撫
-          socialSkillTags: socialSkillTags, // [社交能力標籤]
-          progressChange: progressChange, // [進度變化] +1/0/-1
-
-          distributionId,
-          relevanceScore: evaluation.relevanceScore,
-        },
-      })
-
-      // 更新助手統計
-      await assistantService.incrementAssistantStats(assistantId, 'memory')
-
-      logger.info(`[${assistant.name}] 創建深度分析記憶: ${memory.id}`)
-      logger.info(`  - 標題: ${suggestedTitle}`)
-      logger.info(`  - 重要性: ${importanceScore}/10`)
-      logger.info(`  - 情感: ${sentiment}`)
-      logger.info(`  - 標籤: ${memory.tags.join(', ')}`)
-
-      // === 異步生成向量嵌入（RAG 支持）===
-      vectorService.generateEmbedding(memory.id, userId)
-        .then(() => {
-          logger.info(`[${assistant.name}] 向量嵌入生成成功: ${memory.id}`)
-        })
-        .catch((error) => {
-          logger.error(`[${assistant.name}] 向量嵌入生成失敗: ${memory.id}`, error)
-        })
-
-      return memory
-    } catch (error) {
-      logger.error('[Sub-Agent] 創建記憶失敗:', error)
-      throw error
+      return this.fallbackEvaluation(islandId, distributionInput, userId)
     }
   }
 
@@ -413,21 +140,20 @@ export class SubAgentService {
    */
   private async createMemoryWithIsland(
     userId: string,
-    assistantId: string,
     islandId: string,
     distribution: any,
     evaluation: EvaluationResult,
     distributionId: string
   ) {
     try {
-      const assistant = await assistantService.getAssistantById(assistantId)
-      if (!assistant) {
-        throw new Error(`Assistant not found: ${assistantId}`)
+      const island = await islandService.getIslandById(islandId, userId)
+      if (!island) {
+        throw new Error(`Island not found: ${islandId}`)
       }
 
       // 解析 Sub-Agent 的深度分析結果
       const detailedSummary = evaluation.detailedSummary || distribution.chiefSummary
-      const suggestedTitle = evaluation.suggestedTitle || `${assistant.nameChinese}的記憶`
+      const suggestedTitle = evaluation.suggestedTitle || `${island.nameChinese}的記憶`
       const sentiment = evaluation.sentiment || 'neutral'
       const importanceScore = evaluation.importanceScore || Math.round(evaluation.relevanceScore * 10)
       const actionableAdvice = evaluation.actionableAdvice
@@ -443,8 +169,7 @@ export class SubAgentService {
       const memory = await prisma.memory.create({
         data: {
           userId,
-          assistantId,
-          islandId,  // 新增：關聯到島嶼
+          islandId,  // 關聯到島嶼（必填）
           rawContent: distribution.rawContent,
           title: suggestedTitle, // 使用 Sub-Agent 建議的標題
           summary: distribution.chiefSummary, // Chief 的簡要摘要
@@ -457,7 +182,7 @@ export class SubAgentService {
           keyPoints: evaluation.keyInsights,
           aiSentiment: sentiment, // 使用情感分析結果
           aiAnalysis: evaluation.reasoning, // 使用 Sub-Agent 的評估說明
-          category: evaluation.suggestedCategory || assistant.type,
+          category: evaluation.suggestedCategory || AssistantType.MISC,
           tags: [...new Set([...distribution.suggestedTags, ...evaluation.suggestedTags])].slice(0, 5), // 合併並去重標籤，最多5個
 
           // === 新增：SubAgent 深度分析結果 ===
@@ -477,10 +202,10 @@ export class SubAgentService {
         },
       })
 
-      // 更新助手統計
-      await assistantService.incrementAssistantStats(assistantId, 'memory')
+      // 更新島嶼統計
+      await islandService.incrementIslandStats(islandId, 'memory')
 
-      logger.info(`[${assistant.name}] 創建深度分析記憶 (Island-based): ${memory.id}`)
+      logger.info(`[${island.nameChinese}] 創建深度分析記憶 (Island-based): ${memory.id}`)
       logger.info(`  - Island ID: ${islandId}`)
       logger.info(`  - 標題: ${suggestedTitle}`)
       logger.info(`  - 重要性: ${importanceScore}/10`)
@@ -490,10 +215,10 @@ export class SubAgentService {
       // === 異步生成向量嵌入（RAG 支持）===
       vectorService.generateEmbedding(memory.id, userId)
         .then(() => {
-          logger.info(`[${assistant.name}] 向量嵌入生成成功 (Island-based): ${memory.id}`)
+          logger.info(`[${island.nameChinese}] 向量嵌入生成成功 (Island-based): ${memory.id}`)
         })
         .catch((error) => {
-          logger.error(`[${assistant.name}] 向量嵌入生成失敗 (Island-based): ${memory.id}`, error)
+          logger.error(`[${island.nameChinese}] 向量嵌入生成失敗 (Island-based): ${memory.id}`, error)
         })
 
       return memory
@@ -504,13 +229,10 @@ export class SubAgentService {
   }
 
   /**
-   * 構建評估提示詞
-   */
-  /**
-   * 構建深度評估 Prompt（使用 Gemini 2.5 Flash + @url 直接分析）
+   * 構建評估提示詞（Island-based）
    */
   private buildEvaluationPrompt(
-    assistant: any,
+    island: any,
     distribution: DistributionInput
   ): string {
     // 檢查是否有連結，如果有，使用 @url 語法讓 Gemini 直接存取
@@ -523,9 +245,16 @@ export class SubAgentService {
       })
     }
 
-    return `${assistant.systemPrompt}
+    // 構建島嶼描述
+    const islandDesc = island.description || island.nameChinese
+    const islandPrompt = island.systemPrompt || `你是 ${island.nameChinese} 島嶼的知識管理專家，專注於整理和分析相關知識。`
+    const islandKeywords = island.keywords && island.keywords.length > 0
+      ? `\n**島嶼關鍵字**: ${island.keywords.join(', ')}\n`
+      : ''
 
-你是 ${assistant.nameChinese} (${assistant.name})，一個專注於 ${assistant.type} 領域的知識管理專家。
+    return `${islandPrompt}
+
+你是 ${island.nameChinese}，${islandDesc}${islandKeywords}
 
 **你的任務：**
 作為 Gemini 2.5 Flash，你需要對以下知識進行深度分析和整理，決定是否存儲並生成完整的知識結構。
@@ -543,7 +272,7 @@ ${linkAnalysisSection}
 ${distribution.chiefSummary}
 
 **你需要提供深度分析，包括：**
-1. **相關性評估** - 這個知識與 ${assistant.type} 領域的關聯程度
+1. **相關性評估** - 這個知識與本島嶼（${island.nameChinese}）的關聯程度
    ${distribution.links.length > 0 ? '   ⚠️ 如果有連結，請直接存取網址內容進行評估（使用 @url）' : ''}
 2. **詳細摘要** - 用 2-3 句話總結核心內容和價值
    ${distribution.links.length > 0 ? '   ⚠️ 對於連結內容，請基於實際存取的內容撰寫摘要' : ''}
@@ -554,7 +283,7 @@ ${distribution.chiefSummary}
 6. **情感分析** - 判斷內容的情感傾向
 7. **重要性評分** - 1-10分，評估這個知識的重要程度
 8. **行動建議** - 如果適用，提供後續行動建議
-${assistant.type === 'SOCIAL' ? `
+${island.nameChinese.includes('社交') || island.nameChinese.includes('人際') ? `
 **🌟 特別要求 - 社交成長紀錄格式（人際關係島專用）：**
 
 這是與一般知識不同的特殊格式，專門用來追蹤用戶的社交成長軌跡。
@@ -583,7 +312,7 @@ ${assistant.type === 'SOCIAL' ? `
   "shouldStore": true,
   "reasoning": "這是一個關於XXX的重要知識，因為...，對用戶的XXX方面有幫助",
   "confidence": 0.9,
-  "suggestedCategory": "${assistant.type}",
+  "suggestedCategory": "MISC",
   "suggestedTags": ["標籤1", "標籤2", "標籤3"],
   "keyInsights": [
     "關鍵洞察1：...",
@@ -594,7 +323,7 @@ ${assistant.type === 'SOCIAL' ? `
   "suggestedTitle": "XXX學習筆記",
   "sentiment": "positive|neutral|negative",
   "importanceScore": 8,
-  "actionableAdvice": "建議用戶可以..."${assistant.type === 'SOCIAL' ? `,
+  "actionableAdvice": "建議用戶可以..."${island.nameChinese.includes('社交') || island.nameChinese.includes('人際') ? `,
   "socialContext": "在 Bumble 上聊到台藝大認識的人，與朋友討論交友狀況",
   "userReaction": "好奇並積極參與討論，主動分享自己的觀察",
   "aiFeedback": "你能主動參與社交話題並分享想法，這顯示你對人際關係保持開放態度！",
@@ -603,9 +332,9 @@ ${assistant.type === 'SOCIAL' ? `
 }
 
 **評估準則：**
-- **高度相關 (>0.7)**: 核心內容完全匹配 ${assistant.type} 領域，具有長期價值
-- **中度相關 (0.4-0.7)**: 部分內容與領域相關，有參考價值
-- **低相關 (<0.4)**: 與領域關聯較弱，不建議存儲
+- **高度相關 (>0.7)**: 核心內容完全匹配 ${island.nameChinese} 島嶼主題，具有長期價值
+- **中度相關 (0.4-0.7)**: 部分內容與島嶼主題相關，有參考價值
+- **低相關 (<0.4)**: 與島嶼主題關聯較弱，不建議存儲
 
 **🔗 特別注意 - 資源連結評估：**
 - 如果內容包含連結（URL、文章、影片等），**重點評估連結本身的價值**
@@ -624,41 +353,34 @@ ${assistant.type === 'SOCIAL' ? `
   }
 
   /**
-   * 降級方案：基於關鍵字的簡單評估
+   * 降級方案：基於關鍵字的簡單評估（Island-based）
    */
   private async fallbackEvaluation(
-    assistantId: string,
-    distribution: DistributionInput
+    islandId: string,
+    distribution: DistributionInput,
+    userId: string
   ): Promise<EvaluationResult> {
     try {
-      const assistant = await assistantService.getAssistantById(assistantId)
-      if (!assistant) {
-        throw new Error(`Assistant not found: ${assistantId}`)
+      const island = await islandService.getIslandById(islandId, userId)
+      if (!island) {
+        throw new Error(`Island not found: ${islandId}`)
       }
 
       // 簡單的關鍵字匹配
       const content = distribution.rawContent.toLowerCase()
       const topics = distribution.identifiedTopics.map(t => t.toLowerCase())
 
-      // 基於關鍵字的相關性評分
-      const typeKeywords: Record<AssistantType, string[]> = {
-        [AssistantType.CHIEF]: [],
-        [AssistantType.LEARNING]: ['學習', '教育', '知識', '課程', '培訓', '技能'],
-        [AssistantType.INSPIRATION]: ['靈感', '創意', '想法', '創新', '點子'],
-        [AssistantType.WORK]: ['工作', '事業', '專案', '任務', '職業'],
-        [AssistantType.SOCIAL]: ['社交', '朋友', '關係', '交流'],
-        [AssistantType.LIFE]: ['生活', '日常', '健康', '生命'],
-        [AssistantType.GOALS]: ['目標', '計劃', '願望', '夢想', '規劃'],
-        [AssistantType.RESOURCES]: ['資源', '工具', '連結', '材料', '資料'],
-        [AssistantType.MISC]: ['雜項', '其他', '待整理', '未分類', '隨記'],
-      }
-
-      const keywords: string[] = typeKeywords[assistant.type as AssistantType] || []
+      // 使用島嶼的關鍵字（如果有配置）
+      const keywords: string[] = island.keywords || []
       const matchCount = keywords.filter((kw: string) =>
-        content.includes(kw) || topics.some(t => t.includes(kw.toLowerCase()))
+        content.includes(kw.toLowerCase()) || topics.some(t => t.includes(kw.toLowerCase()))
       ).length
 
-      const relevanceScore = Math.min(matchCount / Math.max(keywords.length, 1), 1)
+      // 如果沒有關鍵字，預設相關性為 0.5
+      const relevanceScore = keywords.length > 0
+        ? Math.min(matchCount / keywords.length, 1)
+        : 0.5
+
       // ⚠️ 移除相關性門檻 - 所有內容都儲存
       const shouldStore = true
 
@@ -667,9 +389,9 @@ ${assistant.type === 'SOCIAL' ? `
       return {
         relevanceScore,
         shouldStore,
-        reasoning: `基於降級評估，此內容歸類到 ${assistant.nameChinese}`,
+        reasoning: `基於降級評估，此內容歸類到 ${island.nameChinese}`,
         confidence: 0.3,
-        suggestedCategory: assistant.type,
+        suggestedCategory: AssistantType.MISC, // 預設為 MISC
         suggestedTags: distribution.suggestedTags.slice(0, 3),
         keyInsights: [`關鍵字匹配數: ${matchCount}`],
       }
@@ -875,7 +597,18 @@ ${assistant.type === 'SOCIAL' ? `
 
   /**
    * 處理知識分發（使用 Island-based SubAgent）
-   * 與 processDistribution 類似，但使用 Island 配置映射到對應的 Assistant
+   *
+   * ✨ 兩階段智能評估策略（節省 API 調用）
+   *
+   * 階段 1: 評估白噗噗推薦的主要島嶼（如果有）
+   *   - 相關性 >= 0.7 → 直接使用（早期退出）✅
+   *   - 相關性 < 0.7 → 進入階段 2
+   *
+   * 階段 2: 評估其他島嶼
+   *   - 比較所有島嶼，選擇相關性最高的
+   *   - 確保不會都丟給同一個島
+   *
+   * 性能：90% 情況只需 1 次 API 調用
    */
   async processDistributionWithIslands(
     userId: string,
@@ -892,305 +625,113 @@ ${assistant.type === 'SOCIAL' ? `
         throw new Error(`Distribution not found: ${distributionId}`)
       }
 
-      logger.info(`[Island Sub-Agents] 開始處理分發記錄 ${distributionId}，相關 Island 數量: ${islandIds.length}`)
+      logger.info(`[Island Sub-Agents] 開始處理分發記錄 ${distributionId}`)
 
       const agentDecisions: any[] = []
       const memoriesCreated: any[] = []
 
-      // 並發評估所有相關 Island（映射到對應的 Assistant）
-      const evaluations = await Promise.all(
-        islandIds.map(async (islandId) => {
-          try {
-            // 載入 Island 配置
-            const island = await dynamicSubAgentService.getIslandById(islandId)
-            if (!island) {
-              logger.error(`[Island Sub-Agent] Island not found: ${islandId}`)
-              return null
-            }
+      // ✨ 新策略：完全信任 Chief Agent 的推薦
+      // Chief Agent 現在保證會推薦一個島嶼，我們直接使用它的推薦
 
-            // 根據 Island 類型映射到對應的 Assistant
-            let assistant = await assistantService.getAssistantByType(island.name as any)
-            if (!assistant) {
-              // 降級：使用 LIFE Assistant（生活記錄）作為備選，因為它是最通用的分類
-              logger.warn(`[Island Sub-Agent] No assistant found for island type: ${island.name}, using LIFE as fallback`)
-              assistant = await assistantService.getAssistantByType('LIFE')
-              if (!assistant) {
-                logger.error(`[Island Sub-Agent] LIFE assistant not found, cannot create memory`)
-                return null
-              }
-            }
+      const primaryIslandName = distribution.identifiedTopics[0]
 
-            // 評估相關性（使用 Island 配置，但通過 Assistant 處理）
-            const evaluation = await this.evaluateKnowledgeWithIsland(
-              assistant,
-              island,
-              distribution
-            )
+      if (!primaryIslandName) {
+        throw new Error('Chief Agent 未推薦島嶼，這不應該發生')
+      }
 
-            // 創建決策記錄（使用 assistantId）
-            const decision = await prisma.agentDecision.create({
-              data: {
-                distributionId,
-                assistantId: assistant.id,
-                relevanceScore: evaluation.relevanceScore,
-                shouldStore: evaluation.shouldStore,
-                reasoning: evaluation.reasoning,
-                confidence: evaluation.confidence,
-                suggestedCategory: evaluation.suggestedCategory,
-                suggestedTags: evaluation.suggestedTags,
-                keyInsights: evaluation.keyInsights,
-              },
-            })
+      // 通過島嶼名稱找到對應的島嶼 ID
+      let primaryIslandId: string | null = null
+      for (const islandId of islandIds) {
+        const island = await dynamicSubAgentService.getIslandById(islandId)
+        if (island && island.nameChinese === primaryIslandName) {
+          primaryIslandId = islandId
+          break
+        }
+      }
 
-            agentDecisions.push(decision)
+      if (!primaryIslandId) {
+        throw new Error(`找不到白噗噗推薦的島嶼: ${primaryIslandName}`)
+      }
 
-            // 如果決定儲存，創建記憶（使用 assistantId 和 islandId）
-            if (evaluation.shouldStore) {
-              const memory = await this.createMemoryWithIsland(
-                userId,
-                assistant.id,
-                islandId,  // 新增：傳遞 islandId
-                distribution,
-                evaluation,
-                distributionId
-              )
-              memoriesCreated.push(memory)
+      logger.info(`[Island Sub-Agents] 📊 使用白噗噗推薦的島嶼: ${primaryIslandName}`)
 
-              // 更新 Island 統計
-              await dynamicSubAgentService.incrementStats(islandId, 'memory')
-            }
+      const primaryIsland = await dynamicSubAgentService.getIslandById(primaryIslandId)
+      if (!primaryIsland) {
+        throw new Error(`主要島嶼未找到: ${primaryIslandId}`)
+      }
 
-            return { islandId, assistantId: assistant.id, decision, memory: evaluation.shouldStore }
-          } catch (error) {
-            logger.error(`[Island Sub-Agent] 處理 Island ${islandId} 失敗:`, error)
-            return null
+      // 進行深度分析（提取 insights、生成標籤等）- 完全使用 Island
+      const evaluation = await this.evaluateKnowledge(
+        primaryIslandId,
+        distribution,
+        userId
+      )
+
+      // 創建決策記錄（assistantId 設為 null，因為現在用 Island）
+      const decision = await prisma.agentDecision.create({
+        data: {
+          distributionId,
+          assistantId: null, // Island-based 不需要 assistantId
+          relevanceScore: evaluation.relevanceScore,
+          shouldStore: evaluation.shouldStore,
+          reasoning: evaluation.reasoning,
+          confidence: evaluation.confidence,
+          suggestedCategory: evaluation.suggestedCategory,
+          suggestedTags: evaluation.suggestedTags,
+          keyInsights: evaluation.keyInsights,
+        },
+      })
+      agentDecisions.push(decision)
+
+      logger.info(`[Island Sub-Agents] 深度分析完成`)
+      logger.info(`[Island Sub-Agents]    - 相關性: ${evaluation.relevanceScore.toFixed(2)}`)
+      logger.info(`[Island Sub-Agents]    - 置信度: ${evaluation.confidence.toFixed(2)}`)
+
+      // 創建記憶
+      const memory = await this.createMemoryWithIsland(
+        userId,
+        primaryIslandId,
+        distribution,
+        evaluation,
+        distributionId
+      )
+      memoriesCreated.push(memory)
+
+      // 更新統計
+      await dynamicSubAgentService.incrementStats(primaryIslandId, 'memory')
+      await prisma.knowledgeDistribution.update({
+        where: { id: distributionId },
+        data: { storedBy: [primaryIslandId] }, // 使用 islandId 而非 assistantId
+      })
+
+      logger.info(`[Island Sub-Agents] 🎯 完成 - 總 AI 調用次數: 2 (Chief + SubAgent)`)
+
+      logger.info(`[Island Sub-Agents] 📊 返回結果: 決策 ${agentDecisions.length}, 記憶 ${memoriesCreated.length}`)
+
+      // 獲取記憶的分類信息（Island 名稱）
+      const categoriesInfo = await Promise.all(
+        memoriesCreated.map(async (memory) => {
+          const island = await prisma.island.findUnique({
+            where: { id: memory.islandId }
+          })
+          return {
+            memoryId: memory.id,
+            categoryName: island?.nameChinese || '未知分類',
+            categoryEmoji: island?.emoji || '🏝️',
+            islandName: island?.nameChinese
           }
         })
       )
 
-      // 更新分發記錄的 storedBy 列表（使用 assistantIds）
-      const storedByIds = evaluations
-        .filter(e => e && e.memory)
-        .map(e => e!.assistantId)
-
-      await prisma.knowledgeDistribution.update({
-        where: { id: distributionId },
-        data: { storedBy: storedByIds },
-      })
-
-      logger.info(`[Island Sub-Agents] 分發處理完成 - 決策數: ${agentDecisions.length}, 創建記憶數: ${memoriesCreated.length}`)
-
-      // 獲取記憶的分類信息（Assistant 名稱）
-      const categoriesInfo = await Promise.all(
-        memoriesCreated.map(async (memory) => {
-          if (memory.assistantId) {
-            const assistant = await assistantService.getAssistantById(memory.assistantId)
-            return {
-              memoryId: memory.id,
-              categoryName: assistant?.nameChinese || '未知分類',
-              categoryEmoji: assistant?.emoji || '📝'
-            }
-          }
-          return null
-        })
-      ).then(results => results.filter(r => r !== null))
-
       return {
         agentDecisions,
         memoriesCreated,
-        storedByCount: storedByIds.length,
+        storedByCount: memoriesCreated.length,
         categoriesInfo, // 新增：記憶的分類信息
       }
     } catch (error) {
       logger.error('[Island Sub-Agents] 處理知識分發失敗:', error)
       throw new Error('處理知識分發失敗')
-    }
-  }
-
-  /**
-   * 評估知識相關性（使用 Island 配置）
-   */
-  private async evaluateKnowledgeWithIsland(
-    assistant: any,
-    island: any,
-    distributionInput: DistributionInput
-  ): Promise<EvaluationResult> {
-    try {
-      logger.info(`[${island.nameChinese}] 開始評估知識相關性`)
-
-      // 構建 Island-based 評估提示詞
-      const prompt = this.buildIslandEvaluationPrompt(assistant, island, distributionInput)
-
-      // 調用 MCP 服務進行評估（使用 assistant.id）
-      const response = await this.callMCP(prompt, assistant.id)
-      const parsed = this.parseJSON(response)
-
-      const relevanceScore = typeof parsed.relevanceScore === 'number'
-        ? Math.max(0, Math.min(1, parsed.relevanceScore))
-        : 0.5
-
-      const confidence = typeof parsed.confidence === 'number'
-        ? Math.max(0, Math.min(1, parsed.confidence))
-        : 0.5
-
-      // 智能儲存決策
-      const shouldStore = this.shouldStoreKnowledge(
-        relevanceScore,
-        confidence,
-        parsed.shouldStore,
-        distributionInput
-      )
-
-      const evaluation: EvaluationResult = {
-        relevanceScore,
-        shouldStore,
-        reasoning: parsed.reasoning || '無評估說明',
-        confidence,
-        suggestedCategory: assistant.type,
-        suggestedTags: Array.isArray(parsed.suggestedTags) ? parsed.suggestedTags : [],
-        keyInsights: Array.isArray(parsed.keyInsights) ? parsed.keyInsights : [],
-        // SubAgent 深度分析結果
-        detailedSummary: parsed.detailedSummary,
-        suggestedTitle: parsed.suggestedTitle,
-        sentiment: parsed.sentiment,
-        importanceScore: typeof parsed.importanceScore === 'number' ? parsed.importanceScore : undefined,
-        actionableAdvice: parsed.actionableAdvice,
-      }
-
-      logger.info(`[${island.nameChinese}] 評估完成 - 相關性: ${evaluation.relevanceScore.toFixed(2)}, 是否儲存: ${evaluation.shouldStore}`)
-
-      return evaluation
-    } catch (error) {
-      logger.error(`[Island Sub-Agent] 評估失敗:`, error)
-
-      // 降級方案：使用關鍵字匹配
-      return this.fallbackIslandEvaluation(assistant, island, distributionInput)
-    }
-  }
-
-  /**
-   * 構建 Island-based 評估提示詞（使用 Island + Assistant 的配置 + @url）
-   */
-  private buildIslandEvaluationPrompt(
-    assistant: any,
-    island: any,
-    distribution: DistributionInput
-  ): string {
-    // 檢查是否有連結，如果有，使用 @url 語法讓 Gemini 直接存取
-    let linkAnalysisSection = ''
-    if (distribution.links.length > 0) {
-      linkAnalysisSection = `\n**🔗 連結深度分析（請直接存取以下網址）:**\n`
-      distribution.links.forEach((link, i) => {
-        const title = distribution.linkTitles[i] || link
-        linkAnalysisSection += `${i + 1}. ${title}\n   @${link}\n   ↑ 請直接存取此網址，分析內容、提取關鍵資訊\n\n`
-      })
-    }
-
-    return `${assistant.systemPrompt}
-
-你是 ${assistant.nameChinese} (${assistant.name})，專注於 ${island.nameChinese || assistant.type} 領域。
-
-**Island 背景：**
-${island.description || `${island.nameChinese} 島嶼的知識管理`}
-
-**專業關鍵字：**
-${island.keywords?.join('、') || assistant.type}
-
-**你的任務：**
-作為 Gemini 2.5 Flash，你需要對以下知識進行深度分析和整理，決定是否存儲並生成完整的知識結構。
-
-**重要：如果內容包含連結，請使用 @url 語法直接存取網址內容進行分析！**
-
-**用戶的原始內容:**
-${distribution.rawContent}
-
-${distribution.fileUrls.length > 0 ? `\n**附加文件 (${distribution.fileUrls.length}個):**\n${distribution.fileNames.map((name, i) => `- ${name} (${distribution.fileTypes[i]})`).join('\n')}` : ''}
-
-${linkAnalysisSection}
-
-**白噗噗的初步分類:**
-${distribution.chiefSummary}
-
-**你需要提供深度分析，包括：**
-1. **相關性評估** - 這個知識與 ${island.nameChinese} 領域的關聯程度
-   ${distribution.links.length > 0 ? '   ⚠️ 如果有連結，請直接存取網址內容進行評估（使用 @url）' : ''}
-2. **詳細摘要** - 用 2-3 句話總結核心內容和價值
-   ${distribution.links.length > 0 ? '   ⚠️ 對於連結內容，請基於實際存取的內容撰寫摘要' : ''}
-3. **關鍵洞察** - 提取 3-5 個重要的知識點或洞察
-   ${distribution.links.length > 0 ? '   ⚠️ 如果是影片/文章，請提取內容中的關鍵要點' : ''}
-4. **精準標籤** - 產生 3-5 個描述性標籤
-5. **標題建議** - 為這個記憶創建一個清晰的標題（10字以內）
-6. **情感分析** - 判斷內容的情感傾向
-7. **重要性評分** - 1-10分，評估這個知識的重要程度
-8. **行動建議** - 如果適用，提供後續行動建議
-
-請以 JSON 格式返回完整分析（只返回 JSON，不要其他文字）：
-{
-  "relevanceScore": 0.95,
-  "shouldStore": true,
-  "reasoning": "這是一個關於XXX的重要知識，因為...，對用戶的XXX方面有幫助",
-  "confidence": 0.9,
-  "suggestedTags": ["標籤1", "標籤2", "標籤3"],
-  "keyInsights": [
-    "關鍵洞察1：...",
-    "關鍵洞察2：...",
-    "關鍵洞察3：..."
-  ],
-  "detailedSummary": "這個知識主要討論...",
-  "suggestedTitle": "XXX學習筆記",
-  "sentiment": "positive|neutral|negative",
-  "importanceScore": 8,
-  "actionableAdvice": "建議用戶可以..."
-}
-
-**評估準則：**
-- **高度相關 (>0.7)**: 核心內容完全匹配 ${island.nameChinese} 領域，具有長期價值
-- **中度相關 (0.4-0.7)**: 部分內容與領域相關，有參考價值
-- **低相關 (<0.4)**: 與領域關聯較弱，不建議存儲
-
-**🔗 特別注意 - 資源連結評估：**
-- 如果內容包含連結（URL、文章、影片等），**重點評估連結本身的價值**
-- 連結標題和描述是關鍵資訊，比純 URL 更重要
-- 用戶分享連結通常表示想要收藏和記錄，應給予較高評分
-- YouTube、文章、教學資源等應該被視為有價值的知識來源
-- 即使用戶只提供了 URL，如果連結內容有價值，也應該存儲
-
-**深度分析要求：**
-- 仔細理解用戶的真實意圖和需求
-- 識別隱含的知識價值和長期意義
-- 考慮這個知識在未來可能的應用場景
-- 對於資源連結，重點看連結內容的實用性和相關性
-- 提供有洞察力和可執行的建議
-`
-  }
-
-  /**
-   * 降級方案：基於關鍵字的 Island 評估
-   */
-  private fallbackIslandEvaluation(
-    assistant: any,
-    island: any,
-    distribution: DistributionInput
-  ): EvaluationResult {
-    const content = distribution.rawContent.toLowerCase()
-    const keywords = island.keywords || []
-
-    // 計算關鍵字匹配度
-    const matchCount = keywords.filter((kw: string) => content.includes(kw.toLowerCase())).length
-    const relevanceScore = keywords.length > 0 ? Math.min(matchCount / keywords.length, 1) : 0.5
-    // ⚠️ 移除相關性門檻 - 所有內容都儲存
-    const shouldStore = true
-
-    logger.info(`[Fallback Island Evaluation] ✅ 降級評估（Island-based）：所有對話都記錄 - 相關性 (${relevanceScore.toFixed(2)}) → 儲存`)
-
-    return {
-      relevanceScore,
-      shouldStore,
-      reasoning: `基於降級評估，此內容歸類到 ${island.nameChinese}`,
-      confidence: 0.3,
-      suggestedCategory: assistant.type,
-      suggestedTags: distribution.suggestedTags.slice(0, 3),
-      keyInsights: [`關鍵字匹配數: ${matchCount}/${keywords.length}`],
     }
   }
 }

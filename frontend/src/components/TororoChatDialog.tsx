@@ -80,19 +80,23 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
 
     play('notification')
 
-    for (const file of Array.from(files)) {
-      const fileId = `file-${Date.now()}-${Math.random()}`
-      const newFile: UploadedFile = {
-        id: fileId,
-        name: file.name,
-        url: '',
-        type: file.type,
-        size: file.size,
-        status: 'uploading',
-        progress: 0
-      }
+    // 1️⃣ 先創建所有文件的初始狀態（立即顯示在 UI）
+    const newFiles = Array.from(files).map(file => ({
+      id: `file-${Date.now()}-${Math.random()}`,
+      name: file.name,
+      url: '',
+      type: file.type,
+      size: file.size,
+      status: 'uploading' as const,
+      progress: 0
+    }))
 
-      setUploadedFiles(prev => [...prev, newFile])
+    // 2️⃣ 一次性添加所有文件到狀態
+    setUploadedFiles(prev => [...prev, ...newFiles])
+
+    // 3️⃣ 並發上傳所有文件（像 Discord 一樣）
+    const uploadPromises = Array.from(files).map(async (file, index) => {
+      const fileId = newFiles[index].id
 
       try {
         // 上傳到 Cloudinary
@@ -134,7 +138,10 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
           )
         )
       }
-    }
+    })
+
+    // 4️⃣ 等待所有上傳完成（Promise.allSettled 允許部分失敗）
+    await Promise.allSettled(uploadPromises)
 
     // 清空 input
     e.target.value = ''
@@ -282,6 +289,111 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
     }
   }
 
+  // 處理 Ctrl+V 貼上圖片和檔案
+  const handlePaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData.items
+    const files: File[] = []
+
+    // 檢查剪貼簿中的檔案
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i]
+
+      // 如果是檔案類型
+      if (item.kind === 'file') {
+        const file = item.getAsFile()
+        if (file) {
+          // 🔧 修復：為剪貼簿的檔案生成正確的名稱和類型
+          let fileName = file.name
+          let fileType = file.type
+
+          // 如果檔案名稱是空的或是默認名稱，生成一個新的
+          if (!fileName || fileName === 'image.png' || fileName === 'blob') {
+            const timestamp = new Date().getTime()
+            const extension = fileType.split('/')[1] || 'png'
+            fileName = `pasted-image-${timestamp}.${extension}`
+          }
+
+          // 創建一個新的 File 對象，確保名稱正確
+          const fixedFile = new File([file], fileName, {
+            type: fileType || 'image/png',
+            lastModified: file.lastModified
+          })
+
+          files.push(fixedFile)
+        }
+      }
+    }
+
+    // 如果有檔案，則處理上傳
+    if (files.length > 0) {
+      e.preventDefault() // 防止預設的貼上行為
+      play('notification')
+
+      // 1️⃣ 先創建所有文件的初始狀態（立即顯示在 UI）
+      const newFiles = files.map(file => ({
+        id: `file-${Date.now()}-${Math.random()}`,
+        name: file.name,
+        url: '',
+        type: file.type,
+        size: file.size,
+        status: 'uploading' as const,
+        progress: 0
+      }))
+
+      // 2️⃣ 一次性添加所有文件到狀態
+      setUploadedFiles(prev => [...prev, ...newFiles])
+
+      // 3️⃣ 並發上傳所有文件（像 Discord 一樣）
+      const uploadPromises = files.map(async (file, index) => {
+        const fileId = newFiles[index].id
+
+        try {
+          // 上傳到 Cloudinary
+          const formData = new FormData()
+          formData.append('file', file)
+
+          const response = await axios.post(API_ENDPOINTS.UPLOAD_SINGLE, formData, {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+              Authorization: `Bearer ${token}`
+            },
+            onUploadProgress: (progressEvent: { loaded: number; total?: number }) => {
+              const progress = progressEvent.total
+                ? Math.round((progressEvent.loaded * 100) / progressEvent.total)
+                : 0
+
+              setUploadedFiles(prev =>
+                prev.map(f =>
+                  f.id === fileId ? { ...f, progress } : f
+                )
+              )
+            }
+          })
+
+          setUploadedFiles(prev =>
+            prev.map(f =>
+              f.id === fileId
+                ? { ...f, url: response.data.url, status: 'completed' as const }
+                : f
+            )
+          )
+
+          play('upload_success')
+        } catch (error) {
+          console.error('檔案上傳失敗:', error)
+          setUploadedFiles(prev =>
+            prev.map(f =>
+              f.id === fileId ? { ...f, status: 'error' as const } : f
+            )
+          )
+        }
+      })
+
+      // 4️⃣ 等待所有上傳完成（Promise.allSettled 允許部分失敗）
+      await Promise.allSettled(uploadPromises)
+    }
+  }
+
   return (
     <div
       className={`fixed inset-0 ${Z_INDEX_CLASSES.FULLSCREEN_CHAT} flex items-center justify-center animate-fadeIn`}
@@ -337,8 +449,8 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
           {/* 對話歷史 - 佔據剩餘空間 */}
         <div className="flex-1 overflow-y-auto mb-6 space-y-3 sm:space-y-4">
           {chatHistory.length === 0 ? (
-            <div className="flex-1 flex items-center justify-center">
-              <div className="text-center space-y-4">
+            <div className="flex flex-col items-center justify-center h-full text-center px-4">
+              <div className="space-y-4">
                 <p className="text-amber-900/60 text-lg">跟我說點什麼吧～ ☁️</p>
                 <div className="flex flex-wrap gap-2 justify-center">
                   {[
@@ -502,10 +614,12 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
               placeholder="告訴我你想記錄什麼..."
               className="flex-1 bg-transparent outline-none resize-none min-h-[50px] sm:min-h-[60px] max-h-[100px] sm:max-h-[120px] tororo-input text-sm md:text-base"
               style={{
                 color: '#8B5C2E',
+                caretColor: '#8B5C2E',
                 fontFamily: 'inherit'
               }}
             />

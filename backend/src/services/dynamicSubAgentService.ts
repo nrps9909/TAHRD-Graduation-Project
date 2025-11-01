@@ -191,9 +191,29 @@ export class DynamicSubAgentService {
     // 過濾掉分數為 0 的島嶼（完全不相關）
     const filteredIslands = scoredIslands.filter(item => item.score > 0)
 
-    // 如果沒有任何島嶼匹配，返回空數組（讓 Chief Agent 降級處理）
+    // 如果沒有任何島嶼匹配，強制分配到預設島嶼（生活島）
     if (filteredIslands.length === 0) {
-      logger.info(`[DynamicSubAgent] 沒有找到相關的 Island（所有分數為 0）`)
+      logger.warn(`[DynamicSubAgent] 沒有找到相關的 Island（所有分數為 0），將使用預設島嶼`)
+
+      // 尋找「生活島」作為預設
+      const defaultIsland = islands.find(i =>
+        i.nameChinese === '生活島' ||
+        i.name === 'LIFE_ISLAND'
+      )
+
+      if (defaultIsland) {
+        logger.info(`[DynamicSubAgent] 使用預設島嶼: ${defaultIsland.nameChinese}`)
+        return [defaultIsland]
+      }
+
+      // 如果找不到生活島，使用第一個島嶼
+      if (islands.length > 0) {
+        logger.info(`[DynamicSubAgent] 使用第一個島嶼作為預設: ${islands[0].nameChinese}`)
+        return [islands[0]]
+      }
+
+      // 如果用戶完全沒有島嶼，返回空數組
+      logger.error(`[DynamicSubAgent] 用戶沒有任何島嶼！`)
       return []
     }
 

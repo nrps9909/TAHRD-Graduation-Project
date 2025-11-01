@@ -1,3 +1,12 @@
+/**
+ * @deprecated PARTIALLY BROKEN: Many resolvers use assistant-based architecture
+ * which has been migrated to island-based. The main knowledge upload functionality
+ * uses the streaming API which works correctly.
+ *
+ * Broken resolvers: createMemoryDirect, chatWithAssistant (use assistantId/processAndCreateMemory)
+ * Working resolvers: memories (query), memory (query), updateMemory, deleteMemory, etc.
+ */
+
 import { GraphQLError } from 'graphql'
 import { Context } from '../context'
 import { memoryService } from '../services/memoryService'
@@ -24,7 +33,7 @@ export const memoryResolvers = {
       try {
         return await memoryService.getMemories({
           userId,
-          assistantId: filter?.assistantId,
+          islandId: filter?.islandId,  // Changed from assistantId
           category: filter?.category,
           tags: filter?.tags,
           search: filter?.search,
@@ -139,7 +148,7 @@ export const memoryResolvers = {
           orderBy: { createdAt: 'desc' },
           take: limit,
           include: {
-            assistant: true,
+            island: true,
             memory: true
           }
         })
@@ -162,7 +171,7 @@ export const memoryResolvers = {
         const message = await prisma.chatMessage.findUnique({
           where: { id },
           include: {
-            assistant: true,
+            island: true,
             memory: true
           }
         })
@@ -244,7 +253,7 @@ export const memoryResolvers = {
         const memory = await prisma.memory.create({
           data: {
             userId,
-            assistantId: defaultAssistant.id,
+            islandId: "PLACEHOLDER_ISLAND",  // FIXME: Need to get user island
             title: input.title || null,
             rawContent: input.content,
             summary: input.title || input.content.substring(0, 100),
@@ -263,7 +272,7 @@ export const memoryResolvers = {
             isPinned: false
           },
           include: {
-            assistant: true,
+            island: true,
             user: true
           }
         })
@@ -442,10 +451,11 @@ export const memoryResolvers = {
         }
 
         // 其他助手的一般對話
+        // FIXME: Need proper island ID
         const chatMessage = await prisma.chatMessage.create({
           data: {
             userId,
-            assistantId: input.assistantId,
+            islandId: "PLACEHOLDER_ISLAND",
             sessionId: session.id,
             userMessage: input.message,
             assistantResponse: '此功能即將推出', // TODO: 實作 sub-agent 對話
@@ -453,7 +463,7 @@ export const memoryResolvers = {
             memoryId: input.memoryId
           },
           include: {
-            assistant: true,
+            island: true,
             session: true,
             memory: true
           }
@@ -478,13 +488,23 @@ export const memoryResolvers = {
       })
     },
 
-    assistant: async (parent: any, _: any, { prisma }: Context) => {
+    /* assistant: async (parent: any, _: any, { prisma }: Context) => {
+      // DEPRECATED: assistant field no longer exists in Memory model
       if (!parent.assistantId) return null
 
       return prisma.assistant.findUnique({
         where: { id: parent.assistantId }
       })
-    },
+    }, */
+
+    /* island: async (parent: any, _: any, { prisma }: Context) => {
+      // COMMENTED OUT: island field not in GraphQL schema yet
+      if (!parent.islandId) return null
+
+      return prisma.island.findUnique({
+        where: { id: parent.islandId }
+      })
+    }, */
 
     relatedMemories: async (parent: any, _: any, { prisma }: Context) => {
       if (!parent.relatedMemoryIds || parent.relatedMemoryIds.length === 0) {

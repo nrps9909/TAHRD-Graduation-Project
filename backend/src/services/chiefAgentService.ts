@@ -1,8 +1,8 @@
 import { PrismaClient, AssistantType, ChatContextType, ContentType } from '@prisma/client'
 import { logger } from '../utils/logger'
 import axios from 'axios'
-import { callGeminiAPI } from '../utils/geminiAPI'
-import { assistantService } from './assistantService'
+import { callGeminiAPI, callGeminiAPIStream } from '../utils/geminiAPI'
+import { islandService } from './islandService'
 import { memoryService } from './memoryService'
 import { subAgentService } from './subAgentService'
 import { multimodalProcessor } from './multimodalProcessor'
@@ -10,6 +10,8 @@ import { chatSessionService } from './chatSessionService'
 import { taskQueueService, TaskPriority } from './taskQueueService'
 import { dynamicSubAgentService } from './dynamicSubAgentService'
 import { vectorService } from './vectorService'
+import { categoryInitService } from './categoryInitService'
+import { assistantService } from './assistantService'
 
 const prisma = new PrismaClient()
 
@@ -86,6 +88,21 @@ export class ChiefAgentService {
   private classificationCache: Map<string, ClassificationCache> = new Map()
   private readonly CACHE_TTL = 30 * 60 * 1000 // 30 分鐘過期
   private readonly MAX_CACHE_SIZE = 1000 // 最多緩存 1000 條
+
+  // Chief Agent 的默認 system prompt（不再依賴 Assistant 模型）
+  private readonly CHIEF_SYSTEM_PROMPT = `你是「白噗噗」，一個溫暖、智慧的知識管理助手。
+
+你的職責：
+1. **快速分類** - 理解用戶輸入的內容，快速分類到合適的知識領域
+2. **溫暖回應** - 用親切、鼓勵的語氣回應用戶
+3. **智能分析** - 提供有洞察力的摘要和建議
+4. **全局視角** - 從整體角度幫助用戶理解知識之間的關聯
+
+你的風格：
+- 溫暖親切，像朋友一樣
+- 簡潔明確，不囉嗦
+- 正面鼓勵，給予支持
+- 智慧洞察，提供價值`
 
   constructor() {
     this.mcpUrl = process.env.MCP_SERVICE_URL || 'http://localhost:8765'
@@ -186,12 +203,7 @@ export class ChiefAgentService {
    */
   async classifyContent(content: string): Promise<ClassificationResult> {
     try {
-      const chief = await assistantService.getChiefAssistant()
-      if (!chief) {
-        throw new Error('Chief assistant not found')
-      }
-
-      const prompt = `${chief.systemPrompt}
+      const prompt = `你是 Heart Whisper Town 的智能分類助手。
 
 分析以下內容並判斷最適合的分類：
 
@@ -215,7 +227,7 @@ export class ChiefAgentService {
 - RESOURCES: 文章、連結、影片、參考資料
 - MISC: 雜項、不屬於其他類別的知識、待整理的內容`
 
-      const response = await this.callMCP(prompt, chief.id)
+      const response = await callGeminiAPI(prompt)
       const result = this.parseJSON(response)
 
       return {
@@ -227,13 +239,11 @@ export class ChiefAgentService {
     } catch (error) {
       logger.error('Classification error:', error)
 
-      // 降級處理：使用關鍵字匹配
-      const fallbackCategory = assistantService.fallbackCategoryDetection(content)
-
+      // 降級處理：使用 LIFE 作為預設類別
       return {
-        suggestedCategory: fallbackCategory,
+        suggestedCategory: AssistantType.LIFE,
         confidence: 0.5,
-        reason: '使用關鍵字匹配（AI 服務暫時無法使用）',
+        reason: '使用預設分類（AI 服務暫時無法使用）',
         alternativeCategories: []
       }
     }
@@ -241,6 +251,8 @@ export class ChiefAgentService {
 
   /**
    * 處理內容並創建記憶
+   * @deprecated This function is deprecated. Use the streaming API instead.
+   * This function is broken due to the migration from assistantId to islandId.
    */
   async processAndCreateMemory(
     userId: string,
@@ -249,6 +261,9 @@ export class ChiefAgentService {
     category: AssistantType,
     contextType: ChatContextType = ChatContextType.MEMORY_CREATION
   ) {
+    throw new Error('This function is deprecated. Please use the streaming knowledge distribution API instead.')
+    /* COMMENTED OUT - BROKEN DUE TO MIGRATION
+
     try {
       const assistant = await assistantService.getAssistantById(assistantId)
       if (!assistant) {
@@ -335,9 +350,15 @@ ${contextInfo}
       await chatSessionService.incrementMessageCount(session.id)
       await chatSessionService.updateLastMessageAt(session.id)
 
-      // 更新助手統計
+      // 更新助手統計（向後兼容）
       await assistantService.incrementAssistantStats(assistantId, 'memory')
       await assistantService.incrementAssistantStats(assistantId, 'chat')
+
+      // 更新島嶼統計（如果存在）
+      if (memory.islandId) {
+        await islandService.incrementIslandStats(memory.islandId, 'memory')
+        await islandService.incrementIslandStats(memory.islandId, 'chat')
+      }
 
       // 查找相關記憶
       const relatedMemories = await memoryService.getRelatedMemories(memory.id, userId, 3)
@@ -354,6 +375,7 @@ ${contextInfo}
       logger.error('Process and create memory error:', error)
       throw new Error('處理內容失敗')
     }
+    */
   }
 
   /**
@@ -394,10 +416,6 @@ ${contextInfo}
    */
   async generateSummary(userId: string, days: number = 7) {
     try {
-      const chief = await assistantService.getChiefAssistant()
-      if (!chief) {
-        throw new Error('Chief assistant not found')
-      }
 
       const startDate = new Date()
       startDate.setDate(startDate.getDate() - days)
@@ -455,7 +473,7 @@ ${contextInfo}
         .map(m => `[${m.category}] ${m.title || m.summary || m.rawContent.substring(0, 50)}`)
         .join('\n')
 
-      const prompt = `${chief.systemPrompt}
+      const prompt = `${this.CHIEF_SYSTEM_PROMPT}
 
 作為用戶的總管，請分析過去 ${days} 天的記錄並提供洞察。
 
@@ -487,7 +505,7 @@ ${topTags.map(t => `- ${t.tag}: ${t.count} 次`).join('\n')}
   "suggestions": ["建議1", "建議2", "建議3"]
 }`
 
-      const response = await this.callMCP(prompt, chief.id)
+      const response = await this.callMCP(prompt, 'chief-agent')
       const result = this.parseJSON(response)
 
       return {
@@ -516,14 +534,16 @@ ${topTags.map(t => `- ${t.tag}: ${t.count} 次`).join('\n')}
    * 1. 語意搜索：找出與問題最相關的記憶（top 10）
    * 2. 時間維度：最近 10 條記憶（保持時間脈絡）
    * 3. 合併去重：優先語意相關，保留時間新鮮度
+   *
+   * @deprecated This function is broken due to the migration from assistantId to islandId.
+   * Chat sessions now require islandId, but Chief is an Assistant not an Island.
    */
   async chatWithChief(userId: string, message: string) {
+    throw new Error('chatWithChief is currently broken due to schema migration. Please use island-based chat instead.')
+    /* COMMENTED OUT - BROKEN DUE TO MIGRATION
+
     try {
       const startTime = Date.now()
-      const chief = await assistantService.getChiefAssistant()
-      if (!chief) {
-        throw new Error('Chief assistant not found')
-      }
 
       logger.info(`[Chat with Chief] User ${userId} asks: "${message.substring(0, 50)}..."`)
 
@@ -592,19 +612,19 @@ ${topTags.map(t => `- ${t.tag}: ${t.count} 次`).join('\n')}
           }).join('\n\n')}`
         : '\n\n【知識庫上下文】目前沒有找到相關記憶。'
 
-      const prompt = `${chief.systemPrompt}
+      const prompt = `${this.CHIEF_SYSTEM_PROMPT}
 
 用戶詢問：${message}
 ${contextInfo}
 
 請基於提供的知識庫上下文來回答用戶的問題。如果上下文中沒有相關資訊，請誠實告知並給予溫暖的回應。`
 
-      const response = await this.callMCP(prompt, chief.id)
+      const response = await this.callMCP(prompt, 'chief-agent')
 
       // 獲取或創建會話
       const session = await chatSessionService.getOrCreateSession(
         userId,
-        chief.id,
+        'chief-agent',
         ChatContextType.GENERAL_CHAT
       )
 
@@ -612,7 +632,7 @@ ${contextInfo}
       const chatMessage = await prisma.chatMessage.create({
         data: {
           userId,
-          assistantId: chief.id,
+          assistantId: 'chief-agent',
           sessionId: session.id,
           userMessage: message,
           assistantResponse: response,
@@ -624,7 +644,7 @@ ${contextInfo}
       await chatSessionService.incrementMessageCount(session.id)
       await chatSessionService.updateLastMessageAt(session.id)
 
-      await assistantService.incrementAssistantStats(chief.id, 'chat')
+      await assistantService.incrementAssistantStats('chief-agent', 'chat')
 
       const totalTime = Date.now() - startTime
       logger.info(`[Chat with Chief] Chat completed in ${totalTime}ms, used ${contextMemories.length} memories (${semanticMemories.length} semantic + ${contextMemories.length - semanticMemories.length} temporal)`)
@@ -634,6 +654,7 @@ ${contextInfo}
       logger.error('Chat with chief error:', error)
       throw new Error('與總管對話失敗')
     }
+    */
   }
 
   /**
@@ -752,11 +773,6 @@ ${contextInfo}
         return cached.result
       }
 
-      const chief = await assistantService.getChiefAssistant()
-      if (!chief) {
-        throw new Error('Chief assistant not found')
-      }
-
       logger.info(`[白噗噗] 開始快速分類`)
 
       // === 檢查用戶是否有自訂 Islands ===
@@ -854,7 +870,7 @@ ${contextInfo}
       const oldModel = this.geminiModel
       this.geminiModel = 'gemini-2.5-flash'
 
-      const response = await this.callMCP(prompt, chief.id, images.length > 0 ? images : undefined)
+      const response = await this.callMCP(prompt, 'chief-agent', images.length > 0 ? images : undefined)
       const result = this.parseJSON(response)
 
       this.geminiModel = oldModel // 恢復原模型
@@ -901,13 +917,11 @@ ${contextInfo}
     } catch (error) {
       logger.error('[白噗噗] 快速分類失敗:', error)
 
-      // 降級方案：使用關鍵字匹配
-      const fallbackCategory = assistantService.fallbackCategoryDetection(input.content)
-
+      // 降級方案：使用 LIFE 作為預設類別
       return {
-        category: fallbackCategory,
+        category: AssistantType.LIFE,
         confidence: 0.5,
-        reasoning: '使用關鍵字匹配（AI 暫時無法使用）',
+        reasoning: '使用預設分類（AI 暫時無法使用）',
         warmResponse: '收到了，我幫你記下來',
         quickSummary: input.content.substring(0, 30),
         shouldRecord: true, // ⚠️ 固定為 true，所有對話都記錄到資料庫
@@ -924,10 +938,6 @@ ${contextInfo}
     input: UploadKnowledgeInput
   ): Promise<KnowledgeAnalysis> {
     try {
-      const chief = await assistantService.getChiefAssistant()
-      if (!chief) {
-        throw new Error('Chief assistant not found')
-      }
 
       logger.info(`[Chief Agent] 開始多模態內容分析（並行處理）`)
 
@@ -999,7 +1009,7 @@ ${contextInfo}
       logger.info(`[Chief Agent] 多模態處理完成 - 圖片:${imageAnalyses.length}, PDF:${pdfAnalyses.length}, 連結:${linkAnalyses.length}`)
 
       // 构建增强的分析提示词
-      let prompt = `${chief.systemPrompt}
+      let prompt = `${this.CHIEF_SYSTEM_PROMPT}
 
 作為知識管理系統的總管，請分析以下內容並提供詳細的分類建議。
 
@@ -1064,7 +1074,7 @@ ${input.content}
 
 請根據內容的主題和性質，選擇 1-3 個最相關的 Assistant。`
 
-      const response = await this.callMCP(prompt, chief.id)
+      const response = await this.callMCP(prompt, 'chief-agent')
       const parsed = this.parseJSON(response)
 
       return {
@@ -1103,12 +1113,6 @@ ${input.content}
     try {
       logger.info(`[Chief Agent] 開始處理知識上傳，用戶: ${userId}`)
 
-      // === 檢查用戶是否有自訂 Islands ===
-      const userIslands = await dynamicSubAgentService.getUserIslands(userId)
-      const useDynamicSubAgents = userIslands.length > 0
-
-      logger.info(`[Chief Agent] 用戶有 ${userIslands.length} 個自訂 Island，使用${useDynamicSubAgents ? 'Island-based' : '預設'}系統`)
-
       // === 階段 1: 白噗噗快速分類（Gemini 2.5 Flash）===
       const quickResult = await this.quickClassifyForTororo(userId, input)
       logger.info(`[白噗噗] 快速分類完成: ${quickResult.category} (${quickResult.confidence})`)
@@ -1118,196 +1122,361 @@ ${input.content}
       // 2. 確定內容類型
       const contentType = this.determineContentType(input)
 
-      // === Island-based SubAgent 路徑（使用 Islands 而非 Subcategories）===
-      if (useDynamicSubAgents) {
-        logger.info('[Chief Agent] 使用 Island-based SubAgent 系統')
+      // === 使用 Island-based SubAgent 系統（唯一路徑）===
+      logger.info('[Chief Agent] 使用 Island-based SubAgent 系統')
 
-        // 優先使用 AI 選擇的島嶼名稱
-        let targetIsland = null
+      // ✨ 獲取所有用戶的島嶼進行比較
+      let allUserIslands = await dynamicSubAgentService.getUserIslands(userId)
+
+        if (allUserIslands.length === 0) {
+          logger.warn('[Chief Agent] 用戶沒有任何 Island，自動創建預設島嶼')
+
+          // 自動為用戶創建預設島嶼
+          const { islands } = await categoryInitService.initializeDefaultCategories(userId)
+
+          if (islands.length === 0) {
+            throw new Error('無法創建預設島嶼')
+          }
+
+          logger.info(`[Chief Agent] 已為用戶創建 ${islands.length} 個預設島嶼`)
+
+          // 更新 allUserIslands 為新創建的島嶼
+          allUserIslands.splice(0, allUserIslands.length, ...islands)
+        }
+
+        logger.info(`[Chief Agent] ✨ 將評估所有 ${allUserIslands.length} 個島嶼以找到最佳匹配`)
+
+        // 優先使用 AI 選擇的島嶼名稱（作為參考）
+        let primaryIsland = null
 
         if (quickResult.aiSelectedIslandName) {
-          // AI 已經選擇了島嶼，直接使用
-          const userIslands = await dynamicSubAgentService.getUserIslands(userId)
-          targetIsland = userIslands.find(
+          primaryIsland = allUserIslands.find(
             island => island.nameChinese === quickResult.aiSelectedIslandName
           )
 
-          if (targetIsland) {
-            logger.info(`[Chief Agent] 使用 AI 選擇的 Island: ${targetIsland.nameChinese} (${targetIsland.id})`)
-          } else {
-            logger.warn(`[Chief Agent] AI 選擇的 Island "${quickResult.aiSelectedIslandName}" 不存在，使用關鍵字匹配`)
+          if (primaryIsland) {
+            logger.info(`[Chief Agent] AI 選擇的主要 Island: ${primaryIsland.nameChinese} (${primaryIsland.id})`)
           }
         }
 
-        // 如果 AI 沒有選擇或島嶼不存在，使用關鍵字匹配作為後備
-        if (!targetIsland) {
-          const relevantIslands = await dynamicSubAgentService.findRelevantIslands(
+        // 優化：直接使用原始內容（連結提取由 SubAgent 處理）
+        const contentForDistribution = input.content
+
+        // 優化：使用簡單的連結標題（詳細元數據由 SubAgent 提取）
+        const enrichedLinkTitles = input.links?.map(l => l.title || l.url) || []
+
+        // 創建知識分發記錄（使用 Island-based assistant）
+        // 優化：移除 include（不需要立即載入關聯，提升寫入速度）
+        const distribution = await prisma.knowledgeDistribution.create({
+          data: {
             userId,
-            input.content,
-            3 // 取前 3 個最相關的
-          )
-
-          if (relevantIslands.length > 0) {
-            targetIsland = relevantIslands[0]
-            logger.info(`[Chief Agent] 使用關鍵字匹配選擇 Island: ${targetIsland.nameChinese} (${targetIsland.id})`)
+            rawContent: contentForDistribution,
+            contentType,
+            fileUrls: input.files?.map(f => f.url) || [],
+            fileNames: input.files?.map(f => f.name) || [],
+            fileTypes: input.files?.map(f => f.type) || [],
+            links: input.links?.map(l => l.url) || [],
+            linkTitles: enrichedLinkTitles,
+            chiefAnalysis: `白噗噗快速分類 → 將評估所有島嶼`,
+            chiefSummary: quickResult.quickSummary,
+            identifiedTopics: primaryIsland ? [primaryIsland.nameChinese] : [],
+            suggestedTags: [],
+            distributedTo: [], // 使用 Island ID（稍後在任務處理時映射到 assistant）
+            storedBy: [],
+            processingTime: Date.now() - startTime,
           }
+        })
+
+        logger.info(`[Chief Agent] 知識分發記錄創建完成，ID: ${distribution.id}`)
+
+        // ✨ 加入任務隊列，傳遞所有 Island IDs 進行比較
+        const allIslandIds = allUserIslands.map(island => island.id)
+        const taskId = await taskQueueService.addTask(
+          userId,
+          distribution.id,
+          allIslandIds, // 傳遞所有島嶼進行比較
+          TaskPriority.NORMAL
+        )
+
+        logger.info(`[Chief Agent] Island-based SubAgent 任務已加入隊列，TaskID: ${taskId}`)
+
+        // 返回白噗噗的溫暖回應 + Island 資訊
+        return {
+          distribution: {
+            ...distribution,
+            agentDecisions: [],
+            memories: []
+          },
+          tororoResponse: {
+            warmMessage: `${quickResult.warmResponse}\n我會幫你找到最適合的島嶼來儲存喔！`,
+            category: quickResult.category,
+            quickSummary: quickResult.quickSummary,
+            confidence: quickResult.confidence,
+            reasoning: quickResult.reasoning,
+            island: primaryIsland ? {
+              id: primaryIsland.id,
+              name: primaryIsland.nameChinese,
+              emoji: primaryIsland.emoji,
+              color: primaryIsland.color
+            } : undefined
+          },
+          quickClassifyResult: quickResult, // 添加完整分類結果（用於 SSE）
+          agentDecisions: [],
+          memoriesCreated: [],
+          processingTime: Date.now() - startTime,
+          backgroundProcessing: true,
+          skipRecording: false // 所有內容都會被記錄
         }
+    } catch (error) {
+      logger.error('[Chief Agent] 上傳知識失敗:', error)
+      throw new Error('處理知識上傳失敗')
+    }
+  }
 
-        if (!targetIsland) {
-          logger.warn('[Chief Agent] 沒有找到相關的 Island，降級到預設系統')
-          // 降級到舊系統
-        } else {
-          logger.info(`[Chief Agent] 最終選擇 Island: ${targetIsland.nameChinese} (${targetIsland.id})`)
+  /**
+   * 上傳知識（Streaming 模式 - 一次 AI 調用，分階段返回）
+   *
+   * 流程：
+   * 1. 階段 1 (3秒)：即時回應 (category, warmResponse, quickSummary)
+   * 2. 階段 2 (10秒)：深度分析 (detailedSummary, keyInsights, tags, advice)
+   * 3. 創建 Memory
+   */
+  async *uploadKnowledgeStream(
+    userId: string,
+    input: UploadKnowledgeInput
+  ): AsyncGenerator<any, void, unknown> {
+    const startTime = Date.now()
 
-          // 優化：直接使用原始內容（連結提取由 SubAgent 處理）
-          const contentForDistribution = input.content
+    try {
+      logger.info(`[Chief Agent Stream] 開始處理知識上傳，用戶: ${userId}`)
 
-          // 優化：使用簡單的連結標題（詳細元數據由 SubAgent 提取）
-          const enrichedLinkTitles = input.links?.map(l => l.title || l.url) || []
+      // 獲取用戶島嶼
+      let allUserIslands = await dynamicSubAgentService.getUserIslands(userId)
 
-          // 創建知識分發記錄（使用 Island-based assistant）
-          // 優化：移除 include（不需要立即載入關聯，提升寫入速度）
-          const distribution = await prisma.knowledgeDistribution.create({
-            data: {
-              userId,
-              rawContent: contentForDistribution,
-              contentType,
-              fileUrls: input.files?.map(f => f.url) || [],
-              fileNames: input.files?.map(f => f.name) || [],
-              fileTypes: input.files?.map(f => f.type) || [],
-              links: input.links?.map(l => l.url) || [],
-              linkTitles: enrichedLinkTitles,
-              chiefAnalysis: `白噗噗快速分類 → Island: ${targetIsland.nameChinese}`,
-              chiefSummary: quickResult.quickSummary,
-              identifiedTopics: [targetIsland.nameChinese],
-              suggestedTags: [],
-              distributedTo: [], // 使用 Island ID（稍後在任務處理時映射到 assistant）
-              storedBy: [],
-              processingTime: Date.now() - startTime,
+      if (allUserIslands.length === 0) {
+        logger.warn('[Chief Agent Stream] 用戶沒有任何 Island，自動創建預設島嶼')
+        const { islands } = await categoryInitService.initializeDefaultCategories(userId)
+        if (islands.length === 0) {
+          throw new Error('無法創建預設島嶼')
+        }
+        allUserIslands = islands
+      }
+
+      // 處理多模態文件（圖片）
+      const images: Array<{ mimeType: string; data: string }> = []
+      const MAX_FILE_SIZE_FOR_INLINE = 10 * 1024 * 1024
+
+      if (input.files && input.files.length > 0) {
+        const mediaFiles = input.files.filter(f =>
+          f.type.startsWith('image/') ||
+          f.type.startsWith('video/') ||
+          f.type.startsWith('audio/')
+        )
+
+        if (mediaFiles.length > 0) {
+          const mediaDownloadTasks = mediaFiles.map(async (file) => {
+            try {
+              const response = await axios.get(file.url, {
+                responseType: 'arraybuffer',
+                timeout: 30000,
+                maxContentLength: MAX_FILE_SIZE_FOR_INLINE,
+                maxRedirects: 5
+              })
+
+              const downloadedSize = response.data.byteLength
+              if (downloadedSize > MAX_FILE_SIZE_FOR_INLINE) {
+                return null
+              }
+
+              const base64Data = Buffer.from(response.data).toString('base64')
+              return {
+                mimeType: file.type,
+                data: base64Data
+              }
+            } catch (error) {
+              logger.error(`[Chief Agent Stream] 下載媒體檔案失敗 (${file.name}):`, error)
+              return null
             }
           })
 
-          logger.info(`[Chief Agent] 知識分發記錄創建完成，ID: ${distribution.id}`)
+          const downloadedMedia = await Promise.all(mediaDownloadTasks)
+          downloadedMedia.forEach(media => {
+            if (media) images.push(media)
+          })
+        }
+      }
 
-          // 加入任務隊列，傳遞 Island ID
-          const taskId = await taskQueueService.addTask(
-            userId,
-            distribution.id,
-            [targetIsland.id], // 傳遞 Island ID
-            TaskPriority.NORMAL,
-            { useIslandSubAgent: true } // 標記使用 Island-based SubAgent
-          )
+      // 構建 streaming prompt
+      const prompt = this.buildStreamingClassificationPrompt(input.content, input, allUserIslands)
 
-          logger.info(`[Chief Agent] Island-based SubAgent 任務已加入隊列，TaskID: ${taskId}`)
+      // 流式接收 Gemini 回應
+      let fullText = ''
+      let immediateResponse: any = null
+      let deepAnalysis: any = null
 
-          // 返回白噗噗的溫暖回應 + Island 資訊
-          return {
-            distribution: {
-              ...distribution,
-              agentDecisions: [],
-              memories: []
-            },
-            tororoResponse: {
-              warmMessage: `${quickResult.warmResponse}\n由 ${targetIsland.emoji} ${targetIsland.nameChinese} 來處理喔！`,
-              category: quickResult.category,
-              quickSummary: quickResult.quickSummary,
-              confidence: quickResult.confidence,
-              reasoning: quickResult.reasoning,
-              island: {
-                id: targetIsland.id,
-                name: targetIsland.nameChinese,
-                emoji: targetIsland.emoji,
-                color: targetIsland.color
+      logger.info(`[Chief Agent Stream] 開始 Streaming 調用...`)
+
+      // 優化的 API 配置：快速響應
+      for await (const chunk of callGeminiAPIStream(prompt, {
+        images,
+        temperature: 0.4,        // 降低隨機性，加快決策
+        maxOutputTokens: 2048    // 限制輸出長度，加快生成
+      })) {
+        fullText += chunk
+
+        // 嘗試解析第一階段（即時回應）
+        if (!immediateResponse) {
+          try {
+            const immediateMatch = fullText.match(/\{\s*"immediateResponse"\s*:\s*(\{[^}]+\})\s*\}/s)
+            if (immediateMatch) {
+              const immediateJson = `{"immediateResponse":${immediateMatch[1]}}`
+              const parsed = JSON.parse(immediateJson)
+              immediateResponse = parsed.immediateResponse
+
+              logger.info(`[Chief Agent Stream] ✅ 階段 1 完成 - 即時回應`)
+              logger.info(`[Chief Agent Stream]    - category: ${immediateResponse.category}`)
+              logger.info(`[Chief Agent Stream]    - warmResponse: ${immediateResponse.warmResponse}`)
+
+              // 🎯 立即發送給前端！
+              yield {
+                type: 'immediate',
+                data: immediateResponse,
+                processingTime: Date.now() - startTime
               }
-            },
-            quickClassifyResult: quickResult, // 添加完整分類結果（用於 SSE）
-            agentDecisions: [],
-            memoriesCreated: [],
-            processingTime: Date.now() - startTime,
-            backgroundProcessing: true,
-            useIslandSubAgent: true,
-            skipRecording: false // 所有內容都會被記錄
+            }
+          } catch (e) {
+            // JSON 還沒完整，繼續等待
+          }
+        }
+
+        // 嘗試解析第二階段（深度分析）
+        if (immediateResponse && !deepAnalysis) {
+          try {
+            const deepMatch = fullText.match(/\{\s*"deepAnalysis"\s*:\s*(\{[\s\S]+\})\s*\}/s)
+            if (deepMatch) {
+              const deepJson = `{"deepAnalysis":${deepMatch[1]}}`
+              const parsed = JSON.parse(deepJson)
+              deepAnalysis = parsed.deepAnalysis
+
+              logger.info(`[Chief Agent Stream] ✅ 階段 2 完成 - 深度分析`)
+              logger.info(`[Chief Agent Stream]    - keyInsights: ${deepAnalysis.keyInsights?.length || 0} 個`)
+              logger.info(`[Chief Agent Stream]    - suggestedTags: ${deepAnalysis.suggestedTags?.length || 0} 個`)
+
+              // 🎯 發送深度分析！
+              yield {
+                type: 'deep',
+                data: deepAnalysis,
+                processingTime: Date.now() - startTime
+              }
+
+              // 兩階段都完成了，跳出循環
+              break
+            }
+          } catch (e) {
+            // JSON 還沒完整，繼續等待
           }
         }
       }
 
-      // === 預設 Assistant 路徑（降級或無自訂 SubAgent）===
-      logger.info('[Chief Agent] 使用預設 Assistant 系統')
-
-      // 3. 獲取對應的 Assistant ID
-      const targetAssistant = await assistantService.getAssistantByType(quickResult.category)
-      if (!targetAssistant) {
-        throw new Error(`No assistant found for category: ${quickResult.category}`)
+      // 檢查是否成功獲取兩個階段的數據
+      if (!immediateResponse || !deepAnalysis) {
+        throw new Error('未能完整解析 AI 回應')
       }
 
-      // 4. 創建知識分發記錄（簡化版 - 只記錄基本資訊）
-      // 優化：直接使用原始內容（連結提取由 SubAgent 處理）
-      const contentForDistribution = input.content
+      // === 創建 Memory（不再需要 SubAgent）===
+      logger.info(`[Chief Agent Stream] 開始創建 Memory...`)
 
-      // 優化：使用簡單的連結標題（詳細元數據由 SubAgent 提取）
-      const enrichedLinkTitles = input.links?.map(l => l.title || l.url) || []
+      // 找到對應的島嶼
+      const primaryIslandName = immediateResponse.category
+      const primaryIsland = allUserIslands.find(
+        island => island.nameChinese === primaryIslandName
+      )
 
-      // 優化：移除 include（不需要立即載入關聯，提升寫入速度）
+      if (!primaryIsland) {
+        throw new Error(`找不到對應的島嶼: ${primaryIslandName}`)
+      }
+
+      // 獲取對應的 Assistant
+      let assistant = await assistantService.getAssistantByType(primaryIsland.name as any)
+      if (!assistant) {
+        assistant = await assistantService.getAssistantByType('LIFE')
+      }
+
+      // 確定內容類型
+      const contentType = this.determineContentType(input)
+
+      // 創建知識分發記錄
       const distribution = await prisma.knowledgeDistribution.create({
         data: {
           userId,
-          rawContent: contentForDistribution, // 使用豐富化內容
+          rawContent: input.content,
           contentType,
           fileUrls: input.files?.map(f => f.url) || [],
           fileNames: input.files?.map(f => f.name) || [],
           fileTypes: input.files?.map(f => f.type) || [],
           links: input.links?.map(l => l.url) || [],
-          linkTitles: enrichedLinkTitles, // 使用提取的標題
-          chiefAnalysis: `白噗噗快速分類: ${quickResult.category}`, // 簡單記錄
-          chiefSummary: quickResult.quickSummary,
-          identifiedTopics: [quickResult.category],
-          suggestedTags: [],
-          distributedTo: [targetAssistant.id],
-          storedBy: [], // 等 Sub-Agent 處理後更新
+          linkTitles: input.links?.map(l => l.title || l.url) || [],
+          chiefAnalysis: `Streaming 分類: ${primaryIslandName}`,
+          chiefSummary: deepAnalysis.detailedSummary || immediateResponse.quickSummary,
+          identifiedTopics: [primaryIslandName],
+          suggestedTags: deepAnalysis.suggestedTags || [],
+          distributedTo: [],
+          storedBy: [assistant.id],
           processingTime: Date.now() - startTime,
         }
       })
 
-      logger.info(`[Chief Agent] 知識分發記錄創建完成，ID: ${distribution.id}`)
+      // 創建 Memory
+      const memory = await prisma.memory.create({
+        data: {
+          userId,
+          islandId: primaryIsland.id, // Island ID (必填)
+          rawContent: input.content,
+          summary: deepAnalysis.detailedSummary || immediateResponse.quickSummary,
+          tags: deepAnalysis.suggestedTags || [],
+          category: assistant.type,
+          importanceScore: deepAnalysis.importanceScore || 5,
+          aiSentiment: deepAnalysis.sentiment || 'neutral',
+          contentType,
+          fileUrls: input.files?.map(f => f.url) || [],
+          fileNames: input.files?.map(f => f.name) || [],
+          fileTypes: input.files?.map(f => f.type) || [],
+          links: input.links?.map(l => l.url) || [],
+          keyPoints: deepAnalysis.keyInsights || [],
+          detailedSummary: deepAnalysis.detailedSummary,
+          actionableAdvice: deepAnalysis.actionableAdvice,
+          distributionId: distribution.id,
+        }
+      })
 
-      // === 階段 2: 加入任務隊列進行 Sub-Agent 深度處理 ===
-      // 使用任務隊列系統，防止並發過載
-      const taskId = await taskQueueService.addTask(
-        userId,
-        distribution.id,
-        [targetAssistant.id],
-        TaskPriority.NORMAL // 可根據需求調整優先級
-      )
+      // 更新島嶼統計
+      await dynamicSubAgentService.incrementStats(primaryIsland.id, 'memory')
 
-      logger.info(`[Chief Agent] 任務已加入隊列，TaskID: ${taskId}`)
-      logger.info(`[Chief Agent] 白噗噗即時回應完成 - 耗時: ${Date.now() - startTime}ms`)
+      logger.info(`[Chief Agent Stream] ✅ Memory 創建完成: ${memory.id}`)
+      logger.info(`[Chief Agent Stream] 總處理時間: ${Date.now() - startTime}ms`)
 
-      // 立即返回白噗噗的溫暖回應給前端
-      return {
-        distribution: {
-          ...distribution,
-          agentDecisions: [], // 補充空陣列（因優化移除了 include）
-          memories: []        // 補充空陣列（因優化移除了 include）
+      // 🎯 發送完成事件！
+      yield {
+        type: 'complete',
+        data: {
+          memory,
+          distribution,
+          island: {
+            id: primaryIsland.id,
+            name: primaryIsland.nameChinese,
+            emoji: primaryIsland.emoji,
+            color: primaryIsland.color
+          }
         },
-        // 白噗噗的即時回應
-        tororoResponse: {
-          warmMessage: quickResult.warmResponse,
-          category: quickResult.category,
-          quickSummary: quickResult.quickSummary,
-          confidence: quickResult.confidence,
-          reasoning: quickResult.reasoning
-        },
-        quickClassifyResult: quickResult, // 添加完整分類結果（用於 SSE）
-        // 暫時沒有深度分析結果（正在後台處理中）
-        agentDecisions: [],
-        memoriesCreated: [],
-        processingTime: Date.now() - startTime,
-        backgroundProcessing: true, // 標記後台正在處理
-        skipRecording: false // 所有內容都會被記錄
+        processingTime: Date.now() - startTime
       }
+
     } catch (error) {
-      logger.error('[Chief Agent] 上傳知識失敗:', error)
-      throw new Error('處理知識上傳失敗')
+      logger.error('[Chief Agent Stream] 處理失敗:', error)
+      yield {
+        type: 'error',
+        error: error instanceof Error ? error.message : '處理知識上傳失敗'
+      }
     }
   }
 
@@ -1592,7 +1761,7 @@ ${input.files && input.files.length > 0 ? `📎 附件：${input.files.map(f => 
      * 目標類：「一步一步來吧」
    - **如果有圖片**：在回應中簡單描述你看到的內容，展現你的理解
    - 默默陪伴的感覺，不需要過度鼓勵
-5. **quickSummary 要包含圖片描述**：
+6. **quickSummary 要包含圖片描述**：
    - 如果有圖片，必須描述圖片中的具體內容（例如：「三張生活截圖，記錄了...」）
    - 文字+圖片：控制在 30 字內
    - 只有文字：控制在 15 字內
@@ -1652,7 +1821,7 @@ ${categoryList}
 - 關鍵字匹配：優先檢查內容是否包含類別的關鍵字
 - 語義理解：理解內容的主題和意圖
 - 上下文判斷：根據描述和關鍵字判斷最相關的類別
-- 不確定時：選擇最通用的類別，並降低 confidence
+- **⚠️ 必須選擇一個類別**：即使不確定，也必須選擇最接近的類別（可以降低 confidence，但不能不選）
 
 📋 參考範例：
 
@@ -1668,10 +1837,11 @@ ${examples}
 }
 
 ⚠️ 重要：
-1. category 必須使用上述自訂類別的「中文名稱」（如：${userIslands[0]?.nameChinese || '學習成長'}）
-2. confidence 要誠實評估（0.5-1.0）
-3. reasoning 要說明匹配了哪些關鍵字或為什麼選擇這個類別
-4. **warmResponse 要溫和自然**：
+1. **category 必須使用上述自訂類別的「中文名稱」**（如：${userIslands[0]?.nameChinese || '學習成長'}）
+2. **category 不能為空或 null**，必須從上述類別中選擇一個
+3. confidence 要誠實評估（0.5-1.0），不確定時降低分數即可，但仍要選一個類別
+4. reasoning 要說明匹配了哪些關鍵字或為什麼選擇這個類別
+5. **warmResponse 要溫和自然**：
    - 語氣溫暖但不浮誇，像個安靜的朋友
    - 避免過多表情符號（最多1-2個）
    - 不使用「～」「呢」「喔」等語氣詞
@@ -1682,12 +1852,68 @@ ${examples}
      * 目標類：「一步一步來吧」
    - **如果有圖片**：在回應中簡單描述你看到的內容，展現你的理解
    - 默默陪伴的感覺，不需要過度鼓勵
-5. **quickSummary 要包含圖片描述**：
+6. **quickSummary 要包含圖片描述**：
    - 如果有圖片，必須描述圖片中的具體內容（例如：「三張生活截圖，記錄了...」）
    - 文字+圖片：控制在 30 字內
    - 只有文字：控制在 15 字內
 
 請直接回傳 JSON，不要其他文字：`
+  }
+
+  /**
+   * 構建 Streaming 分類 Prompt（優化版：精簡快速）
+   */
+  private buildStreamingClassificationPrompt(
+    content: string,
+    input: UploadKnowledgeInput,
+    userIslands: any[]
+  ): string {
+    // 極簡類別列表
+    const categoryList = userIslands
+      .map((island, index) =>
+        `${index + 1}. ${island.nameChinese}${island.description ? ` - ${island.description}` : ''}`
+      )
+      .join('\n')
+
+    return `你是白噗噗，安靜溫和的知識園丁貓咪。語氣平靜溫暖，像可靠的夥伴，不浮誇。
+
+📝 輸入：「${content}」
+${input.files && input.files.length > 0 ? `📎 ${input.files.length}個附件` : ''}
+
+📂 類別（必選其一）：
+${categoryList}
+
+⚡ 第一階段（立即輸出）：
+{
+  "immediateResponse": {
+    "category": "類別名稱",
+    "confidence": 0.9,
+    "reasoning": "簡短依據",
+    "warmResponse": "溫和自然的回應（平靜不誇張，表情最多1個）",
+    "quickSummary": "一句話摘要"
+  }
+}
+
+📊 第二階段（深度分析）：
+{
+  "deepAnalysis": {
+    "detailedSummary": "詳細摘要2-3句",
+    "keyInsights": ["具體深入的洞察1", "具體深入的洞察2", "具體深入的洞察3", "（可選）洞察4"],
+    "suggestedTags": ["標籤1", "標籤2", "標籤3"],
+    "actionableAdvice": "實用的行動建議",
+    "sentiment": "positive|neutral|negative",
+    "importanceScore": 8
+  }
+}
+
+重要：
+1. category 從上述類別選一個（中文名稱）
+2. warmResponse 要平靜溫和，避免「哇」「太棒了」等興奮詞
+3. keyInsights 要深入具體，提取核心知識點和技術細節
+4. 先輸出 immediateResponse，再輸出 deepAnalysis
+5. 純 JSON，無其他文字
+
+立即開始輸出。`
   }
 }
 

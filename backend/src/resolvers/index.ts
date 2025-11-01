@@ -15,6 +15,7 @@ import { tororoResolvers } from './tororoResolvers'
 import { hijikiRagResolvers } from './hijikiRagResolvers'
 import { categoryResolvers } from './categoryResolvers'
 import { taskHistoryResolvers } from './taskHistoryResolvers'
+import { islandResolvers } from './islandResolvers'
 
 export const resolvers = {
   ...scalarResolvers,
@@ -25,6 +26,8 @@ export const resolvers = {
     ...memoryResolvers.Query,
     ...chatSessionResolvers.Query,
     ...knowledgeDistributionResolvers.Query,
+    // Island System (島嶼系統)
+    ...islandResolvers.Query,
     // Cat Agent System (Tororo & Hijiki)
     ...catAgentResolvers.Query,
     // Hijiki RAG System (小黑知識庫)
@@ -43,6 +46,8 @@ export const resolvers = {
     ...memoryResolvers.Mutation,
     ...chatSessionResolvers.Mutation,
     ...knowledgeDistributionResolvers.Mutation,
+    // Island System (島嶼系統)
+    ...islandResolvers.Mutation,
     // Cat Agent System (Tororo & Hijiki)
     ...catAgentResolvers.Mutation,
     // Tororo AI System (白噗噗 AI 回應)

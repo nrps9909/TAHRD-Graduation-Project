@@ -47,7 +47,6 @@ export interface QueueTask {
     message: string
   }
   metadata?: {
-    useIslandSubAgent?: boolean
     [key: string]: any
   }
 }
@@ -86,13 +85,14 @@ export class TaskQueueService extends EventEmitter {
 
   /**
    * 添加任務到隊列
+   * @param assistantIds - 實際上是 islandIds（Island-based 系統）
    */
   async addTask(
     userId: string,
     distributionId: string,
     assistantIds: string[],
     priority: TaskPriority = TaskPriority.NORMAL,
-    metadata?: { useIslandSubAgent?: boolean; [key: string]: any }
+    metadata?: { [key: string]: any }
   ): Promise<string> {
     const taskId = `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
 
@@ -215,38 +215,25 @@ export class TaskQueueService extends EventEmitter {
   }
 
   /**
-   * 執行任務（調用 Sub-Agent 服務）
-   * 支援 Island-based SubAgent 和預設 Assistant 兩種模式
+   * 執行任務（調用 Island-based Sub-Agent 服務）
    */
   private async executeTask(task: QueueTask): Promise<any> {
-    const { userId, distributionId, assistantIds, metadata } = task
+    const { userId, distributionId, assistantIds } = task
 
     // 更新進度：開始處理
     task.progress.current = 0
     task.progress.message = '正在分析知識內容...'
     this.notifyTaskProgress(task)
 
-    let result: any
+    logger.info(`[TaskQueue] 使用 Island-based SubAgent 處理任務 ${task.id}`)
 
-    // 檢查是否使用 Island-based SubAgent
-    if (metadata?.useIslandSubAgent) {
-      logger.info(`[TaskQueue] 使用 Island-based SubAgent 處理任務 ${task.id}`)
-      // assistantIds 在這裡實際上是 islandIds
-      const islandIds = assistantIds
-      result = await subAgentService.processDistributionWithIslands(
-        userId,
-        distributionId,
-        islandIds
-      )
-    } else {
-      logger.info(`[TaskQueue] 使用預設 Assistant 處理任務 ${task.id}`)
-      // 調用傳統 Sub-Agent 服務處理
-      result = await subAgentService.processDistribution(
-        userId,
-        distributionId,
-        assistantIds
-      )
-    }
+    // assistantIds 實際上是 islandIds
+    const islandIds = assistantIds
+    const result = await subAgentService.processDistributionWithIslands(
+      userId,
+      distributionId,
+      islandIds
+    )
 
     // 更新進度：完成
     task.progress.current = task.progress.total

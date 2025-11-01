@@ -645,9 +645,9 @@ export default function Live2DCat({
 
         {/* Main Content - 響應式 */}
         <div className="flex flex-col md:flex-row h-[calc(100%-64px)] sm:h-[calc(100%-88px)]">
-          {/* Live2D Model Area - 響應式 */}
-          <div 
-            className="w-full md:w-1/3 h-[150px] sm:h-[200px] md:h-full flex flex-col items-center justify-center p-2 sm:p-3 md:p-6 relative"
+          {/* Live2D Model Area - 響應式 - 手機版縮小高度 */}
+          <div
+            className="w-full md:w-1/3 h-[100px] sm:h-[140px] md:h-full flex flex-col items-center justify-center p-1 sm:p-2 md:p-6 relative"
             style={{
               background: isBlackCat
                 ? 'linear-gradient(135deg, rgba(67, 56, 202, 0.15) 0%, rgba(79, 70, 229, 0.1) 100%)'
@@ -667,18 +667,18 @@ export default function Live2DCat({
             <div className="relative w-full h-full flex items-center justify-center">
               {showFallback ? (
                 <div className="text-center animate-bounce-gentle">
-                  <div className="text-9xl mb-4 filter drop-shadow-lg">{theme.emoji}</div>
+                  <div className="text-4xl sm:text-6xl md:text-9xl mb-2 md:mb-4 filter drop-shadow-lg">{theme.emoji}</div>
                   <div
-                    className="rounded-2xl px-6 py-3"
+                    className="rounded-xl md:rounded-2xl px-3 py-1.5 sm:px-4 sm:py-2 md:px-6 md:py-3 hidden sm:block"
                     style={{
                       background: theme.catBubbleBg,
                       boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.05)'
                     }}
                   >
-                    <p className="text-lg font-bold" style={{ color: theme.headerText }}>
+                    <p className="text-sm md:text-lg font-bold" style={{ color: theme.headerText }}>
                       {theme.name}在這裡！
                     </p>
-                    <p className="text-xs mt-1" style={{ color: theme.headerTextSecondary }}>
+                    <p className="text-xs mt-1 hidden md:block" style={{ color: theme.headerTextSecondary }}>
                       Live2D 模型載入中...
                     </p>
                   </div>
@@ -691,10 +691,10 @@ export default function Live2DCat({
                     style={{ position: 'relative' }}
                   />
 
-                  {/* 懸浮對話泡泡 - 顯示最新助理訊息 */}
+                  {/* 懸浮對話泡泡 - 顯示最新助理訊息 - 手機版隱藏以節省空間 */}
                   {messages.length > 0 && messages[messages.length - 1].type === 'assistant' && (
                     <div
-                      className="absolute top-4 sm:top-8 md:top-12 left-1/2 transform -translate-x-1/2 max-w-[90%] md:max-w-[85%] animate-slide-down z-10"
+                      className="absolute top-2 sm:top-4 md:top-12 left-1/2 transform -translate-x-1/2 max-w-[90%] md:max-w-[85%] animate-slide-down z-10 hidden md:block"
                       style={{
                         animation: 'slideDown 0.3s ease-out'
                       }}
@@ -736,10 +736,10 @@ export default function Live2DCat({
                     </div>
                   )}
 
-                  {/* 處理中的對話泡泡 */}
+                  {/* 處理中的對話泡泡 - 手機版隱藏 */}
                   {isProcessing && (
                     <div
-                      className="absolute top-4 sm:top-8 md:top-12 left-1/2 transform -translate-x-1/2 max-w-[80%] animate-pulse z-10"
+                      className="absolute top-4 sm:top-8 md:top-12 left-1/2 transform -translate-x-1/2 max-w-[80%] animate-pulse z-10 hidden md:block"
                     >
                       <div
                         className="relative rounded-2xl px-4 py-3 shadow-2xl"
@@ -775,8 +775,8 @@ export default function Live2DCat({
 
           {/* Chat Area - 響應式 */}
           <div className="flex-1 flex flex-col min-h-0">
-            {/* Messages - 響應式 */}
-            <div className="flex-1 overflow-y-auto p-2 sm:p-3 md:p-4 lg:p-6 space-y-2 sm:space-y-3 md:space-y-4">
+            {/* Messages - 響應式 - 手機版更緊湊間距 */}
+            <div className="flex-1 overflow-y-auto p-1.5 sm:p-3 md:p-4 lg:p-6 space-y-1.5 sm:space-y-2 md:space-y-4">
               {messages.length === 0 && (
                 <div className="flex flex-col items-center justify-center h-full text-center px-4">
                   <div className="text-5xl sm:text-6xl md:text-7xl mb-3 sm:mb-4">{theme.emoji}</div>
@@ -794,11 +794,11 @@ export default function Live2DCat({
                   key={message.id}
                   className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'} animate-slide-up`}
                 >
-                  <div className={`flex gap-2 max-w-[85%] ${message.type === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                  <div className={`flex gap-1.5 sm:gap-2 max-w-[90%] sm:max-w-[85%] ${message.type === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
                     {/* 頭像 */}
                     {message.type === 'assistant' && (
                       <div
-                        className="w-10 h-10 rounded-2xl flex items-center justify-center text-xl flex-shrink-0"
+                        className="w-7 h-7 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center text-sm sm:text-lg md:text-xl flex-shrink-0"
                         style={{
                           background: isBlackCat
                             ? 'linear-gradient(135deg, rgba(139, 92, 246, 0.4) 0%, rgba(99, 102, 241, 0.3) 100%)'
@@ -812,7 +812,7 @@ export default function Live2DCat({
 
                     {/* 訊息泡泡 */}
                     <div
-                      className="px-4 py-3 rounded-2xl select-text"
+                      className="px-2.5 py-2 sm:px-3 sm:py-2.5 md:px-4 md:py-3 rounded-xl sm:rounded-2xl select-text"
                       style={{
                         background: message.type === 'user' ? theme.userBubbleBg : theme.catBubbleBg,
                         color: message.type === 'user' ? theme.userBubbleText : theme.catBubbleText,
@@ -1003,12 +1003,12 @@ export default function Live2DCat({
             {/* 分隔線 */}
             <div className="h-[2px] rounded-full" style={{ background: theme.divider }} />
 
-            {/* Input Area - 響應式 */}
-            <div className="relative p-2 sm:p-3 md:p-4 lg:p-5">
+            {/* Input Area - 響應式 - 手機版更緊湊 */}
+            <div className="relative p-1.5 sm:p-3 md:p-4 lg:p-5">
               {/* Pending Attachments Preview - 響應式 */}
               {safeAttachments.length > 0 && (
-                <div 
-                  className="mb-2 sm:mb-3 p-2 sm:p-3 rounded-xl sm:rounded-2xl"
+                <div
+                  className="mb-1.5 sm:mb-2 md:mb-3 p-1.5 sm:p-2 md:p-3 rounded-lg sm:rounded-xl md:rounded-2xl"
                   style={{
                     background: isBlackCat ? 'rgba(67, 56, 202, 0.15)' : 'rgba(251, 191, 36, 0.1)',
                     border: `2px solid ${isBlackCat ? 'rgba(139, 92, 246, 0.2)' : 'rgba(251, 191, 36, 0.2)'}`
@@ -1051,7 +1051,7 @@ export default function Live2DCat({
               )}
 
               {/* 快速操作按鈕 - 響應式 */}
-              <div className="flex gap-1.5 sm:gap-2 mb-2 sm:mb-3 flex-wrap">
+              <div className="flex gap-1 sm:gap-1.5 md:gap-2 mb-1.5 sm:mb-2 md:mb-3 flex-wrap">
                 <button
                   onClick={() => handleFileUpload('image')}
                   className="px-2 sm:px-3 py-1.5 sm:py-2 rounded-full text-[10px] sm:text-xs font-bold transition-all hover:scale-105 active:scale-95"
@@ -1093,7 +1093,7 @@ export default function Live2DCat({
               </div>
 
               {/* 輸入框 - 響應式 */}
-              <div className="flex gap-1.5 sm:gap-2">
+              <div className="flex gap-1 sm:gap-1.5 md:gap-2">
                 <input
                   type="text"
                   value={inputText}
@@ -1101,9 +1101,9 @@ export default function Live2DCat({
                   onKeyPress={(e) => e.key === 'Enter' && !isProcessing && handleSendMessage()}
                   disabled={isProcessing}
                   placeholder={`跟 ${theme.name} 說話...`}
-                  className={`flex-1 px-3 py-2 sm:px-4 sm:py-3 rounded-xl sm:rounded-2xl font-medium text-xs sm:text-sm focus:outline-none transition-all ${isBlackCat ? 'hijiki-input' : 'tororo-input'}`}
+                  className={`flex-1 px-2.5 py-1.5 sm:px-3 sm:py-2 md:px-4 md:py-3 rounded-lg sm:rounded-xl md:rounded-2xl font-medium text-xs sm:text-sm focus:outline-none transition-all ${isBlackCat ? 'hijiki-input' : 'tororo-input'}`}
                   style={{
-                    border: `2px sm:3px solid ${theme.inputBorder}`,
+                    border: `2px solid ${theme.inputBorder}`,
                     background: theme.inputBg,
                     color: isBlackCat ? '#FFFFFF' : theme.headerText,
                     boxShadow: 'inset 0 1px 3px rgba(0, 0, 0, 0.05)'
@@ -1114,7 +1114,7 @@ export default function Live2DCat({
                 <button
                   onClick={handleSendMessage}
                   disabled={(!inputText.trim() && safeAttachments.length === 0) || isProcessing}
-                  className="px-4 sm:px-6 py-2 sm:py-3 rounded-xl sm:rounded-2xl font-bold text-xs sm:text-sm transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 sm:px-4 md:px-6 py-1.5 sm:py-2 md:py-3 rounded-lg sm:rounded-xl md:rounded-2xl font-bold text-xs sm:text-sm transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                   style={{
                     background: theme.headerBg,
                     color: theme.headerText,

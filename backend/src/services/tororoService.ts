@@ -66,8 +66,13 @@ class TororoService {
   /**
    * 使用 Tororo 創建記憶
    * 整合現有的 chief-subagent 架構
+   * @deprecated This function is broken due to processAndCreateMemory being deprecated.
+   * Use the streaming knowledge distribution API instead.
    */
   async createMemoryWithTororo(input: TororoCreateInput): Promise<TororoResponse> {
+    throw new Error('createMemoryWithTororo is deprecated. Please use the streaming knowledge distribution API instead.')
+    /* COMMENTED OUT - BROKEN DUE TO MIGRATION
+
     try {
       logger.info(`Tororo creating memory for user ${input.userId}`)
 
@@ -123,6 +128,7 @@ class TororoService {
         error: error instanceof Error ? error.message : 'Unknown error'
       }
     }
+    */
   }
 
   /**

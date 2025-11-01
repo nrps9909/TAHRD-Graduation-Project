@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { useQuery, useMutation } from '@apollo/client'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { GET_MEMORIES, PIN_MEMORY, UNPIN_MEMORY, DELETE_MEMORY, CREATE_MEMORY_DIRECT } from '../../graphql/memory'
 import { GET_ISLANDS, Island } from '../../graphql/category'
 import { Memory, MemoryCategory } from '../../types/memory'
@@ -34,6 +34,7 @@ function getIslandCategory(islandName: string): MemoryCategory | null {
 
 export default function CuteDatabaseView() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [selectedCategory, setSelectedCategory] = useState<MemoryCategory | null>(null)
   const [selectedIslandId, setSelectedIslandId] = useState<string | null>(null) // 新增：选中的岛屿 ID
   const [searchQuery, setSearchQuery] = useState('')
@@ -134,9 +135,8 @@ export default function CuteDatabaseView() {
   useEffect(() => {
     if (error) {
       console.error('Failed to load memories:', error)
-      toast.error('載入記憶失敗，請檢查網路連線 😢')
     }
-  }, [error, toast])
+  }, [error])
 
   // 處理島嶼查詢錯誤
   useEffect(() => {
@@ -144,6 +144,31 @@ export default function CuteDatabaseView() {
       console.error('Failed to load islands:', islandsError)
     }
   }, [islandsError])
+
+  // 處理 URL 參數中的 memoryId，自動打開記憶編輯器
+  useEffect(() => {
+    const memoryId = searchParams.get('memoryId')
+    console.log('🔍 [DatabaseView] URL memoryId:', memoryId)
+    console.log('🔍 [DatabaseView] memoriesData loaded:', !!memoriesData?.memories)
+    console.log('🔍 [DatabaseView] loading:', loading)
+
+    if (memoryId && memoriesData?.memories && !loading) {
+      const memory = memoriesData.memories.find((m: Memory) => m.id === memoryId)
+      console.log('🔍 [DatabaseView] Found memory:', memory?.title || '未找到')
+
+      if (memory) {
+        console.log('✅ [DatabaseView] 設置選中的記憶:', memory.title)
+        setSelectedMemory(memory)
+        // 延遲清除 URL 參數，確保記憶已經打開
+        setTimeout(() => {
+          navigate('/database', { replace: true })
+        }, 100)
+      } else {
+        console.warn('⚠️ [DatabaseView] 找不到 memoryId 對應的記憶:', memoryId)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, memoriesData?.memories, loading])
 
   // 獲取島嶼列表（使用 useMemo 避免每次渲染都改變）
   const islands: Island[] = useMemo(() => {

@@ -17,6 +17,7 @@
   "dependencies": {
     "@apollo/server": "^4.9.5",
     "@google/generative-ai": "^0.2.1",
+    "@line/bot-sdk": "^10.4.0",
     "@prisma/client": "^5.7.0",
     "@types/pdf-parse": "^1.1.5",
     "axios": "^1.12.2",

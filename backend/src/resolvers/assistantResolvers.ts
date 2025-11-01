@@ -201,16 +201,18 @@ export const assistantResolvers = {
     }),
 
     memories: async (parent: any, _: any, { prisma }: Context) => {
+      // FIXME: Need proper island ID mapping
       return prisma.memory.findMany({
-        where: { assistantId: parent.id },
+        where: { islandId: "PLACEHOLDER" },
         orderBy: { createdAt: 'desc' },
         take: 10
       })
     },
 
     chatMessages: async (parent: any, _: any, { prisma }: Context) => {
+      // FIXME: Need proper island ID mapping
       return prisma.chatMessage.findMany({
-        where: { assistantId: parent.id },
+        where: { islandId: "PLACEHOLDER" },
         orderBy: { createdAt: 'desc' },
         take: 10
       })

@@ -119,11 +119,6 @@ model Assistant {
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
 
-  // Relations
-  memories         Memory[]
-  chatMessages     ChatMessage[]
-  chatSessions     ChatSession[]
-
   @@map("assistants")
 }
 
@@ -142,8 +137,7 @@ enum ContentType {
 model Memory {
   id               String   @id @default(auto()) @map("_id") @db.ObjectId
   userId           String   @map("user_id") @db.ObjectId
-  assistantId      String?  @map("assistant_id") @db.ObjectId  // Optional: null for dynamic SubAgents
-  islandId         String?  @map("island_id") @db.ObjectId     // 新增：記憶所屬的島嶼 ID（用於自定義島嶼）
+  islandId         String   @map("island_id") @db.ObjectId     // 記憶所屬的島嶼 ID（必填）
 
   // Content
   rawContent       String   @map("raw_content") @db.String
@@ -203,19 +197,16 @@ model Memory {
 
   // Relations
   user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  assistant        Assistant? @relation(fields: [assistantId], references: [id], onDelete: Cascade)
-  island           Island?  @relation(fields: [islandId], references: [id], onDelete: Cascade)
+  island           Island   @relation(fields: [islandId], references: [id], onDelete: Cascade)
   chatMessages     ChatMessage[]
   distribution     KnowledgeDistribution? @relation(fields: [distributionId], references: [id])
 
-  // 🚀 優化索引：按查詢頻率和組合查詢優化
+  // 優化索引：按查詢頻率和組合查詢優化
   @@index([userId, category])
   @@index([userId, createdAt(sort: Desc)])  // 時間倒序查詢
-  @@index([userId, assistantId])
-  @@index([userId, islandId])  // 新增：按島嶼過濾記憶
-  @@index([userId, islandId, createdAt(sort: Desc)])  // 新增：特定島嶼的最新記憶
-  @@index([userId, assistantId, createdAt(sort: Desc)])  // 複合索引：特定助手的最新記憶
-  @@index([userId, category, createdAt(sort: Desc)])  // 複合索引：特定分類的最新記憶
+  @@index([userId, islandId])  // 按島嶼過濾記憶
+  @@index([userId, islandId, createdAt(sort: Desc)])  // 特定島嶼的最新記憶
+  @@index([userId, category, createdAt(sort: Desc)])  // 特定分類的最新記憶
   @@index([tags])  // 標籤搜索
   @@index([distributionId])  // 分發關聯查詢
   @@index([userId, isPinned, createdAt(sort: Desc)])  // 置頂記憶優先
@@ -229,7 +220,7 @@ model Memory {
 model ChatSession {
   id               String   @id @default(auto()) @map("_id") @db.ObjectId
   userId           String   @map("user_id") @db.ObjectId
-  assistantId      String   @map("assistant_id") @db.ObjectId
+  islandId         String   @map("island_id") @db.ObjectId     // Island 關聯（必填）
 
   // Session Info
   title            String   @default("新對話") // 自動生成或用戶編輯
@@ -250,11 +241,11 @@ model ChatSession {
 
   // Relations
   user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  assistant        Assistant @relation(fields: [assistantId], references: [id], onDelete: Cascade)
+  island           Island   @relation(fields: [islandId], references: [id], onDelete: Cascade)
   messages         ChatMessage[]
 
   @@index([userId, updatedAt(sort: Desc)])
-  @@index([userId, assistantId])
+  @@index([userId, islandId])
   @@index([userId, isPinned, updatedAt(sort: Desc)])
   @@map("chat_sessions")
 }
@@ -262,7 +253,7 @@ model ChatSession {
 model ChatMessage {
   id               String   @id @default(auto()) @map("_id") @db.ObjectId
   userId           String   @map("user_id") @db.ObjectId
-  assistantId      String   @map("assistant_id") @db.ObjectId
+  islandId         String   @map("island_id") @db.ObjectId     // Island 關聯（必填）
   sessionId        String   @map("session_id") @db.ObjectId // 關聯到會話
 
   // Content
@@ -282,12 +273,12 @@ model ChatMessage {
 
   // Relations
   user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  assistant        Assistant @relation(fields: [assistantId], references: [id], onDelete: Cascade)
+  island           Island   @relation(fields: [islandId], references: [id], onDelete: Cascade)
   session          ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   memory           Memory?  @relation(fields: [memoryId], references: [id], onDelete: SetNull)
 
   @@index([sessionId, createdAt])
-  @@index([userId, assistantId])
+  @@index([userId, islandId])
   @@index([userId, createdAt])
   @@map("chat_messages")
 }
@@ -593,6 +584,12 @@ model Island {
   color            String   @default("#FFB3D9") // Hex color code
   description      String?  @db.String
 
+  // AI Configuration (新增 - 用於 SubAgent 深度分析)
+  systemPrompt     String?  @map("system_prompt") @db.String
+  personality      String?  @db.String
+  chatStyle        String?  @map("chat_style") @db.String
+  keywords         String[] @default([]) // 用於關鍵字分類的降級方案
+
   // 3D 位置（島嶼在場景中的位置）
   positionX        Float    @default(0) @map("position_x")
   positionY        Float    @default(0) @map("position_y")
@@ -608,6 +605,7 @@ model Island {
 
   // 統計
   memoryCount      Int      @default(0) @map("memory_count")
+  totalChats       Int      @default(0) @map("total_chats") // 新增 - 聊天次數統計
 
   // 狀態
   isActive         Boolean  @default(true) @map("is_active")
@@ -619,6 +617,8 @@ model Island {
   // Relations
   user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   memories         Memory[]
+  chatSessions     ChatSession[]  // 新增 - 聊天會話
+  chatMessages     ChatMessage[]  // 新增 - 聊天訊息
 
   @@index([userId, position])
   @@index([userId])

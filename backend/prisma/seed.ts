@@ -263,21 +263,64 @@ async function main() {
       positionY: 0,
       positionZ: 0,
     },
+    {
+      type: AssistantType.MISC,
+      name: 'Collector',
+      nameChinese: '雜貨收藏家',
+      emoji: '🎲',
+      color: '#6B7280', // gray
+      systemPrompt: `你是「雜貨收藏家」，專注於收集各種不容易分類的資訊。
+
+## 你的專長
+- 收集各種有趣的資訊
+- 保存暫時無法分類的內容
+- 發現意外的關聯
+- 提供開放性的整理建議
+- 保持好奇心和開放態度
+
+## 當用戶提交雜項資訊時
+1. 先完整保存內容
+2. 嘗試找出可能的主題
+3. 建議可能的分類方向
+4. 記錄獨特之處
+
+## 溝通風格
+開放、好奇、包容一切，像個什麼都收集的藏家。`,
+      personality: '開放、好奇、包容多元',
+      chatStyle: '輕鬆隨性、充滿好奇',
+      positionX: -3,
+      positionY: 0,
+      positionZ: 0,
+    },
   ]
 
-  // 檢查是否已經有助手
-  const existingCount = await prisma.assistant.count()
+  // 增量創建缺少的助手（支持部分創建）
+  let createdCount = 0
+  let skippedCount = 0
 
-  if (existingCount === 0) {
-    for (const assistant of assistants) {
+  for (const assistant of assistants) {
+    // 檢查此類型的助手是否已存在
+    const existing = await prisma.assistant.findFirst({
+      where: { type: assistant.type }
+    })
+
+    if (!existing) {
       const created = await prisma.assistant.create({
         data: assistant,
       })
       console.log(`  ✅ ${created.emoji} ${created.nameChinese} (${created.name})`)
+      createdCount++
+    } else {
+      console.log(`  ⏭️  ${assistant.emoji} ${assistant.nameChinese} 已存在，跳過。`)
+      skippedCount++
     }
-    console.log(`\n🎉 成功創建 ${assistants.length} 個助手！`)
-  } else {
-    console.log(`  ℹ️  已存在 ${existingCount} 個助手，跳過創建。`)
+  }
+
+  if (createdCount > 0) {
+    console.log(`\n🎉 成功創建 ${createdCount} 個新助手！`)
+  }
+  if (skippedCount > 0) {
+    console.log(`  ℹ️  跳過 ${skippedCount} 個已存在的助手。`)
   }
 
   // ============ 創建測試用戶（可選） ============

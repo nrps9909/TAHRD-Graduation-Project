@@ -8,7 +8,6 @@ import { useState } from 'react'
 import { useIslandStore } from '../../stores/islandStore'
 import { Memory } from '../../types/island'
 import { IslandLabel } from './IslandLabel'
-import { IslandBeacon } from './IslandBeacon'
 import { PawIsland } from './PawIsland'
 import { CustomIsland } from './CustomIsland'
 
@@ -101,16 +100,9 @@ export function IslandArchipelago({ onIslandClick, onMemoryClick, hideLabels = f
               />
             )}
 
-            {/* 識別光柱 */}
-            <IslandBeacon
-              position={position}
-              color={island.color}
-              height={12}
-              isHovered={isHovered || isCurrent}
-            />
-
             {/* 漂浮標籤（可通過 hideLabels 隱藏） */}
-            {!hideLabels && (
+            {/* 當聚焦到該島嶼時，隱藏標籤以避免擋住樹木 */}
+            {!hideLabels && !isCurrent && (
               <IslandLabel
                 island={island}
                 position={[position[0], position[1] + 2, position[2]]}

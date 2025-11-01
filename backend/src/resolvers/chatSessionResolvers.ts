@@ -10,7 +10,7 @@ export const chatSessionResolvers = {
      */
     chatSessions: async (
       _: any,
-      { assistantId, includeArchived = false, limit = 50 }: { assistantId?: string; includeArchived?: boolean; limit?: number },
+      { islandId, includeArchived = false, limit = 50 }: { islandId?: string; includeArchived?: boolean; limit?: number },
       { userId, prisma }: Context
     ) => {
       if (!userId) {
@@ -22,7 +22,7 @@ export const chatSessionResolvers = {
       try {
         return await chatSessionService.getSessions({
           userId,
-          assistantId,
+          islandId,
           includeArchived,
           limit
         })
@@ -59,7 +59,7 @@ export const chatSessionResolvers = {
      */
     createChatSession: async (
       _: any,
-      { input }: { input: { assistantId: string; title?: string } },
+      { input }: { input: { islandId: string; title?: string } },
       { userId, prisma }: Context
     ) => {
       if (!userId) {
@@ -69,18 +69,18 @@ export const chatSessionResolvers = {
       }
 
       try {
-        // 驗證助手存在
-        const assistant = await prisma.assistant.findUnique({
-          where: { id: input.assistantId }
+        // 驗證島嶼存在
+        const island = await prisma.island.findUnique({
+          where: { id: input.islandId }
         })
 
-        if (!assistant) {
-          throw new GraphQLError('Assistant not found')
+        if (!island) {
+          throw new GraphQLError('Island not found')
         }
 
         return await chatSessionService.createSession({
           userId,
-          assistantId: input.assistantId,
+          islandId: input.islandId,
           title: input.title
         })
       } catch (error) {
@@ -196,11 +196,12 @@ export const chatSessionResolvers = {
         where: { id: parent.userId }
       })
     },
-    assistant: async (parent: any, _: any, { prisma }: Context) => {
-      return prisma.assistant.findUnique({
-        where: { id: parent.assistantId }
+    /* island: async (parent: any, _: any, { prisma }: Context) => {
+      // COMMENTED OUT: island field not in GraphQL schema yet
+      return prisma.island.findUnique({
+        where: { id: parent.islandId }
       })
-    },
+    }, */
     messages: async (parent: any, _: any, { prisma }: Context) => {
       return prisma.chatMessage.findMany({
         where: { sessionId: parent.id },

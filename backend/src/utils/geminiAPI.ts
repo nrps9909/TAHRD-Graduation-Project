@@ -247,3 +247,139 @@ export async function callGeminiAPIBatch(
 
   return results
 }
+
+/**
+ * 調用 Gemini REST API 生成文本（Streaming 模式，支持 SSE）
+ *
+ * @param prompt 提示詞
+ * @param config 配置選項
+ * @returns AsyncGenerator 用於流式接收文本片段
+ */
+export async function* callGeminiAPIStream(
+  prompt: string,
+  config: GeminiAPIConfig = {}
+): AsyncGenerator<string, void, unknown> {
+  const {
+    model = 'gemini-2.5-flash',
+    temperature = 0.7,
+    maxOutputTokens = 4096,
+    timeout = 60000, // streaming 模式需要更長的超時時間
+    images = []
+  } = config
+
+  const apiKey = process.env.GEMINI_API_KEY
+  if (!apiKey) {
+    throw new Error('GEMINI_API_KEY not configured')
+  }
+
+  const startTime = Date.now()
+
+  try {
+    // 構建 parts 數組（文本 + 可選的圖片）
+    const parts: Array<{ text?: string; inline_data?: { mime_type: string; data: string } }> = [
+      { text: prompt }
+    ]
+
+    // 添加圖片數據（如果有）
+    if (images && images.length > 0) {
+      images.forEach(image => {
+        parts.push({
+          inline_data: {
+            mime_type: image.mimeType,
+            data: image.data
+          }
+        })
+      })
+      logger.info(`[Gemini Stream] Calling ${model} with ${images.length} image(s)...`)
+    } else {
+      logger.info(`[Gemini Stream] Calling ${model}...`)
+    }
+
+    const response = await axios.post(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?key=${apiKey}&alt=sse`,
+      {
+        contents: [{
+          parts
+        }],
+        generationConfig: {
+          temperature,
+          maxOutputTokens,
+        }
+      },
+      {
+        timeout,
+        responseType: 'stream',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+    )
+
+    // 解析 SSE 流
+    let buffer = ''
+
+    for await (const chunk of response.data) {
+      buffer += chunk.toString()
+      const lines = buffer.split('\n')
+
+      // 保留最後一行（可能不完整）
+      buffer = lines.pop() || ''
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const jsonStr = line.slice(6).trim() // 移除 "data: "
+
+          if (jsonStr === '[DONE]') {
+            const duration = Date.now() - startTime
+            logger.info(`[Gemini Stream] Stream completed in ${duration}ms`)
+            return
+          }
+
+          try {
+            const data = JSON.parse(jsonStr)
+            const text = data?.candidates?.[0]?.content?.parts?.[0]?.text
+            if (text) {
+              yield text
+            }
+          } catch (e) {
+            // 忽略非 JSON 行或不完整的 JSON
+          }
+        }
+      }
+    }
+
+    const duration = Date.now() - startTime
+    logger.info(`[Gemini Stream] Stream completed in ${duration}ms`)
+
+  } catch (error: any) {
+    const duration = Date.now() - startTime
+
+    if (axios.isAxiosError(error)) {
+      if (error.response) {
+        const status = error.response.status
+        const message = error.response.data?.error?.message || error.message || 'Unknown error'
+
+        logger.error(`[Gemini Stream] HTTP ${status} after ${duration}ms: ${message}`)
+
+        if (status === 429) {
+          throw new Error('API 配額已用盡，請稍後再試')
+        } else if (status === 400) {
+          throw new Error(`請求格式錯誤: ${message}`)
+        } else if (status === 403) {
+          throw new Error('API Key 無效或權限不足')
+        } else {
+          throw new Error(`Gemini API 錯誤 (${status}): ${message}`)
+        }
+      } else if (error.code === 'ECONNABORTED') {
+        logger.error(`[Gemini Stream] Timeout after ${duration}ms`)
+        throw new Error(`API 調用超時（${timeout}ms）`)
+      } else {
+        logger.error(`[Gemini Stream] Network error after ${duration}ms: ${error.message}`)
+        throw new Error(`網路錯誤: ${error.message}`)
+      }
+    }
+
+    logger.error(`[Gemini Stream] Unknown error after ${duration}ms:`, error)
+    throw new Error('Gemini API Streaming 調用失敗')
+  }
+}

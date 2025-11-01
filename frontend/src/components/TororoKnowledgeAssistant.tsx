@@ -23,6 +23,7 @@ import { Z_INDEX_CLASSES } from '../constants/zIndex'
 import { useAuthStore } from '../stores/authStore'
 import { io, Socket } from 'socket.io-client'
 import { API_ENDPOINTS, MAX_FILE_SIZE, WS_URL } from '../config/api'
+import { getTororoChatHistory, saveTororoMessage, type TororoMessage } from '../services/tororoChatService'
 
 // Register PIXI globally for Live2D
 ;(window as Window & typeof globalThis & { PIXI: typeof PIXI }).PIXI = PIXI
@@ -93,7 +94,8 @@ export default function TororoKnowledgeAssistant({
   const [isTyping, setIsTyping] = useState(false)
   const [history, setHistory] = useState<HistoryRecord[]>([])
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
-  const [conversationHistory, setConversationHistory] = useState<string[]>([]) // 對話歷史
+  const [conversationHistory, setConversationHistory] = useState<TororoMessage[]>([]) // 白噗噗對話歷史（持久化）
+  const [isLoadingChatHistory, setIsLoadingChatHistory] = useState(true) // 載入對話歷史的狀態
 
   // ChatGPT-style 檔案上傳狀態
   const [uploadedCloudinaryFiles, setUploadedCloudinaryFiles] = useState<Array<{
@@ -169,7 +171,7 @@ export default function TororoKnowledgeAssistant({
         fileCount: uploadedCloudinaryFiles.length,
         historyCount: history.length,
         emotionDetected: inputText ? detectEmotion(inputText) : undefined,
-        previousMessages: conversationHistory.slice(-3),
+        previousMessages: conversationHistory.slice(-3).map(m => m.assistantResponse),
         ...additionalContext
       }
 
@@ -179,10 +181,8 @@ export default function TororoKnowledgeAssistant({
       // 檢查是否被取消
       if (abortController.signal.aborted) return
 
-      // 更新對話歷史
-      setConversationHistory(prev => [...prev, response].slice(-10))
-
       // 設置顯示文字（會觸發打字機效果）
+      // 注意：音訊對話暫不儲存到持久化對話歷史，只有知識上傳對話會持久化
       setAudioDialogResponse(response)
 
     } catch (error) {
@@ -210,6 +210,28 @@ export default function TororoKnowledgeAssistant({
       console.error('載入歷史紀錄失敗:', error)
     }
   }, [])
+
+  // 載入白噗噗對話歷史（從資料庫）
+  useEffect(() => {
+    const loadChatHistory = async () => {
+      if (!token) {
+        setIsLoadingChatHistory(false)
+        return
+      }
+
+      try {
+        const history = await getTororoChatHistory(token)
+        setConversationHistory(history.messages)
+        console.log(`[Tororo Chat] 載入 ${history.messages.length} 條歷史對話`)
+      } catch (error) {
+        console.error('[Tororo Chat] 載入歷史失敗:', error)
+      } finally {
+        setIsLoadingChatHistory(false)
+      }
+    }
+
+    loadChatHistory()
+  }, [token])
 
   // 自動調整 textarea 高度當輸入文字變化時
   useEffect(() => {
@@ -931,6 +953,43 @@ export default function TororoKnowledgeAssistant({
             }
             return updated
           })
+
+          // 儲存對話記錄到資料庫
+          if (token && accumulatedResponse) {
+            (async () => {
+              try {
+                const savedMessage = await saveTororoMessage(
+                  token,
+                  currentInput, // 用戶輸入
+                  accumulatedResponse, // 白噗噗回應
+                  result.distribution?.id // 關聯的 Distribution ID
+                )
+
+                // 更新本地對話歷史
+                const newMessage: TororoMessage = {
+                  id: savedMessage.messageId,
+                  userMessage: currentInput,
+                  assistantResponse: accumulatedResponse,
+                  createdAt: new Date().toISOString(),
+                  memoryId: result.distribution?.id || null
+                }
+
+                setConversationHistory(prev => [...prev, newMessage])
+                console.log('[Tororo Chat] 對話已儲存')
+              } catch (error) {
+                console.error('[Tororo Chat] 儲存對話失敗:', error)
+                // 即使儲存失敗也更新 UI（使用臨時 ID）
+                const tempMessage: TororoMessage = {
+                  id: `temp-${Date.now()}`,
+                  userMessage: currentInput,
+                  assistantResponse: accumulatedResponse,
+                  createdAt: new Date().toISOString(),
+                  memoryId: result.distribution?.id || null
+                }
+                setConversationHistory(prev => [...prev, tempMessage])
+              }
+            })()
+          }
 
           playRandomMeow()
           play('notification')

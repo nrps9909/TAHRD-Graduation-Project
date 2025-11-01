@@ -11,7 +11,7 @@ const prisma = new PrismaClient()
 
 export interface CreateSessionOptions {
   userId: string
-  assistantId: string
+  islandId: string
   title?: string
 }
 
@@ -23,7 +23,7 @@ export interface UpdateSessionOptions {
 
 export interface GetSessionsOptions {
   userId: string
-  assistantId?: string
+  islandId?: string
   includeArchived?: boolean
   limit?: number
 }
@@ -33,20 +33,20 @@ export class ChatSessionService {
    * 創建新會話
    */
   async createSession(options: CreateSessionOptions) {
-    const { userId, assistantId, title } = options
+    const { userId, islandId, title } = options
 
     try {
       const session = await prisma.chatSession.create({
         data: {
           userId,
-          assistantId,
+          islandId,
           title: title || '新對話',
           messageCount: 0,
           totalTokens: 0
         },
         include: {
           user: true,
-          assistant: true,
+          island: true,
           messages: {
             orderBy: { createdAt: 'asc' },
             take: 10  // 只加載最近10條消息
@@ -68,7 +68,7 @@ export class ChatSessionService {
    */
   async getOrCreateSession(
     userId: string,
-    assistantId: string,
+    islandId: string,
     contextType: ChatContextType = ChatContextType.GENERAL_CHAT
   ) {
     try {
@@ -77,7 +77,7 @@ export class ChatSessionService {
         const recentSession = await prisma.chatSession.findFirst({
           where: {
             userId,
-            assistantId,
+            islandId,
             isArchived: false
           },
           orderBy: {
@@ -97,7 +97,7 @@ export class ChatSessionService {
       // 否則創建新會話
       return await this.createSession({
         userId,
-        assistantId,
+        islandId,
         title: this.getDefaultTitle(contextType)
       })
     } catch (error) {
@@ -118,7 +118,7 @@ export class ChatSessionService {
         },
         include: {
           user: true,
-          assistant: true,
+          island: true,
           messages: {
             orderBy: { createdAt: 'asc' }
           }
@@ -140,15 +140,15 @@ export class ChatSessionService {
    * 獲取會話列表
    */
   async getSessions(options: GetSessionsOptions) {
-    const { userId, assistantId, includeArchived = false, limit = 50 } = options
+    const { userId, islandId, includeArchived = false, limit = 50 } = options
 
     try {
       const where: any = {
         userId
       }
 
-      if (assistantId) {
-        where.assistantId = assistantId
+      if (islandId) {
+        where.islandId = islandId
       }
 
       if (!includeArchived) {
@@ -163,7 +163,7 @@ export class ChatSessionService {
         ],
         take: limit,
         include: {
-          assistant: true,
+          island: true,
           messages: {
             orderBy: { createdAt: 'desc' },
             take: 1  // 只加載最後一條消息用於預覽
@@ -208,7 +208,7 @@ export class ChatSessionService {
           })
         },
         include: {
-          assistant: true
+          island: true
         }
       })
 

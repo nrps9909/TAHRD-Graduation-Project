@@ -59,6 +59,14 @@ router.get('/stream', async (req: Request, res: Response) => {
     // 如果是 Chief，使用特殊處理
     if (assistant.type === 'CHIEF') {
       try {
+        // chatWithChief is deprecated - return error message
+        res.write(`event: error\ndata: ${JSON.stringify({
+          error: 'Chat with Chief is currently unavailable due to system migration. Please use island-based chat instead.'
+        })}\n\n`)
+        res.end()
+        return
+
+        /* COMMENTED OUT - BROKEN DUE TO MIGRATION
         // 調用 chatWithChief 獲取完整回應
         const chatMessage = await chiefAgentService.chatWithChief(userId, message as string)
         const fullResponse = chatMessage.assistantResponse
@@ -88,6 +96,7 @@ router.get('/stream', async (req: Request, res: Response) => {
         })}\n\n`)
 
         logger.info(`[SSE Chat] Stream completed for user ${userId}`)
+        */
 
       } catch (error: any) {
         logger.error(`[SSE Chat] Error:`, error)
