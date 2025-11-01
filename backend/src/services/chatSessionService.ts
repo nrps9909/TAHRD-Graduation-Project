@@ -4,7 +4,7 @@
  * 管理聊天會話，類似 ChatGPT 的會話系統
  */
 
-import { PrismaClient, AssistantType, ChatContextType } from '@prisma/client'
+import { PrismaClient, CategoryType, ChatContextType } from '@prisma/client'
 import { logger } from '../utils/logger'
 
 const prisma = new PrismaClient()

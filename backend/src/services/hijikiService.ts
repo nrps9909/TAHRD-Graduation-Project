@@ -3,7 +3,7 @@
  * 負責查詢、分析和管理記憶
  */
 
-import { PrismaClient, AssistantType } from '@prisma/client'
+import { PrismaClient, CategoryType } from '@prisma/client'
 import { logger } from '../utils/logger'
 import { memoryService } from './memoryService'
 import { vectorService } from './vectorService'
@@ -18,7 +18,7 @@ export interface HijikiQueryInput {
   query: string
   type?: 'search' | 'statistics' | 'trend'
   filters?: {
-    categories?: AssistantType[]
+    categories?: CategoryType[]
     tags?: string[]
     dateRange?: {
       start: Date

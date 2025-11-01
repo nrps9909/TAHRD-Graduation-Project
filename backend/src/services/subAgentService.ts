@@ -9,11 +9,11 @@
  * 5. 如果決定儲存，創建 Memory 記錄
  */
 
-import { PrismaClient, AssistantType, ContentType } from '@prisma/client'
+import { PrismaClient, CategoryType, ContentType } from '@prisma/client'
 import { logger } from '../utils/logger'
 import axios from 'axios'
 import { callGeminiAPI } from '../utils/geminiAPI'
-import { assistantService } from './assistantService'
+import { categoryService } from './categoryService'
 import { islandService } from './islandService'  // 新增 - Island 服務
 import { multimodalProcessor } from './multimodalProcessor'
 import { dynamicSubAgentService } from './dynamicSubAgentService'
@@ -26,7 +26,7 @@ interface EvaluationResult {
   shouldStore: boolean
   reasoning: string
   confidence: number          // 0-1
-  suggestedCategory?: AssistantType
+  suggestedCategory?: CategoryType
   suggestedTags: string[]
   keyInsights: string[]
   // SubAgent 深度分析結果（新增）
@@ -111,9 +111,9 @@ export class SubAgentService {
         shouldStore,
         reasoning: parsed.reasoning || '無評估說明',
         confidence,
-        suggestedCategory: this.isValidAssistantType(parsed.suggestedCategory)
+        suggestedCategory: this.isValidCategoryType(parsed.suggestedCategory)
           ? parsed.suggestedCategory
-          : undefined, // Island 不需要 AssistantType
+          : undefined, // Island 不需要 CategoryType
         suggestedTags: Array.isArray(parsed.suggestedTags) ? parsed.suggestedTags : [],
         keyInsights: Array.isArray(parsed.keyInsights) ? parsed.keyInsights : [],
         // SubAgent 深度分析結果
@@ -182,7 +182,7 @@ export class SubAgentService {
           keyPoints: evaluation.keyInsights,
           aiSentiment: sentiment, // 使用情感分析結果
           aiAnalysis: evaluation.reasoning, // 使用 Sub-Agent 的評估說明
-          category: evaluation.suggestedCategory || AssistantType.MISC,
+          category: evaluation.suggestedCategory || CategoryType.MISC,
           tags: [...new Set([...distribution.suggestedTags, ...evaluation.suggestedTags])].slice(0, 5), // 合併並去重標籤，最多5個
 
           // === 新增：SubAgent 深度分析結果 ===
@@ -391,7 +391,7 @@ ${island.nameChinese.includes('社交') || island.nameChinese.includes('人際')
         shouldStore,
         reasoning: `基於降級評估，此內容歸類到 ${island.nameChinese}`,
         confidence: 0.3,
-        suggestedCategory: AssistantType.MISC, // 預設為 MISC
+        suggestedCategory: CategoryType.MISC, // 預設為 MISC
         suggestedTags: distribution.suggestedTags.slice(0, 3),
         keyInsights: [`關鍵字匹配數: ${matchCount}`],
       }
@@ -497,10 +497,10 @@ ${island.nameChinese.includes('社交') || island.nameChinese.includes('人際')
   }
 
   /**
-   * 驗證 AssistantType 是否有效
+   * 驗證 CategoryType 是否有效
    */
-  private isValidAssistantType(type: any): type is AssistantType {
-    return Object.values(AssistantType).includes(type)
+  private isValidCategoryType(type: any): type is CategoryType {
+    return Object.values(CategoryType).includes(type)
   }
 
   /**

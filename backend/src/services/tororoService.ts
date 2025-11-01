@@ -3,10 +3,11 @@
  * 負責創建和種植記憶花
  */
 
-import { PrismaClient, AssistantType } from '@prisma/client'
+import { PrismaClient, CategoryType } from '@prisma/client'
 import { logger } from '../utils/logger'
 import { chiefAgentService } from './chiefAgentService'
-import { assistantService } from './assistantService'
+import { islandService } from './islandService'
+import { categoryService } from './categoryService'
 import { TORORO_SYSTEM_PROMPT } from '../agents/tororo/systemPrompt'
 
 const prisma = new PrismaClient()
@@ -230,8 +231,8 @@ class TororoService {
   /**
    * 獲取區域位置
    */
-  private getRegionPosition(category: AssistantType) {
-    const positions: Record<AssistantType, { x: number; y: number; z: number }> = {
+  private getRegionPosition(category: CategoryType) {
+    const positions: Record<CategoryType, { x: number; y: number; z: number }> = {
       LEARNING: { x: 0, y: 5, z: -20 },
       INSPIRATION: { x: -15, y: 2, z: -10 },
       GOALS: { x: 15, y: 6, z: -10 },
@@ -248,8 +249,8 @@ class TororoService {
   /**
    * 獲取花朵類型
    */
-  private getFlowerType(category: AssistantType): string {
-    const types: Record<AssistantType, string> = {
+  private getFlowerType(category: CategoryType): string {
+    const types: Record<CategoryType, string> = {
       LEARNING: '櫻花',
       INSPIRATION: '星光花',
       GOALS: '火焰花',
@@ -266,8 +267,8 @@ class TororoService {
   /**
    * 獲取分類名稱
    */
-  private getCategoryName(category: AssistantType): string {
-    const names: Record<AssistantType, string> = {
+  private getCategoryName(category: CategoryType): string {
+    const names: Record<CategoryType, string> = {
       LEARNING: '學習高地',
       INSPIRATION: '靈感森林',
       GOALS: '目標峰頂',

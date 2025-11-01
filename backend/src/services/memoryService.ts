@@ -1,4 +1,4 @@
-import { PrismaClient, AssistantType, ChatContextType } from '@prisma/client'
+import { PrismaClient, CategoryType, ChatContextType } from '@prisma/client'
 import { logger } from '../utils/logger'
 
 const prisma = new PrismaClient()
@@ -6,7 +6,7 @@ const prisma = new PrismaClient()
 export interface MemoryFilterOptions {
   userId: string
   islandId?: string  // 支持按 Island 過濾
-  category?: AssistantType
+  category?: CategoryType
   tags?: string[]
   search?: string
   isPinned?: boolean
@@ -21,7 +21,7 @@ export interface CreateMemoryInput {
   userId: string
   islandId: string  // Island 系統（必填）
   content: string
-  category: AssistantType
+  category: CategoryType
   summary?: string
   keyPoints?: string[]
   tags?: string[]
@@ -184,7 +184,7 @@ export class MemoryService {
       title?: string
       rawContent?: string
       emoji?: string
-      category?: AssistantType
+      category?: CategoryType
       tags?: string[]
       fileUrls?: string[]
       fileNames?: string[]

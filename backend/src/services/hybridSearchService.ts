@@ -26,7 +26,7 @@ export interface SearchResult {
   similarity: number // 0-1，相關性分數
   source: 'semantic' | 'structured' | 'statistical' // 結果來源
   metadata?: {
-    category?: string | import('@prisma/client').AssistantType
+    category?: string | import('@prisma/client').CategoryType
     createdAt?: Date
     importanceScore?: number | null
   }

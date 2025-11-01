@@ -5,10 +5,10 @@
  * 1. 管理用戶的島嶼（分類）
  * 2. 提供 AI 配置查詢
  * 3. 統計數據更新
- * 4. 向後兼容：AssistantType → Island 映射
+ * 4. 向後兼容：CategoryType → Island 映射
  */
 
-import { PrismaClient, AssistantType } from '@prisma/client'
+import { PrismaClient, CategoryType } from '@prisma/client'
 import { logger } from '../utils/logger'
 
 const prisma = new PrismaClient()
@@ -83,10 +83,10 @@ export class IslandService {
   }
 
   /**
-   * 🆕 根據 AssistantType 獲取對應的島嶼（向後兼容）
+   * 🆕 根據 CategoryType 獲取對應的島嶼（向後兼容）
    * 用於 Chief Agent 分類結果映射
    */
-  async getIslandByType(userId: string, type: AssistantType) {
+  async getIslandByType(userId: string, type: CategoryType) {
     await this.loadIslands(userId)
     const userCache = this.islandsCache.get(userId)
 
@@ -97,8 +97,8 @@ export class IslandService {
 
     const islands = Array.from(userCache.values())
 
-    // AssistantType 到中文關鍵字的映射
-    const typeMapping: Record<AssistantType, string[]> = {
+    // CategoryType 到中文關鍵字的映射
+    const typeMapping: Record<CategoryType, string[]> = {
       LEARNING: ['學習', 'LEARNING', '学习'],
       WORK: ['工作', 'WORK', '职业'],
       INSPIRATION: ['靈感', '創意', 'INSPIRATION', '灵感', '创意'],
@@ -131,7 +131,7 @@ export class IslandService {
     }
 
     // 如果沒有匹配，返回第一個島嶼（或 null）
-    logger.warn(`[IslandService] 無法為 AssistantType ${type} 找到匹配的島嶼，使用第一個島嶼`)
+    logger.warn(`[IslandService] 無法為 CategoryType ${type} 找到匹配的島嶼，使用第一個島嶼`)
     return islands[0] || null
   }
 

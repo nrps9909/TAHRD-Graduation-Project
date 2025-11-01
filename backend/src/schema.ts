@@ -36,7 +36,7 @@ const baseTypeDefs = gql`
 
   # ============ Assistant System ============
 
-  enum AssistantType {
+  enum CategoryType {
     CHIEF       # 總管（智能分配 + 全局摘要）
     LEARNING    # 學習筆記
     INSPIRATION # 靈感創意
@@ -50,7 +50,7 @@ const baseTypeDefs = gql`
 
   type Assistant {
     id: ID!
-    type: AssistantType!
+    type: CategoryType!
     name: String!
     nameChinese: String!
     emoji: String!
@@ -141,7 +141,7 @@ const baseTypeDefs = gql`
     progressChange: Int       # [進度變化] +1/0/-1
 
     # Classification
-    category: AssistantType!
+    category: CategoryType!
     tags: [String!]!
 
     # Metadata
@@ -246,7 +246,7 @@ const baseTypeDefs = gql`
     nameChinese: String
     usageCount: Int!
     color: String
-    category: AssistantType
+    category: CategoryType
     createdAt: DateTime!
     lastUsed: DateTime!
   }
@@ -302,7 +302,7 @@ const baseTypeDefs = gql`
     confidence: Float!           # 0-1
 
     # Classification (if stored)
-    suggestedCategory: AssistantType
+    suggestedCategory: CategoryType
     suggestedTags: [String!]!
     keyInsights: [String!]!
 
@@ -356,7 +356,7 @@ const baseTypeDefs = gql`
   }
 
   type CategoryStats {
-    category: AssistantType!
+    category: CategoryType!
     count: Int!
     percentage: Float!
   }
@@ -379,7 +379,7 @@ const baseTypeDefs = gql`
 
   type TororoQuickResponse {
     warmMessage: String!     # 白噗噗的溫暖回應訊息
-    category: AssistantType! # 分類結果
+    category: CategoryType! # 分類結果
     quickSummary: String!    # 一句話摘要
     confidence: Float!       # 信心分數
     reasoning: String!       # 分類理由
@@ -393,10 +393,10 @@ const baseTypeDefs = gql`
   }
 
   type ClassificationResult {
-    suggestedCategory: AssistantType!
+    suggestedCategory: CategoryType!
     confidence: Float!
     reason: String!
-    alternativeCategories: [AssistantType!]!
+    alternativeCategories: [CategoryType!]!
   }
 
   type ChiefSummaryResponse {
@@ -455,7 +455,7 @@ const baseTypeDefs = gql`
     title: String
     content: String!
     tags: [String!]
-    category: AssistantType
+    category: CategoryType
     emoji: String
   }
 
@@ -463,7 +463,7 @@ const baseTypeDefs = gql`
     title: String
     rawContent: String
     emoji: String
-    category: AssistantType
+    category: CategoryType
     tags: [String!]
     fileUrls: [String!]
     fileNames: [String!]
@@ -476,7 +476,7 @@ const baseTypeDefs = gql`
 
   input MemoryFilterInput {
     assistantId: ID
-    category: AssistantType
+    category: CategoryType
     tags: [String!]
     search: String
     isPinned: Boolean
@@ -687,7 +687,7 @@ const baseTypeDefs = gql`
   }
 
   input HijikiFilterInput {
-    categories: [AssistantType!]
+    categories: [CategoryType!]
     tags: [String!]
     dateRange: DateRangeInput
   }
@@ -706,7 +706,7 @@ const baseTypeDefs = gql`
     # ===== Assistant Queries =====
     assistants: [Assistant!]!
     assistant(id: ID!): Assistant
-    assistantByType(type: AssistantType!): Assistant
+    assistantByType(type: CategoryType!): Assistant
     chiefAssistant: Assistant
 
     # ===== Memory Queries =====

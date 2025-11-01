@@ -12,7 +12,7 @@ import { Context } from '../context'
 import { memoryService } from '../services/memoryService'
 import { chiefAgentService } from '../services/chiefAgentService'
 import { chatSessionService } from '../services/chatSessionService'
-import { AssistantType, ChatContextType } from '@prisma/client'
+import { CategoryType, ChatContextType } from '@prisma/client'
 
 export const memoryResolvers = {
   Query: {
@@ -230,7 +230,7 @@ export const memoryResolvers = {
      */
     createMemoryDirect: async (
       _: any,
-      { input }: { input: { title?: string; content: string; tags?: string[]; category?: AssistantType; emoji?: string } },
+      { input }: { input: { title?: string; content: string; tags?: string[]; category?: CategoryType; emoji?: string } },
       { userId, prisma }: Context
     ) => {
       if (!userId) {
@@ -242,7 +242,7 @@ export const memoryResolvers = {
       try {
         // 獲取對應分類的助手（預設使用 LIFE）
         const defaultAssistant = await prisma.assistant.findFirst({
-          where: { type: input.category || AssistantType.LIFE }
+          where: { type: input.category || CategoryType.LIFE }
         })
 
         if (!defaultAssistant) {
@@ -258,7 +258,7 @@ export const memoryResolvers = {
             rawContent: input.content,
             summary: input.title || input.content.substring(0, 100),
             contentType: 'TEXT',
-            category: input.category || AssistantType.LIFE,
+            category: input.category || CategoryType.LIFE,
             tags: input.tags || [],
             emoji: input.emoji || '📝',
             keyPoints: [],
@@ -446,7 +446,7 @@ export const memoryResolvers = {
         }
 
         // 如果是 Chief，使用特殊處理
-        if (assistant.type === AssistantType.CHIEF) {
+        if (assistant.type === CategoryType.CHIEF) {
           return await chiefAgentService.chatWithChief(userId, input.message)
         }
 

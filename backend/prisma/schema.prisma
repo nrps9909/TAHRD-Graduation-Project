@@ -64,10 +64,10 @@ model UserSettings {
   @@map("user_settings")
 }
 
-// ============ Assistant Models ============
+// ============ Category System ============
+// Note: CategoryType 用於記憶的細粒度分類（比 Island 更詳細）
 
-enum AssistantType {
-  CHIEF      // 總管（智能分配 + 全局摘要）
+enum CategoryType {
   LEARNING   // 學習筆記
   INSPIRATION // 靈感創意
   WORK       // 工作事務
@@ -77,49 +77,7 @@ enum AssistantType {
   RESOURCES  // 資源收藏
   MISC       // 雜項（不屬於其他類別的知識）
 
-  @@map("assistant_type")
-}
-
-model Assistant {
-  id               String   @id @default(auto()) @map("_id") @db.ObjectId
-
-  // Identity
-  type             AssistantType @unique
-  name             String   @unique
-  nameChinese      String   @map("name_chinese")
-  emoji            String
-  color            String   // Hex color code
-
-  // AI Configuration
-  systemPrompt     String   @map("system_prompt") @db.String
-  personality      String   @db.String
-  chatStyle        String   @map("chat_style") @db.String
-
-  // 3D Position (for Island View)
-  positionX        Float    @default(0) @map("position_x")
-  positionY        Float    @default(0) @map("position_y")
-  positionZ        Float    @default(0) @map("position_z")
-
-  // 3D Model & Texture (for Island Customization)
-  modelUrl         String?  @map("model_url") // Custom 3D model URL (GLTF/GLB)
-  textureId        String?  @map("texture_id") // Selected texture ID
-  shape            String?  @default("circle") // Island shape: circle, hexagon, square, organic, etc.
-  customShapeData  String?  @map("custom_shape_data") @db.String // JSON string of custom drawn shape points
-  islandHeight     Float?   @default(2.0) @map("island_height") // Island height (0.5-5.0)
-  islandBevel      Float?   @default(0.5) @map("island_bevel") // Island edge bevel/slope (0-2.0)
-
-  // Statistics
-  totalMemories    Int      @default(0) @map("total_memories")
-  totalChats       Int      @default(0) @map("total_chats")
-
-  // Status
-  isActive         Boolean  @default(true) @map("is_active")
-
-  // Timestamps
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
-
-  @@map("assistants")
+  @@map("category_type")
 }
 
 // ============ Memory System ============
@@ -172,7 +130,7 @@ model Memory {
   progressChange   Int?     @map("progress_change") // [進度變化] +1/0/-1
 
   // Classification
-  category         AssistantType
+  category         CategoryType
   tags             String[] // 自動生成的標籤
 
   // Metadata
@@ -307,7 +265,7 @@ model Tag {
 
   // Metadata
   color            String?  // Optional color for tag cloud
-  category         AssistantType? // Which assistant this tag commonly belongs to
+  category         CategoryType? // Which assistant this tag commonly belongs to
 
   // Timestamps
   createdAt        DateTime @default(now()) @map("created_at")
@@ -342,8 +300,8 @@ model KnowledgeDistribution {
   suggestedTags    String[] @map("suggested_tags")
 
   // Distribution Results
-  distributedTo    String[] @map("distributed_to") // Assistant IDs
-  storedBy         String[] @default([]) @map("stored_by") // Assistant IDs that chose to store
+  distributedTo    String[] @map("distributed_to") // Island IDs (主要推薦的島嶼)
+  storedBy         String[] @default([]) @map("stored_by") // Island IDs that chose to store
 
   // Processing Info
   processingTime   Float?   @map("processing_time") // ms
@@ -365,7 +323,8 @@ model KnowledgeDistribution {
 model AgentDecision {
   id               String   @id @default(auto()) @map("_id") @db.ObjectId
   distributionId   String   @map("distribution_id") @db.ObjectId
-  assistantId      String?  @map("assistant_id") @db.ObjectId  // Optional: null for dynamic SubAgents
+  targetIslandId   String?  @map("target_island_id") @db.ObjectId  // 目標島嶼 ID（Island-based）
+  targetCategory   CategoryType? @map("target_category")  // 目標分類
 
   // Decision
   relevanceScore   Float    @map("relevance_score") // 0-1
@@ -374,7 +333,7 @@ model AgentDecision {
   confidence       Float    // 0-1
 
   // Classification (if stored)
-  suggestedCategory AssistantType? @map("suggested_category")
+  suggestedCategory CategoryType? @map("suggested_category")
   suggestedTags    String[] @map("suggested_tags")
   keyInsights      String[] @map("key_insights")
 
@@ -389,7 +348,7 @@ model AgentDecision {
 
   // 🚀 優化索引
   @@index([distributionId])  // 查詢特定分發的所有決策
-  @@index([assistantId])  // 查詢特定助手的所有決策
+  @@index([targetIslandId])  // 查詢特定島嶼的所有決策
   @@index([distributionId, shouldStore])  // 複合索引：查詢儲存決策
   @@index([distributionId, relevanceScore(sort: Desc)])  // 複合索引：按相關性排序
   @@map("agent_decisions")

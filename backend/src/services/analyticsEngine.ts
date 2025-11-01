@@ -3,7 +3,7 @@
  * 提供各種知識洞察和趨勢分析
  */
 
-import { PrismaClient, AssistantType } from '@prisma/client'
+import { PrismaClient, CategoryType } from '@prisma/client'
 import { logger } from '../utils/logger'
 
 const prisma = new PrismaClient()

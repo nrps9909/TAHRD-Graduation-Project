@@ -1,4 +1,4 @@
-import { PrismaClient, AssistantType, ChatContextType, ContentType } from '@prisma/client'
+import { PrismaClient, CategoryType, ChatContextType, ContentType } from '@prisma/client'
 import { logger } from '../utils/logger'
 import axios from 'axios'
 import { callGeminiAPI, callGeminiAPIStream } from '../utils/geminiAPI'
@@ -11,15 +11,16 @@ import { taskQueueService, TaskPriority } from './taskQueueService'
 import { dynamicSubAgentService } from './dynamicSubAgentService'
 import { vectorService } from './vectorService'
 import { categoryInitService } from './categoryInitService'
-import { assistantService } from './assistantService'
+import { islandService } from './islandService'
+import { categoryService } from './categoryService'
 
 const prisma = new PrismaClient()
 
 export interface ClassificationResult {
-  suggestedCategory: AssistantType
+  suggestedCategory: CategoryType
   confidence: number
   reason: string
-  alternativeCategories: AssistantType[]
+  alternativeCategories: CategoryType[]
 }
 
 export interface ProcessingResult {
@@ -57,14 +58,14 @@ export interface KnowledgeAnalysis {
   summary: string
   identifiedTopics: string[]
   suggestedTags: string[]
-  relevantAssistants: AssistantType[]
+  relevantAssistants: CategoryType[]
   confidence: number
 }
 
 // 優化：分類結果緩存接口
 interface ClassificationCache {
   result: {
-    category: AssistantType
+    category: CategoryType
     confidence: number
     reasoning: string
     warmResponse: string
@@ -231,7 +232,7 @@ export class ChiefAgentService {
       const result = this.parseJSON(response)
 
       return {
-        suggestedCategory: result.suggestedCategory as AssistantType,
+        suggestedCategory: result.suggestedCategory as CategoryType,
         confidence: result.confidence || 0.8,
         reason: result.reason || '基於內容分析',
         alternativeCategories: result.alternativeCategories || []
@@ -241,7 +242,7 @@ export class ChiefAgentService {
 
       // 降級處理：使用 LIFE 作為預設類別
       return {
-        suggestedCategory: AssistantType.LIFE,
+        suggestedCategory: CategoryType.LIFE,
         confidence: 0.5,
         reason: '使用預設分類（AI 服務暫時無法使用）',
         alternativeCategories: []
@@ -258,7 +259,7 @@ export class ChiefAgentService {
     userId: string,
     assistantId: string,
     content: string,
-    category: AssistantType,
+    category: CategoryType,
     contextType: ChatContextType = ChatContextType.MEMORY_CREATION
   ) {
     throw new Error('This function is deprecated. Please use the streaming knowledge distribution API instead.')
@@ -457,7 +458,7 @@ ${contextInfo}
 
       const totalCount = memories.length
       const categoryBreakdown = Object.entries(categoryCount).map(([category, count]) => ({
-        category: category as AssistantType,
+        category: category as CategoryType,
         count,
         percentage: (count / totalCount) * 100
       }))
@@ -752,7 +753,7 @@ ${contextInfo}
     userId: string,
     input: UploadKnowledgeInput
   ): Promise<{
-    category: AssistantType
+    category: CategoryType
     confidence: number
     reasoning: string     // 分類理由（用於調試和追蹤）
     warmResponse: string  // 白噗噗的溫暖回應
@@ -876,18 +877,18 @@ ${contextInfo}
       this.geminiModel = oldModel // 恢復原模型
 
       // 處理分類結果（動態分類 vs 預設分類）
-      let finalCategory: AssistantType
+      let finalCategory: CategoryType
       let finalReasoning: string
 
       if (hasCustomCategories) {
         // 動態分類：AI 返回自訂類別的中文名稱
         // 使用 MISC 作為佔位符（實際分類由 findRelevantSubAgents 完成）
-        finalCategory = AssistantType.MISC
+        finalCategory = CategoryType.MISC
         finalReasoning = `自訂分類: ${result.category} - ${result.reasoning || '關鍵字匹配'}`
         logger.info(`[白噗噗] 動態分類結果: ${result.category} (${finalReasoning})`)
       } else {
-        // 預設分類：AI 返回 AssistantType
-        finalCategory = result.category as AssistantType || AssistantType.LIFE
+        // 預設分類：AI 返回 CategoryType
+        finalCategory = result.category as CategoryType || CategoryType.LIFE
         finalReasoning = result.reasoning || '自動分類'
         logger.info(`[白噗噗] 預設分類結果: ${finalCategory} (置信度: ${result.confidence || 0.8}, 理由: ${finalReasoning})`)
       }
@@ -919,7 +920,7 @@ ${contextInfo}
 
       // 降級方案：使用 LIFE 作為預設類別
       return {
-        category: AssistantType.LIFE,
+        category: CategoryType.LIFE,
         confidence: 0.5,
         reasoning: '使用預設分類（AI 暫時無法使用）',
         warmResponse: '收到了，我幫你記下來',
@@ -1083,8 +1084,8 @@ ${input.content}
         identifiedTopics: Array.isArray(parsed.identifiedTopics) ? parsed.identifiedTopics : [],
         suggestedTags: Array.isArray(parsed.suggestedTags) ? parsed.suggestedTags : [],
         relevantAssistants: Array.isArray(parsed.relevantAssistants)
-          ? parsed.relevantAssistants.filter((a: string) => this.isValidAssistantType(a))
-          : [AssistantType.LEARNING],
+          ? parsed.relevantAssistants.filter((a: string) => this.isValidCategoryType(a))
+          : [CategoryType.LEARNING],
         confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0.8,
       }
     } catch (error) {
@@ -1485,7 +1486,7 @@ ${input.content}
    */
   private fallbackAnalysis(input: UploadKnowledgeInput): KnowledgeAnalysis {
     const content = input.content.toLowerCase()
-    const relevantAssistants: AssistantType[] = []
+    const relevantAssistants: CategoryType[] = []
 
     // 簡單的關鍵字匹配
     const keywords = {
@@ -1501,13 +1502,13 @@ ${input.content}
 
     for (const [type, words] of Object.entries(keywords)) {
       if (words.some(word => content.includes(word))) {
-        relevantAssistants.push(type as AssistantType)
+        relevantAssistants.push(type as CategoryType)
       }
     }
 
     // 如果沒有匹配，預設使用 LEARNING
     if (relevantAssistants.length === 0) {
-      relevantAssistants.push(AssistantType.LEARNING)
+      relevantAssistants.push(CategoryType.LEARNING)
     }
 
     return {
@@ -1551,7 +1552,7 @@ ${input.content}
   /**
    * 獲取 Assistant IDs
    */
-  private async getAssistantIds(types: AssistantType[]): Promise<string[]> {
+  private async getAssistantIds(types: CategoryType[]): Promise<string[]> {
     const assistants = await prisma.assistant.findMany({
       where: {
         type: { in: types },
@@ -1564,10 +1565,10 @@ ${input.content}
   }
 
   /**
-   * 驗證 AssistantType 是否有效
+   * 驗證 CategoryType 是否有效
    */
-  private isValidAssistantType(type: string): boolean {
-    return Object.values(AssistantType).includes(type as AssistantType)
+  private isValidCategoryType(type: string): boolean {
+    return Object.values(CategoryType).includes(type as CategoryType)
   }
 
   /**
