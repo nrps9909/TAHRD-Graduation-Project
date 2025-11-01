@@ -4,7 +4,14 @@
 
 import { useState, useCallback } from 'react'
 
-const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000'
+// 智能處理 API URL：如果是 GraphQL 端點，去掉 /graphql 後綴
+const getApiBaseUrl = () => {
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+  // 如果 URL 以 /graphql 結尾，去掉它以獲取基礎 URL
+  return apiUrl.replace(/\/graphql$/, '')
+}
+
+const API_BASE_URL = getApiBaseUrl()
 
 interface SSECompleteData {
   messageId?: string

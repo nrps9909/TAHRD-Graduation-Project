@@ -282,7 +282,7 @@ export default function CuteDatabaseView() {
     setSelectedMemoryIds(new Set())
   }
 
-  // 批量操作：刪除選中的記憶
+  // 批量操作：刪除選中的記憶（批次處理避免服務器過載）
   const handleBulkDelete = async () => {
     if (selectedMemoryIds.size === 0) {
       toast.error('請先選擇要刪除的記憶')
@@ -299,15 +299,46 @@ export default function CuteDatabaseView() {
 
     if (!confirmed) return
 
-    try {
-      // 並發刪除所有選中的記憶
-      await Promise.all(
-        Array.from(selectedMemoryIds).map(id =>
-          deleteMemory({ variables: { id } })
-        )
-      )
+    const idsArray = Array.from(selectedMemoryIds)
+    const batchSize = 3 // 每批處理 3 個，避免服務器過載
+    let deletedCount = 0
+    let failedCount = 0
 
-      toast.success(`成功刪除 ${selectedMemoryIds.size} 條記憶 🗑️`)
+    try {
+      // 分批刪除
+      for (let i = 0; i < idsArray.length; i += batchSize) {
+        const batch = idsArray.slice(i, i + batchSize)
+
+        // 顯示進度
+        toast.info(`正在刪除 ${i + 1}-${Math.min(i + batchSize, idsArray.length)}/${idsArray.length}...`)
+
+        // 批次內並發處理
+        const results = await Promise.allSettled(
+          batch.map(id => deleteMemory({ variables: { id } }))
+        )
+
+        // 統計成功/失敗
+        results.forEach(result => {
+          if (result.status === 'fulfilled') {
+            deletedCount++
+          } else {
+            failedCount++
+          }
+        })
+
+        // 批次間短暫延遲，避免服務器壓力
+        if (i + batchSize < idsArray.length) {
+          await new Promise(resolve => setTimeout(resolve, 300))
+        }
+      }
+
+      // 顯示結果
+      if (failedCount === 0) {
+        toast.success(`成功刪除 ${deletedCount} 條記憶 🗑️`)
+      } else {
+        toast.warning(`刪除完成：成功 ${deletedCount} 條，失敗 ${failedCount} 條`)
+      }
+
       setSelectedMemoryIds(new Set())
       setBulkSelectMode(false)
       refetch()
@@ -598,6 +629,77 @@ export default function CuteDatabaseView() {
               <option value="custom">✋ 自訂</option>
             </select>
 
+            {/* 批量選擇按鈕/工具 */}
+            {!bulkSelectMode ? (
+              <button
+                onClick={() => setBulkSelectMode(true)}
+                className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl font-bold transition-all hover:scale-105 active:scale-95 text-xs sm:text-sm flex items-center gap-1 sm:gap-2 flex-shrink-0"
+                style={{
+                  background: 'rgba(30, 41, 59, 0.7)',
+                  color: '#cbd5e1',
+                  border: '2px solid rgba(251, 191, 36, 0.3)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(251, 191, 36, 0.2)'
+                  e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.5)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(30, 41, 59, 0.7)'
+                  e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.3)'
+                }}
+              >
+                <span className="text-sm sm:text-base">☑️</span>
+                <span className="hidden md:inline">批量</span>
+              </button>
+            ) : (
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+                <button
+                  onClick={() => {
+                    setBulkSelectMode(false)
+                    setSelectedMemoryIds(new Set())
+                  }}
+                  className="px-2 py-1.5 rounded-lg font-medium transition-all hover:scale-105 active:scale-95 text-xs"
+                  style={{
+                    background: 'rgba(100, 116, 139, 0.3)',
+                    color: '#cbd5e1',
+                    border: '1px solid rgba(148, 163, 184, 0.3)',
+                  }}
+                >
+                  ✕
+                </button>
+                <span className="font-bold text-xs sm:text-sm" style={{ color: '#fbbf24' }}>
+                  {selectedMemoryIds.size}/{allMemories.length}
+                </span>
+                <button
+                  onClick={selectedMemoryIds.size === allMemories.length ? handleDeselectAll : handleSelectAll}
+                  className="px-2 py-1 rounded-lg font-medium transition-all hover:scale-105 active:scale-95 text-xs hidden sm:inline-block"
+                  style={{
+                    background: 'rgba(251, 191, 36, 0.25)',
+                    color: '#fbbf24',
+                    border: '1px solid rgba(251, 191, 36, 0.4)',
+                  }}
+                >
+                  {selectedMemoryIds.size === allMemories.length ? '☐ 取消' : '☑️ 全選'}
+                </button>
+                <button
+                  onClick={handleBulkDelete}
+                  disabled={selectedMemoryIds.size === 0}
+                  className="px-2 py-1 rounded-lg font-bold transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed text-xs"
+                  style={{
+                    background: selectedMemoryIds.size > 0
+                      ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.9) 0%, rgba(220, 38, 38, 0.9) 100%)'
+                      : 'rgba(100, 116, 139, 0.3)',
+                    color: selectedMemoryIds.size > 0 ? '#fff' : '#64748b',
+                    border: selectedMemoryIds.size > 0
+                      ? '1px solid rgba(239, 68, 68, 0.6)'
+                      : '1px solid rgba(100, 116, 139, 0.3)',
+                  }}
+                >
+                  🗑️ {selectedMemoryIds.size}
+                </button>
+              </div>
+            )}
+
             {/* 新增按鈕 */}
             <button
               onClick={handleCreateNewMemory}
@@ -719,100 +821,6 @@ export default function CuteDatabaseView() {
           </div>
         ) : (
           <>
-            {/* 批量操作工具欄 */}
-            <div className="sticky top-0 z-10 mb-4 p-3 rounded-2xl flex items-center justify-between gap-3" style={{
-              background: 'rgba(30, 41, 59, 0.95)',
-              backdropFilter: 'blur(12px)',
-              border: '2px solid rgba(251, 191, 36, 0.3)',
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
-            }}>
-              {!bulkSelectMode ? (
-                <>
-                  <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: '#94a3b8' }}>
-                    <span className="text-lg">📊</span>
-                    <span>共 {allMemories.length} 條記憶</span>
-                  </div>
-                  <button
-                    onClick={() => setBulkSelectMode(true)}
-                    className="px-4 py-2 rounded-xl font-bold transition-all hover:scale-105 active:scale-95"
-                    style={{
-                      background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.3) 0%, rgba(245, 158, 11, 0.25) 100%)',
-                      color: '#fbbf24',
-                      border: '2px solid rgba(251, 191, 36, 0.4)',
-                    }}
-                  >
-                    ☑️ 批量選擇
-                  </button>
-                </>
-              ) : (
-                <>
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => {
-                        setBulkSelectMode(false)
-                        setSelectedMemoryIds(new Set())
-                      }}
-                      className="px-3 py-1.5 rounded-lg font-semibold transition-all hover:scale-105 active:scale-95 text-sm"
-                      style={{
-                        background: 'rgba(100, 116, 139, 0.3)',
-                        color: '#cbd5e1',
-                        border: '1px solid rgba(148, 163, 184, 0.4)',
-                      }}
-                    >
-                      ✕ 取消
-                    </button>
-                    <div className="h-6 w-px" style={{ background: 'rgba(251, 191, 36, 0.3)' }} />
-                    <span className="text-sm font-bold" style={{ color: '#fbbf24' }}>
-                      已選擇 {selectedMemoryIds.size} / {allMemories.length}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {selectedMemoryIds.size === allMemories.length ? (
-                      <button
-                        onClick={handleDeselectAll}
-                        className="px-3 py-1.5 rounded-lg font-semibold transition-all hover:scale-105 active:scale-95 text-sm"
-                        style={{
-                          background: 'rgba(251, 191, 36, 0.2)',
-                          color: '#fbbf24',
-                          border: '1px solid rgba(251, 191, 36, 0.4)',
-                        }}
-                      >
-                        ☐ 取消全選
-                      </button>
-                    ) : (
-                      <button
-                        onClick={handleSelectAll}
-                        className="px-3 py-1.5 rounded-lg font-semibold transition-all hover:scale-105 active:scale-95 text-sm"
-                        style={{
-                          background: 'rgba(251, 191, 36, 0.2)',
-                          color: '#fbbf24',
-                          border: '1px solid rgba(251, 191, 36, 0.4)',
-                        }}
-                      >
-                        ☑️ 全選
-                      </button>
-                    )}
-                    <button
-                      onClick={handleBulkDelete}
-                      disabled={selectedMemoryIds.size === 0}
-                      className="px-4 py-1.5 rounded-lg font-bold transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                      style={{
-                        background: selectedMemoryIds.size > 0
-                          ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.8) 0%, rgba(220, 38, 38, 0.8) 100%)'
-                          : 'rgba(100, 116, 139, 0.3)',
-                        color: selectedMemoryIds.size > 0 ? '#fff' : '#64748b',
-                        border: selectedMemoryIds.size > 0
-                          ? '2px solid rgba(239, 68, 68, 0.6)'
-                          : '2px solid rgba(100, 116, 139, 0.3)',
-                      }}
-                    >
-                      🗑️ 刪除 ({selectedMemoryIds.size})
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-
             <SimpleGalleryView
               memories={allMemories}
               onTogglePin={handleTogglePin}
@@ -823,6 +831,7 @@ export default function CuteDatabaseView() {
               bulkSelectMode={bulkSelectMode}
               selectedMemoryIds={selectedMemoryIds}
               onToggleSelect={toggleSelectMemory}
+              islands={islands}
             />
           </>
         )}
@@ -849,6 +858,7 @@ export default function CuteDatabaseView() {
             refetch()
             setSelectedMemory(null)
           }}
+          islands={islands}
         />
       )}
 
@@ -900,6 +910,7 @@ interface SimpleGalleryViewProps {
   bulkSelectMode?: boolean
   selectedMemoryIds?: Set<string>
   onToggleSelect?: (memoryId: string) => void
+  islands?: Island[]
 }
 
 function SimpleGalleryView({
@@ -911,7 +922,8 @@ function SimpleGalleryView({
   onReorder,
   bulkSelectMode = false,
   selectedMemoryIds = new Set(),
-  onToggleSelect
+  onToggleSelect,
+  islands = []
 }: SimpleGalleryViewProps) {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
@@ -955,6 +967,7 @@ function SimpleGalleryView({
             bulkSelectMode={bulkSelectMode}
             isSelected={selectedMemoryIds.has(memory.id)}
             onToggleSelect={onToggleSelect}
+            islands={islands}
           />
         ))}
       </div>
@@ -980,6 +993,7 @@ function SimpleGalleryView({
               bulkSelectMode={bulkSelectMode}
               isSelected={selectedMemoryIds.has(memory.id)}
               onToggleSelect={onToggleSelect}
+              islands={islands}
             />
           ))}
         </div>
@@ -998,6 +1012,7 @@ interface DraggableMemoryCardProps {
   bulkSelectMode?: boolean
   isSelected?: boolean
   onToggleSelect?: (memoryId: string) => void
+  islands?: Island[]
 }
 
 function DraggableMemoryCard({
@@ -1008,7 +1023,8 @@ function DraggableMemoryCard({
   formatDate,
   bulkSelectMode = false,
   isSelected = false,
-  onToggleSelect
+  onToggleSelect,
+  islands = []
 }: DraggableMemoryCardProps) {
   const {
     attributes,
@@ -1027,6 +1043,18 @@ function DraggableMemoryCard({
   }
 
   const { date, time } = formatDate(memory.createdAt)
+
+  // 根據記憶的島嶼 ID 查找對應島嶼顏色
+  const island = memory.islandId ? islands.find(i => i.id === memory.islandId) : null
+  const islandColor = island?.color || '#fbbf24' // 預設金色
+
+  // 將十六進制顏色轉為 rgba
+  const hexToRgba = (hex: string, alpha: number) => {
+    const r = parseInt(hex.slice(1, 3), 16)
+    const g = parseInt(hex.slice(3, 5), 16)
+    const b = parseInt(hex.slice(5, 7), 16)
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`
+  }
 
   return (
     <div
@@ -1048,24 +1076,24 @@ function DraggableMemoryCard({
         className="group relative rounded-2xl p-3 sm:p-4 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] flex flex-col"
         style={{
           background: isSelected
-            ? 'linear-gradient(135deg, rgba(251, 191, 36, 0.25) 0%, rgba(251, 146, 60, 0.25) 100%)'
+            ? `linear-gradient(135deg, ${hexToRgba(islandColor, 0.25)} 0%, ${hexToRgba(islandColor, 0.2)} 100%)`
             : 'linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(26, 26, 46, 0.6) 100%)',
           backdropFilter: 'blur(12px) saturate(150%)',
           WebkitBackdropFilter: 'blur(12px) saturate(150%)',
-          border: isSelected ? '2px solid rgba(251, 191, 36, 0.8)' : '2px solid rgba(251, 191, 36, 0.2)',
-          boxShadow: isSelected ? '0 8px 24px rgba(251, 191, 36, 0.4)' : '0 4px 12px rgba(0, 0, 0, 0.3)',
+          border: isSelected ? `2px solid ${hexToRgba(islandColor, 0.8)}` : `2px solid ${hexToRgba(islandColor, 0.4)}`,
+          boxShadow: isSelected ? `0 8px 24px ${hexToRgba(islandColor, 0.4)}` : '0 4px 12px rgba(0, 0, 0, 0.3)',
           minHeight: '180px',
         }}
         onMouseEnter={(e) => {
           if (!isDragging && !isSelected) {
-            e.currentTarget.style.boxShadow = '0 8px 24px rgba(251, 191, 36, 0.3)'
-            e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.5)'
+            e.currentTarget.style.boxShadow = `0 8px 24px ${hexToRgba(islandColor, 0.3)}`
+            e.currentTarget.style.borderColor = hexToRgba(islandColor, 0.6)
           }
         }}
         onMouseLeave={(e) => {
           if (!isSelected) {
             e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)'
-            e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.2)'
+            e.currentTarget.style.borderColor = hexToRgba(islandColor, 0.4)
           }
         }}
       >
@@ -1156,6 +1184,23 @@ function DraggableMemoryCard({
           )}
         </div>
 
+        {/* 島嶼標籤 */}
+        {island && (
+          <div className="mb-2">
+            <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold"
+              style={{
+                background: `linear-gradient(135deg, ${hexToRgba(islandColor, 0.35)} 0%, ${hexToRgba(islandColor, 0.25)} 100%)`,
+                color: islandColor,
+                border: `1.5px solid ${hexToRgba(islandColor, 0.6)}`,
+                boxShadow: `0 2px 8px ${hexToRgba(islandColor, 0.25)}`,
+              }}
+            >
+              <span>🏝️</span>
+              <span>{island.name}</span>
+            </div>
+          </div>
+        )}
+
         {/* 標籤區 */}
         {memory.tags.length > 0 && (
           <div className="mb-2">
@@ -1241,6 +1286,7 @@ interface MemoryCardProps {
   bulkSelectMode?: boolean
   isSelected?: boolean
   onToggleSelect?: (memoryId: string) => void
+  islands?: Island[]
 }
 
 function MemoryCard({
@@ -1251,9 +1297,22 @@ function MemoryCard({
   formatDate,
   bulkSelectMode = false,
   isSelected = false,
-  onToggleSelect
+  onToggleSelect,
+  islands = []
 }: MemoryCardProps) {
   const { date, time } = formatDate(memory.createdAt)
+
+  // 根據記憶的島嶼 ID 查找對應島嶼顏色
+  const island = memory.islandId ? islands.find(i => i.id === memory.islandId) : null
+  const islandColor = island?.color || '#fbbf24' // 預設金色
+
+  // 將十六進制顏色轉為 rgba
+  const hexToRgba = (hex: string, alpha: number) => {
+    const r = parseInt(hex.slice(1, 3), 16)
+    const g = parseInt(hex.slice(3, 5), 16)
+    const b = parseInt(hex.slice(5, 7), 16)
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`
+  }
 
   // 批量選擇模式下，點擊卡片應該切換選擇狀態，而非打開記憶
   const handleClick = () => {
@@ -1270,28 +1329,28 @@ function MemoryCard({
       className="group relative rounded-2xl p-3 sm:p-4 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] flex flex-col"
       style={{
         background: isSelected
-          ? 'linear-gradient(135deg, rgba(251, 191, 36, 0.25) 0%, rgba(251, 146, 60, 0.25) 100%)'
+          ? `linear-gradient(135deg, ${hexToRgba(islandColor, 0.25)} 0%, ${hexToRgba(islandColor, 0.2)} 100%)`
           : 'linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(26, 26, 46, 0.6) 100%)',
         backdropFilter: 'blur(12px) saturate(150%)',
         WebkitBackdropFilter: 'blur(12px) saturate(150%)',
         border: isSelected
-          ? '2px solid rgba(251, 191, 36, 0.8)'
-          : '2px solid rgba(251, 191, 36, 0.2)',
+          ? `2px solid ${hexToRgba(islandColor, 0.8)}`
+          : `2px solid ${hexToRgba(islandColor, 0.4)}`,
         boxShadow: isSelected
-          ? '0 8px 24px rgba(251, 191, 36, 0.4)'
+          ? `0 8px 24px ${hexToRgba(islandColor, 0.4)}`
           : '0 4px 12px rgba(0, 0, 0, 0.3)',
         minHeight: '180px',
       }}
       onMouseEnter={(e) => {
         if (!isSelected) {
-          e.currentTarget.style.boxShadow = '0 8px 24px rgba(251, 191, 36, 0.3)'
-          e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.5)'
+          e.currentTarget.style.boxShadow = `0 8px 24px ${hexToRgba(islandColor, 0.3)}`
+          e.currentTarget.style.borderColor = hexToRgba(islandColor, 0.6)
         }
       }}
       onMouseLeave={(e) => {
         if (!isSelected) {
           e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)'
-          e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.2)'
+          e.currentTarget.style.borderColor = hexToRgba(islandColor, 0.4)
         }
       }}
     >
@@ -1372,6 +1431,23 @@ function MemoryCard({
           </div>
         )}
       </div>
+
+      {/* 島嶼標籤 */}
+      {island && (
+        <div className="mb-2">
+          <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold"
+            style={{
+              background: `linear-gradient(135deg, ${hexToRgba(islandColor, 0.35)} 0%, ${hexToRgba(islandColor, 0.25)} 100%)`,
+              color: islandColor,
+              border: `1.5px solid ${hexToRgba(islandColor, 0.6)}`,
+              boxShadow: `0 2px 8px ${hexToRgba(islandColor, 0.25)}`,
+            }}
+          >
+            <span>🏝️</span>
+            <span>{island.name}</span>
+          </div>
+        </div>
+      )}
 
       {/* 標籤區 */}
       {memory.tags.length > 0 && (
