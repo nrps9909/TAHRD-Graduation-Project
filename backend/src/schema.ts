@@ -34,10 +34,10 @@ const baseTypeDefs = gql`
     updatedAt: DateTime!
   }
 
-  # ============ Assistant System ============
+  # ============ Category System ============
+  # CategoryType 用於記憶的細粒度分類（8 種）
 
   enum CategoryType {
-    CHIEF       # 總管（智能分配 + 全局摘要）
     LEARNING    # 學習筆記
     INSPIRATION # 靈感創意
     WORK        # 工作事務
@@ -46,52 +46,6 @@ const baseTypeDefs = gql`
     GOALS       # 目標規劃
     RESOURCES   # 資源收藏
     MISC        # 雜項（不屬於其他類別的知識）
-  }
-
-  type Assistant {
-    id: ID!
-    type: CategoryType!
-    name: String!
-    nameChinese: String!
-    emoji: String!
-    color: String!
-
-    # AI Configuration
-    systemPrompt: String!
-    personality: String!
-    chatStyle: String!
-
-    # 3D Position (for Island View)
-    position: Location!
-
-    # 3D Appearance
-    modelUrl: String
-    textureId: String
-    shape: String
-    customShapeData: String
-    islandHeight: Float
-    islandBevel: Float
-
-    # Statistics
-    totalMemories: Int!
-    totalChats: Int!
-
-    # Status
-    isActive: Boolean!
-
-    # Timestamps
-    createdAt: DateTime!
-    updatedAt: DateTime!
-
-    # Relations
-    memories: [Memory!]!
-    chatMessages: [ChatMessage!]!
-  }
-
-  type Location {
-    x: Float!
-    y: Float!
-    z: Float!
   }
 
   # ============ Memory System ============
@@ -107,8 +61,7 @@ const baseTypeDefs = gql`
   type Memory {
     id: ID!
     userId: ID!
-    assistantId: ID  # Optional: null for dynamic SubAgent memories
-    islandId: ID     # Optional: Island ID for custom island memories
+    islandId: ID!    # Island ID for island-based memories
 
     # Content
     rawContent: String!
@@ -168,7 +121,7 @@ const baseTypeDefs = gql`
 
     # Relations
     user: User!
-    assistant: Assistant  # Optional: null for dynamic SubAgent memories
+    island: Island!
     chatMessages: [ChatMessage!]!
   }
 
@@ -185,7 +138,7 @@ const baseTypeDefs = gql`
   type ChatSession {
     id: ID!
     userId: ID!
-    assistantId: ID!
+    islandId: ID!
 
     # Session Info
     title: String!
@@ -206,14 +159,14 @@ const baseTypeDefs = gql`
 
     # Relations
     user: User!
-    assistant: Assistant!
+    island: Island!
     messages: [ChatMessage!]!
   }
 
   type ChatMessage {
     id: ID!
     userId: ID!
-    assistantId: ID!
+    islandId: ID!
     sessionId: ID!
 
     # Content
@@ -233,7 +186,7 @@ const baseTypeDefs = gql`
 
     # Relations
     user: User!
-    assistant: Assistant!
+    island: Island!
     session: ChatSession!
     memory: Memory
   }
@@ -275,8 +228,8 @@ const baseTypeDefs = gql`
     suggestedTags: [String!]!
 
     # Distribution Results
-    distributedTo: [ID!]!        # Assistant IDs
-    storedBy: [ID!]!             # Assistant IDs that chose to store
+    distributedTo: [ID!]!        # Island IDs
+    storedBy: [ID!]!             # Island IDs that chose to store
 
     # Processing Info
     processingTime: Float
@@ -293,7 +246,8 @@ const baseTypeDefs = gql`
   type AgentDecision {
     id: ID!
     distributionId: ID!
-    assistantId: ID!
+    targetIslandId: ID
+    targetCategory: CategoryType
 
     # Decision
     relevanceScore: Float!       # 0-1
@@ -314,7 +268,6 @@ const baseTypeDefs = gql`
 
     # Relations
     distribution: KnowledgeDistribution!
-    assistant: Assistant
   }
 
   # ============ Analytics ============
@@ -332,7 +285,7 @@ const baseTypeDefs = gql`
     # Statistics
     memoriesCreated: Int!
     chatsCount: Int!
-    mostUsedAssistant: String
+    mostUsedIsland: String
     topTags: [String!]!
 
     # AI Summary
@@ -446,7 +399,7 @@ const baseTypeDefs = gql`
   }
 
   input CreateMemoryInput {
-    assistantId: ID!
+    islandId: ID!
     content: String!
     contextType: ChatContextType = MEMORY_CREATION
   }
@@ -475,7 +428,7 @@ const baseTypeDefs = gql`
   }
 
   input MemoryFilterInput {
-    assistantId: ID
+    islandId: ID
     category: CategoryType
     tags: [String!]
     search: String
@@ -485,16 +438,8 @@ const baseTypeDefs = gql`
     endDate: DateTime
   }
 
-  input ChatWithAssistantInput {
-    assistantId: ID!
-    sessionId: ID  # 如果為空，自動創建新會話
-    message: String!
-    contextType: ChatContextType = GENERAL_CHAT
-    memoryId: ID
-  }
-
   input CreateChatSessionInput {
-    assistantId: ID!
+    islandId: ID!
     title: String
   }
 
@@ -703,12 +648,6 @@ const baseTypeDefs = gql`
     # ===== User Queries =====
     me: User
 
-    # ===== Assistant Queries =====
-    assistants: [Assistant!]!
-    assistant(id: ID!): Assistant
-    assistantByType(type: CategoryType!): Assistant
-    chiefAssistant: Assistant
-
     # ===== Memory Queries =====
     memories(filter: MemoryFilterInput, limit: Int = 50, offset: Int = 0): [Memory!]!
     memory(id: ID!): Memory
@@ -722,9 +661,9 @@ const baseTypeDefs = gql`
     agentDecisions(distributionId: ID!): [AgentDecision!]!
 
     # ===== Chat Queries =====
-    chatSessions(assistantId: ID, includeArchived: Boolean = false, limit: Int = 50): [ChatSession!]!
+    chatSessions(islandId: ID, includeArchived: Boolean = false, limit: Int = 50): [ChatSession!]!
     chatSession(id: ID!): ChatSession
-    chatHistory(assistantId: ID, limit: Int = 50): [ChatMessage!]!
+    chatHistory(islandId: ID, limit: Int = 50): [ChatMessage!]!
     chatMessage(id: ID!): ChatMessage
 
     # ===== Tag Queries =====
@@ -783,23 +722,10 @@ const baseTypeDefs = gql`
     deleteChatSession(id: ID!): Boolean!
     archiveChatSession(id: ID!): ChatSession!
     unarchiveChatSession(id: ID!): ChatSession!
-    chatWithAssistant(input: ChatWithAssistantInput!): ChatMessage!
 
     # ===== Chief Agent Special Mutations =====
     classifyAndCreate(content: String!): CreateMemoryResponse!
     generateDailySummary(date: DateTime!): DailySummary!
-
-    # ===== Assistant Mutations =====
-    updateAssistant(
-      id: ID!
-      color: String
-      modelUrl: String
-      textureId: String
-      shape: String
-      customShapeData: String
-      islandHeight: Float
-      islandBevel: Float
-    ): Assistant!
 
     # ===== Tororo (白噗噗) AI Mutations =====
     generateTororoResponse(prompt: String!): TororoResponsePayload!

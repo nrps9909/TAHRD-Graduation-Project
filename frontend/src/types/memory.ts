@@ -41,7 +41,7 @@ export interface Memory {
   updatedAt: string
   // 新增：島嶼關聯
   islandId?: string  // 記憶所屬的島嶼 ID（用於自定義島嶼）
-  assistant?: {
+  island?: {
     id: string
     name: string
     nameChinese: string
@@ -72,7 +72,7 @@ export interface ChatMessage {
   assistantResponse: string
   contextType: ContextType
   createdAt: string
-  assistant?: {
+  island?: {
     id: string
     name: string
     nameChinese: string
@@ -88,7 +88,7 @@ export interface ChatMessage {
 export interface MemoryFilterInput {
   category?: MemoryCategory
   tags?: string[]
-  assistantId?: string
+  islandId?: string
   isPinned?: boolean
   isArchived?: boolean
   startDate?: string
@@ -98,7 +98,7 @@ export interface MemoryFilterInput {
 
 export interface CreateMemoryInput {
   rawContent: string
-  assistantId?: string
+  islandId?: string
 }
 
 export interface UpdateMemoryInput {
@@ -125,8 +125,8 @@ export interface CreateMemoryResponse {
   relatedMemories: RelatedMemoryPreview[]
 }
 
-export interface ChatWithAssistantInput {
-  assistantId: string
+export interface ChatWithIslandInput {
+  islandId: string
   message: string
   memoryId?: string
   contextType?: ContextType

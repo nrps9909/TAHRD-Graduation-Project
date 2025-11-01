@@ -16,7 +16,7 @@ import { useMutation } from '@apollo/client'
 import { Z_INDEX_CLASSES } from '../constants/zIndex'
 import { TEXTURE_CONFIGS, getTextureConfig } from '../constants/textures'
 import { applyTexture } from '../utils/textureLoader'
-import { UPDATE_ASSISTANT } from '../graphql/assistant'
+import { UPDATE_ISLAND } from '../graphql/category'
 
 interface IslandEditorModalProps {
   isOpen: boolean
@@ -195,8 +195,8 @@ export function IslandEditorModal({
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // GraphQL mutation
-  const [updateAssistant] = useMutation(UPDATE_ASSISTANT, {
-    refetchQueries: ['GetAssistants', 'GetAssistant'],
+  const [updateIsland] = useMutation(UPDATE_ISLAND, {
+    refetchQueries: ['GetIslands', 'GetIsland'],
   })
 
   if (!isOpen) return null
@@ -246,38 +246,37 @@ export function IslandEditorModal({
 
     setIsLoading(true)
     try {
-      let uploadedModelUrl: string | undefined = undefined
-
       // 1. 上傳模型文件到服務器（如果有）
       if (modelFile) {
         // TODO: 實現文件上傳到服務器
         // 目前使用本地 URL 作為示例
-        uploadedModelUrl = modelUrl || undefined
-        console.log('🔵 [IslandEditor] Model file to upload:', modelFile.name)
+        console.log('🔵 [IslandEditor] Model file to upload:', modelFile.name, 'URL:', modelUrl)
       }
 
-      console.log('🔵 [IslandEditor] 準備調用 updateAssistant mutation...')
+      console.log('🔵 [IslandEditor] 準備調用 updateIsland mutation...')
       console.log('🔵 [IslandEditor] Variables:', {
         id: islandId,
-        color: selectedColor,
-        modelUrl: uploadedModelUrl,
-        textureId: selectedTexture,
-        shape: selectedShape,
+        input: {
+          color: selectedColor,
+          customShapeData: selectedShape,
+          islandHeight: undefined,
+          islandBevel: undefined,
+        }
       })
 
       // 2. 更新島嶼配置（顏色、紋理、形狀等）
-      const result = await updateAssistant({
+      const result = await updateIsland({
         variables: {
           id: islandId,
-          color: selectedColor,
-          modelUrl: uploadedModelUrl,
-          textureId: selectedTexture,
-          shape: selectedShape,
+          input: {
+            color: selectedColor,
+            customShapeData: selectedShape,
+          },
         },
       })
 
       console.log('✅ [IslandEditor] Mutation 成功返回:', result)
-      console.log('✅ [IslandEditor] Updated assistant:', result.data?.updateAssistant)
+      console.log('✅ [IslandEditor] Updated island:', result.data?.updateIsland)
 
       // 調用成功回調，通知父組件更新
       console.log('🔵 [IslandEditor] 準備調用 onSaveSuccess 回調...')

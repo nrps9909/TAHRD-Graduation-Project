@@ -3,9 +3,9 @@ import { OrbitControls } from '@react-three/drei'
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useQuery } from '@apollo/client'
 import { useParams, useNavigate } from 'react-router-dom'
-import { GET_ASSISTANTS } from '../../graphql/assistant'
+import { GET_ISLANDS } from '../../graphql/category'
 import { GET_MEMORIES } from '../../graphql/memory'
-import { Assistant } from '../../types/assistant'
+import { Island } from '../../graphql/category'
 import { Message, MessageFile, MessageLink } from '../../types/message'
 import { Memory } from '../../types/memory'
 import MessageBubble from '../../components/ChatInterface/MessageBubble'
@@ -17,7 +17,7 @@ import { Memory as IslandMemory } from '../../types/island'
 import { motion } from 'framer-motion'
 
 export default function IslandView() {
-  const { assistantId } = useParams<{ assistantId: string }>()
+  const { islandId } = useParams<{ islandId: string }>()
   const navigate = useNavigate()
   const [showChat, setShowChat] = useState(false)
   const [showUploadModal, setShowUploadModal] = useState(false)
@@ -27,19 +27,19 @@ export default function IslandView() {
   const [selectedMemory, setSelectedMemory] = useState<IslandMemory | null>(null)
   const [isMobile, setIsMobile] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const { data, loading, refetch } = useQuery(GET_ASSISTANTS)
+  const { data, loading, refetch } = useQuery(GET_ISLANDS)
 
-  // 獲取該助理的所有記憶
+  // 獲取該島嶼的所有記憶
   const { data: memoriesData, loading: memoriesLoading } = useQuery(GET_MEMORIES, {
     variables: {
-      filter: { assistantId },
+      filter: { islandId },
       limit: 100,
     },
-    skip: !assistantId,
+    skip: !islandId,
   })
 
-  // 获取当前assistant
-  const assistant = data?.assistants.find((a: Assistant) => a.id === assistantId)
+  // 获取当前island
+  const island = data?.islands.find((i: Island) => i.id === islandId)
 
   // 將記憶轉換為 IslandMemory 格式並分配位置
   const memoryTrees = useMemo(() => {
@@ -90,25 +90,25 @@ export default function IslandView() {
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
-  // 如果找不到assistant，返回主页
+  // 如果找不到island，返回主页
   useEffect(() => {
-    if (!loading && !assistant) {
+    if (!loading && !island) {
       navigate('/')
     }
-  }, [loading, assistant, navigate])
+  }, [loading, island, navigate])
 
   // 初始化欢迎消息
   useEffect(() => {
-    if (assistant && messages.length === 0) {
+    if (island && messages.length === 0) {
       const welcomeMessage: Message = {
         id: 'welcome',
         role: 'assistant',
-        content: `你好！我是 ${assistant.nameChinese}。${assistant.personality}\n\n你可以上傳圖片、文件、鏈接，我都能理解哦！✨`,
+        content: `你好！我是 ${island.nameChinese}。${island.description || '歡迎來到這座島嶼！'}\n\n你可以上傳圖片、文件、鏈接，我都能理解哦！✨`,
         timestamp: new Date()
       }
       setMessages([welcomeMessage])
     }
-  }, [assistant, messages.length])
+  }, [island, messages.length])
 
   // 自动滚动到底部
   useEffect(() => {
@@ -172,18 +172,18 @@ export default function IslandView() {
   // 处理島嶼編輯保存成功
   const handleIslandSaveSuccess = async () => {
     console.log('🟢 [IslandView] handleIslandSaveSuccess 被調用')
-    console.log('🟢 [IslandView] 當前 assistant 顏色:', assistant?.color)
+    console.log('🟢 [IslandView] 當前 island 顏色:', island?.color)
 
     // 重新獲取資料以更新 3D 場景
     console.log('🟢 [IslandView] 準備 refetch 資料...')
     const result = await refetch()
 
     console.log('✅ [IslandView] refetch 完成')
-    console.log('✅ [IslandView] 新的 assistants 資料:', result.data.assistants)
+    console.log('✅ [IslandView] 新的 islands 資料:', result.data.islands)
 
-    const updatedAssistant = result.data.assistants.find((a: Assistant) => a.id === assistantId)
-    console.log('✅ [IslandView] 更新後的 assistant:', updatedAssistant)
-    console.log('✅ [IslandView] 新顏色:', updatedAssistant?.color)
+    const updatedIsland = result.data.islands.find((i: Island) => i.id === islandId)
+    console.log('✅ [IslandView] 更新後的 island:', updatedIsland)
+    console.log('✅ [IslandView] 新顏色:', updatedIsland?.color)
   }
 
   return (
@@ -337,7 +337,7 @@ export default function IslandView() {
         })}
 
         {/* NPC House - 中央单个房屋 */}
-        {!loading && assistant && (
+        {!loading && island && (
           <group position={[0, 0.2, 0]}>
             {/* 可爱的房子底座 - 圆润造型 */}
             <mesh
@@ -353,7 +353,7 @@ export default function IslandView() {
               >
                 <boxGeometry args={[2.2, 2.4, 2.2]} />
                 <meshStandardMaterial
-                  color={assistant.color}
+                  color={island.color}
                   roughness={0.4}
                   metalness={0.1}
                 />
@@ -363,7 +363,7 @@ export default function IslandView() {
               <mesh position={[0, 2.8, 0]}>
                 <coneGeometry args={[1.8, 1.6, 8]} />
                 <meshStandardMaterial
-                  color={assistant.color}
+                  color={island.color}
                   roughness={0.3}
                 />
               </mesh>
@@ -394,11 +394,11 @@ export default function IslandView() {
         }
 
         {/* 記憶樹 - Memory Trees */}
-        {!memoriesLoading && memoryTrees.length > 0 && assistant && memoryTrees.map((memory, index) => (
+        {!memoriesLoading && memoryTrees.length > 0 && island && memoryTrees.map((memory, index) => (
           <MemoryTree
             key={memory.id}
             memory={memory}
-            islandColor={assistant.color}
+            islandColor={island.color}
             position={memory.position}
             seed={index * 123.456} // 使用 index 作為種子，確保每棵樹都不同
             onClick={(clickedMemory) => {
@@ -410,7 +410,7 @@ export default function IslandView() {
       </Canvas>
 
       {/* 島嶼狀態卡片 - 左上角，手機端隱藏或改為底部 */}
-      {!showChat && !loading && assistant && (
+      {!showChat && !loading && island && (
         <motion.div
           initial={{ x: -100, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
@@ -418,13 +418,13 @@ export default function IslandView() {
           className="hidden md:block"
         >
           <IslandStatusCard
-            name={`${assistant.nameChinese}的島嶼`}
-            emoji={assistant.emoji}
-            color={assistant.color}
-            description={assistant.personality}
-            memoryCount={assistant.totalMemories}
-            categories={[assistant.type]}
-            updatedAt={new Date(assistant.updatedAt)}
+            name={island.nameChinese}
+            emoji={island.emoji}
+            color={island.color}
+            description={island.description || ''}
+            memoryCount={island.memoryCount}
+            categories={[]}
+            updatedAt={new Date(island.updatedAt)}
           />
         </motion.div>
       )}
@@ -688,7 +688,7 @@ export default function IslandView() {
       )}
 
       {/* Chat Interface - 直接显示聊天界面 */}
-      {showChat && assistant && (
+      {showChat && island && (
         <div className="fixed inset-0 z-50 animate-fade-in" style={{
           background: 'linear-gradient(135deg, #FFF5E1 0%, #FFE5F0 50%, #FFFACD 100%)'
         }}>
@@ -708,7 +708,7 @@ export default function IslandView() {
                   >
                     ←
                   </button>
-                  <span className="text-xl sm:text-2xl md:text-4xl animate-bounce-gentle">{assistant.emoji}</span>
+                  <span className="text-xl sm:text-2xl md:text-4xl animate-bounce-gentle">{island.emoji}</span>
                   <div className="min-w-0">
                     <h2 className="text-sm sm:text-base md:text-cute-xl font-bold truncate" style={{
                       background: 'linear-gradient(135deg, #FF8FB3, #FFB3D9)',
@@ -716,9 +716,9 @@ export default function IslandView() {
                       WebkitTextFillColor: 'transparent',
                       backgroundClip: 'text'
                     }}>
-                      {assistant.nameChinese}
+                      {island.nameChinese}
                     </h2>
-                    <p className="text-xs md:text-cute-sm hidden md:block truncate" style={{ color: '#FFB3D9' }}>{assistant.name}</p>
+                    <p className="text-xs md:text-cute-sm hidden md:block truncate" style={{ color: '#FFB3D9' }}>{island.name}</p>
                   </div>
                 </div>
                 <div className="flex gap-1.5 sm:gap-2 md:gap-3">
@@ -746,8 +746,8 @@ export default function IslandView() {
                   <MessageBubble
                     key={message.id}
                     message={message}
-                    assistantEmoji={assistant.emoji}
-                    assistantColor={assistant.color}
+                    assistantEmoji={island.emoji}
+                    assistantColor={island.color}
                   />
                 ))}
                 <div ref={messagesEndRef} />
@@ -822,13 +822,13 @@ export default function IslandView() {
       />
 
       {/* Island Editor Modal */}
-      {!loading && assistant && (
+      {!loading && island && (
         <IslandEditorModal
           isOpen={showIslandEditor}
           onClose={() => setShowIslandEditor(false)}
-          islandId={assistantId || ''}
-          islandName={`${assistant.nameChinese}的島嶼`}
-          currentColor={assistant.color}
+          islandId={islandId || ''}
+          islandName={island.nameChinese}
+          currentColor={island.color}
           onSaveSuccess={handleIslandSaveSuccess}
         />
       )}

@@ -5,9 +5,13 @@
  */
 
 import { categoryService } from '../services/categoryService'
+import { islandService } from '../services/islandService'
 import { categoryInitService } from '../services/categoryInitService'
 import { promptGeneratorService } from '../services/promptGeneratorService'
 import { logger } from '../utils/logger'
+import { PrismaClient } from '@prisma/client'
+
+const prisma = new PrismaClient()
 
 export interface Context {
   userId?: string
@@ -25,14 +29,14 @@ export const categoryResolvers = {
           throw new Error('未授權：請先登入')
         }
 
-        let islands = await categoryService.getIslands(userId)
+        let islands = await islandService.getAllIslands(userId)
 
         // 如果用戶沒有任何島嶼，自動初始化預設分類系統
         if (islands.length === 0) {
           logger.info(`[categoryResolvers] 用戶 ${userId} 沒有島嶼，自動初始化`)
           try {
             await categoryInitService.initializeDefaultCategories(userId)
-            islands = await categoryService.getIslands(userId)
+            islands = await islandService.getAllIslands(userId)
             logger.info(`[categoryResolvers] 已為用戶 ${userId} 自動初始化 ${islands.length} 個島嶼`)
           } catch (initError) {
             logger.error('[categoryResolvers] 自動初始化失敗:', initError)
@@ -57,7 +61,7 @@ export const categoryResolvers = {
           throw new Error('未授權：請先登入')
         }
 
-        const island = await categoryService.getIsland(userId, args.id)
+        const island = await islandService.getIslandById(args.id, userId)
         if (!island) {
           throw new Error('島嶼不存在')
         }
@@ -79,7 +83,18 @@ export const categoryResolvers = {
           throw new Error('未授權：請先登入')
         }
 
-        const stats = await categoryService.getCategoryStats(userId)
+        // Get all islands and calculate stats
+        const islands = await islandService.getAllIslands(userId)
+        const stats = {
+          totalIslands: islands.length,
+          totalMemories: islands.reduce((sum, island) => sum + island.memoryCount, 0),
+          islands: islands.map(island => ({
+            id: island.id,
+            nameChinese: island.nameChinese,
+            emoji: island.emoji,
+            memoryCount: island.memoryCount
+          }))
+        }
         return stats
       } catch (error) {
         logger.error('[categoryResolvers] 獲取統計失敗:', error)
@@ -127,7 +142,19 @@ export const categoryResolvers = {
         }
 
         await categoryInitService.initializeDefaultCategories(userId)
-        const stats = await categoryService.getCategoryStats(userId)
+
+        // Get all islands and calculate stats
+        const islands = await islandService.getAllIslands(userId)
+        const stats = {
+          totalIslands: islands.length,
+          totalMemories: islands.reduce((sum, island) => sum + island.memoryCount, 0),
+          islands: islands.map(island => ({
+            id: island.id,
+            nameChinese: island.nameChinese,
+            emoji: island.emoji,
+            memoryCount: island.memoryCount
+          }))
+        }
 
         logger.info(`[categoryResolvers] 使用者 ${userId} 初始化分類系統完成`)
         return stats
@@ -147,7 +174,7 @@ export const categoryResolvers = {
           throw new Error('未授權：請先登入')
         }
 
-        const island = await categoryService.createIsland(userId, args.input)
+        const island = await islandService.createIsland(userId, args.input)
         logger.info(`[categoryResolvers] 創建島嶼: ${island.nameChinese}`)
         return island
       } catch (error) {
@@ -170,8 +197,7 @@ export const categoryResolvers = {
           throw new Error('未授權：請先登入')
         }
 
-        await categoryService.updateIsland(userId, args.id, args.input)
-        const island = await categoryService.getIsland(userId, args.id)
+        const island = await islandService.updateIsland(args.id, args.input)
 
         logger.info(`[categoryResolvers] 更新島嶼: ${args.id}`)
         return island
@@ -191,7 +217,11 @@ export const categoryResolvers = {
           throw new Error('未授權：請先登入')
         }
 
-        await categoryService.deleteIsland(userId, args.id)
+        // TODO: Implement soft delete - for now, just mark as inactive via direct prisma update
+        await prisma.island.update({
+          where: { id: args.id },
+          data: { isActive: false }
+        })
         logger.info(`[categoryResolvers] 刪除島嶼: ${args.id}`)
         return true
       } catch (error) {
@@ -214,7 +244,11 @@ export const categoryResolvers = {
           throw new Error('未授權：請先登入')
         }
 
-        await categoryService.reorderIslands(userId, args.islandIds)
+        // Update position for each island
+        for (let i = 0; i < args.islandIds.length; i++) {
+          await islandService.updateIsland(args.islandIds[i], { position: i + 1 })
+        }
+
         logger.info(
           `[categoryResolvers] 重新排序 ${args.islandIds.length} 個島嶼`
         )

@@ -11,7 +11,6 @@ import { taskQueueService, TaskPriority } from './taskQueueService'
 import { dynamicSubAgentService } from './dynamicSubAgentService'
 import { vectorService } from './vectorService'
 import { categoryInitService } from './categoryInitService'
-import { islandService } from './islandService'
 import { categoryService } from './categoryService'
 
 const prisma = new PrismaClient()
@@ -351,11 +350,8 @@ ${contextInfo}
       await chatSessionService.incrementMessageCount(session.id)
       await chatSessionService.updateLastMessageAt(session.id)
 
-      // 更新助手統計（向後兼容）
-      await assistantService.incrementAssistantStats(assistantId, 'memory')
-      await assistantService.incrementAssistantStats(assistantId, 'chat')
-
-      // 更新島嶼統計（如果存在）
+      // MIGRATION: Removed assistant stats, now using island stats only
+      // 更新島嶼統計
       if (memory.islandId) {
         await islandService.incrementIslandStats(memory.islandId, 'memory')
         await islandService.incrementIslandStats(memory.islandId, 'chat')
@@ -380,9 +376,12 @@ ${contextInfo}
   }
 
   /**
-   * 分類並創建記憶（一步完成）
+   * DEPRECATED: 分類並創建記憶（一步完成）
+   * Use uploadKnowledge instead
    */
   async classifyAndCreate(userId: string, content: string) {
+    throw new Error('classifyAndCreate is deprecated. Use uploadKnowledge instead.')
+    /* COMMENTED OUT - BROKEN DUE TO MIGRATION
     try {
       // 1. 智能分類
       const classification = await this.classifyContent(content)
@@ -410,6 +409,7 @@ ${contextInfo}
       logger.error('Classify and create error:', error)
       throw error
     }
+    */
   }
 
   /**
@@ -645,7 +645,7 @@ ${contextInfo}
       await chatSessionService.incrementMessageCount(session.id)
       await chatSessionService.updateLastMessageAt(session.id)
 
-      await assistantService.incrementAssistantStats('chief-agent', 'chat')
+      // MIGRATION: Removed assistant stats
 
       const totalTime = Date.now() - startTime
       logger.info(`[Chat with Chief] Chat completed in ${totalTime}ms, used ${contextMemories.length} memories (${semanticMemories.length} semantic + ${contextMemories.length - semanticMemories.length} temporal)`)
@@ -1397,11 +1397,7 @@ ${input.content}
         throw new Error(`找不到對應的島嶼: ${primaryIslandName}`)
       }
 
-      // 獲取對應的 Assistant
-      let assistant = await assistantService.getAssistantByType(primaryIsland.name as any)
-      if (!assistant) {
-        assistant = await assistantService.getAssistantByType('LIFE')
-      }
+      // MIGRATION: Removed assistant lookup, now using island-based architecture directly
 
       // 確定內容類型
       const contentType = this.determineContentType(input)
@@ -1421,8 +1417,8 @@ ${input.content}
           chiefSummary: deepAnalysis.detailedSummary || immediateResponse.quickSummary,
           identifiedTopics: [primaryIslandName],
           suggestedTags: deepAnalysis.suggestedTags || [],
-          distributedTo: [],
-          storedBy: [assistant.id],
+          distributedTo: [primaryIsland.id], // MIGRATION: Use island ID instead
+          storedBy: [primaryIsland.id],
           processingTime: Date.now() - startTime,
         }
       })
@@ -1435,7 +1431,7 @@ ${input.content}
           rawContent: input.content,
           summary: deepAnalysis.detailedSummary || immediateResponse.quickSummary,
           tags: deepAnalysis.suggestedTags || [],
-          category: assistant.type,
+          category: immediateResponse.suggestedCategory, // MIGRATION: Use category from classification
           importanceScore: deepAnalysis.importanceScore || 5,
           aiSentiment: deepAnalysis.sentiment || 'neutral',
           contentType,
@@ -1550,18 +1546,20 @@ ${input.content}
   }
 
   /**
-   * 獲取 Assistant IDs
+   * 獲取 Island IDs by CategoryTypes
+   * MIGRATION: Converted from getAssistantIds to getIslandIds
    */
-  private async getAssistantIds(types: CategoryType[]): Promise<string[]> {
-    const assistants = await prisma.assistant.findMany({
-      where: {
-        type: { in: types },
-        isActive: true,
-      },
-      select: { id: true },
-    })
+  private async getIslandIds(userId: string, types: CategoryType[]): Promise<string[]> {
+    const islands: string[] = []
 
-    return assistants.map(a => a.id)
+    for (const type of types) {
+      const island = await islandService.getIslandByType(userId, type)
+      if (island) {
+        islands.push(island.id)
+      }
+    }
+
+    return islands
   }
 
   /**

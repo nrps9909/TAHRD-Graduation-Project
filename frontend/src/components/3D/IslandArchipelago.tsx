@@ -42,14 +42,13 @@ function getIslandPosition(
 
 export function IslandArchipelago({ onIslandClick, onMemoryClick, hideLabels = false }: IslandArchipelagoProps) {
   const { islands, getCurrentIsland } = useIslandStore()
-  const [hoveredIslandId, setHoveredIslandId] = useState<string | null>(null)
+  const [_hoveredIslandId, setHoveredIslandId] = useState<string | null>(null)
   const currentIsland = getCurrentIsland()
 
   return (
     <group>
       {islands.map((island, index) => {
         const position = getIslandPosition(index, islands.length)
-        const isHovered = hoveredIslandId === island.id
         const isCurrent = currentIsland?.id === island.id && currentIsland?.id !== 'overview'
 
         // 所有島嶼使用相同大小，選中時稍微放大

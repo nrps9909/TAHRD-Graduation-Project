@@ -667,11 +667,12 @@ ${island.nameChinese.includes('社交') || island.nameChinese.includes('人際')
         userId
       )
 
-      // 創建決策記錄（assistantId 設為 null，因為現在用 Island）
+      // 創建決策記錄（MIGRATION: 使用 targetIslandId 和 targetCategory）
       const decision = await prisma.agentDecision.create({
         data: {
           distributionId,
-          assistantId: null, // Island-based 不需要 assistantId
+          targetIslandId: primaryIslandId, // Island-based architecture
+          targetCategory: evaluation.suggestedCategory,
           relevanceScore: evaluation.relevanceScore,
           shouldStore: evaluation.shouldStore,
           reasoning: evaluation.reasoning,

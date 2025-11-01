@@ -20,7 +20,7 @@ export const GET_ALL_MEMORIES = gql`
       emoji
       createdAt
       islandId
-      assistant {
+      island {
         id
         nameChinese
         emoji
@@ -46,11 +46,11 @@ export const GET_MEMORIES_BY_CATEGORY = gql`
 `
 
 /**
- * 獲取特定助手的所有記憶（向後兼容）
+ * 獲取特定島嶼的所有記憶
  */
-export const GET_ASSISTANT_MEMORIES = gql`
-  query GetAssistantMemories($assistantId: ID!) {
-    memories(filter: { assistantId: $assistantId }) {
+export const GET_ISLAND_MEMORIES = gql`
+  query GetIslandMemories($islandId: ID!) {
+    memories(filter: { islandId: $islandId }) {
       id
       title
       category

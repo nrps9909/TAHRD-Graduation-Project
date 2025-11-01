@@ -159,10 +159,10 @@ export const knowledgeDistributionResolvers = {
         where: { id: parent.distributionId },
       })
     },
-    assistant: async (parent: any) => {
-      if (!parent.assistantId) return null
-      return prisma.assistant.findUnique({
-        where: { id: parent.assistantId },
+    island: async (parent: any) => {
+      if (!parent.targetIslandId) return null
+      return prisma.island.findUnique({
+        where: { id: parent.targetIslandId },
       })
     },
   },

@@ -203,23 +203,9 @@ export const memoryResolvers = {
       }
 
       try {
-        // 獲取助手資訊
-        const assistant = await prisma.assistant.findUnique({
-          where: { id: input.assistantId }
-        })
-
-        if (!assistant) {
-          throw new GraphQLError('Assistant not found')
-        }
-
-        // 處理並創建記憶
-        return await chiefAgentService.processAndCreateMemory(
-          userId,
-          input.assistantId,
-          input.content,
-          assistant.type,
-          input.contextType || ChatContextType.MEMORY_CREATION
-        )
+        // FIXME: This resolver is deprecated - use the streaming API instead
+        // The island-based architecture doesn't use assistantId anymore
+        throw new GraphQLError('This mutation is deprecated. Please use the streaming API for knowledge upload.')
       } catch (error) {
         throw new GraphQLError('Failed to create memory: ' + (error as Error).message)
       }
@@ -240,44 +226,9 @@ export const memoryResolvers = {
       }
 
       try {
-        // 獲取對應分類的助手（預設使用 LIFE）
-        const defaultAssistant = await prisma.assistant.findFirst({
-          where: { type: input.category || CategoryType.LIFE }
-        })
-
-        if (!defaultAssistant) {
-          throw new GraphQLError('Default assistant not found')
-        }
-
-        // 直接創建記憶到資料庫，不經過 AI 處理
-        const memory = await prisma.memory.create({
-          data: {
-            userId,
-            islandId: "PLACEHOLDER_ISLAND",  // FIXME: Need to get user island
-            title: input.title || null,
-            rawContent: input.content,
-            summary: input.title || input.content.substring(0, 100),
-            contentType: 'TEXT',
-            category: input.category || CategoryType.LIFE,
-            tags: input.tags || [],
-            emoji: input.emoji || '📝',
-            keyPoints: [],
-            fileUrls: [],
-            fileNames: [],
-            fileTypes: [],
-            links: [],
-            linkTitles: [],
-            relatedMemoryIds: [],
-            isArchived: false,
-            isPinned: false
-          },
-          include: {
-            island: true,
-            user: true
-          }
-        })
-
-        return memory
+        // FIXME: This resolver is deprecated - use the streaming API instead
+        // The island-based architecture requires islandId instead of category
+        throw new GraphQLError('This mutation is deprecated. Please use the streaming API for knowledge upload.')
       } catch (error) {
         throw new GraphQLError('Failed to create memory directly: ' + (error as Error).message)
       }
@@ -425,52 +376,9 @@ export const memoryResolvers = {
       }
 
       try {
-        const assistant = await prisma.assistant.findUnique({
-          where: { id: input.assistantId }
-        })
-
-        if (!assistant) {
-          throw new GraphQLError('Assistant not found')
-        }
-
-        // 獲取或創建會話
-        let session
-        if (input.sessionId) {
-          session = await chatSessionService.getSession(input.sessionId, userId)
-        } else {
-          session = await chatSessionService.getOrCreateSession(
-            userId,
-            input.assistantId,
-            input.contextType || ChatContextType.GENERAL_CHAT
-          )
-        }
-
-        // 如果是 Chief，使用特殊處理
-
-        // 其他助手的一般對話
-        // FIXME: Need proper island ID
-        const chatMessage = await prisma.chatMessage.create({
-          data: {
-            userId,
-            islandId: "PLACEHOLDER_ISLAND",
-            sessionId: session.id,
-            userMessage: input.message,
-            assistantResponse: '此功能即將推出', // TODO: 實作 sub-agent 對話
-            contextType: input.contextType || ChatContextType.GENERAL_CHAT,
-            memoryId: input.memoryId
-          },
-          include: {
-            island: true,
-            session: true,
-            memory: true
-          }
-        })
-
-        // 更新會話統計
-        await chatSessionService.incrementMessageCount(session.id)
-        await chatSessionService.updateLastMessageAt(session.id)
-
-        return chatMessage
+        // FIXME: This resolver is deprecated - use island-based chat instead
+        // The assistant-based architecture has been migrated to islands
+        throw new GraphQLError('This mutation is deprecated. Please use island-based chat API.')
       } catch (error) {
         throw new GraphQLError('Failed to chat with assistant: ' + (error as Error).message)
       }
@@ -530,9 +438,10 @@ export const memoryResolvers = {
       })
     },
 
-    assistant: async (parent: any, _: any, { prisma }: Context) => {
-      return prisma.assistant.findUnique({
-        where: { id: parent.assistantId }
+    island: async (parent: any, _: any, { prisma }: Context) => {
+      if (!parent.islandId) return null
+      return prisma.island.findUnique({
+        where: { id: parent.islandId }
       })
     },
 

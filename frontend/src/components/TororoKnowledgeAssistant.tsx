@@ -95,7 +95,7 @@ export default function TororoKnowledgeAssistant({
   const [history, setHistory] = useState<HistoryRecord[]>([])
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [conversationHistory, setConversationHistory] = useState<TororoMessage[]>([]) // 白噗噗對話歷史（持久化）
-  const [isLoadingChatHistory, setIsLoadingChatHistory] = useState(true) // 載入對話歷史的狀態
+  const [_isLoadingChatHistory, setIsLoadingChatHistory] = useState(true) // 載入對話歷史的狀態 (TODO: 用於顯示載入狀態)
 
   // ChatGPT-style 檔案上傳狀態
   const [uploadedCloudinaryFiles, setUploadedCloudinaryFiles] = useState<Array<{

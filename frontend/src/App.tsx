@@ -48,7 +48,7 @@ function App() {
             }
           />
           <Route
-            path="/island/:assistantId"
+            path="/island/:islandId"
             element={
               <ProtectedRoute>
                 <IslandView />

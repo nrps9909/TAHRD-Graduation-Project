@@ -40,7 +40,7 @@ export const MEMORY_FRAGMENT = gql`
     createdAt
     updatedAt
     # 關聯資料
-    assistant {
+    island {
       id
       name
       nameChinese
@@ -113,14 +113,14 @@ export const GET_PINNED_MEMORIES = gql`
 `
 
 export const GET_CHAT_HISTORY = gql`
-  query GetChatHistory($assistantId: ID, $limit: Int) {
-    chatHistory(assistantId: $assistantId, limit: $limit) {
+  query GetChatHistory($islandId: ID, $limit: Int) {
+    chatHistory(islandId: $islandId, limit: $limit) {
       id
       userMessage
       assistantResponse
       contextType
       createdAt
-      assistant {
+      island {
         id
         name
         nameChinese
@@ -232,15 +232,15 @@ export const LINK_MEMORIES = gql`
   }
 `
 
-export const CHAT_WITH_ASSISTANT = gql`
-  mutation ChatWithAssistant($input: ChatWithAssistantInput!) {
-    chatWithAssistant(input: $input) {
+export const CHAT_WITH_ISLAND = gql`
+  mutation ChatWithIsland($input: ChatWithIslandInput!) {
+    chatWithIsland(input: $input) {
       id
       userMessage
       assistantResponse
       contextType
       createdAt
-      assistant {
+      island {
         id
         name
         nameChinese

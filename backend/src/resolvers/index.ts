@@ -7,7 +7,8 @@
 import { scalarResolvers } from './scalarResolvers'
 import { authResolvers } from './authResolvers'
 import { chatSessionResolvers } from './chatSessionResolvers'
-import { assistantResolvers } from './assistantResolvers'
+// REMOVED: assistantResolvers - migrated to island-based architecture
+// import { assistantResolvers } from './assistantResolvers'
 import { memoryResolvers } from './memoryResolvers'
 import { knowledgeDistributionResolvers } from './knowledgeDistributionResolvers'
 import { catAgentResolvers } from './catAgentResolvers'
@@ -22,7 +23,7 @@ export const resolvers = {
 
   Query: {
     // New Architecture (新知識助手系統)
-    ...assistantResolvers.Query,
+    // REMOVED: assistantResolvers - migrated to island-based
     ...memoryResolvers.Query,
     ...chatSessionResolvers.Query,
     ...knowledgeDistributionResolvers.Query,
@@ -42,7 +43,7 @@ export const resolvers = {
     // Auth System
     ...authResolvers.Mutation,
     // New Architecture (新知識助手系統)
-    ...assistantResolvers.Mutation,
+    // REMOVED: assistantResolvers - migrated to island-based
     ...memoryResolvers.Mutation,
     ...chatSessionResolvers.Mutation,
     ...knowledgeDistributionResolvers.Mutation,
@@ -59,7 +60,7 @@ export const resolvers = {
   },
 
   // Type resolvers - New Architecture
-  Assistant: assistantResolvers.Assistant,
+  // REMOVED: Assistant type resolver - migrated to island-based
   Memory: memoryResolvers.Memory,
   ChatMessage: memoryResolvers.ChatMessage,
   ChatSession: chatSessionResolvers.ChatSession,

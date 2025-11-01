@@ -6,7 +6,7 @@
  * - Memory = 屬於某個 Island 的記憶
  */
 
-// 記憶類別（對應資料庫的 AssistantType/MemoryCategory）
+// 記憶類別（對應資料庫的 CategoryType/MemoryCategory）
 export type IslandCategory =
   | 'LEARNING'
   | 'INSPIRATION'
