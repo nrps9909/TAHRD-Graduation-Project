@@ -415,7 +415,6 @@ class HijikiService {
       SOCIAL: '社交海灘',
       LIFE: '生活花園',
       RESOURCES: '資源倉庫',
-      CHIEF: '中央廣場'
     }
     return names[category] || category
   }

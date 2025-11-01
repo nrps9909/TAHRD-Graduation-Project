@@ -240,7 +240,6 @@ class TororoService {
       SOCIAL: { x: -18, y: 0, z: 5 },
       LIFE: { x: 0, y: 1, z: 15 },
       RESOURCES: { x: -10, y: 1, z: 12 },
-      CHIEF: { x: 0, y: 2, z: 0 },
       MISC: { x: 10, y: 1, z: 12 }
     }
     return positions[category] || positions.LIFE
@@ -258,7 +257,6 @@ class TororoService {
       SOCIAL: '熱帶花',
       LIFE: '向日葵',
       RESOURCES: '水晶花',
-      CHIEF: '皇冠花',
       MISC: '雜草花'
     }
     return types[category] || '花朵'
@@ -276,7 +274,6 @@ class TororoService {
       SOCIAL: '社交海灘',
       LIFE: '生活花園',
       RESOURCES: '資源倉庫',
-      CHIEF: '中央廣場',
       MISC: '雜物間'
     }
     return names[category] || '知識島'

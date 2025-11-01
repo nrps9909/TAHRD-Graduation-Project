@@ -446,9 +446,6 @@ export const memoryResolvers = {
         }
 
         // 如果是 Chief，使用特殊處理
-        if (assistant.type === CategoryType.CHIEF) {
-          return await chiefAgentService.chatWithChief(userId, input.message)
-        }
 
         // 其他助手的一般對話
         // FIXME: Need proper island ID

@@ -106,8 +106,7 @@ export class IslandService {
       LIFE: ['生活', 'LIFE', '日常'],
       GOALS: ['目標', '規劃', 'GOALS', '目标', '计划'],
       RESOURCES: ['資源', '收藏', 'RESOURCES', '资源'],
-      MISC: ['雜項', '其他', 'MISC', '杂项'],
-      CHIEF: [] // Chief 不映射
+      MISC: ['雜項', '其他', 'MISC', '杂项']
     }
 
     const keywords = typeMapping[type] || []
