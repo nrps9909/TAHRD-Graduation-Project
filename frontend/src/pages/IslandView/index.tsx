@@ -26,6 +26,8 @@ export default function IslandView() {
   const [messages, setMessages] = useState<Message[]>([])
   const [selectedMemory, setSelectedMemory] = useState<IslandMemory | null>(null)
   const [isMobile, setIsMobile] = useState(false)
+  const [webglContextLost, setWebglContextLost] = useState(false)
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const { data, loading, refetch } = useQuery(GET_ISLANDS)
 
@@ -62,7 +64,6 @@ export default function IslandView() {
         id: memory.id,
         title: memory.title || memory.summary || '無標題記憶',
         content: memory.rawContent || memory.summary || '',
-        category: (memory.category || '未分類') as IslandMemory['category'],
         importance: 5, // 固定預設值，不再使用此欄位
         tags: memory.tags || [],
         position: [x, y, z] as [number, number, number],
@@ -88,6 +89,31 @@ export default function IslandView() {
     checkMobile()
     window.addEventListener('resize', checkMobile)
     return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
+  // WebGL context loss handling
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const handleContextLost = (event: Event) => {
+      event.preventDefault()
+      console.warn('⚠️ WebGL context lost, attempting to restore...')
+      setWebglContextLost(true)
+    }
+
+    const handleContextRestored = () => {
+      console.log('✅ WebGL context restored successfully')
+      setWebglContextLost(false)
+    }
+
+    canvas.addEventListener('webglcontextlost', handleContextLost)
+    canvas.addEventListener('webglcontextrestored', handleContextRestored)
+
+    return () => {
+      canvas.removeEventListener('webglcontextlost', handleContextLost)
+      canvas.removeEventListener('webglcontextrestored', handleContextRestored)
+    }
   }, [])
 
   // 如果找不到island，返回主页
@@ -190,15 +216,35 @@ export default function IslandView() {
     <div className="fixed inset-0 w-full h-full overflow-hidden" style={{
       background: 'linear-gradient(135deg, #FFF5E1 0%, #FFE5F0 50%, #FFFACD 100%)'
     }}>
+      {/* WebGL Context Lost Warning */}
+      {webglContextLost && (
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 bg-red-500/90 text-white px-6 py-4 rounded-2xl shadow-xl">
+          <p className="text-lg font-bold">⚠️ 3D渲染暂时中断</p>
+          <p className="text-sm mt-2">正在尝试恢复...</p>
+        </div>
+      )}
+
       {/* 3D Island Scene - 手機端調整相機參數 */}
       <Canvas
+        ref={canvasRef}
         camera={{
           position: isMobile ? [0, 25, 25] : [0, 20, 20],
           fov: isMobile ? 60 : 50
         }}
         className="absolute inset-0 w-full h-full"
-        gl={{ preserveDrawingBuffer: true }}
+        gl={{
+          preserveDrawingBuffer: true,
+          powerPreference: 'high-performance',
+          antialias: true,
+          failIfMajorPerformanceCaveat: false
+        }}
         dpr={isMobile ? [1, 1.5] : [1, 2]}
+        onCreated={({ gl }) => {
+          // Store canvas reference for context loss handling
+          if (gl.domElement) {
+            canvasRef.current = gl.domElement
+          }
+        }}
       >
         {/* 柔和的光照 - 寶寶粉和鵝黃色溫暖光線 */}
         <ambientLight intensity={0.9} color="#FFF8E7" />
@@ -460,20 +506,10 @@ export default function IslandView() {
                   {selectedMemory.emoji}
                 </div>
                 <div className="flex-1">
-                  <div
-                    className="text-xs font-medium px-2 py-1 rounded-full inline-block mb-1"
-                    style={{
-                      background: `${selectedMemory.color}30`,
-                      color: selectedMemory.color,
-                      border: `1.5px solid ${selectedMemory.color}60`,
-                    }}
-                  >
-                    {selectedMemory.category}
-                  </div>
                   <h3
                     className="font-bold text-lg leading-tight"
                     style={{
-                      color: selectedMemory.color,
+                      color: selectedMemory.color || island?.color,
                       textShadow: '0 1px 2px rgba(0,0,0,0.05)'
                     }}
                   >

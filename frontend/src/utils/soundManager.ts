@@ -46,9 +46,15 @@ const SOUND_CONFIG = {
 class BackgroundMusic {
   private bgm: Howl | null = null
   private currentTrack: string = ''
+  public initialized: boolean = false
 
   // 播放背景音乐
   play(track: string = 'peaceful-town') {
+    if (!this.initialized) {
+      console.warn('🔇 背景音乐系统未初始化，跳过播放')
+      return
+    }
+
     if (this.currentTrack === track && this.bgm?.playing()) {
       return
     }
@@ -63,6 +69,9 @@ class BackgroundMusic {
       onloaderror: () => {
         console.log(`🎵 背景音乐 ${track} 未找到，使用静音模式`)
       },
+      onload: () => {
+        console.log(`🎵 背景音乐 ${track} 加载成功`)
+      }
     })
 
     this.bgm.play()
@@ -105,8 +114,16 @@ class BackgroundMusic {
 class SoundEffectManager {
   private sounds: Map<SoundName, Howl> = new Map()
   private enabled: boolean = true
+  private initialized: boolean = false
 
   constructor() {
+    // 不在构造函数中初始化，等待用户交互
+  }
+
+  // 初始化音效（在用户交互后调用）
+  init() {
+    if (this.initialized) return
+    this.initialized = true
     this.preloadSounds()
   }
 
@@ -128,6 +145,10 @@ class SoundEffectManager {
   // 播放音效
   play(name: SoundName) {
     if (!this.enabled) return
+    if (!this.initialized) {
+      console.warn('🔇 音效系统未初始化，请先调用 SFX.init()')
+      return
+    }
 
     const sound = this.sounds.get(name)
     if (sound) {
@@ -180,7 +201,13 @@ export const playSoftSound = () => SFX.play('soft')
 
 // 初始化音乐（在用户交互后调用）
 export const initAudio = () => {
-  // 尝试播放背景音乐
+  // 标记为已初始化
+  BGM.initialized = true
+  SFX.init()
+
+  // 尝试播放背景音乐（如果文件存在）
   BGM.play('peaceful-town')
   BGM.fadeIn(2000)
+
+  console.log('🔊 音频系统已初始化')
 }
