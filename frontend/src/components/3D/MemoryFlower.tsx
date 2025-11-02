@@ -17,7 +17,6 @@ export interface MemoryFlowerData {
   id: string
   title: string
   emoji: string
-  category: string
   importance: number // 1-10
   color: string
   position: [number, number, number]
@@ -166,7 +165,6 @@ export function MemoryFlower({ memory, onClick, isActive = false }: MemoryFlower
               <span className="font-bold text-gray-800">{memory.title}</span>
             </div>
             <div className="text-xs text-gray-600 space-y-1">
-              <div>📂 {memory.category}</div>
               <div>⭐ 重要度: {memory.importance}/10</div>
               <div>📅 {memory.createdAt.toLocaleDateString('zh-TW')}</div>
               {memory.tags && memory.tags.length > 0 && (

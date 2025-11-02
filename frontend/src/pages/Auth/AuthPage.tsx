@@ -2,7 +2,7 @@ import { useState, Suspense, lazy, useEffect } from 'react'
 import { useMutation, gql } from '@apollo/client'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useAuthStore } from '../../stores/authStore'
+import { useAuthStore, UserRole } from '../../stores/authStore'
 
 // Lazy load Auth Island Scene component - 延遲載入
 const AuthIslandScene = lazy(() => import('../../components/AuthIslandScene'))
@@ -16,6 +16,7 @@ const LOGIN_MUTATION = gql`
         username
         displayName
         email
+        role
       }
     }
   }
@@ -30,6 +31,7 @@ const REGISTER_MUTATION = gql`
         username
         displayName
         email
+        role
       }
     }
   }
@@ -72,8 +74,21 @@ export default function AuthPage() {
   const [login, { loading: loginLoading }] = useMutation(LOGIN_MUTATION, {
     onCompleted: (data) => {
       setAuth(data.login.token, data.login.user)
-      const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/'
-      navigate(from, { replace: true })
+
+      // 檢查用戶角色，管理員導航到管理頁面
+      const isAdmin = data.login.user.role === UserRole.ADMIN
+      const from = (location.state as { from?: { pathname: string } })?.from?.pathname
+
+      if (isAdmin) {
+        // 管理員登入後導航到管理頁面
+        navigate('/admin', { replace: true })
+      } else if (from && from !== '/login' && from !== '/register') {
+        // 普通用戶返回原來的頁面
+        navigate(from, { replace: true })
+      } else {
+        // 預設導航到首頁
+        navigate('/', { replace: true })
+      }
     },
     onError: (error) => {
       setErrors([error.message])
@@ -83,6 +98,8 @@ export default function AuthPage() {
   const [register, { loading: registerLoading }] = useMutation(REGISTER_MUTATION, {
     onCompleted: (data) => {
       setAuth(data.register.token, data.register.user)
+
+      // 新註冊用戶一律導航到首頁（管理員帳號不應該通過註冊創建）
       navigate('/', { replace: true })
     },
     onError: (error) => {

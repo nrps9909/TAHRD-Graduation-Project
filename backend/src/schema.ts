@@ -7,10 +7,16 @@ const baseTypeDefs = gql`
 
   # ============ Core Types ============
 
+  enum UserRole {
+    USER
+    ADMIN
+  }
+
   type User {
     id: ID!
     username: String!
     email: String!
+    role: UserRole!
     displayName: String
     avatarUrl: String
     isActive: Boolean!
@@ -35,18 +41,7 @@ const baseTypeDefs = gql`
   }
 
   # ============ Category System ============
-  # CategoryType 用於記憶的細粒度分類（8 種）
-
-  enum CategoryType {
-    LEARNING    # 學習筆記
-    INSPIRATION # 靈感創意
-    WORK        # 工作事務
-    SOCIAL      # 人際關係
-    LIFE        # 生活記錄
-    GOALS       # 目標規劃
-    RESOURCES   # 資源收藏
-    MISC        # 雜項（不屬於其他類別的知識）
-  }
+  # 已遷移到 Island-based 分類系統（見 categorySchema.ts）
 
   # ============ Memory System ============
 
@@ -94,7 +89,6 @@ const baseTypeDefs = gql`
     progressChange: Int       # [進度變化] +1/0/-1
 
     # Classification
-    category: CategoryType!
     tags: [String!]!
 
     # Metadata
@@ -199,7 +193,6 @@ const baseTypeDefs = gql`
     nameChinese: String
     usageCount: Int!
     color: String
-    category: CategoryType
     createdAt: DateTime!
     lastUsed: DateTime!
   }
@@ -247,7 +240,7 @@ const baseTypeDefs = gql`
     id: ID!
     distributionId: ID!
     targetIslandId: ID
-    targetCategory: CategoryType
+    island: Island  # Target island (resolved from targetIslandId)
 
     # Decision
     relevanceScore: Float!       # 0-1
@@ -256,7 +249,6 @@ const baseTypeDefs = gql`
     confidence: Float!           # 0-1
 
     # Classification (if stored)
-    suggestedCategory: CategoryType
     suggestedTags: [String!]!
     keyInsights: [String!]!
 
@@ -309,7 +301,9 @@ const baseTypeDefs = gql`
   }
 
   type CategoryStats {
-    category: CategoryType!
+    islandId: ID!
+    islandName: String!
+    islandEmoji: String!
     count: Int!
     percentage: Float!
   }
@@ -332,7 +326,8 @@ const baseTypeDefs = gql`
 
   type TororoQuickResponse {
     warmMessage: String!     # 白噗噗的溫暖回應訊息
-    category: CategoryType! # 分類結果
+    islandName: String       # 島嶼名稱（中文）
+    islandEmoji: String      # 島嶼 emoji
     quickSummary: String!    # 一句話摘要
     confidence: Float!       # 信心分數
     reasoning: String!       # 分類理由
@@ -346,10 +341,12 @@ const baseTypeDefs = gql`
   }
 
   type ClassificationResult {
-    suggestedCategory: CategoryType!
+    suggestedIslandId: ID
+    suggestedIslandName: String
+    suggestedIslandEmoji: String
     confidence: Float!
     reason: String!
-    alternativeCategories: [CategoryType!]!
+    alternativeIslandIds: [ID!]!
   }
 
   type ChiefSummaryResponse {
@@ -408,7 +405,7 @@ const baseTypeDefs = gql`
     title: String
     content: String!
     tags: [String!]
-    category: CategoryType
+    islandId: ID
     emoji: String
   }
 
@@ -416,7 +413,7 @@ const baseTypeDefs = gql`
     title: String
     rawContent: String
     emoji: String
-    category: CategoryType
+    islandId: ID
     tags: [String!]
     fileUrls: [String!]
     fileNames: [String!]
@@ -429,7 +426,6 @@ const baseTypeDefs = gql`
 
   input MemoryFilterInput {
     islandId: ID
-    category: CategoryType
     tags: [String!]
     search: String
     isPinned: Boolean
@@ -632,7 +628,7 @@ const baseTypeDefs = gql`
   }
 
   input HijikiFilterInput {
-    categories: [CategoryType!]
+    islandIds: [ID!]
     tags: [String!]
     dateRange: DateRangeInput
   }
@@ -692,6 +688,81 @@ const baseTypeDefs = gql`
     # ===== Task History Queries =====
     taskHistories(limit: Int = 50, offset: Int = 0): [TaskHistory!]!
     taskHistory(id: ID!): TaskHistory
+
+    # ===== Admin Queries (管理員專用) =====
+    adminGetAllUsers(limit: Int = 100, offset: Int = 0): AdminUsersResponse!
+    adminGetUserById(userId: ID!): AdminUserDetail!
+    adminGetUserStats(userId: ID!): AdminUserStats!
+    adminGetSystemStats: AdminSystemStats!
+  }
+
+  # ============ Admin Types (管理員專用類型) ============
+
+  type AdminUsersResponse {
+    users: [AdminUserSummary!]!
+    total: Int!
+    hasMore: Boolean!
+  }
+
+  type AdminUserSummary {
+    id: ID!
+    username: String!
+    email: String!
+    role: UserRole!
+    displayName: String
+    isActive: Boolean!
+    lastLogin: DateTime
+    createdAt: DateTime!
+    memoriesCount: Int!
+    islandsCount: Int!
+  }
+
+  type AdminUserDetail {
+    user: User!
+    memoriesCount: Int!
+    islandsCount: Int!
+    chatSessionsCount: Int!
+    totalChatsCount: Int!
+    activeIslands: [Island!]!
+    recentMemories: [Memory!]!
+    accountAge: Int!
+  }
+
+  type AdminUserStats {
+    userId: ID!
+    username: String!
+    memoriesByIsland: [IslandMemoryCount!]!
+    memoriesOverTime: [DateCount!]!
+    topTags: [TagCount!]!
+    activityScore: Float!
+    averageMemoryImportance: Float!
+  }
+
+  type IslandMemoryCount {
+    islandId: ID!
+    islandName: String!
+    islandEmoji: String!
+    count: Int!
+  }
+
+  type DateCount {
+    date: String!
+    count: Int!
+  }
+
+  type AdminSystemStats {
+    totalUsers: Int!
+    totalMemories: Int!
+    totalIslands: Int!
+    totalChatSessions: Int!
+    activeUsersToday: Int!
+    activeUsersThisWeek: Int!
+    activeUsersThisMonth: Int!
+    memoriesCreatedToday: Int!
+    memoriesCreatedThisWeek: Int!
+    memoriesCreatedThisMonth: Int!
+    averageMemoriesPerUser: Float!
+    averageIslandsPerUser: Float!
   }
 
   # ============ Mutations ============

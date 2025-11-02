@@ -3,7 +3,7 @@
  * 負責查詢、分析和管理記憶
  */
 
-import { PrismaClient, CategoryType } from '@prisma/client'
+import { PrismaClient } from '@prisma/client'
 import { logger } from '../utils/logger'
 import { memoryService } from './memoryService'
 import { vectorService } from './vectorService'
@@ -18,7 +18,7 @@ export interface HijikiQueryInput {
   query: string
   type?: 'search' | 'statistics' | 'trend'
   filters?: {
-    categories?: CategoryType[]
+    islandIds?: string[]  // 改為島嶼 ID
     tags?: string[]
     dateRange?: {
       start: Date
@@ -34,7 +34,8 @@ export interface HijikiSearchResponse {
     id: string
     title: string
     emoji: string
-    category: string
+    islandName: string
+    islandEmoji: string
     importance: number
     date: string
     summary: string
@@ -88,8 +89,8 @@ class HijikiService {
       }
 
       // 應用篩選條件
-      if (input.filters?.categories) {
-        where.category = { in: input.filters.categories }
+      if (input.filters?.islandIds) {
+        where.islandId = { in: input.filters.islandIds }
       }
 
       if (input.filters?.tags && input.filters.tags.length > 0) {
@@ -128,7 +129,8 @@ class HijikiService {
         id: memory.id,
         title: memory.title || '無標題',
         emoji: memory.emoji || '📝',
-        category: memory.category,
+        islandName: memory.island?.nameChinese || '未分類',
+        islandEmoji: memory.island?.emoji || '🏝️',
         importance: memory.isPinned ? 8 : 5,
         date: memory.createdAt.toISOString(),
         summary: memory.summary || memory.rawContent.substring(0, 100),
@@ -246,18 +248,18 @@ class HijikiService {
   }
 
   /**
-   * 計算分布
+   * 計算分布（基於 Island）
    */
   private calculateDistribution(memories: any[]) {
     const distribution: Record<string, { count: number; percentage: number }> = {}
     const total = memories.length
 
     memories.forEach(memory => {
-      const category = memory.category
-      if (!distribution[category]) {
-        distribution[category] = { count: 0, percentage: 0 }
+      const islandId = memory.islandId
+      if (!distribution[islandId]) {
+        distribution[islandId] = { count: 0, percentage: 0 }
       }
-      distribution[category].count++
+      distribution[islandId].count++
     })
 
     // 計算百分比
@@ -371,13 +373,14 @@ class HijikiService {
 
     insights.push(`本期共記錄 ${memories.length} 朵花`)
 
-    // 找出最活躍的分類
-    const categories = Object.entries(distribution)
+    // 找出最活躍的島嶼
+    const islands = Object.entries(distribution)
       .sort(([, a]: any, [, b]: any) => b.count - a.count)
 
-    if (categories.length > 0) {
-      const [topCategory, topData]: any = categories[0]
-      insights.push(`${this.getCategoryName(topCategory)} 最活躍（${topData.count} 條，${topData.percentage}%）`)
+    if (islands.length > 0) {
+      const [topIslandId, topData]: any = islands[0]
+      // 未來可以從 Island 表查詢名稱
+      insights.push(`島嶼 ${topIslandId} 最活躍（${topData.count} 條，${topData.percentage}%）`)
     }
 
     return insights
@@ -389,34 +392,18 @@ class HijikiService {
   private generateStatisticsSuggestions(distribution: any): string[] {
     const suggestions: string[] = []
 
-    // 檢查是否有分類記錄較少
-    const categories = Object.entries(distribution)
+    // 檢查是否有島嶼記錄較少
+    const islands = Object.entries(distribution)
       .sort(([, a]: any, [, b]: any) => a.count - b.count)
 
-    if (categories.length > 0) {
-      const [leastCategory, leastData]: any = categories[0]
+    if (islands.length > 0) {
+      const [leastIslandId, leastData]: any = islands[0]
       if ((leastData as any).count < 3) {
-        suggestions.push(`${this.getCategoryName(leastCategory)} 記錄較少，建議增加此類記錄`)
+        suggestions.push(`島嶼 ${leastIslandId} 記錄較少，建議增加此類記錄`)
       }
     }
 
     return suggestions
-  }
-
-  /**
-   * 獲取分類名稱
-   */
-  private getCategoryName(category: string): string {
-    const names: Record<string, string> = {
-      LEARNING: '學習高地',
-      INSPIRATION: '靈感森林',
-      GOALS: '目標峰頂',
-      WORK: '工作碼頭',
-      SOCIAL: '社交海灘',
-      LIFE: '生活花園',
-      RESOURCES: '資源倉庫',
-    }
-    return names[category] || category
   }
 
   /**

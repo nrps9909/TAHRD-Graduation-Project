@@ -1,16 +1,5 @@
-import { Memory, MemoryCategory } from '../types/memory'
+import { Memory } from '../types/memory'
 import { Z_INDEX_CLASSES } from '../constants/zIndex'
-
-// 分類資訊對應
-const CATEGORY_INFO: Record<MemoryCategory, { name: string; emoji: string; color: string }> = {
-  LEARNING: { name: '學習筆記', emoji: '📚', color: '#4A90E2' },
-  INSPIRATION: { name: '靈感創意', emoji: '💡', color: '#F5A623' },
-  WORK: { name: '工作事務', emoji: '💼', color: '#7B68EE' },
-  SOCIAL: { name: '人際關係', emoji: '👥', color: '#FF6B9D' },
-  LIFE: { name: '生活記錄', emoji: '🌱', color: '#50C878' },
-  GOALS: { name: '目標規劃', emoji: '🎯', color: '#FF6347' },
-  RESOURCES: { name: '資源收藏', emoji: '📦', color: '#9370DB' },
-}
 
 interface MemoryPreviewCardProps {
   memory: Memory
@@ -66,22 +55,6 @@ export default function MemoryPreviewCard({
               {memory.summary}
             </p>
           )}
-
-          {/* Category */}
-          <div className="flex flex-wrap gap-1.5 mb-3">
-            {memory.category && CATEGORY_INFO[memory.category] && (
-              <span
-                className="px-2 py-1 text-xs font-medium rounded-lg"
-                style={{
-                  background: `${CATEGORY_INFO[memory.category].color}15`,
-                  color: CATEGORY_INFO[memory.category].color,
-                  border: `1px solid ${CATEGORY_INFO[memory.category].color}30`,
-                }}
-              >
-                {CATEGORY_INFO[memory.category].emoji} {CATEGORY_INFO[memory.category].name}
-              </span>
-            )}
-          </div>
 
           {/* Tags */}
           {memory.tags.length > 0 && (
@@ -162,21 +135,6 @@ export default function MemoryPreviewCard({
             {memory.summary}
           </p>
         )}
-
-        {/* Category */}
-        <div className="flex flex-wrap gap-1.5 mb-3">
-          {memory.category && CATEGORY_INFO[memory.category] && (
-            <span
-              className="px-2 py-1 text-xs font-medium rounded"
-              style={{
-                background: `${CATEGORY_INFO[memory.category].color}15`,
-                color: CATEGORY_INFO[memory.category].color,
-              }}
-            >
-              {CATEGORY_INFO[memory.category].emoji} {CATEGORY_INFO[memory.category].name}
-            </span>
-          )}
-        </div>
 
         {/* Tags */}
         {memory.tags.length > 0 && (

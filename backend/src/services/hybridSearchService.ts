@@ -26,7 +26,8 @@ export interface SearchResult {
   similarity: number // 0-1，相關性分數
   source: 'semantic' | 'structured' | 'statistical' // 結果來源
   metadata?: {
-    category?: string | import('@prisma/client').CategoryType
+    islandId?: string
+    islandName?: string
     createdAt?: Date
     importanceScore?: number | null
   }
@@ -145,9 +146,14 @@ export class HybridSearchService {
         rawContent: true,
         summary: true,
         tags: true,
-        category: true,
+        islandId: true,
         createdAt: true,
-        importanceScore: true
+        importanceScore: true,
+        island: {
+          select: {
+            nameChinese: true
+          }
+        }
       }
     })
 
@@ -168,7 +174,8 @@ export class HybridSearchService {
           similarity: vr.similarity,
           source: 'semantic' as const,
           metadata: {
-            category: memory.category,
+            islandId: memory.islandId,
+            islandName: memory.island?.nameChinese || '未分類',
             createdAt: memory.createdAt,
             importanceScore: memory.importanceScore
           }
@@ -211,9 +218,14 @@ export class HybridSearchService {
         rawContent: true,
         summary: true,
         tags: true,
-        category: true,
+        islandId: true,
         createdAt: true,
-        importanceScore: true
+        importanceScore: true,
+        island: {
+          select: {
+            nameChinese: true
+          }
+        }
       }
     })
 
@@ -225,7 +237,8 @@ export class HybridSearchService {
       similarity: 0.8, // 時間匹配給予高分
       source: 'structured' as const,
       metadata: {
-        category: m.category,
+        islandId: m.islandId,
+        islandName: m.island?.nameChinese || '未分類',
         createdAt: m.createdAt,
         importanceScore: m.importanceScore
       }
@@ -240,10 +253,10 @@ export class HybridSearchService {
     intent: QueryIntent,
     limit: number
   ): Promise<SearchResult[]> {
-    const { categories, tags } = intent.params
+    const { islandIds, tags } = intent.params
 
-    if (!categories?.length && !tags?.length) {
-      logger.warn('[Hybrid] Categorical search without categories/tags')
+    if (!islandIds?.length && !tags?.length) {
+      logger.warn('[Hybrid] Categorical search without islandIds/tags')
       return []
     }
 
@@ -253,11 +266,11 @@ export class HybridSearchService {
       isArchived: false
     }
 
-    // 分類或標籤匹配
+    // 島嶼或標籤匹配
     const orConditions: any[] = []
 
-    if (categories?.length) {
-      orConditions.push({ category: { in: categories } })
+    if (islandIds?.length) {
+      orConditions.push({ islandId: { in: islandIds } })
     }
 
     if (tags?.length) {
@@ -278,9 +291,14 @@ export class HybridSearchService {
         rawContent: true,
         summary: true,
         tags: true,
-        category: true,
+        islandId: true,
         createdAt: true,
-        importanceScore: true
+        importanceScore: true,
+        island: {
+          select: {
+            nameChinese: true
+          }
+        }
       }
     })
 
@@ -289,10 +307,11 @@ export class HybridSearchService {
       title: m.title || '無標題',
       content: m.summary || m.rawContent || '',
       tags: m.tags,
-      similarity: 0.75, // 分類匹配給予較高分
+      similarity: 0.75, // 島嶼匹配給予較高分
       source: 'structured' as const,
       metadata: {
-        category: m.category,
+        islandId: m.islandId,
+        islandName: m.island?.nameChinese || '未分類',
         createdAt: m.createdAt,
         importanceScore: m.importanceScore
       }
@@ -311,26 +330,26 @@ export class HybridSearchService {
 
     if (aggregation === 'count' || aggregation === 'groupBy') {
       // 分組統計
-      const field = groupByField || 'category'
+      const field = groupByField || 'islandId'
 
-      if (field === 'category') {
+      if (field === 'islandId' || field === 'category') {
         const stats = await prisma.memory.groupBy({
-          by: ['category'],
+          by: ['islandId'],
           where: { userId, isArchived: false },
           _count: true,
-          orderBy: { _count: { category: 'desc' } }
+          orderBy: { _count: { islandId: 'desc' } }
         })
 
         // 轉換為 SearchResult 格式（特殊處理）
         return stats.map((stat) => ({
-          memoryId: `stat-${stat.category}`,
-          title: `分類: ${stat.category}`,
+          memoryId: `stat-${stat.islandId}`,
+          title: `島嶼: ${stat.islandId}`,
           content: `共有 ${stat._count} 條記憶`,
           tags: [],
           similarity: 1.0,
           source: 'statistical' as const,
           metadata: {
-            category: stat.category,
+            islandId: stat.islandId,
             count: stat._count
           }
         }))
@@ -348,8 +367,13 @@ export class HybridSearchService {
         rawContent: true,
         summary: true,
         tags: true,
-        category: true,
-        createdAt: true
+        islandId: true,
+        createdAt: true,
+        island: {
+          select: {
+            nameChinese: true
+          }
+        }
       }
     })
 
@@ -361,7 +385,8 @@ export class HybridSearchService {
       similarity: 0.7,
       source: 'statistical' as const,
       metadata: {
-        category: m.category,
+        islandId: m.islandId,
+        islandName: m.island?.nameChinese || '未分類',
         createdAt: m.createdAt
       }
     }))
@@ -375,7 +400,7 @@ export class HybridSearchService {
     intent: QueryIntent,
     limit: number
   ): Promise<SearchResult[]> {
-    const { semanticQuery, timeRange, categories, tags } = intent.params
+    const { semanticQuery, timeRange, islandIds, tags } = intent.params
 
     // 並行執行多個查詢
     const searches: Promise<SearchResult[]>[] = []
@@ -405,10 +430,10 @@ export class HybridSearchService {
       }
     }
 
-    // 分類/標籤
+    // 島嶼/標籤
     const orConditions: any[] = []
-    if (categories?.length) {
-      orConditions.push({ category: { in: categories } })
+    if (islandIds?.length) {
+      orConditions.push({ islandId: { in: islandIds } })
     }
     if (tags?.length) {
       orConditions.push({ tags: { hasSome: tags } })
@@ -430,9 +455,14 @@ export class HybridSearchService {
             rawContent: true,
             summary: true,
             tags: true,
-            category: true,
+            islandId: true,
             createdAt: true,
-            importanceScore: true
+            importanceScore: true,
+            island: {
+              select: {
+                nameChinese: true
+              }
+            }
           }
         })
         .then((memories) =>
@@ -444,7 +474,8 @@ export class HybridSearchService {
             similarity: 0.75,
             source: 'structured' as const,
             metadata: {
-              category: m.category,
+              islandId: m.islandId,
+              islandName: m.island?.nameChinese || '未分類',
               createdAt: m.createdAt,
               importanceScore: m.importanceScore
             }

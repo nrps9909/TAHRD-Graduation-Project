@@ -9,11 +9,10 @@
  * 5. 如果決定儲存，創建 Memory 記錄
  */
 
-import { PrismaClient, CategoryType, ContentType } from '@prisma/client'
+import { PrismaClient, ContentType } from '@prisma/client'
 import { logger } from '../utils/logger'
 import axios from 'axios'
 import { callGeminiAPI } from '../utils/geminiAPI'
-import { categoryService } from './categoryService'
 import { islandService } from './islandService'  // 新增 - Island 服務
 import { multimodalProcessor } from './multimodalProcessor'
 import { dynamicSubAgentService } from './dynamicSubAgentService'
@@ -26,7 +25,6 @@ interface EvaluationResult {
   shouldStore: boolean
   reasoning: string
   confidence: number          // 0-1
-  suggestedCategory?: CategoryType
   suggestedTags: string[]
   keyInsights: string[]
   // SubAgent 深度分析結果（新增）
@@ -111,9 +109,6 @@ export class SubAgentService {
         shouldStore,
         reasoning: parsed.reasoning || '無評估說明',
         confidence,
-        suggestedCategory: this.isValidCategoryType(parsed.suggestedCategory)
-          ? parsed.suggestedCategory
-          : undefined, // Island 不需要 CategoryType
         suggestedTags: Array.isArray(parsed.suggestedTags) ? parsed.suggestedTags : [],
         keyInsights: Array.isArray(parsed.keyInsights) ? parsed.keyInsights : [],
         // SubAgent 深度分析結果
@@ -182,7 +177,6 @@ export class SubAgentService {
           keyPoints: evaluation.keyInsights,
           aiSentiment: sentiment, // 使用情感分析結果
           aiAnalysis: evaluation.reasoning, // 使用 Sub-Agent 的評估說明
-          category: evaluation.suggestedCategory || CategoryType.MISC,
           tags: [...new Set([...distribution.suggestedTags, ...evaluation.suggestedTags])].slice(0, 5), // 合併並去重標籤，最多5個
 
           // === 新增：SubAgent 深度分析結果 ===
@@ -312,7 +306,6 @@ ${island.nameChinese.includes('社交') || island.nameChinese.includes('人際')
   "shouldStore": true,
   "reasoning": "這是一個關於XXX的重要知識，因為...，對用戶的XXX方面有幫助",
   "confidence": 0.9,
-  "suggestedCategory": "MISC",
   "suggestedTags": ["標籤1", "標籤2", "標籤3"],
   "keyInsights": [
     "關鍵洞察1：...",
@@ -391,7 +384,6 @@ ${island.nameChinese.includes('社交') || island.nameChinese.includes('人際')
         shouldStore,
         reasoning: `基於降級評估，此內容歸類到 ${island.nameChinese}`,
         confidence: 0.3,
-        suggestedCategory: CategoryType.MISC, // 預設為 MISC
         suggestedTags: distribution.suggestedTags.slice(0, 3),
         keyInsights: [`關鍵字匹配數: ${matchCount}`],
       }
@@ -494,13 +486,6 @@ ${island.nameChinese.includes('社交') || island.nameChinese.includes('人際')
         actionableAdvice: undefined,
       }
     }
-  }
-
-  /**
-   * 驗證 CategoryType 是否有效
-   */
-  private isValidCategoryType(type: any): type is CategoryType {
-    return Object.values(CategoryType).includes(type)
   }
 
   /**
@@ -667,17 +652,15 @@ ${island.nameChinese.includes('社交') || island.nameChinese.includes('人際')
         userId
       )
 
-      // 創建決策記錄（MIGRATION: 使用 targetIslandId 和 targetCategory）
+      // 創建決策記錄（Island-based architecture）
       const decision = await prisma.agentDecision.create({
         data: {
           distributionId,
           targetIslandId: primaryIslandId, // Island-based architecture
-          targetCategory: evaluation.suggestedCategory,
           relevanceScore: evaluation.relevanceScore,
           shouldStore: evaluation.shouldStore,
           reasoning: evaluation.reasoning,
           confidence: evaluation.confidence,
-          suggestedCategory: evaluation.suggestedCategory,
           suggestedTags: evaluation.suggestedTags,
           keyInsights: evaluation.keyInsights,
         },

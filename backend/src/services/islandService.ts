@@ -8,7 +8,7 @@
  * 4. 向後兼容：CategoryType → Island 映射
  */
 
-import { PrismaClient, CategoryType } from '@prisma/client'
+import { PrismaClient } from '@prisma/client'
 import { logger } from '../utils/logger'
 
 const prisma = new PrismaClient()
@@ -83,55 +83,11 @@ export class IslandService {
   }
 
   /**
-   * 🆕 根據 CategoryType 獲取對應的島嶼（向後兼容）
-   * 用於 Chief Agent 分類結果映射
+   * @deprecated CategoryType no longer exists. Use getIslandByName instead.
+   * This function has been removed as part of the CategoryType to Island migration.
    */
-  async getIslandByType(userId: string, type: CategoryType) {
-    await this.loadIslands(userId)
-    const userCache = this.islandsCache.get(userId)
-
-    if (!userCache || userCache.size === 0) {
-      logger.warn(`[IslandService] 用戶 ${userId} 沒有任何島嶼`)
-      return null
-    }
-
-    const islands = Array.from(userCache.values())
-
-    // CategoryType 到中文關鍵字的映射
-    const typeMapping: Record<CategoryType, string[]> = {
-      LEARNING: ['學習', 'LEARNING', '学习'],
-      WORK: ['工作', 'WORK', '职业'],
-      INSPIRATION: ['靈感', '創意', 'INSPIRATION', '灵感', '创意'],
-      SOCIAL: ['人際', '社交', 'SOCIAL', '人际', '朋友'],
-      LIFE: ['生活', 'LIFE', '日常'],
-      GOALS: ['目標', '規劃', 'GOALS', '目标', '计划'],
-      RESOURCES: ['資源', '收藏', 'RESOURCES', '资源'],
-      MISC: ['雜項', '其他', 'MISC', '杂项']
-    }
-
-    const keywords = typeMapping[type] || []
-
-    // 優先精確匹配 name
-    const exactMatch = islands.find(
-      island => island.name === type
-    )
-    if (exactMatch) {
-      logger.info(`[IslandService] 精確匹配: ${type} → ${exactMatch.nameChinese}`)
-      return exactMatch
-    }
-
-    // 模糊匹配 nameChinese
-    const fuzzyMatch = islands.find(
-      island => keywords.some(keyword => island.nameChinese.includes(keyword))
-    )
-    if (fuzzyMatch) {
-      logger.info(`[IslandService] 模糊匹配: ${type} → ${fuzzyMatch.nameChinese}`)
-      return fuzzyMatch
-    }
-
-    // 如果沒有匹配，返回第一個島嶼（或 null）
-    logger.warn(`[IslandService] 無法為 CategoryType ${type} 找到匹配的島嶼，使用第一個島嶼`)
-    return islands[0] || null
+  async getIslandByType(userId: string, type: string) {
+    throw new Error('getIslandByType is deprecated. CategoryType has been removed. Please use getIslandByName or dynamic island selection instead.')
   }
 
   /**

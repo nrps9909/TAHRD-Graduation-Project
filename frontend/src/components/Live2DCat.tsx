@@ -7,7 +7,7 @@ import {
 import * as PIXI from 'pixi.js'
 import { Live2DModel } from 'pixi-live2d-display/cubism4'
 import { useMutation, useQuery } from '@apollo/client'
-import { UPLOAD_KNOWLEDGE, CHAT_WITH_CHIEF, GET_CHIEF_ASSISTANT } from '../graphql/knowledge'
+import { UPLOAD_KNOWLEDGE, CHAT_WITH_CHIEF } from '../graphql/knowledge'
 import type { UploadKnowledgeInput, ChatWithAssistantInput } from '../graphql/knowledge'
 import { useSound } from '../hooks/useSound'
 import { Z_INDEX_CLASSES } from '../constants/zIndex'
@@ -150,7 +150,8 @@ export default function Live2DCat({
   // Apollo GraphQL hooks
   const [uploadKnowledge] = useMutation(UPLOAD_KNOWLEDGE)
   const [chatWithChief] = useMutation(CHAT_WITH_CHIEF)
-  const { data: chiefData } = useQuery(GET_CHIEF_ASSISTANT)
+  // REMOVED: chiefAssistant query (migrated to Island-based architecture)
+  // const { data: chiefData } = useQuery(GET_CHIEF_ASSISTANT)
 
   // Sound system
   const { play, playRandomMeow, playTypingSequence, enabled: soundEnabled, toggleSound } = useSound()
@@ -387,6 +388,11 @@ export default function Live2DCat({
           addMessage(assistantMessage)
         }
       } else {
+        // REMOVED: General chat with Chief Assistant (migrated to Island-based architecture)
+        // This feature has been replaced by Island-specific chat functionality
+        throw new Error('一般聊天功能已遷移至島嶼系統，請使用島嶼頁面的聊天功能')
+
+        /* LEGACY CODE - REMOVED
         const chiefId = chiefData?.chiefAssistant?.id
 
         if (!chiefId) {
@@ -420,6 +426,7 @@ export default function Live2DCat({
 
           addMessage(assistantMessage)
         }
+        END LEGACY CODE */
       }
     } catch (error) {
       console.error('處理失敗:', error)

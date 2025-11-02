@@ -17,6 +17,7 @@ import { hijikiRagResolvers } from './hijikiRagResolvers'
 import { categoryResolvers } from './categoryResolvers'
 import { taskHistoryResolvers } from './taskHistoryResolvers'
 import { islandResolvers } from './islandResolvers'
+import { adminResolvers } from './adminResolvers'
 
 export const resolvers = {
   ...scalarResolvers,
@@ -37,6 +38,8 @@ export const resolvers = {
     ...categoryResolvers.Query,
     // Task History System (任務歷史記錄)
     ...taskHistoryResolvers.Query,
+    // Admin System (管理員系統)
+    ...adminResolvers.Query,
   },
 
   Mutation: {

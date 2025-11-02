@@ -3,7 +3,7 @@ import { useQuery, useMutation } from '@apollo/client'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { GET_MEMORIES, PIN_MEMORY, UNPIN_MEMORY, DELETE_MEMORY, CREATE_MEMORY_DIRECT } from '../../graphql/memory'
 import { GET_ISLANDS, Island } from '../../graphql/category'
-import { Memory, MemoryCategory } from '../../types/memory'
+import { Memory } from '../../types/memory'
 import SimpleMemoryEditor from '../../components/SimpleMemoryEditor'
 import MemoryEditor from '../../components/MemoryEditor'
 import Toast from '../../components/Toast'
@@ -19,24 +19,10 @@ import { CSS } from '@dnd-kit/utilities'
 
 type SortField = 'createdAt' | 'title' | 'custom'
 
-// 岛屿名称到 Category 的映射（基于常见的岛屿命名）
-function getIslandCategory(islandName: string): MemoryCategory | null {
-  const name = islandName.toLowerCase()
-  if (name.includes('学习') || name.includes('學習')) return 'LEARNING'
-  if (name.includes('灵感') || name.includes('靈感') || name.includes('创意') || name.includes('創意')) return 'INSPIRATION'
-  if (name.includes('工作') || name.includes('职业') || name.includes('職業')) return 'WORK'
-  if (name.includes('社交') || name.includes('人际') || name.includes('人際') || name.includes('关系') || name.includes('關係')) return 'SOCIAL'
-  if (name.includes('生活') || name.includes('日常')) return 'LIFE'
-  if (name.includes('目标') || name.includes('目標') || name.includes('规划') || name.includes('規劃')) return 'GOALS'
-  if (name.includes('资源') || name.includes('資源') || name.includes('收藏')) return 'RESOURCES'
-  return null
-}
-
 export default function CuteDatabaseView() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const [selectedCategory, setSelectedCategory] = useState<MemoryCategory | null>(null)
-  const [selectedIslandId, setSelectedIslandId] = useState<string | null>(null) // 新增：选中的岛屿 ID
+  const [selectedIslandId, setSelectedIslandId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const debouncedSearch = useDebounce(searchQuery, 300)
   const [sortField, setSortField] = useState<SortField>('createdAt')
@@ -178,30 +164,9 @@ export default function CuteDatabaseView() {
   const filteredMemories = useMemo(() => {
     let filtered = memoriesData?.memories || []
 
-    // 島嶼過濾（優先於傳統分類）
+    // 島嶼過濾
     if (selectedIslandId) {
-      // 使用 islandId 精確過濾記憶
-      filtered = filtered.filter((m: Memory) => {
-        // 優先使用 islandId 匹配
-        if (m.islandId) {
-          return m.islandId === selectedIslandId
-        }
-
-        // 舊邏輯：使用 category 匹配（向後兼容沒有 islandId 的舊記憶）
-        const selectedIsland = islands.find(i => i.id === selectedIslandId)
-        if (selectedIsland) {
-          const category = getIslandCategory(selectedIsland.nameChinese)
-          if (category) {
-            return m.category === category
-          }
-        }
-
-        return false
-      })
-    }
-    // 大類別（傳統分類）過濾
-    else if (selectedCategory) {
-      filtered = filtered.filter((m: Memory) => m.category === selectedCategory)
+      filtered = filtered.filter((m: Memory) => m.islandId === selectedIslandId)
     }
 
     // 搜尋過濾
@@ -243,7 +208,7 @@ export default function CuteDatabaseView() {
     })
 
     return filtered
-  }, [memoriesData?.memories, selectedCategory, selectedIslandId, islands, debouncedSearch, sortField, customOrder])
+  }, [memoriesData?.memories, selectedIslandId, debouncedSearch, sortField, customOrder])
 
   const handleTogglePin = async (memory: Memory, e?: React.MouseEvent) => {
     e?.stopPropagation()
@@ -459,11 +424,10 @@ export default function CuteDatabaseView() {
             {/* 全部按鈕 */}
             <button
               onClick={() => {
-                setSelectedCategory(null)
                 setSelectedIslandId(null)
               }}
               className="w-full text-left px-3 py-2.5 rounded-2xl text-sm font-bold transition-all hover:scale-[1.02]"
-              style={!selectedCategory && !selectedIslandId ? {
+              style={!selectedIslandId ? {
                 background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.3) 0%, rgba(251, 146, 60, 0.3) 100%)',
                 color: '#fef3c7',
                 border: '2px solid rgba(251, 191, 36, 0.4)',
@@ -498,16 +462,10 @@ export default function CuteDatabaseView() {
               </div>
             ) : (
               islands.map((island) => {
-                // 計算該島嶼的記憶數量（使用 islandId 精確匹配）
-                const count = (memoriesData?.memories || []).filter((m: Memory) => {
-                  // 優先使用 islandId 匹配
-                  if (m.islandId) {
-                    return m.islandId === island.id
-                  }
-                  // 向後兼容：使用 category 匹配舊記憶
-                  const category = getIslandCategory(island.nameChinese)
-                  return category ? m.category === category : false
-                }).length
+                // 計算該島嶼的記憶數量
+                const count = (memoriesData?.memories || []).filter((m: Memory) =>
+                  m.islandId === island.id
+                ).length
                 const isSelected = selectedIslandId === island.id
 
                 return (
@@ -515,7 +473,6 @@ export default function CuteDatabaseView() {
                     key={island.id}
                     onClick={() => {
                       setSelectedIslandId(island.id)
-                      setSelectedCategory(null)
                     }}
                     className="w-full text-left px-3 py-2.5 rounded-2xl text-sm font-bold transition-all hover:scale-[1.02]"
                     style={isSelected ? {

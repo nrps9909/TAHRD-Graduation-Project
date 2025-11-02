@@ -4,8 +4,8 @@
  */
 
 import { useState, useRef, useEffect } from 'react'
-import { useQuery } from '@apollo/client'
-import { GET_CHIEF_ASSISTANT } from '../graphql/knowledge'
+// REMOVED: import { useQuery } from '@apollo/client'
+// REMOVED: import { GET_CHIEF_ASSISTANT } from '../graphql/knowledge'
 import { useSound } from '../hooks/useSound'
 import { useSSEChat } from '../hooks/useSSEChat'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -48,7 +48,7 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
 
   const { uploadKnowledge: uploadKnowledgeSSE } = useSSEChat()
-  useQuery(GET_CHIEF_ASSISTANT) // Load chief assistant data
+  // REMOVED: useQuery(GET_CHIEF_ASSISTANT) - migrated to Island-based architecture
   const { play, playRandomMeow } = useSound()
   const { token } = useAuthStore()
 

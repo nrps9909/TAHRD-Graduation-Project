@@ -1,19 +1,9 @@
-export type MemoryCategory =
-  | 'LEARNING'
-  | 'INSPIRATION'
-  | 'WORK'
-  | 'SOCIAL'
-  | 'LIFE'
-  | 'GOALS'
-  | 'RESOURCES'
-
 export interface Memory {
   id: string
   rawContent: string
   summary?: string  // Chief 的簡要摘要
   title: string
   emoji: string
-  category: MemoryCategory  // 類別
   tags: string[]  // Hashtags
   keyPoints?: string[]  // 重點分析
   aiSentiment?: string
@@ -56,7 +46,6 @@ export interface RelatedMemoryPreview {
   id: string
   title: string
   emoji: string
-  category: MemoryCategory
   summary?: string
 }
 
@@ -86,7 +75,6 @@ export interface ChatMessage {
 }
 
 export interface MemoryFilterInput {
-  category?: MemoryCategory
   tags?: string[]
   islandId?: string
   isPinned?: boolean
@@ -106,7 +94,6 @@ export interface UpdateMemoryInput {
   summary?: string
   title?: string
   emoji?: string
-  category?: MemoryCategory  // 主分類
   tags?: string[]
   keyPoints?: string[]
   fileUrls?: string[]  // 多模態內容

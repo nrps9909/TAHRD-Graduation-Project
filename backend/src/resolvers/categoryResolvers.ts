@@ -4,7 +4,6 @@
  * 處理島嶼和小類別的 GraphQL 操作
  */
 
-import { categoryService } from '../services/categoryService'
 import { islandService } from '../services/islandService'
 import { categoryInitService } from '../services/categoryInitService'
 import { promptGeneratorService } from '../services/promptGeneratorService'

@@ -1,4 +1,4 @@
-import { PrismaClient, CategoryType, ChatContextType, ContentType } from '@prisma/client'
+import { PrismaClient, ChatContextType, ContentType } from '@prisma/client'
 import { logger } from '../utils/logger'
 import axios from 'axios'
 import { callGeminiAPI, callGeminiAPIStream } from '../utils/geminiAPI'
@@ -11,15 +11,14 @@ import { taskQueueService, TaskPriority } from './taskQueueService'
 import { dynamicSubAgentService } from './dynamicSubAgentService'
 import { vectorService } from './vectorService'
 import { categoryInitService } from './categoryInitService'
-import { categoryService } from './categoryService'
 
 const prisma = new PrismaClient()
 
 export interface ClassificationResult {
-  suggestedCategory: CategoryType
+  suggestedIslandId: string  // 改為直接返回 Island ID
   confidence: number
   reason: string
-  alternativeCategories: CategoryType[]
+  alternativeIslandIds: string[]  // 其他可能的島嶼
 }
 
 export interface ProcessingResult {
@@ -57,14 +56,15 @@ export interface KnowledgeAnalysis {
   summary: string
   identifiedTopics: string[]
   suggestedTags: string[]
-  relevantAssistants: CategoryType[]
+  relevantIslandIds: string[]  // 改為島嶼 ID
   confidence: number
 }
 
 // 優化：分類結果緩存接口
 interface ClassificationCache {
   result: {
-    category: CategoryType
+    islandId: string
+    islandName: string
     confidence: number
     reasoning: string
     warmResponse: string
@@ -199,52 +199,81 @@ export class ChiefAgentService {
   }
 
   /**
-   * 智能分類內容
+   * 智能分類內容到島嶼
    */
-  async classifyContent(content: string): Promise<ClassificationResult> {
+  async classifyContentToIsland(userId: string, content: string): Promise<ClassificationResult> {
     try {
+      // 獲取用戶的所有島嶼
+      const userIslands = await dynamicSubAgentService.getUserIslands(userId)
+
+      if (userIslands.length === 0) {
+        throw new Error('用戶沒有任何島嶼，無法進行分類')
+      }
+
+      // 構建島嶼列表供 AI 參考
+      const islandDescriptions = userIslands.map((island, idx) =>
+        `${idx + 1}. ${island.nameChinese} (${island.emoji}): ${island.description || ''}`
+      ).join('\n')
+
       const prompt = `你是 Heart Whisper Town 的智能分類助手。
 
-分析以下內容並判斷最適合的分類：
+分析以下內容並判斷最適合的島嶼：
 
 "${content}"
 
+可用的島嶼：
+${islandDescriptions}
+
 請以 JSON 格式回覆（只回覆 JSON，不要其他文字）：
 {
-  "suggestedCategory": "LEARNING|INSPIRATION|WORK|SOCIAL|LIFE|GOALS|RESOURCES|MISC",
+  "suggestedIslandId": "島嶼ID",
   "confidence": 0.0-1.0,
-  "reason": "為什麼選擇這個分類？（簡短說明）",
-  "alternativeCategories": ["其他可能的分類1", "其他可能的分類2"]
+  "reason": "為什麼選擇這個島嶼？（簡短說明）",
+  "alternativeIslandIds": ["其他可能的島嶼ID1", "其他可能的島嶼ID2"]
 }
 
-分類說明：
-- LEARNING: 學習、知識、技能、課程
-- INSPIRATION: 靈感、創意、想法、設計
-- WORK: 工作、任務、專案、職涯
-- SOCIAL: 朋友、人際、八卦、社交
-- LIFE: 日常生活、心情、經驗、反思
-- GOALS: 目標、夢想、計劃、里程碑
-- RESOURCES: 文章、連結、影片、參考資料
-- MISC: 雜項、不屬於其他類別的知識、待整理的內容`
+請根據島嶼的名稱、描述和關鍵字來判斷最合適的分類。`
 
       const response = await callGeminiAPI(prompt)
       const result = this.parseJSON(response)
 
+      // 驗證返回的 islandId 是否有效
+      const suggestedIsland = userIslands.find(i => i.id === result.suggestedIslandId)
+      if (!suggestedIsland) {
+        logger.warn(`AI 返回的島嶼 ID 無效: ${result.suggestedIslandId}，使用第一個島嶼`)
+        return {
+          suggestedIslandId: userIslands[0].id,
+          confidence: 0.5,
+          reason: 'AI 返回無效島嶼，使用預設島嶼',
+          alternativeIslandIds: []
+        }
+      }
+
       return {
-        suggestedCategory: result.suggestedCategory as CategoryType,
+        suggestedIslandId: result.suggestedIslandId,
         confidence: result.confidence || 0.8,
         reason: result.reason || '基於內容分析',
-        alternativeCategories: result.alternativeCategories || []
+        alternativeIslandIds: result.alternativeIslandIds || []
       }
     } catch (error) {
       logger.error('Classification error:', error)
 
-      // 降級處理：使用 LIFE 作為預設類別
-      return {
-        suggestedCategory: CategoryType.LIFE,
-        confidence: 0.5,
-        reason: '使用預設分類（AI 服務暫時無法使用）',
-        alternativeCategories: []
+      // 降級處理：獲取用戶的第一個島嶼作為預設
+      try {
+        const userIslands = await dynamicSubAgentService.getUserIslands(userId)
+        if (userIslands.length === 0) {
+          throw new Error('用戶沒有任何島嶼')
+        }
+
+        return {
+          suggestedIslandId: userIslands[0].id,
+          confidence: 0.5,
+          reason: '使用預設島嶼（AI 服務暫時無法使用）',
+          alternativeIslandIds: []
+        }
+      } catch (fallbackError) {
+        logger.error('降級分類也失敗:', fallbackError)
+        throw new Error('無法進行內容分類')
       }
     }
   }
@@ -258,7 +287,7 @@ export class ChiefAgentService {
     userId: string,
     assistantId: string,
     content: string,
-    category: CategoryType,
+    category: string,  // Changed from CategoryType (no longer exists)
     contextType: ChatContextType = ChatContextType.MEMORY_CREATION
   ) {
     throw new Error('This function is deprecated. Please use the streaming knowledge distribution API instead.')
@@ -445,23 +474,14 @@ ${contextInfo}
         }
       }
 
-      // 統計分析
-      const categoryCount: Record<string, number> = {}
+      // 統計分析 (removed category, now using island-based)
       const tagCount: Record<string, number> = {}
 
       memories.forEach(m => {
-        categoryCount[m.category] = (categoryCount[m.category] || 0) + 1
         m.tags.forEach(tag => {
           tagCount[tag] = (tagCount[tag] || 0) + 1
         })
       })
-
-      const totalCount = memories.length
-      const categoryBreakdown = Object.entries(categoryCount).map(([category, count]) => ({
-        category: category as CategoryType,
-        count,
-        percentage: (count / totalCount) * 100
-      }))
 
       const topTags = Object.entries(tagCount)
         .sort((a, b) => b[1] - a[1])
@@ -471,7 +491,7 @@ ${contextInfo}
       // 準備給 Chief 的資料
       const memorySummaries = memories
         .slice(0, 50) // 最多 50 條
-        .map(m => `[${m.category}] ${m.title || m.summary || m.rawContent.substring(0, 50)}`)
+        .map(m => `${m.title || m.summary || m.rawContent.substring(0, 50)}`)
         .join('\n')
 
       const prompt = `${this.CHIEF_SYSTEM_PROMPT}
@@ -480,9 +500,6 @@ ${contextInfo}
 
 記錄摘要（共 ${memories.length} 條）：
 ${memorySummaries}
-
-分類統計：
-${categoryBreakdown.map(c => `- ${c.category}: ${c.count} 條 (${c.percentage.toFixed(1)}%)`).join('\n')}
 
 熱門標籤：
 ${topTags.map(t => `- ${t.tag}: ${t.count} 次`).join('\n')}
@@ -515,7 +532,6 @@ ${topTags.map(t => `- ${t.tag}: ${t.count} 次`).join('\n')}
           endDate: new Date(),
           totalMemories: memories.length,
           totalChats: memories.reduce((sum, m) => sum + (m.chatMessages?.length || 0), 0),
-          categoryBreakdown,
           topTags,
           aiSummary: result.summary || '分析完成'
         },
@@ -753,7 +769,8 @@ ${contextInfo}
     userId: string,
     input: UploadKnowledgeInput
   ): Promise<{
-    category: CategoryType
+    islandId: string      // 島嶼 ID
+    islandName: string    // 島嶼名稱
     confidence: number
     reasoning: string     // 分類理由（用於調試和追蹤）
     warmResponse: string  // 白噗噗的溫暖回應
@@ -762,7 +779,6 @@ ${contextInfo}
     recordReason?: string // 保留字段以保持向下兼容
     enrichedContent?: string // 豐富化的內容（包含連結元數據）
     linkMetadata?: Array<{ url: string, title: string, description: string }> // 連結元數據
-    aiSelectedIslandName?: string // AI 選擇的島嶼名稱（用於自訂島嶼）
   }> {
     try {
       // 優化：檢查緩存（相同內容直接返回）
@@ -876,25 +892,22 @@ ${contextInfo}
 
       this.geminiModel = oldModel // 恢復原模型
 
-      // 處理分類結果（動態分類 vs 預設分類）
-      let finalCategory: CategoryType
-      let finalReasoning: string
+      // 處理分類結果：AI 返回島嶼的中文名稱，需要找到對應的 islandId
+      const aiSelectedIslandName = result.category
+      let selectedIsland = userIslands.find(island => island.nameChinese === aiSelectedIslandName)
 
-      if (hasCustomCategories) {
-        // 動態分類：AI 返回自訂類別的中文名稱
-        // 使用 MISC 作為佔位符（實際分類由 findRelevantSubAgents 完成）
-        finalCategory = CategoryType.MISC
-        finalReasoning = `自訂分類: ${result.category} - ${result.reasoning || '關鍵字匹配'}`
-        logger.info(`[白噗噗] 動態分類結果: ${result.category} (${finalReasoning})`)
-      } else {
-        // 預設分類：AI 返回 CategoryType
-        finalCategory = result.category as CategoryType || CategoryType.LIFE
-        finalReasoning = result.reasoning || '自動分類'
-        logger.info(`[白噗噗] 預設分類結果: ${finalCategory} (置信度: ${result.confidence || 0.8}, 理由: ${finalReasoning})`)
+      // 如果 AI 沒找到匹配的島嶼，使用第一個島嶼作為預設
+      if (!selectedIsland) {
+        logger.warn(`[白噗噗] AI 選擇的島嶼 "${aiSelectedIslandName}" 不存在，使用第一個島嶼`)
+        selectedIsland = userIslands[0]
       }
 
+      const finalReasoning = result.reasoning || `分類到 ${selectedIsland.nameChinese}`
+      logger.info(`[白噗噗] 分類結果: ${selectedIsland.nameChinese} (${selectedIsland.id}) - 置信度: ${result.confidence || 0.8}`)
+
       const classificationResult = {
-        category: finalCategory,
+        islandId: selectedIsland.id,
+        islandName: selectedIsland.nameChinese,
         confidence: result.confidence || 0.8,
         reasoning: finalReasoning,
         warmResponse: result.warmResponse || '收到了',
@@ -903,7 +916,6 @@ ${contextInfo}
         recordReason: undefined, // 不再需要記錄原因
         enrichedContent: undefined, // 優化：不再同步豐富化內容
         linkMetadata: undefined, // 優化：連結元數據由 SubAgent 提取
-        aiSelectedIslandName: hasCustomCategories ? result.category : undefined // 新增：AI 選擇的島嶼名稱
       }
 
       // 優化：保存到緩存
@@ -918,15 +930,27 @@ ${contextInfo}
     } catch (error) {
       logger.error('[白噗噗] 快速分類失敗:', error)
 
-      // 降級方案：使用 LIFE 作為預設類別
-      return {
-        category: CategoryType.LIFE,
-        confidence: 0.5,
-        reasoning: '使用預設分類（AI 暫時無法使用）',
-        warmResponse: '收到了，我幫你記下來',
-        quickSummary: input.content.substring(0, 30),
-        shouldRecord: true, // ⚠️ 固定為 true，所有對話都記錄到資料庫
-        recordReason: undefined
+      // 降級方案：獲取用戶的第一個島嶼作為預設
+      try {
+        const userIslands = await dynamicSubAgentService.getUserIslands(userId)
+        if (userIslands.length === 0) {
+          throw new Error('用戶沒有任何島嶼')
+        }
+
+        const defaultIsland = userIslands[0]
+        return {
+          islandId: defaultIsland.id,
+          islandName: defaultIsland.nameChinese,
+          confidence: 0.5,
+          reasoning: '使用預設島嶼（AI 暫時無法使用）',
+          warmResponse: '收到了，我幫你記下來',
+          quickSummary: input.content.substring(0, 30),
+          shouldRecord: true, // ⚠️ 固定為 true，所有對話都記錄到資料庫
+          recordReason: undefined
+        }
+      } catch (fallbackError) {
+        logger.error('[白噗噗] 降級分類也失敗:', fallbackError)
+        throw new Error('無法進行快速分類')
       }
     }
   }
@@ -1083,9 +1107,7 @@ ${input.content}
         summary: parsed.summary || input.content.substring(0, 30),
         identifiedTopics: Array.isArray(parsed.identifiedTopics) ? parsed.identifiedTopics : [],
         suggestedTags: Array.isArray(parsed.suggestedTags) ? parsed.suggestedTags : [],
-        relevantAssistants: Array.isArray(parsed.relevantAssistants)
-          ? parsed.relevantAssistants.filter((a: string) => this.isValidCategoryType(a))
-          : [CategoryType.LEARNING],
+        relevantIslandIds: Array.isArray(parsed.relevantIslandIds) ? parsed.relevantIslandIds : [],
         confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0.8,
       }
     } catch (error) {
@@ -1116,7 +1138,7 @@ ${input.content}
 
       // === 階段 1: 白噗噗快速分類（Gemini 2.5 Flash）===
       const quickResult = await this.quickClassifyForTororo(userId, input)
-      logger.info(`[白噗噗] 快速分類完成: ${quickResult.category} (${quickResult.confidence})`)
+      logger.info(`[白噗噗] 快速分類完成: ${quickResult.islandName} (${quickResult.confidence})`)
 
       // ⚠️ 所有對話都會被記錄到資料庫，不再跳過任何內容
 
@@ -1150,9 +1172,9 @@ ${input.content}
         // 優先使用 AI 選擇的島嶼名稱（作為參考）
         let primaryIsland = null
 
-        if (quickResult.aiSelectedIslandName) {
+        if (quickResult.islandName) {
           primaryIsland = allUserIslands.find(
-            island => island.nameChinese === quickResult.aiSelectedIslandName
+            island => island.nameChinese === quickResult.islandName
           )
 
           if (primaryIsland) {
@@ -1210,7 +1232,7 @@ ${input.content}
           },
           tororoResponse: {
             warmMessage: `${quickResult.warmResponse}\n我會幫你找到最適合的島嶼來儲存喔！`,
-            category: quickResult.category,
+            islandName: quickResult.islandName,
             quickSummary: quickResult.quickSummary,
             confidence: quickResult.confidence,
             reasoning: quickResult.reasoning,
@@ -1431,7 +1453,6 @@ ${input.content}
           rawContent: input.content,
           summary: deepAnalysis.detailedSummary || immediateResponse.quickSummary,
           tags: deepAnalysis.suggestedTags || [],
-          category: immediateResponse.suggestedCategory, // MIGRATION: Use category from classification
           importanceScore: deepAnalysis.importanceScore || 5,
           aiSentiment: deepAnalysis.sentiment || 'neutral',
           contentType,
@@ -1479,40 +1500,40 @@ ${input.content}
 
   /**
    * 降級方案：基於關鍵字的簡單分類
+   * 注意：此方法僅在 AI 服務完全失敗時使用，返回空的 islandIds
    */
   private fallbackAnalysis(input: UploadKnowledgeInput): KnowledgeAnalysis {
     const content = input.content.toLowerCase()
-    const relevantAssistants: CategoryType[] = []
+    const topics: string[] = []
 
-    // 簡單的關鍵字匹配
+    // 簡單的關鍵字匹配（用於生成 topics）
     const keywords = {
-      LEARNING: ['學習', '筆記', '課程', '教程', '知識', '研究'],
-      WORK: ['工作', '專案', '任務', '會議', '報告', '客戶'],
-      INSPIRATION: ['靈感', '創意', '想法', '點子', '設計'],
-      SOCIAL: ['朋友', '社交', '人際', '關係', '聚會'],
-      LIFE: ['生活', '日常', '心情', '感受', '記錄'],
-      GOALS: ['目標', '計劃', '規劃', '願望', '夢想'],
-      RESOURCES: ['資源', '工具', '連結', '收藏', '參考'],
-      MISC: ['雜項', '其他', '待整理', '未分類', '隨記'],
+      '學習成長': ['學習', '筆記', '課程', '教程', '知識', '研究'],
+      '工作專業': ['工作', '專案', '任務', '會議', '報告', '客戶'],
+      '靈感創意': ['靈感', '創意', '想法', '點子', '設計'],
+      '社交互動': ['朋友', '社交', '人際', '關係', '聚會'],
+      '日常生活': ['生活', '日常', '心情', '感受', '記錄'],
+      '目標規劃': ['目標', '計劃', '規劃', '願望', '夢想'],
+      '資源收藏': ['資源', '工具', '連結', '收藏', '參考'],
     }
 
-    for (const [type, words] of Object.entries(keywords)) {
+    for (const [topic, words] of Object.entries(keywords)) {
       if (words.some(word => content.includes(word))) {
-        relevantAssistants.push(type as CategoryType)
+        topics.push(topic)
       }
     }
 
-    // 如果沒有匹配，預設使用 LEARNING
-    if (relevantAssistants.length === 0) {
-      relevantAssistants.push(CategoryType.LEARNING)
+    // 如果沒有匹配，使用通用主題
+    if (topics.length === 0) {
+      topics.push('一般知識')
     }
 
     return {
-      analysis: `這是關於 ${relevantAssistants.join('、')} 的內容。`,
+      analysis: `這是關於 ${topics.join('、')} 的內容。`,
       summary: input.content.substring(0, 30),
-      identifiedTopics: ['一般知識'],
+      identifiedTopics: topics,
       suggestedTags: ['待分類'],
-      relevantAssistants,
+      relevantIslandIds: [], // 降級方案無法確定島嶼，返回空陣列
       confidence: 0.3,
     }
   }
@@ -1543,30 +1564,6 @@ ${input.content}
     if (hasText) return ContentType.TEXT
 
     return ContentType.TEXT
-  }
-
-  /**
-   * 獲取 Island IDs by CategoryTypes
-   * MIGRATION: Converted from getAssistantIds to getIslandIds
-   */
-  private async getIslandIds(userId: string, types: CategoryType[]): Promise<string[]> {
-    const islands: string[] = []
-
-    for (const type of types) {
-      const island = await islandService.getIslandByType(userId, type)
-      if (island) {
-        islands.push(island.id)
-      }
-    }
-
-    return islands
-  }
-
-  /**
-   * 驗證 CategoryType 是否有效
-   */
-  private isValidCategoryType(type: string): boolean {
-    return Object.values(CategoryType).includes(type as CategoryType)
   }
 
   /**

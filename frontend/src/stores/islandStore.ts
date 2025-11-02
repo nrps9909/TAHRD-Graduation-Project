@@ -107,31 +107,46 @@ export const useIslandStore = create<IslandStore>((set, get) => ({
         id: `${islandId}-1`,
         title: '示例記憶 1',
         emoji: '⚛️',
-        category: 'learning',
         importance: 8,
         position: [5, 3.2, 8],
         createdAt: new Date(),
-        tags: ['示例']
+        tags: ['示例'],
+        island: {
+          name: '學習島',
+          color: '#4A90E2',
+          secondaryColor: '#7AB8FF',
+          shape: 'book'
+        }
       },
       {
         id: `${islandId}-2`,
         title: '示例記憶 2',
         emoji: '💡',
-        category: 'inspiration',
         importance: 9,
         position: [-5, 3.4, 8],
         createdAt: new Date(),
-        tags: ['創意']
+        tags: ['創意'],
+        island: {
+          name: '靈感島',
+          color: '#F5A623',
+          secondaryColor: '#FFD166',
+          shape: 'bulb'
+        }
       },
       {
         id: `${islandId}-3`,
         title: '示例記憶 3',
         emoji: '💼',
-        category: 'work',
         importance: 9,
         position: [9, 2.8, 1],
         createdAt: new Date(),
-        tags: ['工作']
+        tags: ['工作'],
+        island: {
+          name: '工作島',
+          color: '#7B68EE',
+          secondaryColor: '#A896FF',
+          shape: 'gear'
+        }
       }
     ]
 

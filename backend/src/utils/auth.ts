@@ -4,8 +4,10 @@
 
 import jwt from 'jsonwebtoken'
 import { getConfig } from './config'
+import { PrismaClient, UserRole } from '@prisma/client'
 
 const config = getConfig()
+const prisma = new PrismaClient()
 
 export interface TokenPayload {
   userId: string
@@ -33,4 +35,29 @@ export function generateToken(payload: { userId: string; email?: string }): stri
   return jwt.sign(payload, config.jwtSecret, {
     expiresIn: '7d'
   })
+}
+
+/**
+ * Check if user is admin
+ */
+export async function isAdmin(userId: string): Promise<boolean> {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true }
+    })
+    return user?.role === UserRole.ADMIN
+  } catch (error) {
+    return false
+  }
+}
+
+/**
+ * Require admin role (middleware helper)
+ */
+export async function requireAdmin(userId: string): Promise<void> {
+  const admin = await isAdmin(userId)
+  if (!admin) {
+    throw new Error('Permission denied: Admin role required')
+  }
 }

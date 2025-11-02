@@ -1,7 +1,7 @@
 import { gql } from '@apollo/client'
 
 // Re-export types for convenience
-export type { Memory, MemoryCategory, RelatedMemoryPreview, ChatMessage, CreateMemoryInput, UpdateMemoryInput } from '../types/memory'
+export type { Memory, RelatedMemoryPreview, ChatMessage, CreateMemoryInput, UpdateMemoryInput } from '../types/memory'
 
 // ============ Fragments ============
 
@@ -12,7 +12,6 @@ export const MEMORY_FRAGMENT = gql`
     summary
     title
     emoji
-    category
     tags
     keyPoints
     aiSentiment
@@ -72,7 +71,6 @@ export const GET_MEMORY = gql`
         id
         title
         emoji
-        category
         summary
       }
       chatMessages {

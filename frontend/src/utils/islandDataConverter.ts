@@ -1,11 +1,11 @@
 /**
  * 將 GraphQL 的 Island 和 Memory 數據轉換為 3D 場景所需的格式
- * 新架構：Island 從資料庫載入，Memory 通過 category 對應到 Island
+ * 新架構：Island 從資料庫載入，Memory 直接使用 islandId 關聯
  */
 
 import { Island as GraphQLIsland } from '../graphql/category'
 import { Memory as GraphQLMemory } from '../types/memory'
-import { Island, Memory as IslandMemory, IslandCategory } from '../types/island'
+import { Island, Memory as IslandMemory } from '../types/island'
 
 /**
  * 將 GraphQL Memory 轉換為 Island Memory 格式（用於 3D 場景）
@@ -15,7 +15,6 @@ export function convertGraphQLMemoryToIslandMemory(graphQLMemory: GraphQLMemory)
     id: graphQLMemory.id,
     title: graphQLMemory.title || graphQLMemory.summary || '無標題記憶',
     importance: 5, // 固定為 5，已廢棄此欄位
-    category: graphQLMemory.category as IslandCategory,
     content: graphQLMemory.summary || graphQLMemory.rawContent,
     tags: graphQLMemory.tags || [],
     createdAt: new Date(graphQLMemory.createdAt),
@@ -33,17 +32,9 @@ export function convertGraphQLIslandToIsland(
   allMemories: GraphQLMemory[]
 ): Island {
   // 根據島嶼 ID 過濾屬於該島嶼的記憶
-  // 優先使用 islandId，如果沒有則退回到舊的 category 匹配邏輯（向後兼容）
-  const filteredMemories = allMemories.filter(memory => {
-    // 新邏輯：使用 islandId 精確匹配
-    if (memory.islandId) {
-      return memory.islandId === graphQLIsland.id
-    }
-
-    // 舊邏輯：使用 category 匹配（向後兼容沒有 islandId 的舊記憶）
-    const islandType = graphQLIsland.name?.replace('_ISLAND', '')
-    return memory.category === islandType
-  })
+  const filteredMemories = allMemories.filter(memory =>
+    memory.islandId === graphQLIsland.id
+  )
 
   const islandMemories = filteredMemories.map(convertGraphQLMemoryToIslandMemory)
 

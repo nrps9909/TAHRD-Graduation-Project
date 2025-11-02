@@ -1,3 +1,13 @@
+/**
+ * @deprecated This file is deprecated and will be removed in a future version.
+ * The system has migrated from CategoryType to Island-based organization.
+ * Please use Island types from types/island.ts instead.
+ *
+ * 此文件已棄用，將在未來版本中移除。
+ * 系統已從 CategoryType 遷移到基於 Island 的組織方式。
+ * 請改用 types/island.ts 中的 Island 類型。
+ */
+
 export type CategoryType =
   | 'LEARNING'
   | 'INSPIRATION'
@@ -8,6 +18,9 @@ export type CategoryType =
   | 'RESOURCES'
   | 'MISC'
 
+/**
+ * @deprecated Use Island configuration instead
+ */
 export const CATEGORY_INFO: Record<CategoryType, {
   name: string
   nameChinese: string

@@ -13,11 +13,21 @@ datasource db {
 
 // ============ Core Models ============
 
+enum UserRole {
+  USER
+  ADMIN
+
+  @@map("user_role")
+}
+
 model User {
   id           String   @id @default(auto()) @map("_id") @db.ObjectId
   username     String   @unique
   email        String   @unique
   passwordHash String   @map("password_hash")
+
+  // Role
+  role         UserRole @default(USER)
 
   // Profile
   displayName  String?  @map("display_name")
@@ -65,20 +75,7 @@ model UserSettings {
 }
 
 // ============ Category System ============
-// Note: CategoryType 用於記憶的細粒度分類（比 Island 更詳細）
-
-enum CategoryType {
-  LEARNING   // 學習筆記
-  INSPIRATION // 靈感創意
-  WORK       // 工作事務
-  SOCIAL     // 人際關係
-  LIFE       // 生活記錄
-  GOALS      // 目標規劃
-  RESOURCES  // 資源收藏
-  MISC       // 雜項（不屬於其他類別的知識）
-
-  @@map("category_type")
-}
+// CategoryType has been removed - using Island-based classification only
 
 // ============ Memory System ============
 
@@ -130,7 +127,6 @@ model Memory {
   progressChange   Int?     @map("progress_change") // [進度變化] +1/0/-1
 
   // Classification
-  category         CategoryType
   tags             String[] // 自動生成的標籤
 
   // Metadata
@@ -160,11 +156,9 @@ model Memory {
   distribution     KnowledgeDistribution? @relation(fields: [distributionId], references: [id])
 
   // 優化索引：按查詢頻率和組合查詢優化
-  @@index([userId, category])
   @@index([userId, createdAt(sort: Desc)])  // 時間倒序查詢
   @@index([userId, islandId])  // 按島嶼過濾記憶
   @@index([userId, islandId, createdAt(sort: Desc)])  // 特定島嶼的最新記憶
-  @@index([userId, category, createdAt(sort: Desc)])  // 特定分類的最新記憶
   @@index([tags])  // 標籤搜索
   @@index([distributionId])  // 分發關聯查詢
   @@index([userId, isPinned, createdAt(sort: Desc)])  // 置頂記憶優先
@@ -265,7 +259,6 @@ model Tag {
 
   // Metadata
   color            String?  // Optional color for tag cloud
-  category         CategoryType? // Which assistant this tag commonly belongs to
 
   // Timestamps
   createdAt        DateTime @default(now()) @map("created_at")
@@ -324,7 +317,6 @@ model AgentDecision {
   id               String   @id @default(auto()) @map("_id") @db.ObjectId
   distributionId   String   @map("distribution_id") @db.ObjectId
   targetIslandId   String?  @map("target_island_id") @db.ObjectId  // 目標島嶼 ID（Island-based）
-  targetCategory   CategoryType? @map("target_category")  // 目標分類
 
   // Decision
   relevanceScore   Float    @map("relevance_score") // 0-1
@@ -333,7 +325,6 @@ model AgentDecision {
   confidence       Float    // 0-1
 
   // Classification (if stored)
-  suggestedCategory CategoryType? @map("suggested_category")
   suggestedTags    String[] @map("suggested_tags")
   keyInsights      String[] @map("key_insights")
 

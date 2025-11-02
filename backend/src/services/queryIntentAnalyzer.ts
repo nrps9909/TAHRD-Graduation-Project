@@ -36,6 +36,9 @@ export interface QueryIntentParams {
   // 分類列表（用於 categorical 查詢）
   categories?: string[]
 
+  // 島嶼 ID 列表（用於 categorical 查詢）
+  islandIds?: string[]
+
   // 標籤列表（用於 categorical 查詢）
   tags?: string[]
 

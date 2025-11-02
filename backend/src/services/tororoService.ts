@@ -3,11 +3,10 @@
  * 負責創建和種植記憶花
  */
 
-import { PrismaClient, CategoryType } from '@prisma/client'
+import { PrismaClient } from '@prisma/client'
 import { logger } from '../utils/logger'
 import { chiefAgentService } from './chiefAgentService'
 import { islandService } from './islandService'
-import { categoryService } from './categoryService'
 import { TORORO_SYSTEM_PROMPT } from '../agents/tororo/systemPrompt'
 
 const prisma = new PrismaClient()
@@ -32,7 +31,8 @@ export interface TororoResponse {
     id: string
     title: string
     emoji: string
-    category: string
+    islandName: string  // 改為島嶼名稱
+    islandEmoji: string  // 新增島嶼 emoji
     importance: number
     summary: string
   }
@@ -210,7 +210,7 @@ class TororoService {
    * 生成記憶花資訊
    */
   private generateFlowerInfo(memory: any) {
-    const region = this.getRegionPosition(memory.category)
+    const region = this.getRegionPosition(memory.islandId)
 
     // 根據是否釘選計算大小
     const baseSize = 1.0
@@ -218,7 +218,7 @@ class TororoService {
 
     return {
       id: `flower_${memory.id}`,
-      type: this.getFlowerType(memory.category),
+      type: this.getFlowerType(memory.islandId),
       size: baseSize * sizeMultiplier,
       position: {
         x: region.x + (Math.random() - 0.5) * 10,
@@ -229,54 +229,21 @@ class TororoService {
   }
 
   /**
-   * 獲取區域位置
+   * 獲取區域位置（基於 Island ID）
    */
-  private getRegionPosition(category: CategoryType) {
-    const positions: Record<CategoryType, { x: number; y: number; z: number }> = {
-      LEARNING: { x: 0, y: 5, z: -20 },
-      INSPIRATION: { x: -15, y: 2, z: -10 },
-      GOALS: { x: 15, y: 6, z: -10 },
-      WORK: { x: 18, y: 0, z: 5 },
-      SOCIAL: { x: -18, y: 0, z: 5 },
-      LIFE: { x: 0, y: 1, z: 15 },
-      RESOURCES: { x: -10, y: 1, z: 12 },
-      MISC: { x: 10, y: 1, z: 12 }
-    }
-    return positions[category] || positions.LIFE
+  private getRegionPosition(islandId: string) {
+    // 默認位置映射（可以根據實際 Island 名稱調整）
+    const defaultPosition = { x: 0, y: 1, z: 15 }
+    // 未來可以從 Island 表查詢具體位置
+    return defaultPosition
   }
 
   /**
-   * 獲取花朵類型
+   * 獲取花朵類型（基於 Island ID）
    */
-  private getFlowerType(category: CategoryType): string {
-    const types: Record<CategoryType, string> = {
-      LEARNING: '櫻花',
-      INSPIRATION: '星光花',
-      GOALS: '火焰花',
-      WORK: '齒輪花',
-      SOCIAL: '熱帶花',
-      LIFE: '向日葵',
-      RESOURCES: '水晶花',
-      MISC: '雜草花'
-    }
-    return types[category] || '花朵'
-  }
-
-  /**
-   * 獲取分類名稱
-   */
-  private getCategoryName(category: CategoryType): string {
-    const names: Record<CategoryType, string> = {
-      LEARNING: '學習高地',
-      INSPIRATION: '靈感森林',
-      GOALS: '目標峰頂',
-      WORK: '工作碼頭',
-      SOCIAL: '社交海灘',
-      LIFE: '生活花園',
-      RESOURCES: '資源倉庫',
-      MISC: '雜物間'
-    }
-    return names[category] || '知識島'
+  private getFlowerType(islandId: string): string {
+    // 未來可以從 Island 表查詢具體花朵類型
+    return '花朵'
   }
 }
 

@@ -6,23 +6,11 @@
  * - Memory = 屬於某個 Island 的記憶
  */
 
-// 記憶類別（對應資料庫的 CategoryType/MemoryCategory）
-export type IslandCategory =
-  | 'LEARNING'
-  | 'INSPIRATION'
-  | 'WORK'
-  | 'SOCIAL'
-  | 'LIFE'
-  | 'GOALS'
-  | 'RESOURCES'
-  | 'MISC' // 雜項 - 不屬於其他類別的知識
-
 // 記憶數據結構
 export interface Memory {
   id: string
   title: string | null
   importance: number // @deprecated 已移除，固定為 5
-  category: IslandCategory // 傳統記憶類別（向後兼容）
   content?: string
   tags?: string[]
   createdAt: Date

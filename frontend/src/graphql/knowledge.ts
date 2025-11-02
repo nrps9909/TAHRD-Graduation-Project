@@ -21,9 +21,11 @@ export const UPLOAD_KNOWLEDGE = gql`
       }
       tororoResponse {
         warmMessage
-        category
+        islandName
+        islandEmoji
         quickSummary
         confidence
+        reasoning
       }
       agentDecisions {
         id
@@ -48,7 +50,6 @@ export const UPLOAD_KNOWLEDGE = gql`
         id
         title
         summary
-        category
         tags
         emoji
         createdAt
@@ -156,7 +157,6 @@ export const GET_KNOWLEDGE_DISTRIBUTIONS = gql`
       memories {
         id
         title
-        category
         tags
       }
     }
@@ -209,7 +209,6 @@ export const GET_KNOWLEDGE_DISTRIBUTION = gql`
         id
         title
         summary
-        category
         tags
         emoji
         createdAt

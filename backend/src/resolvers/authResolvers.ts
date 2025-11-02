@@ -71,6 +71,7 @@ export const authResolvers = {
             email: true,
             displayName: true,
             avatarUrl: true,
+            role: true,
             isActive: true,
             createdAt: true,
             updatedAt: true
@@ -166,6 +167,7 @@ export const authResolvers = {
             email: user.email,
             displayName: user.displayName,
             avatarUrl: user.avatarUrl,
+            role: user.role,
             isActive: user.isActive,
             createdAt: user.createdAt,
             updatedAt: user.updatedAt

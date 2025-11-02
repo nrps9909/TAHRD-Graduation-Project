@@ -15,7 +15,6 @@ export const GET_ALL_MEMORIES = gql`
       title
       summary
       rawContent
-      category
       tags
       emoji
       createdAt
@@ -30,22 +29,6 @@ export const GET_ALL_MEMORIES = gql`
 `
 
 /**
- * 獲取特定類別的記憶
- */
-export const GET_MEMORIES_BY_CATEGORY = gql`
-  query GetMemoriesByCategory($category: MemoryCategory!) {
-    memories(filter: { category: $category }) {
-      id
-      title
-      summary
-      category
-      tags
-      createdAt
-    }
-  }
-`
-
-/**
  * 獲取特定島嶼的所有記憶
  */
 export const GET_ISLAND_MEMORIES = gql`
@@ -53,7 +36,6 @@ export const GET_ISLAND_MEMORIES = gql`
     memories(filter: { islandId: $islandId }) {
       id
       title
-      category
       tags
       createdAt
     }

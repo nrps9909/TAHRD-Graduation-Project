@@ -13,11 +13,16 @@ export interface RegionalFlowerData {
   id: string
   title: string
   emoji: string
-  category: 'learning' | 'inspiration' | 'work' | 'social' | 'life' | 'goals' | 'resources'
   importance: number
   position: [number, number, number]
   createdAt: Date
   tags?: string[]
+  island?: {
+    name: string
+    color: string
+    secondaryColor?: string
+    shape?: string
+  }
 }
 
 interface RegionalFlowerProps {
@@ -26,57 +31,17 @@ interface RegionalFlowerProps {
   isActive?: boolean
 }
 
-// 区域配置
-const CATEGORY_CONFIG = {
-  learning: {
-    name: '學習筆記',
-    color: '#4A90E2',
-    secondaryColor: '#7AB8FF',
-    shape: 'book' // 书本形状
-  },
-  inspiration: {
-    name: '靈感創意',
-    color: '#F5A623',
-    secondaryColor: '#FFD166',
-    shape: 'bulb' // 灯泡形状
-  },
-  work: {
-    name: '工作事務',
-    color: '#7B68EE',
-    secondaryColor: '#A896FF',
-    shape: 'gear' // 齿轮形状
-  },
-  social: {
-    name: '人際關係',
-    color: '#FF6B9D',
-    secondaryColor: '#FFB3D9',
-    shape: 'heart' // 心形
-  },
-  life: {
-    name: '生活記錄',
-    color: '#50C878',
-    secondaryColor: '#7FD99F',
-    shape: 'sakura' // 樱花形状
-  },
-  goals: {
-    name: '目標規劃',
-    color: '#E74C3C',
-    secondaryColor: '#FF6B6B',
-    shape: 'arrow' // 箭头形状
-  },
-  resources: {
-    name: '資源收藏',
-    color: '#9B59B6',
-    secondaryColor: '#C598D8',
-    shape: 'chest' // 宝箱形状
-  }
-}
-
 export function RegionalFlower({ flower, onClick, isActive = false }: RegionalFlowerProps) {
   const groupRef = useRef<THREE.Group>(null)
   const [hovered, setHovered] = useState(false)
 
-  const config = CATEGORY_CONFIG[flower.category]
+  // 使用島嶼信息或默認值
+  const config = flower.island || {
+    name: '未分類',
+    color: '#999',
+    secondaryColor: '#bbb',
+    shape: 'sakura'
+  }
   const scale = 0.4 + (flower.importance / 10) * 0.5
 
   // 根据地形计算正确的 Y 坐标
@@ -116,14 +81,22 @@ export function RegionalFlower({ flower, onClick, isActive = false }: RegionalFl
         <meshStandardMaterial color="#50C878" />
       </mesh>
 
-      {/* 根据类别渲染不同形状的花朵 */}
-      {config.shape === 'book' && <BookFlower config={config} hovered={hovered} isActive={isActive} />}
-      {config.shape === 'bulb' && <BulbFlower config={config} hovered={hovered} isActive={isActive} />}
-      {config.shape === 'gear' && <GearFlower config={config} hovered={hovered} isActive={isActive} />}
-      {config.shape === 'heart' && <HeartFlower config={config} hovered={hovered} isActive={isActive} />}
-      {config.shape === 'sakura' && <SakuraFlower config={config} hovered={hovered} isActive={isActive} />}
-      {config.shape === 'arrow' && <ArrowFlower config={config} hovered={hovered} isActive={isActive} />}
-      {config.shape === 'chest' && <ChestFlower config={config} hovered={hovered} isActive={isActive} />}
+      {/* 根据形状渲染不同的花朵（默認使用櫻花） */}
+      {config.shape === 'book' ? (
+        <BookFlower config={config} hovered={hovered} isActive={isActive} />
+      ) : config.shape === 'bulb' ? (
+        <BulbFlower config={config} hovered={hovered} isActive={isActive} />
+      ) : config.shape === 'gear' ? (
+        <GearFlower config={config} hovered={hovered} isActive={isActive} />
+      ) : config.shape === 'heart' ? (
+        <HeartFlower config={config} hovered={hovered} isActive={isActive} />
+      ) : config.shape === 'arrow' ? (
+        <ArrowFlower config={config} hovered={hovered} isActive={isActive} />
+      ) : config.shape === 'chest' ? (
+        <ChestFlower config={config} hovered={hovered} isActive={isActive} />
+      ) : (
+        <SakuraFlower config={config} hovered={hovered} isActive={isActive} />
+      )}
 
       {/* Hover 信息 */}
       {hovered && (
@@ -143,7 +116,7 @@ export function RegionalFlower({ flower, onClick, isActive = false }: RegionalFl
               </span>
             </div>
             <div className="text-xs" style={{ color: config.color }}>
-              <div>📂 {config.name}</div>
+              <div>🏝️ {config.name}</div>
               <div>⭐ 重要度: {flower.importance}/10</div>
               {flower.tags && flower.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-2">
@@ -152,7 +125,7 @@ export function RegionalFlower({ flower, onClick, isActive = false }: RegionalFl
                       key={idx}
                       className="px-2 py-0.5 rounded-full text-xs"
                       style={{
-                        background: config.secondaryColor,
+                        background: config.secondaryColor || '#bbb',
                         color: 'white'
                       }}
                     >
@@ -180,7 +153,12 @@ export function RegionalFlower({ flower, onClick, isActive = false }: RegionalFl
 // ===== 各种花朵形状组件 =====
 
 interface FlowerProps {
-  config: typeof CATEGORY_CONFIG[keyof typeof CATEGORY_CONFIG]
+  config: {
+    name: string
+    color: string
+    secondaryColor?: string
+    shape?: string
+  }
   hovered: boolean
   isActive: boolean
 }
@@ -225,7 +203,7 @@ function BulbFlower({ config, hovered, isActive }: FlowerProps) {
       {/* 灯泡底座 */}
       <mesh position={[0, -0.1, 0]}>
         <cylinderGeometry args={[0.1, 0.12, 0.15, 8]} />
-        <meshStandardMaterial color={config.secondaryColor} />
+        <meshStandardMaterial color={config.secondaryColor || '#bbb'} />
       </mesh>
     </>
   )
@@ -252,7 +230,7 @@ function GearFlower({ config, hovered, isActive }: FlowerProps) {
             position={[Math.cos(angle) * 0.2, 0, Math.sin(angle) * 0.2]}
           >
             <boxGeometry args={[0.08, 0.1, 0.08]} />
-            <meshStandardMaterial color={config.secondaryColor} />
+            <meshStandardMaterial color={config.secondaryColor || '#bbb'} />
           </mesh>
         )
       })}
@@ -343,8 +321,8 @@ function ArrowFlower({ config, hovered, isActive }: FlowerProps) {
       <mesh position={[0, 0.25, 0]}>
         <coneGeometry args={[0.12, 0.2, 8]} />
         <meshStandardMaterial
-          color={config.secondaryColor}
-          emissive={config.secondaryColor}
+          color={config.secondaryColor || '#bbb'}
+          emissive={config.secondaryColor || '#bbb'}
           emissiveIntensity={isActive || hovered ? 0.6 : 0.3}
         />
       </mesh>
@@ -372,7 +350,7 @@ function ChestFlower({ config, hovered, isActive }: FlowerProps) {
       {/* 宝箱盖子 */}
       <mesh position={[0, 0.15, 0]} rotation={[hovered ? -0.3 : 0, 0, 0]}>
         <boxGeometry args={[0.32, 0.1, 0.27]} />
-        <meshStandardMaterial color={config.secondaryColor} />
+        <meshStandardMaterial color={config.secondaryColor || '#bbb'} />
       </mesh>
       {/* 锁扣 */}
       <mesh position={[0, 0, 0.13]}>

@@ -17,34 +17,23 @@ interface MemoryDetailModalProps {
   onClose: () => void
 }
 
-// 類別配置
-const CATEGORY_CONFIG: Record<string, { name: string; color: string; emoji: string }> = {
-  LEARNING: { name: '學習', color: '#4A90E2', emoji: '📚' },
-  INSPIRATION: { name: '靈感', color: '#F5A623', emoji: '💡' },
-  WORK: { name: '工作', color: '#7B68EE', emoji: '💼' },
-  SOCIAL: { name: '社交', color: '#FF6B9D', emoji: '🤝' },
-  LIFE: { name: '生活', color: '#50C878', emoji: '🌸' },
-  GOALS: { name: '目標', color: '#E74C3C', emoji: '🎯' },
-  RESOURCES: { name: '資源', color: '#9B59B6', emoji: '📦' }
-}
-
 export function MemoryDetailModal({ memory, island, isOpen, onClose }: MemoryDetailModalProps) {
   const navigate = useNavigate()
 
   if (!memory || !isOpen) return null
 
-  // 優先使用島嶼信息，如果沒有島嶼則使用類別信息
+  // 使用島嶼信息顯示，如果沒有島嶼則使用默認值
   const displayInfo = island
     ? {
         name: island.name,
         emoji: island.emoji,
         color: island.color
       }
-    : (() => {
-        const categoryKey = memory.category === 'MISC' ? 'LEARNING' : memory.category
-        const categoryInfo = CATEGORY_CONFIG[categoryKey] || { name: memory.category, color: '#999', emoji: '📌' }
-        return categoryInfo
-      })()
+    : {
+        name: '未分類',
+        emoji: '📌',
+        color: '#999'
+      }
 
   // 處理編輯記憶按鈕點擊
   const handleEditMemory = () => {
@@ -135,9 +124,8 @@ export function MemoryDetailModal({ memory, island, isOpen, onClose }: MemoryDet
 
               {/* 內容區域 */}
               <div className="overflow-y-auto max-h-[calc(85vh-240px)] p-6 space-y-6 bg-[#1E1E1E]">
-                {/* 社交成長紀錄格式（僅針對社交島） */}
-                {memory.category === 'SOCIAL' && (
-                  memory.socialContext || memory.userReaction || memory.aiFeedback ||
+                {/* 社交成長紀錄格式（檢查社交相關欄位） */}
+                {(memory.socialContext || memory.userReaction || memory.aiFeedback ||
                   (memory.socialSkillTags && memory.socialSkillTags.length > 0) ||
                   memory.progressChange !== undefined
                 ) && (

@@ -103,7 +103,7 @@ export const hijikiRagResolvers = {
 
         return {
           total: stats.total,
-          byCategory: stats.byCategory,
+          byIsland: stats.byIsland,
           byMonth: stats.byMonth,
           averageImportance: stats.averageImportance,
           topTags: stats.topTags,

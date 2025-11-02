@@ -3,14 +3,19 @@
  * 提供各種知識洞察和趨勢分析
  */
 
-import { PrismaClient, CategoryType } from '@prisma/client'
+import { PrismaClient } from '@prisma/client'
 import { logger } from '../utils/logger'
 
 const prisma = new PrismaClient()
 
 interface KnowledgeStatistics {
   total: number
-  byCategory: Record<string, { count: number; percentage: number }>
+  byIsland: Record<string, {
+    count: number
+    percentage: number
+    islandName: string
+    islandEmoji: string
+  }>
   byMonth: Array<{ month: string; count: number }>
   averageImportance: number
   topTags: Array<{ tag: string; count: number }>
@@ -54,8 +59,8 @@ export class AnalyticsEngine {
         },
       })
 
-      // 2. 按類別統計
-      const byCategory = await this.getCategoryDistribution(userId, dateRange)
+      // 2. 按島嶼統計
+      const byIsland = await this.getIslandDistribution(userId, dateRange)
 
       // 3. 按月份統計
       const byMonth = await this.getMonthlyDistribution(userId, period)
@@ -71,7 +76,7 @@ export class AnalyticsEngine {
 
       return {
         total,
-        byCategory,
+        byIsland,
         byMonth,
         averageImportance: avgImportance,
         topTags,
@@ -102,7 +107,7 @@ export class AnalyticsEngine {
         },
         select: {
           tags: true,
-          category: true,
+          islandId: true,
           isPinned: true,
           createdAt: true,
         },
@@ -142,7 +147,7 @@ export class AnalyticsEngine {
         where: { id: memoryId },
         select: {
           tags: true,
-          category: true,
+          islandId: true,
           keyPoints: true,
         },
       })
@@ -159,13 +164,13 @@ export class AnalyticsEngine {
           isArchived: false,
           OR: [
             { tags: { hasSome: targetMemory.tags } },
-            { category: targetMemory.category },
+            { islandId: targetMemory.islandId },
           ],
         },
         select: {
           id: true,
           tags: true,
-          category: true,
+          islandId: true,
         },
         take: 20,
       })
@@ -180,8 +185,8 @@ export class AnalyticsEngine {
         const commonTags = targetMemory.tags.filter((tag) => related.tags.includes(tag))
         strength += commonTags.length * 0.5
 
-        // 相同類別
-        if (related.category === targetMemory.category) {
+        // 相同島嶼
+        if (related.islandId === targetMemory.islandId) {
           strength += 0.3
         }
 
@@ -219,7 +224,7 @@ export class AnalyticsEngine {
         select: {
           id: true,
           tags: true,
-          category: true,
+          islandId: true,
           title: true,
         },
       })
@@ -292,31 +297,48 @@ export class AnalyticsEngine {
     return { start, end: now }
   }
 
-  private async getCategoryDistribution(
+  private async getIslandDistribution(
     userId: string,
     dateRange: { start: Date; end: Date } | null
-  ): Promise<Record<string, { count: number; percentage: number }>> {
+  ): Promise<Record<string, { count: number; percentage: number; islandName: string; islandEmoji: string }>> {
     const memories = await prisma.memory.findMany({
       where: {
         userId,
         isArchived: false,
         createdAt: dateRange ? { gte: dateRange.start, lte: dateRange.end } : undefined,
       },
-      select: { category: true },
+      select: {
+        islandId: true,
+        island: {
+          select: {
+            nameChinese: true,
+            emoji: true
+          }
+        }
+      },
     })
 
     const total = memories.length
-    const distribution: Record<string, number> = {}
+    const distribution: Record<string, { count: number; islandName: string; islandEmoji: string }> = {}
 
     for (const memory of memories) {
-      distribution[memory.category] = (distribution[memory.category] || 0) + 1
+      if (!distribution[memory.islandId]) {
+        distribution[memory.islandId] = {
+          count: 0,
+          islandName: memory.island?.nameChinese || '未分類',
+          islandEmoji: memory.island?.emoji || '🏝️'
+        }
+      }
+      distribution[memory.islandId].count++
     }
 
-    const result: Record<string, { count: number; percentage: number }> = {}
-    for (const [category, count] of Object.entries(distribution)) {
-      result[category] = {
-        count,
-        percentage: total > 0 ? (count / total) * 100 : 0,
+    const result: Record<string, { count: number; percentage: number; islandName: string; islandEmoji: string }> = {}
+    for (const [islandId, data] of Object.entries(distribution)) {
+      result[islandId] = {
+        count: data.count,
+        percentage: total > 0 ? (data.count / total) * 100 : 0,
+        islandName: data.islandName,
+        islandEmoji: data.islandEmoji
       }
     }
 
@@ -429,14 +451,14 @@ export class AnalyticsEngine {
     // 1. 總體趨勢
     insights.push(`在過去的${period === 'week' ? '一週' : period === 'month' ? '一個月' : '一年'}中，你記錄了 ${memories.length} 條知識`)
 
-    // 2. 類別分析
-    const categoryCount = memories.reduce((acc, m) => {
-      acc[m.category] = (acc[m.category] || 0) + 1
+    // 2. 島嶼分析
+    const islandCount = memories.reduce((acc, m) => {
+      acc[m.islandId] = (acc[m.islandId] || 0) + 1
       return acc
     }, {})
-    const topCategory = Object.entries(categoryCount).sort(([, a]: any, [, b]: any) => b - a)[0]
-    if (topCategory) {
-      insights.push(`你最關注 ${topCategory[0]} 領域，佔了 ${((topCategory[1] as number / memories.length) * 100).toFixed(1)}%`)
+    const topIsland = Object.entries(islandCount).sort(([, a]: any, [, b]: any) => b - a)[0]
+    if (topIsland) {
+      insights.push(`你最關注島嶼 ${topIsland[0]}，佔了 ${((topIsland[1] as number / memories.length) * 100).toFixed(1)}%`)
     }
 
     // 3. 重要性分析 (基於 isPinned 判斷)
@@ -459,15 +481,15 @@ export class AnalyticsEngine {
       recommendations.push('試著記錄更多的想法和學習，讓知識庫更豐富')
     }
 
-    // 基於類別分布給建議
-    const categoryCount = memories.reduce((acc, m) => {
-      acc[m.category] = (acc[m.category] || 0) + 1
+    // 基於島嶼分布給建議
+    const islandCount = memories.reduce((acc, m) => {
+      acc[m.islandId] = (acc[m.islandId] || 0) + 1
       return acc
     }, {})
 
-    const categories = Object.keys(categoryCount)
-    if (categories.length < 3) {
-      recommendations.push('嘗試在不同領域記錄知識，讓知識更全面')
+    const islands = Object.keys(islandCount)
+    if (islands.length < 3) {
+      recommendations.push('嘗試在不同島嶼記錄知識，讓知識更全面')
     }
 
     return recommendations

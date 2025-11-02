@@ -5,8 +5,8 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useSSEChat } from '../hooks/useSSEChat'
-import { useQuery } from '@apollo/client'
-import { GET_CHIEF_ASSISTANT } from '../graphql/knowledge'
+// REMOVED: import { useQuery } from '@apollo/client'
+// REMOVED: import { GET_CHIEF_ASSISTANT } from '../graphql/knowledge'
 import { useSound } from '../hooks/useSound'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -27,7 +27,8 @@ export const HijikiChatDialog: React.FC<HijikiChatDialogProps> = ({ onClose }) =
   }>>([])
 
   const { sendChatMessage, isStreaming } = useSSEChat()
-  const { data: chiefData } = useQuery(GET_CHIEF_ASSISTANT)
+  // REMOVED: chiefAssistant query (migrated to Island-based architecture)
+  // const { data: chiefData } = useQuery(GET_CHIEF_ASSISTANT)
   const { play, playRandomMeow } = useSound()
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const responseEndRef = useRef<HTMLDivElement>(null)
@@ -45,11 +46,13 @@ export const HijikiChatDialog: React.FC<HijikiChatDialogProps> = ({ onClose }) =
   const handleSubmit = async () => {
     if (!inputText.trim() || isStreaming) return
 
-    const chiefId = chiefData?.chiefAssistant?.id
-    if (!chiefId) {
-      alert('找不到黑噗噗')
-      return
-    }
+    // REMOVED: chiefAssistant ID (migrated to Island-based architecture)
+    // Hijiki chat now works without specific assistant ID
+    // const chiefId = chiefData?.chiefAssistant?.id
+    // if (!chiefId) {
+    //   alert('找不到黑噗噗')
+    //   return
+    // }
 
     const question = inputText.trim()
     play('message_sent')
@@ -61,8 +64,8 @@ export const HijikiChatDialog: React.FC<HijikiChatDialogProps> = ({ onClose }) =
     // 用於累積完整回應的變數
     let fullResponse = ''
 
-    // 發送 SSE 請求
-    await sendChatMessage(question, chiefId, {
+    // 發送 SSE 請求 (without assistant ID for Hijiki)
+    await sendChatMessage(question, null as any, {
       onChunk: (chunk) => {
         fullResponse += chunk
         setCurrentResponse((prev) => prev + chunk)

@@ -10,6 +10,7 @@ const IslandView = lazy(() => import('./pages/IslandView'))
 const CuteDatabaseView = lazy(() => import('./pages/DatabaseView/CuteDatabaseView'))
 const IslandCreator = lazy(() => import('./pages/IslandCreator'))
 const AuthPage = lazy(() => import('./pages/Auth').then(module => ({ default: module.AuthPage })))
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'))
 
 // Loading fallback component
 const PageLoader = () => (
@@ -73,6 +74,14 @@ function App() {
             請勿創建 /test、/demo 等測試路由！
             如需測試功能，請使用開發環境的獨立測試文件
           */}
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute>
+                <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/island-creator"
             element={

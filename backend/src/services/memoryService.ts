@@ -1,4 +1,4 @@
-import { PrismaClient, CategoryType, ChatContextType } from '@prisma/client'
+import { PrismaClient, ChatContextType } from '@prisma/client'
 import { logger } from '../utils/logger'
 
 const prisma = new PrismaClient()
@@ -6,7 +6,6 @@ const prisma = new PrismaClient()
 export interface MemoryFilterOptions {
   userId: string
   islandId?: string  // 支持按 Island 過濾
-  category?: CategoryType
   tags?: string[]
   search?: string
   isPinned?: boolean
@@ -21,7 +20,6 @@ export interface CreateMemoryInput {
   userId: string
   islandId: string  // Island 系統（必填）
   content: string
-  category: CategoryType
   summary?: string
   keyPoints?: string[]
   tags?: string[]
@@ -47,7 +45,6 @@ export class MemoryService {
           summary: input.summary || input.content.substring(0, 100),
           keyPoints: input.keyPoints || [],
           tags: input.tags || [],
-          category: input.category,
           aiSentiment: input.aiSentiment || 'neutral',
           title: input.title,
           emoji: input.emoji,
@@ -76,7 +73,6 @@ export class MemoryService {
     const {
       userId,
       islandId,
-      category,
       tags,
       search,
       isPinned,
@@ -92,7 +88,6 @@ export class MemoryService {
     }
 
     if (islandId) where.islandId = islandId  // 按 Island 過濾
-    if (category) where.category = category
     if (isPinned !== undefined) where.isPinned = isPinned
     if (isArchived !== undefined) where.isArchived = isArchived
 
@@ -184,7 +179,6 @@ export class MemoryService {
       title?: string
       rawContent?: string
       emoji?: string
-      category?: CategoryType
       tags?: string[]
       fileUrls?: string[]
       fileNames?: string[]
@@ -336,12 +330,12 @@ export class MemoryService {
         return related
       }
 
-      // 最後根據相同類別查找
+      // 最後根據相同島嶼查找
       return prisma.memory.findMany({
         where: {
           userId,
           id: { not: memoryId },
-          category: memory.category
+          islandId: memory.islandId
         },
         orderBy: { createdAt: 'desc' },
         take: limit,

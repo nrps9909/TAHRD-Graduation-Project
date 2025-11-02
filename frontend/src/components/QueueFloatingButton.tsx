@@ -344,11 +344,11 @@ export function QueueFloatingButton() {
                               )}
                             </div>
                             {history.categoriesInfo && history.categoriesInfo.length > 0 && (
-                              <div className="flex items-center gap-1 mt-1 flex-wrap">
+                              <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                                 {history.categoriesInfo.map((cat: CategoryInfo, idx: number) => (
                                   <span
                                     key={idx}
-                                    className="text-[9px] sm:text-[10px] bg-amber-100/50 px-1.5 py-0.5 rounded"
+                                    className="text-[11px] sm:text-xs font-semibold bg-amber-200/80 text-amber-900 px-2 py-1 rounded-md border border-amber-300/50 shadow-sm"
                                   >
                                     {cat.categoryEmoji} {cat.categoryName}
                                   </span>

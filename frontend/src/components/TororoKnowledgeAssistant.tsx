@@ -14,7 +14,8 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import * as PIXI from 'pixi.js'
 import { Live2DModel } from 'pixi-live2d-display/cubism4'
 import { useQuery, useLazyQuery } from '@apollo/client'
-import { GET_CHIEF_ASSISTANT, GET_KNOWLEDGE_DISTRIBUTION } from '../graphql/knowledge'
+import { GET_KNOWLEDGE_DISTRIBUTION } from '../graphql/knowledge'
+// REMOVED: GET_CHIEF_ASSISTANT (migrated to Island-based architecture)
 import { useSound } from '../hooks/useSound'
 import { useSSEChat } from '../hooks/useSSEChat'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -44,7 +45,6 @@ interface UploadResult {
     title: string
     emoji?: string
     summary?: string
-    category?: string
     tags?: string[]
     assistant: {
       emoji?: string
@@ -53,7 +53,6 @@ interface UploadResult {
   }>
   tororoResponse?: {
     warmMessage?: string
-    category?: string
     shouldRecord?: boolean
   }
   backgroundProcessing?: boolean
@@ -126,7 +125,7 @@ export default function TororoKnowledgeAssistant({
   const { uploadKnowledge: uploadKnowledgeSSE } = useSSEChat()
 
   // GraphQL (only for queries)
-  useQuery(GET_CHIEF_ASSISTANT) // Load chief assistant data
+  // REMOVED: useQuery(GET_CHIEF_ASSISTANT) - migrated to Island-based architecture
   const [getDistribution] = useLazyQuery(GET_KNOWLEDGE_DISTRIBUTION)
 
   // Sound
@@ -1874,16 +1873,6 @@ export default function TororoKnowledgeAssistant({
 
                 {/* Result Cards */}
                 <div className="bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-sm rounded-3xl p-8 shadow-xl border-2 border-white/20 mb-6 space-y-4">
-                  {/* 顯示分類類別 */}
-                  {processingResult.tororoResponse?.category && (
-                    <div className="text-center mb-4">
-                      <div className="inline-flex items-center gap-2 px-5 py-2.5 bg-purple-500/30 rounded-xl border-2 border-purple-300/50">
-                        <span className="text-sm font-bold text-gray-900">分類到</span>
-                        <span className="text-base font-bold text-gray-900">{processingResult.tororoResponse.category}</span>
-                      </div>
-                    </div>
-                  )}
-
                   {/* 顯示記憶標題和詳細資訊 */}
                   {processingResult.memoriesCreated && processingResult.memoriesCreated.length > 0 && (
                     <div className="space-y-3">
@@ -1908,13 +1897,6 @@ export default function TororoKnowledgeAssistant({
                                 {memory.assistant.emoji && <span>{memory.assistant.emoji}</span>}
                                 <span className="text-sm font-medium text-gray-900">{memory.assistant.nameChinese}</span>
                               </div>
-
-                              {/* 類別 */}
-                              {memory.category && (
-                                <p className="text-sm text-gray-900 font-medium mb-2">
-                                  <span className="font-bold">類別：</span>{memory.category}
-                                </p>
-                              )}
 
                               {/* 摘要 */}
                               {memory.summary && (

@@ -12,7 +12,7 @@ import { Context } from '../context'
 import { memoryService } from '../services/memoryService'
 import { chiefAgentService } from '../services/chiefAgentService'
 import { chatSessionService } from '../services/chatSessionService'
-import { CategoryType, ChatContextType } from '@prisma/client'
+import { ChatContextType } from '@prisma/client'
 
 export const memoryResolvers = {
   Query: {
@@ -34,7 +34,6 @@ export const memoryResolvers = {
         return await memoryService.getMemories({
           userId,
           islandId: filter?.islandId,  // Changed from assistantId
-          category: filter?.category,
           tags: filter?.tags,
           search: filter?.search,
           isPinned: filter?.isPinned,
@@ -216,7 +215,7 @@ export const memoryResolvers = {
      */
     createMemoryDirect: async (
       _: any,
-      { input }: { input: { title?: string; content: string; tags?: string[]; category?: CategoryType; emoji?: string } },
+      { input }: { input: { title?: string; content: string; tags?: string[]; islandId?: string; emoji?: string } },
       { userId, prisma }: Context
     ) => {
       if (!userId) {
@@ -227,7 +226,7 @@ export const memoryResolvers = {
 
       try {
         // FIXME: This resolver is deprecated - use the streaming API instead
-        // The island-based architecture requires islandId instead of category
+        // The island-based architecture requires islandId to be provided
         throw new GraphQLError('This mutation is deprecated. Please use the streaming API for knowledge upload.')
       } catch (error) {
         throw new GraphQLError('Failed to create memory directly: ' + (error as Error).message)
@@ -359,30 +358,9 @@ export const memoryResolvers = {
       } catch (error) {
         throw new GraphQLError('Failed to link memories: ' + (error as Error).message)
       }
-    },
-
-    /**
-     * 與助手聊天
-     */
-    chatWithAssistant: async (
-      _: any,
-      { input }: { input: { assistantId: string; sessionId?: string; message: string; contextType?: ChatContextType; memoryId?: string } },
-      { userId, prisma }: Context
-    ) => {
-      if (!userId) {
-        throw new GraphQLError('Must be authenticated', {
-          extensions: { code: 'UNAUTHENTICATED' }
-        })
-      }
-
-      try {
-        // FIXME: This resolver is deprecated - use island-based chat instead
-        // The assistant-based architecture has been migrated to islands
-        throw new GraphQLError('This mutation is deprecated. Please use island-based chat API.')
-      } catch (error) {
-        throw new GraphQLError('Failed to chat with assistant: ' + (error as Error).message)
-      }
     }
+
+    // ❌ Removed: chatWithAssistant (deprecated, use island-based chat API)
   },
 
   // Type Resolvers
