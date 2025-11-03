@@ -52,6 +52,7 @@ export function IslandScene({
   hideLabels = false
 }: IslandSceneProps) {
   const { islands, switchIsland, currentIslandId } = useIslandStore()
+
   const [cameraTarget, setCameraTarget] = useState<[number, number, number] | null>(null)
   const [selectedMemory, setSelectedMemory] = useState<IslandMemory | null>(null)
   const [selectedMemoryIsland, setSelectedMemoryIsland] = useState<Island | null>(null)

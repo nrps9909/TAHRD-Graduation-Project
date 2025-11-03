@@ -323,16 +323,19 @@ export class IslandService {
 
   /**
    * 清除特定島嶼的快取
+   *
+   * 修復：當清除單個島嶼時，也清除整個用戶快取和過期時間
+   * 避免返回不完整的快取數據
    */
   private clearIslandCache(islandId: string) {
     for (const [userId, userCache] of this.islandsCache.entries()) {
       if (userCache.has(islandId)) {
-        userCache.delete(islandId)
-        // 如果整個用戶快取為空，也刪除
-        if (userCache.size === 0) {
-          this.islandsCache.delete(userId)
-          this.cacheExpiry.delete(userId)
-        }
+        // 清除整個用戶快取，而不是只刪除單個島嶼
+        // 這樣下次查詢時會重新從資料庫載入完整的島嶼列表
+        this.islandsCache.delete(userId)
+        this.cacheExpiry.delete(userId)
+
+        logger.info(`[IslandService] 清除用戶 ${userId} 的島嶼快取 (因島嶼 ${islandId} 更新)`)
       }
     }
   }

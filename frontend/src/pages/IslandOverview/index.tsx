@@ -17,13 +17,21 @@ import { Memory } from '../../types/memory'
 import { useSound } from '../../hooks/useSound'
 import { motion } from 'framer-motion'
 import { Z_INDEX_CLASSES } from '../../constants/zIndex'
+import { io, Socket } from 'socket.io-client'
+import { useAuthStore } from '../../stores/authStore'
 
 export default function IslandOverview() {
   const navigate = useNavigate()
 
   // GraphQL Queries - 同時載入島嶼和記憶資料
-  const { data: islandsData, loading: islandsLoading } = useQuery(GET_ISLANDS)
-  const { data: memoryData, loading: memoriesLoading } = useQuery(GET_ALL_MEMORIES)
+  const { data: islandsData, loading: islandsLoading, refetch: refetchIslands } = useQuery(GET_ISLANDS, {
+    fetchPolicy: 'cache-and-network', // 使用快取並從網路更新，避免載入時資料消失
+    notifyOnNetworkStatusChange: true,
+  })
+  const { data: memoryData, loading: memoriesLoading, refetch: refetchMemories } = useQuery(GET_ALL_MEMORIES, {
+    fetchPolicy: 'cache-and-network', // 使用快取並從網路更新
+    notifyOnNetworkStatusChange: true,
+  })
 
   const [showLive2D, setShowLive2D] = useState(false)
   const [currentLive2DModel, setCurrentLive2DModel] = useState<string>('')
@@ -32,6 +40,9 @@ export default function IslandOverview() {
 
   // Island store
   const { loadIslands, setLoading, switchIsland, resetToOverview, getCurrentIsland, currentIslandId } = useIslandStore()
+
+  // Auth store for user ID
+  const { user } = useAuthStore()
 
   // 音频系统
   const sound = useSound()
@@ -82,17 +93,58 @@ export default function IslandOverview() {
 
       // 4. 載入到 store
       loadIslands(convertedIslands)
-
-      console.log('✅ [IslandOverview] 島嶼數據已載入:', {
-        島嶼數量: convertedIslands.length,
-        總記憶數: allMemories.length,
-        各島記憶: convertedIslands.map(i => `${i.nameChinese}: ${i.memoryCount}條`)
-      })
     } catch (error) {
       console.error('❌ [IslandOverview] 載入島嶼數據失敗:', error)
       setLoading(false)
     }
   }, [islandsData, memoryData, islandsLoading, memoriesLoading, loadIslands, setLoading])
+
+  // 監聽知識上傳完成事件，自動重新載入島嶼和記憶數據
+  useEffect(() => {
+    if (!user?.id) return
+
+    const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000'
+    const socket: Socket = io(backendUrl, {
+      transports: ['polling'],
+      reconnection: true,
+    })
+
+    socket.on('connect', () => {
+      socket.emit('join-room', { roomId: user.id })
+    })
+
+    // 監聽任務完成事件
+    socket.on('task-complete', (data: any) => {
+      // 延遲 500ms 後重新載入，確保後端數據已更新
+      setTimeout(async () => {
+        try {
+          const islandsResult = await refetchIslands()
+          const memoriesResult = await refetchMemories()
+
+          // 手動更新島嶼數據到 store，避免等待 useEffect
+          if (islandsResult.data?.islands && memoriesResult.data?.memories) {
+            const graphQLIslands = islandsResult.data.islands
+            const allMemories = memoriesResult.data.memories
+            const convertedIslands = convertGraphQLIslandsToIslands(graphQLIslands, allMemories)
+
+            // 只更新島嶼數據，不改變 currentIslandId
+            useIslandStore.setState((state) => ({
+              islands: convertedIslands,
+              isLoading: false,
+              // 保持當前的 currentIslandId，不重置到 overview
+              currentIslandId: state.currentIslandId
+            }))
+          }
+        } catch (error) {
+          console.error('[IslandOverview] Refetch 失敗:', error)
+        }
+      }, 500)
+    })
+
+    return () => {
+      socket.disconnect()
+    }
+  }, [user?.id, refetchIslands, refetchMemories])
 
   const handleTororoClick = () => {
     // Tororo (小白) - 知識園丁，使用 Tororo 白色模型

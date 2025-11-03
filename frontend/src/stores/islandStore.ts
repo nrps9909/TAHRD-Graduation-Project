@@ -33,8 +33,11 @@ interface IslandStore {
   // 更新島嶼資訊（僅本地狀態，不會更新資料庫）
   updateIsland: (islandId: string, updates: Partial<Island>) => void
 
-  // 從 GraphQL 數據載入島嶼
+  // 從 GraphQL 數據載入島嶼（首次載入，會重置視角）
   loadIslands: (islands: Island[]) => void
+
+  // 更新島嶼數據但保持當前視角（用於 refetch）
+  updateIslands: (islands: Island[]) => void
 
   // 設置載入狀態
   setLoading: (loading: boolean) => void
@@ -90,9 +93,18 @@ export const useIslandStore = create<IslandStore>((set, get) => ({
   loadIslands: (islands: Island[]) => {
     set({
       islands,
-      currentIslandId: 'overview', // 載入後也預設為總覽視角
+      currentIslandId: 'overview', // 首次載入時預設為總覽視角
       isLoading: false
     })
+  },
+
+  // 更新島嶼數據但保持當前視角（用於 refetch 時）
+  updateIslands: (islands: Island[]) => {
+    set(state => ({
+      islands,
+      // 保持當前的 currentIslandId 和 isTransitioning 狀態
+      isLoading: false
+    }))
   },
 
   setLoading: (loading: boolean) => {
