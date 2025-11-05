@@ -22,6 +22,7 @@ export default function MemoryEditor({ memory, onClose, onUpdate, islands = [] }
   const [title, setTitle] = useState(memory.title || '')
   const [content, setContent] = useState(memory.rawContent || memory.summary || '')
   const [tags, setTags] = useState<string[]>(memory.tags)
+  const [selectedIslandId, setSelectedIslandId] = useState<string>(memory.islandId || '')
   const [isSaving, setIsSaving] = useState(false)
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -35,8 +36,8 @@ export default function MemoryEditor({ memory, onClose, onUpdate, islands = [] }
   const fileInputRef = useRef<HTMLInputElement>(null)
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>()
 
-  // 根據記憶的島嶼 ID 查找對應島嶼
-  const island = memory.islandId ? islands.find(i => i.id === memory.islandId) : null
+  // 根據選擇的島嶼 ID 查找對應島嶼（動態更新）
+  const island = selectedIslandId ? islands.find(i => i.id === selectedIslandId) : null
   const islandColor = island?.color || '#fbbf24' // 預設金色
 
   // 將十六進制顏色轉為 rgba
@@ -48,7 +49,7 @@ export default function MemoryEditor({ memory, onClose, onUpdate, islands = [] }
   }
 
   // 用 ref 追蹤最新的編輯器狀態，避免閉包問題
-  const latestStateRef = useRef({ title, content, tags, attachments })
+  const latestStateRef = useRef({ title, content, tags, attachments, islandId: selectedIslandId })
 
   // 追蹤是否有進行中的保存請求
   const savingInProgressRef = useRef(false)
@@ -94,18 +95,19 @@ export default function MemoryEditor({ memory, onClose, onUpdate, islands = [] }
 
   // 更新最新狀態的 ref
   useEffect(() => {
-    latestStateRef.current = { title, content, tags, attachments }
-  }, [title, content, tags, attachments])
+    latestStateRef.current = { title, content, tags, attachments, islandId: selectedIslandId }
+  }, [title, content, tags, attachments, selectedIslandId])
 
   // 追蹤未保存的變更
   useEffect(() => {
     const hasChanges = (
       title !== (memory.title || '') ||
       content !== (memory.rawContent || memory.summary || '') ||
-      JSON.stringify(tags) !== JSON.stringify(memory.tags)
+      JSON.stringify(tags) !== JSON.stringify(memory.tags) ||
+      selectedIslandId !== (memory.islandId || '')
     )
     setHasUnsavedChanges(hasChanges)
-  }, [title, content, tags, memory])
+  }, [title, content, tags, selectedIslandId, memory])
 
   useEffect(() => {
     document.body.style.overflow = 'hidden'
@@ -151,6 +153,7 @@ export default function MemoryEditor({ memory, onClose, onUpdate, islands = [] }
             title: currentState.title,
             rawContent: currentState.content,
             tags: currentState.tags,
+            islandId: currentState.islandId,
             fileUrls: currentState.attachments.map(a => a.url),
             fileNames: currentState.attachments.map(a => a.name),
             fileTypes: currentState.attachments.map(a => a.type),
@@ -502,22 +505,20 @@ export default function MemoryEditor({ memory, onClose, onUpdate, islands = [] }
                     }}
                   />
 
-                  {/* 島嶼標籤 */}
-                  {island && (
-                    <div className="mb-3">
-                      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold"
-                        style={{
-                          background: `linear-gradient(135deg, ${hexToRgba(islandColor, 0.25)} 0%, ${hexToRgba(islandColor, 0.15)} 100%)`,
-                          color: islandColor,
-                          border: `1.5px solid ${hexToRgba(islandColor, 0.5)}`,
-                          boxShadow: `0 2px 8px ${hexToRgba(islandColor, 0.2)}`,
-                        }}
-                      >
-                        <span>🏝️</span>
-                        <span>{island.name}</span>
-                      </div>
-                    </div>
-                  )}
+                  {/* 島嶼選擇器 */}
+                  <div className="mb-3">
+                    <select
+                      value={selectedIslandId}
+                      onChange={(e) => setSelectedIslandId(e.target.value)}
+                      className="px-3 py-1.5 rounded-lg text-sm font-bold bg-gray-800 text-gray-100 border border-gray-700 hover:border-gray-600 focus:border-gray-500 focus:outline-none transition-colors cursor-pointer"
+                    >
+                      {islands.map((isl) => (
+                        <option key={isl.id} value={isl.id}>
+                          {isl.emoji} {isl.nameChinese}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
                   {/* 標籤 */}
                   <div className="mb-6">
@@ -565,7 +566,7 @@ export default function MemoryEditor({ memory, onClose, onUpdate, islands = [] }
                         }}
                       >
                         <span>🏝️</span>
-                        <span>{island.name}</span>
+                        <span>{island.nameChinese}</span>
                       </div>
                     </div>
                   )}

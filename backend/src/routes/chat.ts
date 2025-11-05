@@ -92,34 +92,7 @@ router.post('/upload-stream', async (req: Request, res: Response) => {
 
     logger.info(`[SSE Upload] Starting stream for user ${userId}`)
 
-    // === 第一步：立即發送罐頭回應 ===
-    const canResponse = '收到了。'
-    const canWords = canResponse.split('')
-
-    for (let i = 0; i < canWords.length; i++) {
-      const char = canWords[i]
-      res.write(`event: chunk\ndata: ${JSON.stringify({
-        content: char,
-        index: i,
-        total: canWords.length,
-        phase: 'can' // 標記這是罐頭回應
-      })}\n\n`)
-
-      const delay = /[\u4e00-\u9fa5]/.test(char) ? 15 : 10 // 優化：罐頭回應更快（30→15ms）
-      await new Promise(resolve => setTimeout(resolve, delay))
-    }
-
-    // 罐頭回應完成，發送分段標記（開始新泡泡）
-    res.write(`event: sentence-complete\ndata: ${JSON.stringify({
-      message: '罐頭回應完成'
-    })}\n\n`)
-
-    // 優化：縮短停頓時間（300→150ms）
-    await new Promise(resolve => setTimeout(resolve, 150))
-
-    logger.info(`[SSE Upload] 罐頭回應完成，開始處理知識...`)
-
-    // === 第二步：調用 Chief Agent 進行分類和處理 ===
+    // === 第一步：調用 Chief Agent 進行分類和處理 ===
     const result = await chiefAgentService.uploadKnowledge(userId, {
       content: content as string,
       files,
@@ -127,7 +100,7 @@ router.post('/upload-stream', async (req: Request, res: Response) => {
       contentType
     })
 
-    // === 第三步：打字機效果顯示 Gemini 的溫暖回應，按句號分段 ===
+    // === 第二步：打字機效果顯示 Gemini 的溫暖回應，按句號分段 ===
     const warmResponse = result.tororoResponse?.warmMessage ||
                         result.quickClassifyResult?.warmResponse ||
                         '已經幫你處理好了～✨'
@@ -178,7 +151,7 @@ router.post('/upload-stream', async (req: Request, res: Response) => {
     // 發送完成事件（包含分發記錄資訊和完整結果）
     res.write(`event: complete\ndata: ${JSON.stringify({
       distributionId: result.distribution.id,
-      totalChars: canResponse.length + warmResponse.length,
+      totalChars: warmResponse.length,
       memoriesCreated: result.memoriesCreated?.length || 0,
       skipRecording: result.skipRecording || false,
       tororoResponse: result.tororoResponse

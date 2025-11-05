@@ -32,6 +32,7 @@ export default function CuteDatabaseView() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [showCategoryModal, setShowCategoryModal] = useState(false)
   const [newMemoryId, setNewMemoryId] = useState<string | null>(null)
+  const [expandedIslandId, setExpandedIslandId] = useState<string | null>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const toast = useToast()
   const { confirmState, confirm } = useConfirm()
@@ -463,39 +464,121 @@ export default function CuteDatabaseView() {
             ) : (
               islands.map((island) => {
                 // 計算該島嶼的記憶數量
-                const count = (memoriesData?.memories || []).filter((m: Memory) =>
+                const islandMemories = (memoriesData?.memories || []).filter((m: Memory) =>
                   m.islandId === island.id
-                ).length
+                )
+                const count = islandMemories.length
                 const isSelected = selectedIslandId === island.id
+                const isExpanded = expandedIslandId === island.id
 
                 return (
-                  <button
-                    key={island.id}
-                    onClick={() => {
-                      setSelectedIslandId(island.id)
-                    }}
-                    className="w-full text-left px-3 py-2.5 rounded-2xl text-sm font-bold transition-all hover:scale-[1.02]"
-                    style={isSelected ? {
-                      background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.3) 0%, rgba(251, 146, 60, 0.3) 100%)',
-                      color: '#fef3c7',
-                      borderTop: '2px solid rgba(251, 191, 36, 0.4)',
-                      borderRight: '2px solid rgba(251, 191, 36, 0.4)',
-                      borderBottom: '2px solid rgba(251, 191, 36, 0.4)',
-                      borderLeft: `4px solid ${island.color}`,
-                    } : {
-                      background: 'rgba(30, 41, 59, 0.6)',
-                      color: '#fef3c7',
-                      borderTop: '2px solid rgba(251, 191, 36, 0.15)',
-                      borderRight: '2px solid rgba(251, 191, 36, 0.15)',
-                      borderBottom: '2px solid rgba(251, 191, 36, 0.15)',
-                      borderLeft: `4px solid ${island.color}`,
-                    }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span>{island.emoji} {island.nameChinese}</span>
-                      <span className="text-xs opacity-90 font-bold">{count}</span>
-                    </div>
-                  </button>
+                  <div key={island.id} className="space-y-1">
+                    {/* 島嶼按鈕 */}
+                    <button
+                      onClick={() => {
+                        // 切換展開/收合
+                        setExpandedIslandId(isExpanded ? null : island.id)
+                      }}
+                      className="w-full text-left px-3 py-2.5 rounded-2xl text-sm font-bold transition-all hover:scale-[1.02]"
+                      style={isSelected ? {
+                        background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.3) 0%, rgba(251, 146, 60, 0.3) 100%)',
+                        color: '#fef3c7',
+                        borderTop: '2px solid rgba(251, 191, 36, 0.4)',
+                        borderRight: '2px solid rgba(251, 191, 36, 0.4)',
+                        borderBottom: '2px solid rgba(251, 191, 36, 0.4)',
+                        borderLeft: `4px solid ${island.color}`,
+                      } : {
+                        background: 'rgba(30, 41, 59, 0.6)',
+                        color: '#fef3c7',
+                        borderTop: '2px solid rgba(251, 191, 36, 0.15)',
+                        borderRight: '2px solid rgba(251, 191, 36, 0.15)',
+                        borderBottom: '2px solid rgba(251, 191, 36, 0.15)',
+                        borderLeft: `4px solid ${island.color}`,
+                      }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <span className="transition-transform" style={{
+                            transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                            display: 'inline-block'
+                          }}>▶</span>
+                          <span>{island.emoji} {island.nameChinese}</span>
+                        </div>
+                        <span className="text-xs opacity-90 font-bold">{count}</span>
+                      </div>
+                    </button>
+
+                    {/* 展開的記憶列表 */}
+                    {isExpanded && (
+                      <div className="ml-3 space-y-0.5 pl-2 border-l-2 py-1" style={{ borderColor: `${island.color}40` }}>
+                        {islandMemories.length === 0 ? (
+                          <div className="text-xs py-2 px-3 rounded-lg" style={{
+                            color: '#94a3b8',
+                            background: 'rgba(30, 41, 59, 0.4)'
+                          }}>
+                            此島嶼暫無記憶
+                          </div>
+                        ) : (
+                          islandMemories.slice(0, 10).map((memory: Memory) => (
+                            <button
+                              key={memory.id}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setSelectedMemory(memory)
+                              }}
+                              className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs transition-all hover:scale-[1.01]"
+                              style={{
+                                background: 'rgba(30, 41, 59, 0.5)',
+                                color: '#cbd5e1',
+                                border: '1px solid rgba(251, 191, 36, 0.15)',
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = 'rgba(251, 191, 36, 0.15)'
+                                e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.3)'
+                                e.currentTarget.style.color = '#fef3c7'
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'rgba(30, 41, 59, 0.5)'
+                                e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.15)'
+                                e.currentTarget.style.color = '#cbd5e1'
+                              }}
+                            >
+                              <div className="truncate font-semibold">
+                                {memory.title || memory.summary || '無標題記憶'}
+                              </div>
+                              <div className="text-[10px] mt-0.5 opacity-70">
+                                {(() => {
+                                  const date = new Date(memory.createdAt);
+                                  const now = new Date();
+
+                                  // 正確計算日期差異：將時間歸零到當天 00:00:00
+                                  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                                  const compareDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+                                  const diffDays = Math.floor((today.getTime() - compareDate.getTime()) / (1000 * 60 * 60 * 24));
+
+                                  const hours = date.getHours().toString().padStart(2, '0');
+                                  const minutes = date.getMinutes().toString().padStart(2, '0');
+                                  const time = `${hours}:${minutes}`;
+                                  const month = date.getMonth() + 1;
+                                  const day = date.getDate();
+
+                                  if (diffDays === 0) return `今天 ${time}`;
+                                  if (diffDays === 1) return `昨天 ${time}`;
+                                  if (diffDays < 7) return `${diffDays}天前 ${time}`;
+                                  return `${month}月${day}日 ${time}`;
+                                })()}
+                              </div>
+                            </button>
+                          ))
+                        )}
+                        {islandMemories.length > 10 && (
+                          <div className="text-[10px] text-center py-1" style={{ color: '#64748b' }}>
+                            還有 {islandMemories.length - 10} 條記憶...
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 )
               })
             )}
@@ -937,7 +1020,7 @@ function SimpleGalleryView({
 
   if (!isDraggable) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4 md:gap-5 pb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-5 pb-4">
         {memories.map((memory) => (
           <MemoryCard
             key={memory.id}
@@ -963,7 +1046,7 @@ function SimpleGalleryView({
       onDragEnd={handleDragEnd}
     >
       <SortableContext items={memories.map(m => m.id)} strategy={rectSortingStrategy}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4 md:gap-5 pb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-5 pb-4">
           {memories.map((memory) => (
             <DraggableMemoryCard
               key={memory.id}
@@ -1055,7 +1138,7 @@ function DraggableMemoryCard({
             }
           }
         }}
-        className="group relative rounded-2xl p-3 sm:p-4 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] flex flex-col"
+        className="group relative rounded-2xl p-2.5 sm:p-3 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] flex flex-col"
         style={{
           background: isSelected
             ? `linear-gradient(135deg, ${hexToRgba(islandColor, 0.25)} 0%, ${hexToRgba(islandColor, 0.2)} 100%)`
@@ -1064,7 +1147,7 @@ function DraggableMemoryCard({
           WebkitBackdropFilter: 'blur(12px) saturate(150%)',
           border: isSelected ? `2px solid ${hexToRgba(islandColor, 0.8)}` : `2px solid ${hexToRgba(islandColor, 0.4)}`,
           boxShadow: isSelected ? `0 8px 24px ${hexToRgba(islandColor, 0.4)}` : '0 4px 12px rgba(0, 0, 0, 0.3)',
-          minHeight: '180px',
+          minHeight: '160px',
         }}
         onMouseEnter={(e) => {
           if (!isDragging && !isSelected) {
@@ -1081,7 +1164,7 @@ function DraggableMemoryCard({
       >
         {/* 複選框（批量選擇模式） */}
         {bulkSelectMode && (
-          <div className="absolute top-2 left-2 z-20" onClick={(e) => {
+          <div className="absolute top-1.5 left-1.5 z-20" onClick={(e) => {
             e.stopPropagation()
             onToggleSelect?.(memory.id)
           }}>
@@ -1102,7 +1185,7 @@ function DraggableMemoryCard({
 
         {/* 拖動提示 */}
         {!bulkSelectMode && (
-          <div className="absolute top-2 left-2 z-10">
+          <div className="absolute top-1.5 left-1.5 z-10">
             <div className="px-2 py-1 rounded-lg text-xs font-bold" style={{
               background: 'rgba(251, 191, 36, 0.3)',
               color: '#fef3c7',
@@ -1115,7 +1198,7 @@ function DraggableMemoryCard({
 
         {/* 釘選按鈕 */}
         {memory.isPinned && !bulkSelectMode && (
-          <div className="absolute top-2 sm:top-3 right-2 sm:right-3 z-10">
+          <div className="absolute top-1.5 sm:top-2 right-1.5 sm:right-2 z-10">
             <button
               onClick={(e) => {
                 e.stopPropagation()
@@ -1134,42 +1217,17 @@ function DraggableMemoryCard({
           </div>
         )}
 
-        {/* 標題區 */}
-        <div className="mb-2 mt-8">
-          <h3 className="text-base sm:text-lg font-black line-clamp-2 leading-tight" style={{
+        {/* 標題區和島嶼標籤 */}
+        <div className="mb-1.5 flex items-start gap-2 justify-between">
+          <h3 className="text-base sm:text-lg font-black line-clamp-2 leading-tight flex-1" style={{
             color: '#fef3c7',
             textShadow: '0 2px 4px rgba(0, 0, 0, 0.4)',
           }}>
             {memory.title || memory.summary || '無標題記憶'}
           </h3>
-        </div>
-
-        {/* 內容預覽區 */}
-        <div className="flex-1 mb-2">
-          {(memory.detailedSummary || memory.rawContent) ? (
-            <div>
-              <div className="text-xs font-bold mb-1" style={{ color: '#94a3b8' }}>
-                {memory.detailedSummary ? '💡 AI 深度分析' : '📝 內容預覽'}
-              </div>
-              <p className="text-xs line-clamp-2 font-medium leading-relaxed whitespace-pre-wrap" style={{
-                color: '#e2e8f0',
-                lineHeight: '1.5',
-              }}>
-                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                {(memory as any).detailedSummary || memory.rawContent}
-              </p>
-            </div>
-          ) : (
-            <div className="text-xs italic" style={{ color: '#64748b' }}>
-              無內容預覽
-            </div>
-          )}
-        </div>
-
-        {/* 島嶼標籤 */}
-        {island && (
-          <div className="mb-2">
-            <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold"
+          {/* 島嶼標籤 */}
+          {island && (
+            <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-bold flex-shrink-0"
               style={{
                 background: `linear-gradient(135deg, ${hexToRgba(islandColor, 0.35)} 0%, ${hexToRgba(islandColor, 0.25)} 100%)`,
                 color: islandColor,
@@ -1177,38 +1235,53 @@ function DraggableMemoryCard({
                 boxShadow: `0 2px 8px ${hexToRgba(islandColor, 0.25)}`,
               }}
             >
-              <span>🏝️</span>
-              <span>{island.name}</span>
+              <span className="text-[10px]">🏝️</span>
+              <span>{island.nameChinese}</span>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
-        {/* 標籤區 */}
-        {memory.tags.length > 0 && (
-          <div className="mb-2">
-            <div className="flex flex-wrap gap-1">
-              {memory.tags.slice(0, 3).map((tag: string) => (
-                <span
-                  key={tag}
-                  className="px-2 py-0.5 text-xs font-bold rounded-md truncate max-w-[70px]"
-                  style={{
-                    background: 'rgba(251, 191, 36, 0.2)',
-                    color: '#fbbf24',
-                    border: '1px solid rgba(251, 191, 36, 0.4)',
-                  }}
-                  title={tag}
-                >
-                  #{tag}
-                </span>
-              ))}
-              {memory.tags.length > 3 && (
-                <span className="text-xs font-bold px-1 py-0.5" style={{ color: '#94a3b8' }}>
-                  +{memory.tags.length - 3}
-                </span>
-              )}
-            </div>
+        {/* AI 分析內容（不顯示標題） */}
+        <div className="mb-1.5">
+          {(memory.detailedSummary || memory.rawContent) && (
+            <p className="text-xs line-clamp-3 font-medium leading-relaxed whitespace-pre-wrap" style={{
+              color: '#cbd5e1',
+              lineHeight: '1.4',
+            }}>
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+              {(memory as any).detailedSummary || memory.rawContent}
+            </p>
+          )}
+        </div>
+
+        {/* 標籤 */}
+        <div className="mb-1.5 flex-1 flex items-end">
+          <div className="flex flex-wrap gap-1 items-center w-full">
+            {memory.tags.length > 0 && (
+              <>
+                {memory.tags.slice(0, 4).map((tag: string) => (
+                  <span
+                    key={tag}
+                    className="px-1.5 py-0.5 text-xs font-bold rounded-md truncate max-w-[80px]"
+                    style={{
+                      background: 'rgba(251, 191, 36, 0.2)',
+                      color: '#fbbf24',
+                      border: '1px solid rgba(251, 191, 36, 0.4)',
+                    }}
+                    title={tag}
+                  >
+                    #{tag}
+                  </span>
+                ))}
+                {memory.tags.length > 4 && (
+                  <span className="text-[10px] font-bold px-1 py-0.5" style={{ color: '#94a3b8' }}>
+                    +{memory.tags.length - 4}
+                  </span>
+                )}
+              </>
+            )}
           </div>
-        )}
+        </div>
 
         {/* 日期與時間區 */}
         <div className="pt-2 border-t" style={{ borderColor: 'rgba(251, 191, 36, 0.25)' }}>
@@ -1228,7 +1301,7 @@ function DraggableMemoryCard({
 
         {/* 刪除按鈕（批量模式下隱藏） */}
         {!bulkSelectMode && (
-          <div className="absolute bottom-2 sm:bottom-3 left-2 sm:left-3 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="absolute bottom-1.5 sm:bottom-2 left-1.5 sm:left-2 opacity-0 group-hover:opacity-100 transition-opacity">
             <button
               onClick={(e) => {
                 e.stopPropagation()
@@ -1308,7 +1381,7 @@ function MemoryCard({
   return (
     <div
       onClick={handleClick}
-      className="group relative rounded-2xl p-3 sm:p-4 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] flex flex-col"
+      className="group relative rounded-2xl p-2.5 sm:p-3 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] flex flex-col"
       style={{
         background: isSelected
           ? `linear-gradient(135deg, ${hexToRgba(islandColor, 0.25)} 0%, ${hexToRgba(islandColor, 0.2)} 100%)`
@@ -1321,7 +1394,7 @@ function MemoryCard({
         boxShadow: isSelected
           ? `0 8px 24px ${hexToRgba(islandColor, 0.4)}`
           : '0 4px 12px rgba(0, 0, 0, 0.3)',
-        minHeight: '180px',
+        minHeight: '160px',
       }}
       onMouseEnter={(e) => {
         if (!isSelected) {
@@ -1339,7 +1412,7 @@ function MemoryCard({
       {/* 複選框（批量選擇模式） */}
       {bulkSelectMode && (
         <div
-          className="absolute top-2 left-2 z-20"
+          className="absolute top-1.5 left-1.5 z-20"
           onClick={(e) => {
             e.stopPropagation()
             onToggleSelect?.(memory.id)
@@ -1365,7 +1438,7 @@ function MemoryCard({
 
       {/* 釘選按鈕 */}
       {memory.isPinned && !bulkSelectMode && (
-        <div className="absolute top-2 sm:top-3 right-2 sm:right-3 z-10">
+        <div className="absolute top-1.5 sm:top-2 right-1.5 sm:right-2 z-10">
           <button
             onClick={(e) => onTogglePin(memory, e)}
             className="p-1.5 rounded-lg transition-all text-sm hover:scale-110 active:scale-95"
@@ -1381,43 +1454,17 @@ function MemoryCard({
         </div>
       )}
 
-      {/* 標題區 */}
-      <div className="mb-2">
-        <h3 className="text-base sm:text-lg font-black line-clamp-2 leading-tight" style={{
+      {/* 標題區和島嶼標籤 */}
+      <div className="mb-1.5 flex items-start gap-2 justify-between">
+        <h3 className="text-base sm:text-lg font-black line-clamp-2 leading-tight flex-1" style={{
           color: '#fef3c7',
           textShadow: '0 2px 4px rgba(0, 0, 0, 0.4)',
         }}>
           {memory.title || memory.summary || '無標題記憶'}
         </h3>
-      </div>
-
-
-      {/* 內容預覽區 */}
-      <div className="flex-1 mb-2">
-        {(memory.detailedSummary || memory.rawContent) ? (
-          <div>
-            <div className="text-xs font-bold mb-1" style={{ color: '#94a3b8' }}>
-              {memory.detailedSummary ? '💡 AI 深度分析' : '📝 內容預覽'}
-            </div>
-            <p className="text-xs line-clamp-2 font-medium leading-relaxed whitespace-pre-wrap" style={{
-              color: '#e2e8f0',
-              lineHeight: '1.5',
-            }}>
-              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-              {(memory as any).detailedSummary || memory.rawContent}
-            </p>
-          </div>
-        ) : (
-          <div className="text-xs italic" style={{ color: '#64748b' }}>
-            無內容預覽
-          </div>
-        )}
-      </div>
-
-      {/* 島嶼標籤 */}
-      {island && (
-        <div className="mb-2">
-          <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold"
+        {/* 島嶼標籤 */}
+        {island && (
+          <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-bold flex-shrink-0"
             style={{
               background: `linear-gradient(135deg, ${hexToRgba(islandColor, 0.35)} 0%, ${hexToRgba(islandColor, 0.25)} 100%)`,
               color: islandColor,
@@ -1425,38 +1472,53 @@ function MemoryCard({
               boxShadow: `0 2px 8px ${hexToRgba(islandColor, 0.25)}`,
             }}
           >
-            <span>🏝️</span>
-            <span>{island.name}</span>
+            <span className="text-[10px]">🏝️</span>
+            <span>{island.nameChinese}</span>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* 標籤區 */}
-      {memory.tags.length > 0 && (
-        <div className="mb-2">
-          <div className="flex flex-wrap gap-1">
-            {memory.tags.slice(0, 3).map((tag: string) => (
-              <span
-                key={tag}
-                className="px-2 py-0.5 text-xs font-bold rounded-md truncate max-w-[70px]"
-                style={{
-                  background: 'rgba(251, 191, 36, 0.2)',
-                  color: '#fbbf24',
-                  border: '1px solid rgba(251, 191, 36, 0.4)',
-                }}
-                title={tag}
-              >
-                #{tag}
-              </span>
-            ))}
-            {memory.tags.length > 3 && (
-              <span className="text-xs font-bold px-1 py-0.5" style={{ color: '#94a3b8' }}>
-                +{memory.tags.length - 3}
-              </span>
-            )}
-          </div>
+      {/* AI 分析內容（不顯示標題） */}
+      <div className="mb-1.5">
+        {(memory.detailedSummary || memory.rawContent) && (
+          <p className="text-xs line-clamp-3 font-medium leading-relaxed whitespace-pre-wrap" style={{
+            color: '#cbd5e1',
+            lineHeight: '1.4',
+          }}>
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+            {(memory as any).detailedSummary || memory.rawContent}
+          </p>
+        )}
+      </div>
+
+      {/* 標籤 */}
+      <div className="mb-1.5 flex-1 flex items-end">
+        <div className="flex flex-wrap gap-1 items-center w-full">
+          {memory.tags.length > 0 && (
+            <>
+              {memory.tags.slice(0, 4).map((tag: string) => (
+                <span
+                  key={tag}
+                  className="px-1.5 py-0.5 text-xs font-bold rounded-md truncate max-w-[80px]"
+                  style={{
+                    background: 'rgba(251, 191, 36, 0.2)',
+                    color: '#fbbf24',
+                    border: '1px solid rgba(251, 191, 36, 0.4)',
+                  }}
+                  title={tag}
+                >
+                  #{tag}
+                </span>
+              ))}
+              {memory.tags.length > 4 && (
+                <span className="text-[10px] font-bold px-1 py-0.5" style={{ color: '#94a3b8' }}>
+                  +{memory.tags.length - 4}
+                </span>
+              )}
+            </>
+          )}
         </div>
-      )}
+      </div>
 
       {/* 日期與時間區 */}
       <div className="pt-2 border-t" style={{ borderColor: 'rgba(251, 191, 36, 0.25)' }}>
@@ -1476,7 +1538,7 @@ function MemoryCard({
 
       {/* 刪除按鈕（批量模式下隱藏） */}
       {!bulkSelectMode && (
-        <div className="absolute bottom-2 sm:bottom-3 left-2 sm:left-3 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="absolute bottom-1.5 sm:bottom-2 left-1.5 sm:left-2 opacity-0 group-hover:opacity-100 transition-opacity">
           <button
             onClick={(e) => onDelete(memory, e)}
             className="p-1.5 rounded-lg transition-all hover:scale-110 active:scale-95 text-sm"

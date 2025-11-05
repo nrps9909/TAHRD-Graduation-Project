@@ -92,9 +92,17 @@ export async function callGeminiAPI(
       }
     )
 
+    // 调试：打印完整响应
+    logger.info(`[Gemini API] Response data: ${JSON.stringify(response.data, null, 2).substring(0, 500)}`)
+
     const text = response.data?.candidates?.[0]?.content?.parts?.[0]?.text
 
     if (!text) {
+      logger.error(`[Gemini API] Empty response structure:`, {
+        hasCandidates: !!response.data?.candidates,
+        candidatesLength: response.data?.candidates?.length,
+        firstCandidate: response.data?.candidates?.[0]
+      })
       throw new Error('Empty response from Gemini API')
     }
 

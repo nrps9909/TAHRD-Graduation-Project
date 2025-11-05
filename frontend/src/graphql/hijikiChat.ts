@@ -88,6 +88,28 @@ export const GET_HIJIKI_SESSIONS = gql`
 `
 
 /**
+ * 獲取特定對話會話的詳細資訊（包含訊息）
+ */
+export const GET_HIJIKI_SESSION = gql`
+  query GetHijikiSession($sessionId: String!) {
+    getHijikiSession(sessionId: $sessionId) {
+      id
+      sessionId
+      title
+      mode
+      messages {
+        role
+        content
+        timestamp
+      }
+      totalQueries
+      lastActiveAt
+      isActive
+    }
+  }
+`
+
+/**
  * 批量生成向量嵌入
  */
 export const GENERATE_EMBEDDINGS = gql`

@@ -284,7 +284,7 @@ function IslandTab({ island, isActive, onClick }: IslandTabProps) {
             isActive ? 'text-gray-800' : 'text-gray-600'
           }`}
         >
-          {island.name}
+          {island.nameChinese}
         </span>
         <span className="text-xs text-gray-500">
           {island.memoryCount} 個記憶

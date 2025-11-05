@@ -51,19 +51,62 @@ export interface QueueTask {
   }
 }
 
+/**
+ * 用戶級別的任務隊列
+ * 每個用戶擁有獨立的隊列、並發控制和性能追蹤
+ */
+class UserQueue {
+  queue: QueueTask[] = []
+  processing: Map<string, QueueTask> = new Map()
+  maxConcurrent: number = 3 // 每個用戶的並發限制（更保守）
+  minConcurrent: number = 1
+  maxConcurrentLimit: number = 5 // 單用戶最大並發上限
+  recentTaskTimes: number[] = []
+  maxRecentTimes: number = 10
+  lastActivityAt: Date = new Date()
+
+  /**
+   * 記錄任務處理時間
+   */
+  recordTaskTime(processingTime: number) {
+    this.recentTaskTimes.push(processingTime)
+    if (this.recentTaskTimes.length > this.maxRecentTimes) {
+      this.recentTaskTimes.shift()
+    }
+    this.lastActivityAt = new Date()
+  }
+
+  /**
+   * 計算平均處理時間
+   */
+  getAverageTaskTime(): number {
+    if (this.recentTaskTimes.length === 0) return 0
+    const sum = this.recentTaskTimes.reduce((a, b) => a + b, 0)
+    return sum / this.recentTaskTimes.length
+  }
+
+  /**
+   * 獲取隊列統計
+   */
+  getStats() {
+    return {
+      queueSize: this.queue.length,
+      processing: this.processing.size,
+      maxConcurrent: this.maxConcurrent,
+      avgTaskTime: this.getAverageTaskTime()
+    }
+  }
+}
+
 export class TaskQueueService extends EventEmitter {
-  private queue: QueueTask[] = []
-  private processing: Map<string, QueueTask> = new Map()
-  private maxConcurrent: number = 6 // ⚡ 優化：動態並發控制（基準值）
-  private minConcurrent: number = 3 // 最小並發數
-  private maxConcurrentLimit: number = 10 // 最大並發數上限
+  // 用戶級別的隊列映射
+  private userQueues: Map<string, UserQueue> = new Map()
+
+  // 全局配置
   private io?: SocketIOServer
   private intervalId?: NodeJS.Timeout
   private adjustmentIntervalId?: NodeJS.Timeout
-
-  // ⚡ 優化：動態並發控制 - 性能指標
-  private recentTaskTimes: number[] = [] // 最近完成任務的處理時間
-  private maxRecentTimes: number = 10 // 記錄最近 10 個任務的時間
+  private cleanupIntervalId?: NodeJS.Timeout
 
   constructor() {
     super()
@@ -73,6 +116,20 @@ export class TaskQueueService extends EventEmitter {
 
     // ⚡ 優化：啟動動態並發控制定時器（每 30 秒調整一次）
     this.startConcurrencyAdjustment()
+
+    // 🧹 新增：啟動過期用戶隊列清理定時器（每 10 分鐘清理一次）
+    this.startQueueCleanup()
+  }
+
+  /**
+   * 獲取或創建用戶隊列
+   */
+  private getUserQueue(userId: string): UserQueue {
+    if (!this.userQueues.has(userId)) {
+      this.userQueues.set(userId, new UserQueue())
+      logger.info(`[TaskQueue] Created new queue for user: ${userId}`)
+    }
+    return this.userQueues.get(userId)!
   }
 
   /**
@@ -84,7 +141,7 @@ export class TaskQueueService extends EventEmitter {
   }
 
   /**
-   * 添加任務到隊列
+   * 添加任務到用戶隊列
    * @param assistantIds - 實際上是 islandIds（Island-based 系統）
    */
   async addTask(
@@ -112,49 +169,63 @@ export class TaskQueueService extends EventEmitter {
       metadata
     }
 
+    // 獲取用戶的隊列
+    const userQueue = this.getUserQueue(userId)
+
     // 根據優先級插入隊列
     if (priority === TaskPriority.HIGH) {
-      this.queue.unshift(task)
+      userQueue.queue.unshift(task)
     } else {
-      this.queue.push(task)
+      userQueue.queue.push(task)
     }
 
-    logger.info(`[TaskQueue] Task added: ${taskId}, Priority: ${priority}, Queue size: ${this.queue.length}`)
+    logger.info(
+      `[TaskQueue] Task added: ${taskId}, User: ${userId}, Priority: ${priority}, ` +
+      `User queue size: ${userQueue.queue.length}`
+    )
 
     // 通知前端隊列更新
     this.notifyQueueUpdate(userId)
 
-    // 嘗試處理下一個任務
-    this.processNext()
+    // 嘗試處理該用戶的下一個任務
+    this.processNextForUser(userId)
 
     return taskId
   }
 
   /**
-   * 處理下一個任務
+   * 處理用戶的下一個任務
    */
-  private async processNext() {
-    // 檢查是否達到並發上限
-    if (this.processing.size >= this.maxConcurrent) {
-      logger.debug(`[TaskQueue] Concurrent limit reached (${this.processing.size}/${this.maxConcurrent})`)
+  private async processNextForUser(userId: string) {
+    const userQueue = this.getUserQueue(userId)
+
+    // 檢查是否達到該用戶的並發上限
+    if (userQueue.processing.size >= userQueue.maxConcurrent) {
+      logger.debug(
+        `[TaskQueue] User ${userId} concurrent limit reached ` +
+        `(${userQueue.processing.size}/${userQueue.maxConcurrent})`
+      )
       return
     }
 
-    // 檢查隊列是否為空
-    if (this.queue.length === 0) {
-      logger.debug('[TaskQueue] Queue is empty')
+    // 檢查用戶隊列是否為空
+    if (userQueue.queue.length === 0) {
+      logger.debug(`[TaskQueue] User ${userId} queue is empty`)
       return
     }
 
     // 取出下一個任務（優先級已排序）
-    const task = this.queue.shift()!
+    const task = userQueue.queue.shift()!
 
     // 標記為處理中
     task.status = TaskStatus.PROCESSING
     task.startedAt = new Date()
-    this.processing.set(task.id, task)
+    userQueue.processing.set(task.id, task)
 
-    logger.info(`[TaskQueue] Processing task: ${task.id}, Remaining in queue: ${this.queue.length}`)
+    logger.info(
+      `[TaskQueue] Processing task: ${task.id}, User: ${userId}, ` +
+      `Remaining in user queue: ${userQueue.queue.length}`
+    )
 
     // 通知前端任務開始
     this.notifyTaskStart(task)
@@ -169,7 +240,7 @@ export class TaskQueueService extends EventEmitter {
       task.processingTime = task.completedAt.getTime() - task.startedAt!.getTime()
 
       // ⚡ 優化：記錄處理時間（用於動態並發控制）
-      this.recordTaskTime(task.processingTime)
+      userQueue.recordTaskTime(task.processingTime)
 
       // 根據實際結果設置完成訊息
       const memoriesCount = result.memoriesCreated.length
@@ -179,7 +250,10 @@ export class TaskQueueService extends EventEmitter {
         task.progress.message = '⚠️ 此內容相關性較低，未保存記憶'
       }
 
-      logger.info(`[TaskQueue] Task completed: ${task.id}, Time: ${task.processingTime}ms, Memories: ${memoriesCount}`)
+      logger.info(
+        `[TaskQueue] Task completed: ${task.id}, User: ${userId}, ` +
+        `Time: ${task.processingTime}ms, Memories: ${memoriesCount}`
+      )
 
       // 寫入資料庫歷史記錄
       await this.saveTaskHistory(task, result)
@@ -194,7 +268,7 @@ export class TaskQueueService extends EventEmitter {
       task.completedAt = new Date()
       task.progress.message = `處理失敗: ${error.message}`
 
-      logger.error(`[TaskQueue] Task failed: ${task.id}`, error)
+      logger.error(`[TaskQueue] Task failed: ${task.id}, User: ${userId}`, error)
 
       // 寫入資料庫歷史記錄 (失敗記錄)
       await this.saveTaskHistory(task, null, error)
@@ -204,13 +278,13 @@ export class TaskQueueService extends EventEmitter {
 
     } finally {
       // 從處理中移除
-      this.processing.delete(task.id)
+      userQueue.processing.delete(task.id)
 
       // 通知隊列更新
       this.notifyQueueUpdate(task.userId)
 
-      // 繼續處理下一個任務
-      this.processNext()
+      // 繼續處理該用戶的下一個任務
+      this.processNextForUser(userId)
     }
   }
 
@@ -249,44 +323,83 @@ export class TaskQueueService extends EventEmitter {
   }
 
   /**
-   * 獲取任務狀態
+   * 獲取任務狀態（需要提供 userId 用於定位正確的隊列）
    */
-  getTaskStatus(taskId: string): QueueTask | null {
+  getTaskStatus(taskId: string, userId: string): QueueTask | null {
+    const userQueue = this.getUserQueue(userId)
+
     // 檢查處理中的任務
-    if (this.processing.has(taskId)) {
-      return this.processing.get(taskId)!
+    if (userQueue.processing.has(taskId)) {
+      return userQueue.processing.get(taskId)!
     }
 
     // 檢查隊列中的任務
-    return this.queue.find(t => t.id === taskId) || null
+    return userQueue.queue.find(t => t.id === taskId) || null
   }
 
   /**
    * 獲取用戶的所有任務
    */
   getUserTasks(userId: string): QueueTask[] {
-    const queueTasks = this.queue.filter(t => t.userId === userId)
-    const processingTasks = Array.from(this.processing.values()).filter(t => t.userId === userId)
+    const userQueue = this.getUserQueue(userId)
+    const queueTasks = userQueue.queue
+    const processingTasks = Array.from(userQueue.processing.values())
 
     return [...processingTasks, ...queueTasks]
   }
 
   /**
-   * 獲取隊列統計
+   * 獲取全局隊列統計
    */
   getStats() {
+    let totalQueueSize = 0
+    let totalProcessing = 0
+    const userStats: any[] = []
+
+    // 聚合所有用戶的統計
+    this.userQueues.forEach((userQueue, userId) => {
+      totalQueueSize += userQueue.queue.length
+      totalProcessing += userQueue.processing.size
+
+      if (userQueue.queue.length > 0 || userQueue.processing.size > 0) {
+        userStats.push({
+          userId,
+          queueSize: userQueue.queue.length,
+          processing: userQueue.processing.size,
+          maxConcurrent: userQueue.maxConcurrent,
+          avgTaskTime: userQueue.getAverageTaskTime()
+        })
+      }
+    })
+
     return {
-      queueSize: this.queue.length,
-      processing: this.processing.size,
-      maxConcurrent: this.maxConcurrent,
-      queue: this.queue.map(t => ({
+      totalUsers: this.userQueues.size,
+      activeUsers: userStats.length,
+      totalQueueSize,
+      totalProcessing,
+      userStats
+    }
+  }
+
+  /**
+   * 獲取用戶的隊列統計
+   */
+  getUserStats(userId: string) {
+    const userQueue = this.getUserQueue(userId)
+
+    return {
+      userId,
+      queueSize: userQueue.queue.length,
+      processing: userQueue.processing.size,
+      maxConcurrent: userQueue.maxConcurrent,
+      avgTaskTime: userQueue.getAverageTaskTime(),
+      queue: userQueue.queue.map(t => ({
         id: t.id,
-        userId: t.userId,
         status: t.status,
         priority: t.priority,
         progress: t.progress
       })),
-      processingTasks: Array.from(this.processing.values()).map(t => ({
+      processingTasks: Array.from(userQueue.processing.values()).map(t => ({
         id: t.id,
         userId: t.userId,
         status: t.status,
@@ -343,16 +456,16 @@ export class TaskQueueService extends EventEmitter {
   }
 
   /**
-   * 通知隊列更新
+   * 通知用戶隊列更新（發送用戶專屬統計）
    */
   private notifyQueueUpdate(userId: string) {
     if (!this.io) return
 
-    const stats = this.getStats()
+    const userStats = this.getUserStats(userId)
     const userTasks = this.getUserTasks(userId)
 
     this.io.to(userId).emit('queue-update', {
-      stats,
+      stats: userStats,
       userTasks
     })
 
@@ -445,12 +558,14 @@ export class TaskQueueService extends EventEmitter {
   }
 
   /**
-   * 啟動進度定時器（定期更新處理中任務的時間）
+   * 啟動進度定時器（定期更新所有用戶處理中任務的時間）
    */
   private startProgressTimer() {
     this.intervalId = setInterval(() => {
-      this.processing.forEach(task => {
-        this.notifyTaskProgress(task)
+      this.userQueues.forEach((userQueue, userId) => {
+        userQueue.processing.forEach(task => {
+          this.notifyTaskProgress(task)
+        })
       })
     }, 1000) // 每秒更新一次
 
@@ -469,26 +584,7 @@ export class TaskQueueService extends EventEmitter {
   }
 
   /**
-   * ⚡ 優化：記錄任務處理時間
-   */
-  private recordTaskTime(processingTime: number) {
-    this.recentTaskTimes.push(processingTime)
-    if (this.recentTaskTimes.length > this.maxRecentTimes) {
-      this.recentTaskTimes.shift() // 移除最舊的記錄
-    }
-  }
-
-  /**
-   * ⚡ 優化：計算平均處理時間
-   */
-  private getAverageTaskTime(): number {
-    if (this.recentTaskTimes.length === 0) return 0
-    const sum = this.recentTaskTimes.reduce((a, b) => a + b, 0)
-    return sum / this.recentTaskTimes.length
-  }
-
-  /**
-   * ⚡ 優化：啟動動態並發控制（根據性能自動調整並發數）
+   * ⚡ 優化：啟動動態並發控制（根據性能自動調整每個用戶的並發數）
    */
   private startConcurrencyAdjustment() {
     this.adjustmentIntervalId = setInterval(() => {
@@ -510,68 +606,124 @@ export class TaskQueueService extends EventEmitter {
   }
 
   /**
-   * ⚡ 優化：動態調整並發數
+   * ⚡ 優化：動態調整所有用戶的並發數
    * 策略：
    * - 如果平均處理時間 < 10 秒 且 隊列有等待任務 → 增加並發
    * - 如果平均處理時間 > 30 秒 → 降低並發（系統負載過高）
    * - 如果隊列為空 → 降低到基準值
    */
   private adjustConcurrency() {
-    // 沒有足夠的數據時不調整
-    if (this.recentTaskTimes.length < 3) {
-      return
-    }
-
-    const avgTime = this.getAverageTaskTime()
-    const avgTimeSeconds = avgTime / 1000
-    const currentConcurrent = this.maxConcurrent
-    const queueSize = this.queue.length
-    const processingSize = this.processing.size
-
-    // 策略 1: 隊列為空且沒有處理中任務 → 降低到基準值 6
-    if (queueSize === 0 && processingSize === 0) {
-      if (this.maxConcurrent > 6) {
-        this.maxConcurrent = 6
-        logger.info(`[TaskQueue] 🔄 調整並發數: ${currentConcurrent} → ${this.maxConcurrent} (隊列空閒，降到基準值)`)
+    this.userQueues.forEach((userQueue, userId) => {
+      // 沒有足夠的數據時不調整
+      if (userQueue.recentTaskTimes.length < 3) {
+        return
       }
-      return
-    }
 
-    // 策略 2: 處理快速且有等待任務 → 增加並發
-    if (avgTimeSeconds < 10 && queueSize > 0) {
-      if (this.maxConcurrent < this.maxConcurrentLimit) {
-        this.maxConcurrent = Math.min(this.maxConcurrent + 1, this.maxConcurrentLimit)
-        logger.info(`[TaskQueue] 🔄 調整並發數: ${currentConcurrent} → ${this.maxConcurrent} (處理快速 ${avgTimeSeconds.toFixed(1)}s, 增加並發)`)
+      const avgTime = userQueue.getAverageTaskTime()
+      const avgTimeSeconds = avgTime / 1000
+      const currentConcurrent = userQueue.maxConcurrent
+      const queueSize = userQueue.queue.length
+      const processingSize = userQueue.processing.size
 
-        // 立即嘗試處理更多任務
-        this.processNext()
+      // 策略 1: 隊列為空且沒有處理中任務 → 降低到基準值 3
+      if (queueSize === 0 && processingSize === 0) {
+        if (userQueue.maxConcurrent > 3) {
+          userQueue.maxConcurrent = 3
+          logger.info(
+            `[TaskQueue] 🔄 調整用戶 ${userId} 並發數: ${currentConcurrent} → ${userQueue.maxConcurrent} ` +
+            `(隊列空閒，降到基準值)`
+          )
+        }
+        return
       }
-      return
-    }
 
-    // 策略 3: 處理過慢 → 降低並發（避免系統過載）
-    if (avgTimeSeconds > 30) {
-      if (this.maxConcurrent > this.minConcurrent) {
-        this.maxConcurrent = Math.max(this.maxConcurrent - 1, this.minConcurrent)
-        logger.info(`[TaskQueue] 🔄 調整並發數: ${currentConcurrent} → ${this.maxConcurrent} (處理過慢 ${avgTimeSeconds.toFixed(1)}s, 降低並發)`)
+      // 策略 2: 處理快速且有等待任務 → 增加並發
+      if (avgTimeSeconds < 10 && queueSize > 0) {
+        if (userQueue.maxConcurrent < userQueue.maxConcurrentLimit) {
+          userQueue.maxConcurrent = Math.min(userQueue.maxConcurrent + 1, userQueue.maxConcurrentLimit)
+          logger.info(
+            `[TaskQueue] 🔄 調整用戶 ${userId} 並發數: ${currentConcurrent} → ${userQueue.maxConcurrent} ` +
+            `(處理快速 ${avgTimeSeconds.toFixed(1)}s, 增加並發)`
+          )
+
+          // 立即嘗試處理更多任務
+          this.processNextForUser(userId)
+        }
+        return
       }
-      return
-    }
 
-    // 策略 4: 隊列積壓嚴重 → 適度增加並發
-    if (queueSize > 5 && avgTimeSeconds < 20) {
-      if (this.maxConcurrent < this.maxConcurrentLimit) {
-        this.maxConcurrent = Math.min(this.maxConcurrent + 1, this.maxConcurrentLimit)
-        logger.info(`[TaskQueue] 🔄 調整並發數: ${currentConcurrent} → ${this.maxConcurrent} (隊列積壓 ${queueSize}個任務, 增加並發)`)
-
-        // 立即嘗試處理更多任務
-        this.processNext()
+      // 策略 3: 處理過慢 → 降低並發（避免系統過載）
+      if (avgTimeSeconds > 30) {
+        if (userQueue.maxConcurrent > userQueue.minConcurrent) {
+          userQueue.maxConcurrent = Math.max(userQueue.maxConcurrent - 1, userQueue.minConcurrent)
+          logger.info(
+            `[TaskQueue] 🔄 調整用戶 ${userId} 並發數: ${currentConcurrent} → ${userQueue.maxConcurrent} ` +
+            `(處理過慢 ${avgTimeSeconds.toFixed(1)}s, 降低並發)`
+          )
+        }
+        return
       }
-      return
-    }
 
-    // 保持當前並發數
-    logger.debug(`[TaskQueue] 🔄 維持並發數: ${this.maxConcurrent} (平均處理時間: ${avgTimeSeconds.toFixed(1)}s, 隊列: ${queueSize}, 處理中: ${processingSize})`)
+      // 策略 4: 隊列積壓嚴重 → 適度增加並發
+      if (queueSize > 3 && avgTimeSeconds < 20) {
+        if (userQueue.maxConcurrent < userQueue.maxConcurrentLimit) {
+          userQueue.maxConcurrent = Math.min(userQueue.maxConcurrent + 1, userQueue.maxConcurrentLimit)
+          logger.info(
+            `[TaskQueue] 🔄 調整用戶 ${userId} 並發數: ${currentConcurrent} → ${userQueue.maxConcurrent} ` +
+            `(隊列積壓 ${queueSize} 個任務, 增加並發)`
+          )
+
+          // 立即嘗試處理更多任務
+          this.processNextForUser(userId)
+        }
+        return
+      }
+
+      // 保持當前並發數
+      logger.debug(
+        `[TaskQueue] 🔄 維持用戶 ${userId} 並發數: ${userQueue.maxConcurrent} ` +
+        `(平均處理時間: ${avgTimeSeconds.toFixed(1)}s, 隊列: ${queueSize}, 處理中: ${processingSize})`
+      )
+    })
+  }
+
+  /**
+   * 🧹 清理過期的用戶隊列（超過 1 小時無活動）
+   */
+  private startQueueCleanup() {
+    this.cleanupIntervalId = setInterval(() => {
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
+      let cleanedCount = 0
+
+      this.userQueues.forEach((userQueue, userId) => {
+        // 只清理空閒且超過 1 小時無活動的隊列
+        if (
+          userQueue.queue.length === 0 &&
+          userQueue.processing.size === 0 &&
+          userQueue.lastActivityAt < oneHourAgo
+        ) {
+          this.userQueues.delete(userId)
+          cleanedCount++
+        }
+      })
+
+      if (cleanedCount > 0) {
+        logger.info(`[TaskQueue] 🧹 清理了 ${cleanedCount} 個過期用戶隊列`)
+      }
+    }, 10 * 60 * 1000) // 每 10 分鐘清理一次
+
+    logger.info('[TaskQueue] Queue cleanup timer started')
+  }
+
+  /**
+   * 停止隊列清理定時器
+   */
+  private stopQueueCleanup() {
+    if (this.cleanupIntervalId) {
+      clearInterval(this.cleanupIntervalId)
+      this.cleanupIntervalId = undefined
+      logger.info('[TaskQueue] Queue cleanup timer stopped')
+    }
   }
 
   /**
@@ -579,20 +731,32 @@ export class TaskQueueService extends EventEmitter {
    */
   async waitForCompletion(timeout: number = 30000): Promise<void> {
     const startTime = Date.now()
-    logger.info(`[TaskQueue] Waiting for ${this.processing.size} tasks to complete...`)
+    let totalProcessing = 0
 
-    while (this.processing.size > 0) {
+    this.userQueues.forEach(userQueue => {
+      totalProcessing += userQueue.processing.size
+    })
+
+    logger.info(`[TaskQueue] Waiting for ${totalProcessing} tasks to complete...`)
+
+    while (totalProcessing > 0) {
       // 檢查是否超時
       if (Date.now() - startTime > timeout) {
-        logger.warn(`[TaskQueue] Timeout waiting for tasks, ${this.processing.size} tasks still processing`)
+        logger.warn(`[TaskQueue] Timeout waiting for tasks, ${totalProcessing} tasks still processing`)
         break
       }
 
       // 等待 500ms 後再檢查
       await new Promise(resolve => setTimeout(resolve, 500))
+
+      // 重新計算處理中的任務數
+      totalProcessing = 0
+      this.userQueues.forEach(userQueue => {
+        totalProcessing += userQueue.processing.size
+      })
     }
 
-    if (this.processing.size === 0) {
+    if (totalProcessing === 0) {
       logger.info('[TaskQueue] All tasks completed successfully')
     }
   }
@@ -602,10 +766,9 @@ export class TaskQueueService extends EventEmitter {
    */
   cleanup() {
     this.stopProgressTimer()
-    this.stopConcurrencyAdjustment() // ⚡ 優化：停止動態並發控制
-    this.queue = []
-    this.processing.clear()
-    this.recentTaskTimes = [] // 清空性能記錄
+    this.stopConcurrencyAdjustment()
+    this.stopQueueCleanup()
+    this.userQueues.clear()
     logger.info('[TaskQueue] Cleanup completed')
   }
 }

@@ -55,8 +55,8 @@ interface HybridSearchConfig {
  */
 export class HybridSearchService {
   private config: HybridSearchConfig = {
-    maxResults: 10,
-    minSimilarity: 0.5,
+    maxResults: 15,
+    minSimilarity: 0.3,
     enableParallelSearch: true
   }
 

@@ -100,11 +100,11 @@ export const useIslandStore = create<IslandStore>((set, get) => ({
 
   // 更新島嶼數據但保持當前視角（用於 refetch 時）
   updateIslands: (islands: Island[]) => {
-    set(state => ({
+    set({
       islands,
       // 保持當前的 currentIslandId 和 isTransitioning 狀態
       isLoading: false
-    }))
+    })
   },
 
   setLoading: (loading: boolean) => {

@@ -4,16 +4,18 @@
  */
 
 import { useState, useRef, useEffect } from 'react'
-// REMOVED: import { useQuery } from '@apollo/client'
-// REMOVED: import { GET_CHIEF_ASSISTANT } from '../graphql/knowledge'
+import { useQuery, useMutation, useLazyQuery } from '@apollo/client'
+import { GET_TORORO_SESSIONS, GET_TORORO_SESSION, DELETE_TORORO_SESSION, SAVE_TORORO_MESSAGE } from '../graphql/chatHistory'
 import { useSound } from '../hooks/useSound'
 import { useSSEChat } from '../hooks/useSSEChat'
+import { usePersistedChat } from '../hooks/usePersistedChat'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Z_INDEX_CLASSES } from '../constants/zIndex'
 import { API_ENDPOINTS } from '../config/api'
 import axios from 'axios'
 import { useAuthStore } from '../stores/authStore'
 import { Live2DDisplay } from './Live2DDisplay'
+import { ChatHistorySidebar } from './ChatHistorySidebar'
 
 interface TororoChatDialogProps {
   onClose: () => void
@@ -21,7 +23,7 @@ interface TororoChatDialogProps {
 
 interface ChatItem {
   id: string
-  type: 'user' | 'tororo'
+  type: 'user' | 'assistant'
   content: string
   files?: Array<{
     name: string
@@ -30,6 +32,7 @@ interface ChatItem {
   }>
   timestamp: Date
   isComplete?: boolean  // 標記訊息是否完成（用於分段泡泡）
+  [key: string]: unknown // 索引簽名，滿足 ChatMessage 約束
 }
 
 interface UploadedFile {
@@ -43,9 +46,55 @@ interface UploadedFile {
 }
 
 export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) => {
+  const [sessionId, setSessionId] = useState(() => `tororo-session-${Date.now()}`)
   const [inputText, setInputText] = useState('')
-  const [chatHistory, setChatHistory] = useState<ChatItem[]>([])
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  // 獲取歷史會話列表
+  const { data: sessionsData, refetch: refetchSessions, error: sessionsError, loading: sessionsLoading } = useQuery(GET_TORORO_SESSIONS, {
+    fetchPolicy: 'network-only', // 強制從網絡獲取，不使用緩存
+    errorPolicy: 'all',
+  })
+
+  // 調試：打印會話數據和認證狀態
+  useEffect(() => {
+    const authToken = localStorage.getItem('auth_token')
+    const authStorage = localStorage.getItem('auth-storage')
+
+    console.log('[Tororo Sessions Debug]', {
+      loading: sessionsLoading,
+      error: sessionsError,
+      errorMessage: sessionsError?.message,
+      graphQLErrors: sessionsError?.graphQLErrors,
+      networkError: sessionsError?.networkError,
+      data: sessionsData,
+      sessions: sessionsData?.getTororoSessions,
+      count: sessionsData?.getTororoSessions?.length,
+      authToken: authToken ? `${authToken.substring(0, 20)}...` : 'NO TOKEN',
+      authStorage: authStorage ? JSON.parse(authStorage) : 'NO AUTH STORAGE',
+    })
+  }, [sessionsData, sessionsError, sessionsLoading])
+
+  // 保存消息 mutation
+  const [saveMessageMutation] = useMutation(SAVE_TORORO_MESSAGE)
+
+  // 獲取單個會話的消息 (lazy query)
+  const [getSession] = useLazyQuery(GET_TORORO_SESSION)
+
+  // 刪除會話 mutation
+  const [deleteSessionMutation] = useMutation(DELETE_TORORO_SESSION, {
+    onCompleted: () => {
+      refetchSessions()
+    },
+  })
+
+  // 使用持久化聊天記錄
+  const { chatHistory, addMessage, setChatHistory, clearHistory } = usePersistedChat<ChatItem>({
+    sessionId: sessionId,
+    storageKey: `tororo-chat-${sessionId}`,
+    maxHistorySize: 50 // 最多保存 50 條消息
+  })
 
   const { uploadKnowledge: uploadKnowledgeSSE } = useSSEChat()
   // REMOVED: useQuery(GET_CHIEF_ASSISTANT) - migrated to Island-based architecture
@@ -152,6 +201,64 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
     play('button_click')
   }
 
+  // 歷史記錄處理函數
+  const handleSelectSession = async (selectedSessionId: string) => {
+    try {
+      console.log('[Tororo] Loading session:', selectedSessionId)
+
+      // 獲取會話詳情
+      const { data } = await getSession({
+        variables: { sessionId: selectedSessionId }
+      })
+
+      if (data?.getTororoSession) {
+        const session = data.getTororoSession
+
+        // 轉換消息格式
+        const loadedMessages: ChatItem[] = session.messages.map((msg: any, index: number) => ({
+          id: `${msg.role}-${session.sessionId}-${index}`,
+          type: msg.role as 'user' | 'assistant',
+          content: msg.content,
+          timestamp: new Date(msg.timestamp),
+          isComplete: true
+        }))
+
+        // 設置會話 ID
+        setSessionId(selectedSessionId)
+
+        // 載入聊天記錄
+        setChatHistory(loadedMessages)
+
+        console.log('[Tororo] Loaded', loadedMessages.length, 'messages')
+      }
+
+      // 關閉側邊欄
+      setSidebarOpen(false)
+    } catch (error) {
+      console.error('[Tororo] Failed to load session:', error)
+      setSidebarOpen(false)
+    }
+  }
+
+  const handleDeleteSession = async (sessionIdToDelete: string) => {
+    try {
+      await deleteSessionMutation({ variables: { sessionId: sessionIdToDelete } })
+      if (sessionIdToDelete === sessionId) {
+        handleNewChat()
+      }
+    } catch (error) {
+      console.error('刪除會話失敗:', error)
+    }
+  }
+
+  const handleNewChat = () => {
+    const newSessionId = `tororo-session-${Date.now()}`
+    setSessionId(newSessionId)
+    clearHistory()
+    setUploadedFiles([])
+    setSidebarOpen(false)
+  }
+
   const handleSubmit = async () => {
     if (!inputText.trim() && uploadedFiles.length === 0) return
 
@@ -173,22 +280,22 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
       timestamp: new Date()
     }
 
-    setChatHistory(prev => [...prev, userMessage])
+    addMessage(userMessage)
 
     // 立即清空輸入，讓用戶可以繼續輸入下一個（像 IG 一樣）
     setInputText('')
     setUploadedFiles([])
 
-    // 創建第一個白噗噗訊息用於顯示打字機效果
+    // 創建第一個白噗噗訊息，內容為空以觸發"思考中"浮動動畫
     let currentMessageId = `tororo-${Date.now()}`
     const tororoMessage: ChatItem = {
       id: currentMessageId,
-      type: 'tororo',
-      content: '',
+      type: 'assistant',
+      content: '', // 空內容會觸發浮動的"思考中..."動畫
       timestamp: new Date(),
       isComplete: false
     }
-    setChatHistory(prev => [...prev, tororoMessage])
+    addMessage(tororoMessage)
 
     // 在背景處理，不阻塞用戶輸入（非阻塞式）
     ;(async () => {
@@ -200,6 +307,8 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
         : 'TEXT'
 
       let accumulatedResponse = ''
+      let fullAssistantResponse = '' // 保存完整的助手回應
+      let isFirstChunk = true // 追蹤是否為第一個 chunk
 
       await new Promise<void>((resolve, reject) => {
         uploadKnowledgeSSE({
@@ -212,8 +321,18 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
           contentType: contentTypeValue
         }, {
           onChunk: (chunk) => {
-            // 累積回應文字並顯示打字機效果
-            accumulatedResponse += chunk
+            // 第一個 chunk 時，清除"思考中..."
+            if (isFirstChunk) {
+              isFirstChunk = false
+              accumulatedResponse = chunk
+              fullAssistantResponse = chunk
+            } else {
+              // 後續 chunk 累積
+              accumulatedResponse += chunk
+              fullAssistantResponse += chunk
+            }
+
+            // 更新顯示內容
             setChatHistory(prev =>
               prev.map(msg =>
                 msg.id === currentMessageId
@@ -232,22 +351,23 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
               )
             )
 
-            // 重置累積文字，創建新泡泡
+            // 重置累積文字和 isFirstChunk，創建新泡泡
             accumulatedResponse = ''
+            isFirstChunk = true // 新泡泡重置為 true
             currentMessageId = `tororo-${Date.now()}-${Math.random()}`
 
             setChatHistory(prev => [
               ...prev,
               {
                 id: currentMessageId,
-                type: 'tororo' as const,
+                type: 'assistant' as const,
                 content: '',
                 timestamp: new Date(),
                 isComplete: false
               }
             ])
           },
-          onComplete: () => {
+          onComplete: async () => {
             // 標記最後一個泡泡為完成，並移除空白泡泡
             setChatHistory(prev =>
               prev
@@ -258,9 +378,27 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
                 )
                 .filter(msg => msg.content.trim() !== '') // 過濾掉空白訊息
             )
+
+            // 保存對話記錄到後端
+            try {
+              await saveMessageMutation({
+                variables: {
+                  sessionId,
+                  userMessage: userContent,
+                  assistantMessage: fullAssistantResponse
+                }
+              })
+              console.log('[Tororo] Message saved to session:', sessionId)
+            } catch (error) {
+              console.error('[Tororo] Failed to save message:', error)
+            }
+
             resolve()
             play('message_received')
             playRandomMeow()
+
+            // 刷新會話列表
+            refetchSessions()
           },
           onError: (error) => {
             reject(new Error(error))
@@ -401,6 +539,20 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
         background: 'linear-gradient(to bottom right, rgba(255, 248, 231, 0.98) 0%, rgba(255, 243, 224, 0.98) 50%, rgba(255, 237, 213, 0.98) 100%)'
       }}
     >
+      {/* 對話歷史側邊欄 */}
+      <ChatHistorySidebar
+        sessions={sessionsData?.getTororoSessions || []}
+        currentSessionId={sessionId}
+        onSelectSession={handleSelectSession}
+        onDeleteSession={handleDeleteSession}
+        onNewChat={handleNewChat}
+        isOpen={sidebarOpen}
+        onToggle={() => setSidebarOpen(!sidebarOpen)}
+        color="tororo"
+        loading={sessionsLoading}
+        error={sessionsError}
+      />
+
       {/* 裝飾背景 - 雲朵和陽光 */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-20 left-20 text-4xl animate-bounce" style={{ animationDuration: '3s' }}>☁️</div>
@@ -411,7 +563,7 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
       </div>
 
       {/* 主對話容器 - 左右佈局：充分利用橫向空間 */}
-      <div className="relative w-full max-w-6xl h-full flex p-4 gap-6">
+      <div className="relative w-full max-w-7xl h-full flex p-4 gap-8">
         {/* 關閉按鈕 - 固定在右上角 */}
         <div className="absolute top-6 right-6 z-10">
           <button
@@ -427,13 +579,13 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
         </div>
 
         {/* 左側：Live2D 模型 - 固定寬度，垂直置中 */}
-        <div className="flex-shrink-0 flex flex-col items-center justify-center" style={{ width: '350px' }}>
+        <div className="flex-shrink-0 flex flex-col items-center justify-center" style={{ width: '320px' }}>
           <Live2DDisplay
             modelPath="/models/tororo_white/tororo.model3.json"
-            width={350}
-            height={450}
+            width={320}
+            height={420}
             isThinking={false}
-            isSpeaking={chatHistory.some(msg => msg.type === 'tororo' && !msg.isComplete)}
+            isSpeaking={chatHistory.some(msg => msg.type === 'assistant' && !msg.isComplete)}
           />
           <div className="mt-4 text-center">
             <h2 className="text-2xl font-bold flex items-center justify-center gap-2" style={{ color: '#8B5C2E' }}>
@@ -445,7 +597,7 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
         </div>
 
         {/* 右側：對話區域 - 彈性寬度 */}
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex-1 flex flex-col min-w-0 pl-4">
           {/* 對話歷史 - 佔據剩餘空間 */}
         <div className="flex-1 overflow-y-auto mb-6 space-y-3 sm:space-y-4">
           {chatHistory.length === 0 ? (
@@ -515,7 +667,7 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
                       }}
                     >
                         {/* 對話氣泡尾巴 - 只在第一個泡泡顯示 */}
-                        {index === chatHistory.findIndex(msg => msg.type === 'tororo') && (
+                        {index === chatHistory.findIndex(msg => msg.type === 'assistant') && (
                           <div
                             className="absolute -left-3 top-8 w-6 h-6 rotate-45"
                             style={{

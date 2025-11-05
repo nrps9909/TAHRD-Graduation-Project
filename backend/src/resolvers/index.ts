@@ -14,6 +14,7 @@ import { knowledgeDistributionResolvers } from './knowledgeDistributionResolvers
 import { catAgentResolvers } from './catAgentResolvers'
 import { tororoResolvers } from './tororoResolvers'
 import { hijikiRagResolvers } from './hijikiRagResolvers'
+import { tororoChatResolvers } from './tororoChatResolvers'
 import { categoryResolvers } from './categoryResolvers'
 import { taskHistoryResolvers } from './taskHistoryResolvers'
 import { islandResolvers } from './islandResolvers'
@@ -34,6 +35,8 @@ export const resolvers = {
     ...catAgentResolvers.Query,
     // Hijiki RAG System (小黑知識庫)
     ...hijikiRagResolvers.Query,
+    // Tororo Chat System (小白對話會話)
+    ...tororoChatResolvers.Query,
     // Category System (自訂分類系統)
     ...categoryResolvers.Query,
     // Task History System (任務歷史記錄)
@@ -58,6 +61,8 @@ export const resolvers = {
     ...tororoResolvers.Mutation,
     // Hijiki RAG System (小黑知識庫)
     ...hijikiRagResolvers.Mutation,
+    // Tororo Chat System (小白對話會話)
+    ...tororoChatResolvers.Mutation,
     // Category System (自訂分類系統)
     ...categoryResolvers.Mutation,
   },

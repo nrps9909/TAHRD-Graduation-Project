@@ -62,29 +62,52 @@ export class RAGConversationService {
       logger.info(`[RAG] Starting conversation for session ${input.sessionId}`)
       logger.info(`[RAG] Query: "${input.query.substring(0, 100)}..."`)
 
-      // 1. ⚡ 意圖分析（新增）
-      const intentStartTime = Date.now()
-      const intent = await queryIntentAnalyzer.analyze(input.query)
-      const intentTime = Date.now() - intentStartTime
+      // 1. 🚀 直接獲取所有用戶記憶（移除 RAG 檢索層）
+      const memoryStartTime = Date.now()
+      const allMemories = await prisma.memory.findMany({
+        where: {
+          userId: input.userId,
+          isArchived: false, // 不包含已歸檔的記憶
+        },
+        orderBy: [
+          { importanceScore: 'desc' }, // 先按重要性排序
+          { createdAt: 'desc' },       // 再按時間排序
+        ],
+        select: {
+          id: true,
+          title: true,
+          rawContent: true,
+          summary: true,
+          tags: true,
+          islandId: true,
+          createdAt: true,
+          importanceScore: true,
+          island: {
+            select: {
+              nameChinese: true,
+              emoji: true,
+            },
+          },
+        },
+      })
+      const memoryTime = Date.now() - memoryStartTime
 
       logger.info(
-        `[RAG] Intent analysis completed in ${intentTime}ms: ` +
-        `type=${intent.type}, confidence=${intent.confidence.toFixed(2)}`
+        `[RAG] Loaded ALL memories in ${memoryTime}ms: ` +
+        `total ${allMemories.length} memories`
       )
 
-      // 2. ⚡ 混合檢索（替換原來的純語義搜尋）
-      const searchStartTime = Date.now()
-      const searchResults = await hybridSearchService.search(
-        input.userId,
-        intent,
-        input.maxContext || 5
-      )
-      const searchTime = Date.now() - searchStartTime
-
-      logger.info(
-        `[RAG] Hybrid search completed in ${searchTime}ms: ` +
-        `found ${searchResults.length} results`
-      )
+      // 2. 轉換為統一格式
+      const allMemoriesFormatted = allMemories.map((m) => ({
+        memoryId: m.id,
+        title: m.title || '無標題',
+        content: m.summary || m.rawContent || '',
+        tags: m.tags,
+        islandName: m.island?.nameChinese || '未分類',
+        islandEmoji: m.island?.emoji || '📝',
+        importance: m.importanceScore || 5,
+        createdAt: m.createdAt,
+      }))
 
       // 3. 獲取對話歷史
       const sessionStartTime = Date.now()
@@ -97,15 +120,14 @@ export class RAGConversationService {
         timestamp: string
       }>
 
-      // 4. 構建 RAG Prompt（包含意圖資訊）
-      const ragPrompt = this.buildRAGPrompt(
+      // 4. 構建 Full Context Prompt（包含所有記憶）
+      const ragPrompt = this.buildFullContextPrompt(
         input.query,
-        searchResults,
-        conversationHistory,
-        intent
+        allMemoriesFormatted,
+        conversationHistory
       )
 
-      // 5. 調用 Gemini 2.5 Flash 生成回答
+      // 5. 調用 Gemini 2.5 Flash 生成回答（1M token 窗口可容納所有記憶）
       const geminiStartTime = Date.now()
       const answer = await this.callGemini(ragPrompt)
       const geminiTime = Date.now() - geminiStartTime
@@ -115,7 +137,11 @@ export class RAGConversationService {
         input.sessionId,
         input.query,
         answer,
-        searchResults.map((r) => ({ memoryId: r.memoryId, title: r.title, similarity: r.similarity }))
+        allMemoriesFormatted.slice(0, 10).map((r) => ({
+          memoryId: r.memoryId,
+          title: r.title,
+          similarity: 1.0 // 所有記憶都可見，標記為 100% 相關
+        }))
       )
 
       const totalTime = Date.now() - startTime
@@ -123,17 +149,16 @@ export class RAGConversationService {
       // ⚡ 性能日誌
       logger.info(
         `[RAG] Chat completed in ${totalTime}ms: ` +
-        `intent=${intentTime}ms, search=${searchTime}ms, ` +
-        `session=${sessionTime}ms, gemini=${geminiTime}ms`
+        `memory=${memoryTime}ms, session=${sessionTime}ms, gemini=${geminiTime}ms`
       )
 
       // 7. 返回結果
       return {
         answer,
-        sources: searchResults.map((r) => ({
+        sources: allMemoriesFormatted.slice(0, 20).map((r) => ({
           memoryId: r.memoryId,
           title: r.title,
-          relevance: r.similarity,
+          relevance: 1.0, // 所有記憶都可見
         })),
         conversationHistory: [
           ...conversationHistory.map((m) => ({
@@ -177,7 +202,7 @@ export class RAGConversationService {
     }>
   > {
     // 1. 語義搜尋
-    const semanticResults = await vectorService.semanticSearch(userId, query, maxResults, 0.5)
+    const semanticResults = await vectorService.semanticSearch(userId, query, maxResults, 0.3)
 
     // 2. 獲取完整記憶資訊
     const memoryIds = semanticResults.map((r: { memoryId: string; similarity: number }) => r.memoryId)
@@ -222,12 +247,13 @@ export class RAGConversationService {
     history: Array<{ role: string; content: string }>,
     intent?: any
   ): string {
-    // 構建上下文文本（標註來源）
+    // 構建上下文文本（使用清晰的標題而非編號）
     const contextText = context
       .map((c, i) => {
         const sourceLabel = c.source === 'semantic' ? '語義相似' :
                            c.source === 'structured' ? '結構匹配' : '統計結果'
-        return `[記憶 ${i + 1}]（${sourceLabel}）${c.title}\n內容: ${c.content}\n標籤: ${c.tags.join(', ')}`
+        // 使用清晰的格式，方便 AI 引用
+        return `📝 **${c.title}**（${sourceLabel}）\n內容: ${c.content}\n標籤: ${c.tags.join(', ')}`
       })
       .join('\n\n')
 
@@ -259,9 +285,9 @@ export class RAGConversationService {
       }
     }
 
-    return `你是小黑（Hijiki），一個專業的知識管理員 🌙
+    return `你是小黑（Hijiki），一個溫暖且專業的知識管理員 🌙
 
-你的任務是基於用戶的知識庫回答問題。
+你的任務是基於用戶的知識庫回答問題，像朋友一樣親切地幫助他們回顧記憶。
 
 【知識庫上下文】
 ${contextText || '（未找到相關記憶）'}
@@ -271,11 +297,91 @@ ${historyText ? `\n【對話歷史】\n${historyText}\n` : ''}
 ${query}
 
 【回答要求】
-1. 基於提供的知識庫上下文回答
-2. 如果知識庫中沒有相關資訊，誠實告知
-3. 用清晰、專業且友善的語氣
-4. 適當引用具體的記憶內容（可以提到記憶編號）
-5. 回答要簡潔明瞭，突出重點
+1. 直接回答問題，不要每次都自我介紹
+2. 使用親切自然的語氣（用「你」而非「您」），像朋友一樣聊天
+3. **回答要詳細且完整，充分展現你找到的記憶內容**
+4. **如果找到多條記憶，請全部列出來，不要只挑幾個**
+5. 引用記憶時，直接使用記憶標題（例如：「你在『心情記錄』中提到...」）
+6. 用列表或項目符號清楚呈現多條記憶（例如：• 項目一）
+7. 每條記憶都要簡單說明內容，不要只列標題
+8. 如果沒有相關資訊，誠實告知並主動提供幫助
+9. 避免使用官腔用語（如「關於您詢問」、「不過我觀察到」）
+10. **回應長度：2-5 句話（如果只有 1-2 條記憶），或者更長（如果有 3 條以上記憶）**
+11. 像朋友一樣表達興趣和關心，而不是只報告結果
+
+請回答：`
+  }
+
+  /**
+   * 構建 Full Context Prompt（🚀 新版：包含所有記憶）
+   *
+   * 不使用 RAG 檢索，直接將所有記憶 feed 給 LLM
+   * Gemini 2.5 Flash 有 1M token 窗口，足以容納所有記憶
+   */
+  private buildFullContextPrompt(
+    query: string,
+    allMemories: Array<{
+      memoryId: string
+      title: string
+      content: string
+      tags: string[]
+      islandName: string
+      islandEmoji: string
+      importance: number
+      createdAt: Date
+    }>,
+    history: Array<{ role: string; content: string }>
+  ): string {
+    // 構建完整的記憶庫文本
+    const memoriesText = allMemories.length > 0
+      ? allMemories
+          .map((m, i) => {
+            const dateStr = new Date(m.createdAt).toLocaleDateString('zh-TW', {
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit'
+            })
+            return `${i + 1}. ${m.islandEmoji} **${m.title}** [${m.islandName}] (${dateStr})
+   重要度: ${m.importance}/10
+   內容: ${m.content}
+   標籤: ${m.tags.join(', ') || '無'}`
+          })
+          .join('\n\n')
+      : '（還沒有任何記憶）'
+
+    // 對話歷史
+    const historyText =
+      history.length > 0
+        ? history
+            .slice(-4) // 保留最近 4 輪對話
+            .map((h) => `${h.role === 'user' ? '用戶' : '小黑'}: ${h.content}`)
+            .join('\n')
+        : ''
+
+    return `你是小黑（Hijiki），一個溫暖且專業的知識管理員 🌙
+
+你可以看到用戶的**所有記憶**，不會漏掉任何一條。
+
+【完整知識庫】（共 ${allMemories.length} 條記憶）
+${memoriesText}
+
+${historyText ? `【對話歷史】\n${historyText}\n` : ''}
+【用戶問題】
+${query}
+
+【回答要求】
+1. 直接回答問題，不要每次都自我介紹
+2. 使用親切自然的語氣（用「你」而非「您」），像朋友一樣聊天
+3. **你可以看到所有 ${allMemories.length} 條記憶，請充分利用它們來回答**
+4. **如果問題涉及多條記憶，請全部列出來**
+5. 引用記憶時，直接使用記憶標題（例如：「你在『心情記錄』中提到...」）
+6. 用列表或項目符號清楚呈現多條記憶（例如：• 項目一）
+7. 每條記憶都要簡單說明內容，不要只列標題
+8. 如果沒有相關資訊，誠實告知並主動提供幫助
+9. 避免使用官腔用語（如「關於您詢問」、「不過我觀察到」）
+10. **回應長度：根據找到的記憶數量調整，1-2 條記憶用 2-3 句話，3 條以上用更長的回應**
+11. 像朋友一樣表達興趣和關心，而不是只報告結果
 
 請回答：`
   }
@@ -333,6 +439,15 @@ ${query}
   }
 
   /**
+   * 獲取會話（不創建新的）
+   */
+  async getSession(userId: string, sessionId: string) {
+    return await prisma.hijikiSession.findFirst({
+      where: { userId, sessionId },
+    })
+  }
+
+  /**
    * 更新會話
    */
   private async updateSession(
@@ -379,14 +494,14 @@ ${query}
   }
 
   /**
-   * 清空會話歷史
+   * 清空會話歷史（保持 isActive 為 true）
    */
   async clearSession(userId: string, sessionId: string): Promise<void> {
     await prisma.hijikiSession.updateMany({
       where: { userId, sessionId },
       data: {
         messages: [],
-        isActive: false,
+        // 不改變 isActive 狀態，保持會話在列表中可見
       },
     })
 
@@ -402,6 +517,23 @@ ${query}
       orderBy: { lastActiveAt: 'desc' },
       take: 20,
     })
+  }
+
+  /**
+   * 刪除會話
+   */
+  async deleteSession(userId: string, sessionId: string): Promise<boolean> {
+    try {
+      await prisma.hijikiSession.deleteMany({
+        where: { userId, sessionId },
+      })
+
+      logger.info(`[RAG] Deleted session ${sessionId}`)
+      return true
+    } catch (error) {
+      logger.error(`[RAG] Delete session failed:`, error)
+      return false
+    }
   }
 }
 

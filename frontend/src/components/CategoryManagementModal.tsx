@@ -199,7 +199,7 @@ const IslandsTab: React.FC<IslandsTabProps> = ({ islands, onEdit, onDelete, onAd
                 <div className="text-2xl md:text-3xl flex-shrink-0">{island.emoji}</div>
                 <div className="flex-1 min-w-0">
                   <h4 className="font-semibold text-[#d8c47e] text-sm md:text-base">{island.nameChinese}</h4>
-                  <p className="text-xs md:text-sm text-gray-400">{island.name}</p>
+                  <p className="text-xs md:text-sm text-gray-400">{island.nameChinese}</p>
                   {island.description && (
                     <p className="text-xs md:text-sm text-gray-300 mt-1 line-clamp-2">{island.description}</p>
                   )}

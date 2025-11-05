@@ -593,16 +593,44 @@ function ChatHistoryView({
 
   const formatDate = (date: Date) => {
     const now = new Date()
-    const diff = now.getTime() - date.getTime()
-    const minutes = Math.floor(diff / 60000)
-    const hours = Math.floor(diff / 3600000)
-    const days = Math.floor(diff / 86400000)
 
-    if (minutes < 1) return '剛剛'
-    if (minutes < 60) return `${minutes} 分鐘前`
-    if (hours < 24) return `${hours} 小時前`
-    if (days < 7) return `${days} 天前`
-    return date.toLocaleDateString('zh-TW', { month: 'short', day: 'numeric' })
+    // 正確計算日期差異：將時間歸零到當天 00:00:00
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const compareDate = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+    const days = Math.floor((today.getTime() - compareDate.getTime()) / 86400000)
+
+    // 格式化時間 (HH:MM)
+    const hours = date.getHours().toString().padStart(2, '0')
+    const minutes = date.getMinutes().toString().padStart(2, '0')
+    const time = `${hours}:${minutes}`
+
+    // 今天：顯示「今天 HH:MM」
+    if (days === 0) {
+      return `今天 ${time}`
+    }
+
+    // 昨天：顯示「昨天 HH:MM」
+    if (days === 1) {
+      return `昨天 ${time}`
+    }
+
+    // 7天內：顯示「X天前 HH:MM」
+    if (days < 7) {
+      return `${days}天前 ${time}`
+    }
+
+    // 今年：顯示「M月D日 HH:MM」
+    const month = date.getMonth() + 1
+    const day = date.getDate()
+    const year = date.getFullYear()
+    const currentYear = now.getFullYear()
+
+    if (year === currentYear) {
+      return `${month}月${day}日 ${time}`
+    }
+
+    // 其他：顯示「YYYY/M/D HH:MM」
+    return `${year}/${month}/${day} ${time}`
   }
 
   const getSessionPreview = (session: ChatSession) => {

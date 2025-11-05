@@ -17,7 +17,7 @@ const AdminDashboard = () => {
   )
 
   // 獲取用戶列表
-  const { data: usersData, loading: usersLoading, refetch } = useQuery<{ adminGetAllUsers: AdminUsersResponse }>(
+  const { data: usersData, loading: usersLoading } = useQuery<{ adminGetAllUsers: AdminUsersResponse }>(
     GET_ALL_USERS,
     {
       variables: {

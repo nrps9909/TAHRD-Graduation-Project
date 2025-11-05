@@ -143,6 +143,50 @@ export const hijikiRagResolvers = {
         throw new Error('獲取會話列表失敗')
       }
     },
+
+    /**
+     * 獲取特定對話會話的詳細資訊（包含訊息）
+     */
+    getHijikiSession: async (
+      _: any,
+      { sessionId }: { sessionId: string },
+      context: any
+    ) => {
+      try {
+        const userId = context.userId
+        if (!userId) {
+          throw new Error('未授權')
+        }
+
+        logger.info(`[Hijiki RAG] Getting session ${sessionId} for user ${userId}`)
+
+        const session = await ragConversation.getSession(userId, sessionId)
+
+        if (!session) {
+          return null
+        }
+
+        const messages = Array.isArray(session.messages) ? session.messages : []
+
+        return {
+          id: session.id,
+          sessionId: session.sessionId,
+          title: session.title,
+          mode: session.mode,
+          messages: messages.map((msg: any) => ({
+            role: msg.role,
+            content: msg.content,
+            timestamp: msg.timestamp,
+          })),
+          totalQueries: session.totalQueries,
+          lastActiveAt: session.lastActiveAt,
+          isActive: session.isActive,
+        }
+      } catch (error) {
+        logger.error('[Hijiki RAG] Get session failed:', error)
+        return null
+      }
+    },
   },
 
   Mutation: {
@@ -200,6 +244,31 @@ export const hijikiRagResolvers = {
         return true
       } catch (error) {
         logger.error('[Hijiki RAG] Clear session failed:', error)
+        return false
+      }
+    },
+
+    /**
+     * 刪除對話會話
+     */
+    deleteHijikiSession: async (
+      _: any,
+      { sessionId }: { sessionId: string },
+      context: any
+    ) => {
+      try {
+        const userId = context.userId
+        if (!userId) {
+          throw new Error('未授權')
+        }
+
+        logger.info(`[Hijiki RAG] Deleting session ${sessionId} for user ${userId}`)
+
+        const success = await ragConversation.deleteSession(userId, sessionId)
+
+        return success
+      } catch (error) {
+        logger.error('[Hijiki RAG] Delete session failed:', error)
         return false
       }
     },

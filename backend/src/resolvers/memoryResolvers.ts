@@ -225,9 +225,41 @@ export const memoryResolvers = {
       }
 
       try {
-        // FIXME: This resolver is deprecated - use the streaming API instead
-        // The island-based architecture requires islandId to be provided
-        throw new GraphQLError('This mutation is deprecated. Please use the streaming API for knowledge upload.')
+        // 如果沒有提供 islandId，使用用戶的第一個島嶼
+        let islandId = input.islandId
+        if (!islandId) {
+          const firstIsland = await prisma.island.findFirst({
+            where: {
+              userId,
+              isActive: true
+            },
+            orderBy: { position: 'asc' }
+          })
+
+          if (!firstIsland) {
+            throw new GraphQLError('No active islands found. Please create an island first.')
+          }
+
+          islandId = firstIsland.id
+        }
+
+        // 創建記憶
+        const memory = await prisma.memory.create({
+          data: {
+            userId,
+            islandId,
+            rawContent: input.content || '',
+            title: input.title || '無標題記憶',
+            summary: '',
+            tags: input.tags || [],
+            emoji: input.emoji || '📝',
+          },
+          include: {
+            island: true
+          }
+        })
+
+        return memory
       } catch (error) {
         throw new GraphQLError('Failed to create memory directly: ' + (error as Error).message)
       }

@@ -248,19 +248,14 @@ const IslandCard: React.FC<IslandCardProps> = ({
 
           {/* 名稱和資訊 */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-baseline gap-2">
-              <h3 className="font-bold text-[#d8c47e] text-base md:text-lg">
-                {island.nameChinese}
-              </h3>
-              {island.name && (
-                <span className="text-xs text-gray-500">{island.name}</span>
-              )}
-            </div>
+            <h3 className="font-bold text-[#d8c47e] text-base md:text-lg">
+              {island.nameChinese}
+            </h3>
             {island.description && (
               <p className="text-xs md:text-sm text-gray-400 mt-1">{island.description}</p>
             )}
             <div className="flex gap-3 mt-2 text-xs text-gray-500">
-              <span>💭 {island.memoryCount} 條記憶</span>
+              <span>💭 {island.memoryCount || 0} 條記憶</span>
             </div>
           </div>
 

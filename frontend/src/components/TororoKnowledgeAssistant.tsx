@@ -13,7 +13,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import * as PIXI from 'pixi.js'
 import { Live2DModel } from 'pixi-live2d-display/cubism4'
-import { useQuery, useLazyQuery } from '@apollo/client'
+import { useLazyQuery } from '@apollo/client'
 import { GET_KNOWLEDGE_DISTRIBUTION } from '../graphql/knowledge'
 // REMOVED: GET_CHIEF_ASSISTANT (migrated to Island-based architecture)
 import { useSound } from '../hooks/useSound'

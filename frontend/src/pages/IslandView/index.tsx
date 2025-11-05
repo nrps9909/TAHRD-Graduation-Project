@@ -754,7 +754,7 @@ export default function IslandView() {
                     }}>
                       {island.nameChinese}
                     </h2>
-                    <p className="text-xs md:text-cute-sm hidden md:block truncate" style={{ color: '#FFB3D9' }}>{island.name}</p>
+                    <p className="text-xs md:text-cute-sm hidden md:block truncate" style={{ color: '#FFB3D9' }}>{island.nameChinese}</p>
                   </div>
                 </div>
                 <div className="flex gap-1.5 sm:gap-2 md:gap-3">

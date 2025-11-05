@@ -68,7 +68,7 @@ export function QueueFloatingButton() {
     newSocket.on('connect', () => {
       console.log('[Queue] WebSocket connected ✅')
       newSocket.emit('join-room', { roomId: userId })
-      newSocket.emit('get-queue-stats')
+      newSocket.emit('get-queue-stats', { userId })
     })
 
     newSocket.on('disconnect', (reason) => {
@@ -83,7 +83,7 @@ export function QueueFloatingButton() {
     newSocket.on('reconnect', (attemptNumber) => {
       console.log('[Queue] WebSocket reconnected after', attemptNumber, 'attempts')
       newSocket.emit('join-room', { roomId: userId })
-      newSocket.emit('get-queue-stats')
+      newSocket.emit('get-queue-stats', { userId })
     })
 
     newSocket.on('reconnect_attempt', (attemptNumber) => {
@@ -105,7 +105,7 @@ export function QueueFloatingButton() {
 
     newSocket.on('queue-stats', (data: QueueStats) => setStats(data))
     newSocket.on('queue-update', (data: { stats: QueueStats }) => setStats(data.stats))
-    newSocket.on('task-start', () => newSocket.emit('get-queue-stats'))
+    newSocket.on('task-start', () => newSocket.emit('get-queue-stats', { userId }))
 
     newSocket.on('task-progress', (data: { taskId: string, elapsedTime: number }) => {
       setProcessingTasks(prev => {
@@ -118,7 +118,7 @@ export function QueueFloatingButton() {
     newSocket.on('task-complete', () => {
       setTimeout(() => {
         refetchHistories()
-        newSocket.emit('get-queue-stats')
+        newSocket.emit('get-queue-stats', { userId })
       }, 500)
     })
 
@@ -128,7 +128,7 @@ export function QueueFloatingButton() {
         newMap.delete(data.taskId)
         return newMap
       })
-      newSocket.emit('get-queue-stats')
+      newSocket.emit('get-queue-stats', { userId })
     })
 
     setSocket(newSocket)
@@ -136,7 +136,7 @@ export function QueueFloatingButton() {
     // 定期查詢隊列狀態（每 5 秒）
     const statsIntervalId = setInterval(() => {
       if (newSocket.connected) {
-        newSocket.emit('get-queue-stats')
+        newSocket.emit('get-queue-stats', { userId })
       }
     }, 5000)
 

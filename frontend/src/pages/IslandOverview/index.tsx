@@ -114,7 +114,7 @@ export default function IslandOverview() {
     })
 
     // 監聽任務完成事件
-    socket.on('task-complete', (data: any) => {
+    socket.on('task-complete', () => {
       // 延遲 500ms 後重新載入，確保後端數據已更新
       setTimeout(async () => {
         try {

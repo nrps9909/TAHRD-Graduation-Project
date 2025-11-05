@@ -13,7 +13,6 @@ import {
 // 表單數據類型
 interface FormData {
   nameChinese: string
-  emoji: string
   color: string
   description: string
   name?: string
@@ -23,7 +22,6 @@ interface FormData {
 interface IslandSubmitData {
   name: string
   nameChinese: string
-  emoji: string
   color: string
   description?: string
 }
@@ -53,7 +51,6 @@ export const EditModal: React.FC<EditModalProps> = ({
   // 表單狀態
   const [formData, setFormData] = useState<FormData>({
     nameChinese: '',
-    emoji: '',
     color: '',
     description: '',
   })
@@ -63,7 +60,6 @@ export const EditModal: React.FC<EditModalProps> = ({
     if (!isNew && island) {
       setFormData({
         nameChinese: island.nameChinese || '',
-        emoji: island.emoji || '🏝️',
         color: island.color || '#FFB3D9',
         description: island.description || '',
       })
@@ -71,7 +67,6 @@ export const EditModal: React.FC<EditModalProps> = ({
       // 新增時的預設值
       setFormData({
         nameChinese: '',
-        emoji: '🏝️',
         color: '#FFB3D9',
         description: '',
       })
@@ -90,21 +85,19 @@ export const EditModal: React.FC<EditModalProps> = ({
       let submitData: IslandSubmitData
 
       if (isNew) {
-        // 首次創建：提交名稱和可選的描述提示，讓後端 AI 根據提示生成更精準的內容
+        // 首次創建：提交名稱和可選的描述提示，讓後端 AI 根據提示生成更精準的內容（包括 emoji）
         submitData = {
           name: formData.nameChinese,
           nameChinese: formData.nameChinese,
-          emoji: formData.emoji || '🏝️',
           color: formData.color || '#FFB3D9',
           // 如果使用者有填寫描述，作為 AI 生成的提示
           ...(formData.description.trim() && { description: formData.description.trim() }),
         } as IslandSubmitData
       } else {
-        // 編輯：提交所有欄位（使用者可能已修改）
+        // 編輯：提交所有欄位（使用者可能已修改，但 emoji 不可更改）
         submitData = {
           name: formData.nameChinese,
           nameChinese: formData.nameChinese,
-          emoji: formData.emoji,
           color: formData.color,
           description: formData.description,
         } as IslandSubmitData
@@ -166,7 +159,7 @@ export const EditModal: React.FC<EditModalProps> = ({
           {isNew && (
             <div className="bg-blue-900/20 border border-blue-700/50 rounded-lg p-3 text-xs text-blue-300">
               <span className="font-semibold">💡 首次創建提示：</span>
-              輸入名稱後，AI 會自動生成描述。你可以選擇性地在「描述」欄位輸入一些提示（例如：我女朋友），讓 AI 生成更精準的內容。創建後隨時可編輯。
+              輸入名稱後，AI 會自動生成 emoji 和描述。你可以選擇性地在「描述」欄位輸入一些提示（例如：我女朋友），讓 AI 生成更精準的內容。創建後隨時可編輯。
             </div>
           )}
 
@@ -202,27 +195,15 @@ export const EditModal: React.FC<EditModalProps> = ({
               />
             </div>
 
-            {/* Emoji 和顏色 */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-200 mb-2">Emoji</label>
-                <input
-                  type="text"
-                  value={formData.emoji}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, emoji: e.target.value }))}
-                  className="w-full px-3 py-2 bg-[#1E1E1E] border-2 border-gray-700 rounded-lg text-2xl text-center focus:border-[#d8c47e] focus:outline-none"
-                  placeholder="🏝️"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-200 mb-2">顏色</label>
-                <input
-                  type="color"
-                  value={formData.color}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, color: e.target.value }))}
-                  className="w-full h-[42px] rounded-lg cursor-pointer"
-                />
-              </div>
+            {/* 顏色 */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-200 mb-2">顏色</label>
+              <input
+                type="color"
+                value={formData.color}
+                onChange={(e) => setFormData((prev) => ({ ...prev, color: e.target.value }))}
+                className="w-full h-[42px] rounded-lg cursor-pointer"
+              />
             </div>
           </div>
         </div>

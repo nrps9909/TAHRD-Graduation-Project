@@ -85,7 +85,7 @@ export function ProcessingQueuePanel() {
     newSocket.on('connect', () => {
       console.log('[Queue] WebSocket 已連接 ✅')
       newSocket.emit('join-room', { roomId: userId })
-      newSocket.emit('get-queue-stats')
+      newSocket.emit('get-queue-stats', { userId })
     })
 
     newSocket.on('connect_error', (error) => {
@@ -105,7 +105,7 @@ export function ProcessingQueuePanel() {
       console.log(`[Queue] 重連成功 (第 ${attemptNumber} 次嘗試)`)
       // 重連後重新加入房間和獲取狀態
       newSocket.emit('join-room', { roomId: userId })
-      newSocket.emit('get-queue-stats')
+      newSocket.emit('get-queue-stats', { userId })
     })
 
     newSocket.on('reconnect_attempt', (attemptNumber) => {
@@ -135,7 +135,7 @@ export function ProcessingQueuePanel() {
     // 監聽任務開始
     newSocket.on('task-start', (data: { taskId: string }) => {
       console.log('[Queue] 任務開始:', data)
-      newSocket.emit('get-queue-stats')
+      newSocket.emit('get-queue-stats', { userId })
     })
 
     // 監聽任務進度
@@ -188,7 +188,7 @@ export function ProcessingQueuePanel() {
       setTimeout(() => {
         console.log('[Queue] 🔄 重新載入歷史記錄和隊列狀態')
         refetchHistories()
-        newSocket.emit('get-queue-stats')
+        newSocket.emit('get-queue-stats', { userId })
       }, 500)
     })
 
@@ -200,7 +200,7 @@ export function ProcessingQueuePanel() {
         newMap.delete(data.taskId)
         return newMap
       })
-      newSocket.emit('get-queue-stats')
+      newSocket.emit('get-queue-stats', { userId })
     })
 
     setSocket(newSocket)
@@ -208,7 +208,7 @@ export function ProcessingQueuePanel() {
     // 定期請求狀態更新（每 5 秒）
     const statsIntervalId = setInterval(() => {
       if (newSocket.connected) {
-        newSocket.emit('get-queue-stats')
+        newSocket.emit('get-queue-stats', { userId })
       }
     }, 5000)
 

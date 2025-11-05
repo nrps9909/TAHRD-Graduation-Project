@@ -1,6 +1,8 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useMutation, useQuery } from '@apollo/client'
 import { UPDATE_MEMORY, GET_MEMORY } from '../graphql/memory'
+import { GET_ISLANDS } from '../graphql/category'
+import type { Island } from '../graphql/category'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
@@ -18,6 +20,7 @@ export default function SimpleMemoryEditor({ memoryId, onClose }: SimpleMemoryEd
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [tags, setTags] = useState<string[]>([])
+  const [selectedIslandId, setSelectedIslandId] = useState<string>('')
   const [isSaving, setIsSaving] = useState(false)
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -30,12 +33,16 @@ export default function SimpleMemoryEditor({ memoryId, onClose }: SimpleMemoryEd
     skip: !memoryId, // 如果沒有 memoryId 就跳過
   })
 
+  // 載入島嶼列表
+  const { data: islandsData } = useQuery(GET_ISLANDS)
+  const islands: Island[] = islandsData?.islands || []
+
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const previewRef = useRef<HTMLDivElement>(null)
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // 用 ref 追蹤最新的編輯器狀態，避免閉包問題
-  const latestStateRef = useRef({ title, content, tags })
+  const latestStateRef = useRef({ title, content, tags, islandId: selectedIslandId })
 
   // 追蹤是否有進行中的保存請求
   const savingInProgressRef = useRef(false)
@@ -53,13 +60,14 @@ export default function SimpleMemoryEditor({ memoryId, onClose }: SimpleMemoryEd
       setTitle(memory.title || '')
       setContent(memory.rawContent || '')
       setTags(memory.tags || [])
+      setSelectedIslandId(memory.islandId || '')
     }
   }, [memoryData, memoryLoading])
 
   // 更新最新狀態的 ref
   useEffect(() => {
-    latestStateRef.current = { title, content, tags }
-  }, [title, content, tags])
+    latestStateRef.current = { title, content, tags, islandId: selectedIslandId }
+  }, [title, content, tags, selectedIslandId])
 
   // 鎖定背景滾動
   useEffect(() => {
@@ -119,6 +127,7 @@ export default function SimpleMemoryEditor({ memoryId, onClose }: SimpleMemoryEd
             title: currentState.title || null,
             rawContent: currentState.content,
             tags: currentState.tags,
+            islandId: currentState.islandId || null,
           },
         },
       })
@@ -191,7 +200,7 @@ export default function SimpleMemoryEditor({ memoryId, onClose }: SimpleMemoryEd
     }
     // 注意：不要把 autoSave 放在依賴中，避免無限循環
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [title, content, tags, memoryId])
+  }, [title, content, tags, selectedIslandId, memoryId])
 
   // 瀏覽器關閉前警告（如果有未保存的變更）
   useEffect(() => {
@@ -329,6 +338,30 @@ export default function SimpleMemoryEditor({ memoryId, onClose }: SimpleMemoryEd
                     }}
                   />
 
+                  {/* 島嶼分類選擇 */}
+                  <div className="mb-4">
+                    <label className="block text-xs font-medium text-gray-400 mb-2">
+                      🏝️ 島嶼分類
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {islands.map((island) => (
+                        <button
+                          key={island.id}
+                          type="button"
+                          onClick={() => setSelectedIslandId(selectedIslandId === island.id ? '' : island.id)}
+                          className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                            selectedIslandId === island.id
+                              ? 'bg-blue-600 text-white border-2 border-blue-500 shadow-lg'
+                              : 'bg-[#252525] text-gray-300 border border-gray-700 hover:border-gray-500 hover:bg-[#2a2a2a]'
+                          }`}
+                        >
+                          <span className="mr-1">{island.emoji}</span>
+                          {island.nameChinese}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   {/* 標籤 */}
                   <div className="mb-6">
                     <TagManager
@@ -359,6 +392,15 @@ export default function SimpleMemoryEditor({ memoryId, onClose }: SimpleMemoryEd
                 <div className="max-w-4xl mx-auto p-4 md:p-8">
                   {/* 標題 */}
                   <h1 className="text-xl md:text-3xl font-bold text-gray-100 mb-3 md:mb-4">{title || '未命名文件'}</h1>
+
+                  {/* 島嶼分類顯示 */}
+                  {selectedIslandId && islands.find(i => i.id === selectedIslandId) && (
+                    <div className="mb-4">
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-800 text-gray-300">
+                        {islands.find(i => i.id === selectedIslandId)?.emoji} {islands.find(i => i.id === selectedIslandId)?.nameChinese}
+                      </span>
+                    </div>
+                  )}
 
                   {/* 標籤 */}
                   {tags.length > 0 && (
@@ -404,6 +446,30 @@ export default function SimpleMemoryEditor({ memoryId, onClose }: SimpleMemoryEd
                       }}
                     />
 
+                    {/* 島嶼分類選擇 */}
+                    <div className="mb-4">
+                      <label className="block text-xs font-medium text-gray-400 mb-2">
+                        🏝️ 島嶼分類
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        {islands.map((island) => (
+                          <button
+                            key={island.id}
+                            type="button"
+                            onClick={() => setSelectedIslandId(selectedIslandId === island.id ? '' : island.id)}
+                            className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                              selectedIslandId === island.id
+                                ? 'bg-blue-600 text-white border-2 border-blue-500 shadow-lg'
+                                : 'bg-[#252525] text-gray-300 border border-gray-700 hover:border-gray-500 hover:bg-[#2a2a2a]'
+                            }`}
+                          >
+                            <span className="mr-1">{island.emoji}</span>
+                            {island.nameChinese}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
                     {/* 標籤 */}
                     <div className="mb-6">
                       <TagManager
@@ -433,6 +499,15 @@ export default function SimpleMemoryEditor({ memoryId, onClose }: SimpleMemoryEd
                   <div ref={previewRef} className="max-w-3xl mx-auto p-4 md:p-8">
                     {/* 標題 */}
                     <h1 className="text-xl md:text-3xl font-bold text-gray-100 mb-3 md:mb-4">{title || '未命名文件'}</h1>
+
+                    {/* 島嶼分類顯示 */}
+                    {selectedIslandId && islands.find(i => i.id === selectedIslandId) && (
+                      <div className="mb-4">
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-800 text-gray-300">
+                          {islands.find(i => i.id === selectedIslandId)?.emoji} {islands.find(i => i.id === selectedIslandId)?.nameChinese}
+                        </span>
+                      </div>
+                    )}
 
                     {/* 標籤 */}
                     {tags.length > 0 && (

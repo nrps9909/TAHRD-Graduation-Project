@@ -216,12 +216,29 @@ export const categoryResolvers = {
           throw new Error('未授權：請先登入')
         }
 
-        // TODO: Implement soft delete - for now, just mark as inactive via direct prisma update
+        // Verify ownership before deleting
+        const island = await prisma.island.findUnique({
+          where: { id: args.id }
+        })
+
+        if (!island) {
+          throw new Error('島嶼不存在')
+        }
+
+        if (island.userId !== userId) {
+          throw new Error('無權刪除此島嶼')
+        }
+
+        // Soft delete: mark as inactive
         await prisma.island.update({
           where: { id: args.id },
           data: { isActive: false }
         })
-        logger.info(`[categoryResolvers] 刪除島嶼: ${args.id}`)
+
+        // Clear cache to reflect the deletion immediately
+        await islandService.clearUserCache(userId)
+
+        logger.info(`[categoryResolvers] 刪除島嶼: ${island.nameChinese} (${args.id})`)
         return true
       } catch (error) {
         logger.error('[categoryResolvers] 刪除島嶼失敗:', error)
@@ -265,6 +282,17 @@ export const categoryResolvers = {
       return prisma.user.findUnique({
         where: { id: parent.userId }
       })
+    },
+    memoryCount: async (parent: any, _: any, { prisma }: any) => {
+      // 動態計算該島嶼的實際記憶數量（只計算有效的記憶）
+      const count = await prisma.memory.count({
+        where: {
+          islandId: parent.id,
+          // 可以加上其他過濾條件，例如只計算未歸檔的記憶
+          // isArchived: false
+        }
+      })
+      return count
     },
   },
 }

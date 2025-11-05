@@ -144,3 +144,39 @@ backend/logs/gemini-tracking/
 
 # Test files
 ccadventure/
+
+# Development documentation (保留 README.md 和 CLAUDE.md)
+*_FIX_SUMMARY.md
+*_IMPLEMENTATION*.md
+*_IMPROVEMENTS*.md
+*_CHECKLIST.md
+*_PLAN.md
+*_GUIDE.md
+*_REPORT.md
+*_STATUS.md
+*_PROGRESS.md
+*_SUMMARY.md
+DEBUG_*.md
+SESSION_*.md
+TORORO_*.md
+HIJIKI_*.md
+ISLAND_*.md
+MIGRATION_*.md
+ASSISTANT_*.md
+CATEGORY_*.md
+COMPREHENSIVE_*.md
+ENHANCED_*.md
+CHAT_HISTORY_*.md
+
+# Test and debug scripts
+backend/scripts/test-*.ts
+backend/scripts/test-*.js
+backend/scripts/debug-*.ts
+backend/scripts/check-*.ts
+backend/scripts/fix-*.ts
+backend/test-*.js
+backend/test-*.ts
+
+# Temporary files
+*.tmp
+.temp

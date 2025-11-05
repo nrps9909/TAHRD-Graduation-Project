@@ -98,7 +98,7 @@ export function IslandInfoPanel() {
               {/* 島嶼資訊 */}
               <div className="flex-1 min-w-0">
                 <h3 className="text-2xl font-bold text-white mb-1" style={{ textShadow: '0 2px 8px rgba(0, 0, 0, 0.2)' }}>
-                  {island.name}
+                  {island.nameChinese}
                 </h3>
                 <p className="text-sm text-white/90 font-medium" style={{ textShadow: '0 1px 4px rgba(0, 0, 0, 0.15)' }}>
                   {island.description}

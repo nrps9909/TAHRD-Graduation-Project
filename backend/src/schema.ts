@@ -539,6 +539,48 @@ const baseTypeDefs = gql`
     isActive: Boolean!
   }
 
+  type HijikiMessage {
+    role: String!
+    content: String!
+    timestamp: String!
+  }
+
+  type HijikiSessionDetail {
+    id: ID!
+    sessionId: String!
+    title: String!
+    mode: String!
+    messages: [HijikiMessage!]!
+    totalQueries: Int!
+    lastActiveAt: DateTime!
+    isActive: Boolean!
+  }
+
+  type TororoSessionInfo {
+    id: ID!
+    sessionId: String!
+    title: String!
+    totalMessages: Int!
+    lastActiveAt: DateTime!
+    isActive: Boolean!
+  }
+
+  type TororoMessage {
+    role: String!
+    content: String!
+    timestamp: String!
+  }
+
+  type TororoSessionDetail {
+    id: ID!
+    sessionId: String!
+    title: String!
+    messages: [TororoMessage!]!
+    totalMessages: Int!
+    lastActiveAt: DateTime!
+    isActive: Boolean!
+  }
+
   type BatchEmbeddingResponse {
     success: Boolean!
     count: Int!
@@ -684,6 +726,9 @@ const baseTypeDefs = gql`
     semanticSearch(query: String!, limit: Int, minSimilarity: Float): SemanticSearchResponse!
     getKnowledgeAnalytics(period: String): KnowledgeAnalyticsResponse!
     getHijikiSessions: [HijikiSessionInfo!]!
+    getHijikiSession(sessionId: String!): HijikiSessionDetail
+    getTororoSessions: [TororoSessionInfo!]!
+    getTororoSession(sessionId: String!): TororoSessionDetail
 
     # ===== Task History Queries =====
     taskHistories(limit: Int = 50, offset: Int = 0): [TaskHistory!]!
@@ -810,6 +855,11 @@ const baseTypeDefs = gql`
     # ===== RAG Mutations (小黑知識庫) =====
     generateEmbeddings(limit: Int): BatchEmbeddingResponse!
     clearHijikiSession(sessionId: String!): Boolean!
+    deleteHijikiSession(sessionId: String!): Boolean!
+
+    # ===== Tororo Chat Mutations (小白對話) =====
+    saveTororoMessage(sessionId: String!, userMessage: String!, assistantMessage: String!): Boolean!
+    deleteTororoSession(sessionId: String!): Boolean!
   }
 
   # ============ Subscriptions ============

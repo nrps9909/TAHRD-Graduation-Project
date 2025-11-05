@@ -432,6 +432,34 @@ model HijikiSession {
   @@map("hijiki_sessions")
 }
 
+// Tororo Session (白噗噗對話會話)
+model TororoSession {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId           String   @map("user_id") @db.ObjectId
+  sessionId        String   @map("session_id") // 前端生成的 session ID
+
+  // Session Metadata
+  title            String   @default("與小白的對話")
+
+  // Conversation History (for context)
+  messages         Json[]   @default([]) // [{role, content, timestamp}]
+
+  // Context
+  totalMessages    Int      @default(0) @map("total_messages")
+
+  // Status
+  isActive         Boolean  @default(true) @map("is_active")
+
+  // Timestamps
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+  lastActiveAt     DateTime @default(now()) @map("last_active_at")
+
+  @@index([userId, lastActiveAt(sort: Desc)])
+  @@index([userId, sessionId])
+  @@map("tororo_sessions")
+}
+
 // 知識主題聚類 - 自動發現的知識主題
 model KnowledgeCluster {
   id               String   @id @default(auto()) @map("_id") @db.ObjectId

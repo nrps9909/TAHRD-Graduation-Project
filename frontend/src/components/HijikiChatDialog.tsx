@@ -4,34 +4,107 @@
  */
 
 import { useState, useRef, useEffect } from 'react'
-import { useSSEChat } from '../hooks/useSSEChat'
-// REMOVED: import { useQuery } from '@apollo/client'
-// REMOVED: import { GET_CHIEF_ASSISTANT } from '../graphql/knowledge'
+import { useLazyQuery, useQuery, useMutation } from '@apollo/client'
+import { CHAT_WITH_HIJIKI, GET_HIJIKI_SESSION } from '../graphql/hijikiChat'
+import type { HijikiChatResponse } from '../graphql/hijikiChat'
+import { GET_HIJIKI_SESSIONS, DELETE_HIJIKI_SESSION } from '../graphql/chatHistory'
 import { useSound } from '../hooks/useSound'
+import { usePersistedChat } from '../hooks/usePersistedChat'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeSanitize from 'rehype-sanitize'
 import { Z_INDEX_CLASSES } from '../constants/zIndex'
 import { Live2DDisplay } from './Live2DDisplay'
+import { ChatHistorySidebar } from './ChatHistorySidebar'
 
 interface HijikiChatDialogProps {
   onClose: () => void
 }
 
+// 黑噗噗的聊天消息類型（兼容持久化 Hook）
+interface HijikiChatMessage {
+  id: string
+  type: 'user' | 'assistant'
+  content: string
+  timestamp: Date
+  question?: string  // 用於存儲完整的問答對
+  answer?: string
+  [key: string]: unknown // 索引簽名，滿足 ChatMessage 約束
+}
+
 export const HijikiChatDialog: React.FC<HijikiChatDialogProps> = ({ onClose }) => {
+  const [sessionId, setSessionId] = useState(() => `hijiki-session-${Date.now()}`)
   const [inputText, setInputText] = useState('')
   const [currentResponse, setCurrentResponse] = useState('')
-  const [conversationHistory, setConversationHistory] = useState<Array<{
-    question: string
-    answer: string
-  }>>([])
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
-  const { sendChatMessage, isStreaming } = useSSEChat()
-  // REMOVED: chiefAssistant query (migrated to Island-based architecture)
-  // const { data: chiefData } = useQuery(GET_CHIEF_ASSISTANT)
+  // 獲取歷史會話列表
+  const { data: sessionsData, refetch: refetchSessions, error: sessionsError, loading: sessionsLoading } = useQuery(GET_HIJIKI_SESSIONS, {
+    fetchPolicy: 'network-only', // 強制從網絡獲取，不使用緩存
+    errorPolicy: 'all',
+  })
+
+  // 調試：打印會話數據和認證狀態
+  useEffect(() => {
+    const authToken = localStorage.getItem('auth_token')
+    const authStorage = localStorage.getItem('auth-storage')
+
+    console.log('[Hijiki Sessions Debug]', {
+      loading: sessionsLoading,
+      error: sessionsError,
+      errorMessage: sessionsError?.message,
+      graphQLErrors: sessionsError?.graphQLErrors,
+      networkError: sessionsError?.networkError,
+      data: sessionsData,
+      sessions: sessionsData?.getHijikiSessions,
+      count: sessionsData?.getHijikiSessions?.length,
+      authToken: authToken ? `${authToken.substring(0, 20)}...` : 'NO TOKEN',
+      authStorage: authStorage ? JSON.parse(authStorage) : 'NO AUTH STORAGE',
+    })
+  }, [sessionsData, sessionsError, sessionsLoading])
+
+  // 刪除會話 mutation
+  const [deleteSessionMutation] = useMutation(DELETE_HIJIKI_SESSION, {
+    onCompleted: () => {
+      refetchSessions()
+    },
+  })
+
+  // 獲取特定會話的詳細資訊（包含訊息）
+  const [getSession] = useLazyQuery(GET_HIJIKI_SESSION, {
+    fetchPolicy: 'network-only',
+  })
+
+  // 使用持久化聊天記錄
+  const { chatHistory, addMessages, clearHistory } = usePersistedChat<HijikiChatMessage>({
+    sessionId: sessionId,
+    storageKey: `hijiki-chat-${sessionId}`,
+    maxHistorySize: 30 // 最多保存 30 條對話（15 組問答）
+  })
+
+  // 從持久化的 chatHistory 中提取對話歷史（問答對格式）
+  const conversationHistory = chatHistory
+    .filter((msg, idx, arr) => {
+      // 只保留成對的問答（user + assistant）
+      return msg.type === 'user' && arr[idx + 1]?.type === 'assistant'
+    })
+    .map((userMsg) => {
+      const assistantMsg = chatHistory[chatHistory.findIndex(m => m.id === userMsg.id) + 1]
+      return {
+        question: userMsg.content,
+        answer: assistantMsg?.content || ''
+      }
+    })
+
+  // 使用 GraphQL query 替代已廢棄的 SSE endpoint
+  const [chatWithHijiki, { loading: isStreaming }] = useLazyQuery<{
+    chatWithHijiki: HijikiChatResponse
+  }>(CHAT_WITH_HIJIKI)
+
   const { play, playRandomMeow } = useSound()
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const responseEndRef = useRef<HTMLDivElement>(null)
+  const typeIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
   // 自動聚焦輸入框
   useEffect(() => {
@@ -43,53 +116,174 @@ export const HijikiChatDialog: React.FC<HijikiChatDialogProps> = ({ onClose }) =
     responseEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [currentResponse])
 
+  // 清理 interval（組件卸載時）
+  useEffect(() => {
+    return () => {
+      if (typeIntervalRef.current) {
+        clearInterval(typeIntervalRef.current)
+      }
+    }
+  }, [])
+
+  // 歷史記錄處理函數
+  const handleSelectSession = async (selectedSessionId: string) => {
+    try {
+      // 從後端獲取會話詳細資訊（包含所有訊息）
+      const { data } = await getSession({
+        variables: { sessionId: selectedSessionId }
+      })
+
+      if (data?.getHijikiSession) {
+        const session = data.getHijikiSession
+
+        // 將後端的訊息轉換為前端的聊天記錄格式
+        const loadedMessages: HijikiChatMessage[] = session.messages.map((msg: any, index: number) => ({
+          id: `${msg.role}-${session.sessionId}-${index}`,
+          type: msg.role as 'user' | 'assistant',
+          content: msg.content,
+          timestamp: new Date(msg.timestamp),
+          question: msg.role === 'user' ? msg.content : undefined,
+          answer: msg.role === 'assistant' ? msg.content : undefined,
+        }))
+
+        // 切換到該會話並載入訊息
+        setSessionId(selectedSessionId)
+        setCurrentResponse('')
+        clearHistory() // 清除當前歷史
+        addMessages(loadedMessages) // 載入新的訊息
+      }
+
+      setSidebarOpen(false)
+    } catch (error) {
+      console.error('[Hijiki] Failed to load session:', error)
+      // 如果加載失敗，至少切換 sessionId
+      setSessionId(selectedSessionId)
+      setCurrentResponse('')
+      setSidebarOpen(false)
+    }
+  }
+
+  const handleDeleteSession = async (sessionIdToDelete: string) => {
+    try {
+      await deleteSessionMutation({ variables: { sessionId: sessionIdToDelete } })
+      // 如果刪除的是當前會話，創建新會話
+      if (sessionIdToDelete === sessionId) {
+        handleNewChat()
+      }
+    } catch (error) {
+      console.error('刪除會話失敗:', error)
+    }
+  }
+
+  const handleNewChat = () => {
+    const newSessionId = `hijiki-session-${Date.now()}`
+    setSessionId(newSessionId)
+    setCurrentResponse('')
+    clearHistory()
+    setSidebarOpen(false)
+  }
+
   const handleSubmit = async () => {
     if (!inputText.trim() || isStreaming) return
-
-    // REMOVED: chiefAssistant ID (migrated to Island-based architecture)
-    // Hijiki chat now works without specific assistant ID
-    // const chiefId = chiefData?.chiefAssistant?.id
-    // if (!chiefId) {
-    //   alert('找不到黑噗噗')
-    //   return
-    // }
 
     const question = inputText.trim()
     play('message_sent')
 
-    // 清空輸入框，開始新對話
+    // 清空輸入框
     setInputText('')
-    setCurrentResponse('')
 
-    // 用於累積完整回應的變數
-    let fullResponse = ''
-
-    // 發送 SSE 請求 (without assistant ID for Hijiki)
-    await sendChatMessage(question, null as any, {
-      onChunk: (chunk) => {
-        fullResponse += chunk
-        setCurrentResponse((prev) => prev + chunk)
-      },
-      onComplete: (_data) => {
-        // 完成後，將對話加入歷史記錄
-        setConversationHistory((prev) => [
-          ...prev,
-          {
-            question,
-            answer: fullResponse
-          }
-        ])
-        setCurrentResponse('')
-        play('message_received')
-        playRandomMeow()
-      },
-      onError: (error) => {
-        setCurrentResponse(`喵嗚~ 出錯了：${error} 😿`)
-        setTimeout(() => {
-          setCurrentResponse('')
-        }, 3000)
+    // 立即將用戶訊息加入歷史記錄
+    const userTimestamp = new Date()
+    addMessages([
+      {
+        id: `hijiki-user-${userTimestamp.getTime()}`,
+        type: 'user' as const,
+        content: question,
+        timestamp: userTimestamp,
+        question
       }
-    })
+    ])
+
+    // 顯示"思考中..."狀態
+    setCurrentResponse('思考中...')
+
+    try {
+      const { data } = await chatWithHijiki({
+        variables: {
+          sessionId,
+          query: question,
+          maxContext: 20, // 增加到 20 個記憶，確保能檢索到足夠的內容
+        },
+      })
+
+      if (data?.chatWithHijiki) {
+        const response = data.chatWithHijiki
+        const answer = response.answer
+
+        // 清理之前的 interval（如果存在）
+        if (typeIntervalRef.current) {
+          clearInterval(typeIntervalRef.current)
+        }
+
+        // 簡單的打字機效果（從"思考中..."替換為實際內容）
+        let currentIndex = 0
+        typeIntervalRef.current = setInterval(() => {
+          if (currentIndex <= answer.length) {
+            setCurrentResponse(answer.substring(0, currentIndex))
+            currentIndex++
+          } else {
+            if (typeIntervalRef.current) {
+              clearInterval(typeIntervalRef.current)
+              typeIntervalRef.current = null
+            }
+            // 完成後，將助手回應加入歷史記錄
+            const assistantTimestamp = new Date()
+            addMessages([
+              {
+                id: `hijiki-assistant-${assistantTimestamp.getTime()}`,
+                type: 'assistant' as const,
+                content: answer,
+                timestamp: assistantTimestamp,
+                answer
+              }
+            ])
+            setCurrentResponse('')
+            play('message_received')
+            playRandomMeow()
+
+            // 刷新會話列表
+            refetchSessions()
+          }
+        }, 30) // 30ms 每個字符
+      }
+    } catch (error) {
+      console.error('Chat failed:', error)
+
+      // 根據錯誤類型提供更具體的錯誤訊息
+      let errorMessage = '抱歉，查詢時發生錯誤。請稍後再試。'
+
+      if (error instanceof Error) {
+        const graphQLError = error as Error & { graphQLErrors?: Array<{ message: string }> }
+        const actualError = graphQLError.graphQLErrors?.[0]?.message || error.message
+
+        if (actualError.includes('Network') || actualError.includes('fetch')) {
+          errorMessage = '網路連線錯誤，請檢查網路連線後再試。'
+        } else if (actualError.includes('401') || actualError.includes('未授權')) {
+          errorMessage = '認證失敗，請重新登入後再試。'
+        } else if (actualError.includes('timeout') || actualError.includes('超時')) {
+          errorMessage = '查詢時間過長，請嘗試簡化問題或稍後再試。'
+        } else if (actualError.includes('配額')) {
+          errorMessage = 'API 配額已用盡，請稍後再試。'
+        } else if (actualError !== error.message) {
+          errorMessage = actualError
+        }
+      }
+
+      setCurrentResponse(`喵嗚~ 出錯了：${errorMessage} 😿`)
+      setTimeout(() => {
+        setCurrentResponse('')
+      }, 5000)
+    }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -106,6 +300,20 @@ export const HijikiChatDialog: React.FC<HijikiChatDialogProps> = ({ onClose }) =
         background: 'linear-gradient(to bottom right, rgba(10, 8, 25, 0.98) 0%, rgba(20, 18, 40, 0.98) 50%, rgba(30, 25, 50, 0.98) 100%)'
       }}
     >
+      {/* 對話歷史側邊欄 */}
+      <ChatHistorySidebar
+        sessions={sessionsData?.getHijikiSessions || []}
+        currentSessionId={sessionId}
+        onSelectSession={handleSelectSession}
+        onDeleteSession={handleDeleteSession}
+        onNewChat={handleNewChat}
+        isOpen={sidebarOpen}
+        onToggle={() => setSidebarOpen(!sidebarOpen)}
+        color="hijiki"
+        loading={sessionsLoading}
+        error={sessionsError}
+      />
+
       {/* 星空背景裝飾 */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-20 left-20 text-4xl animate-pulse" style={{ animationDuration: '3s' }}>⭐</div>
@@ -261,19 +469,33 @@ export const HijikiChatDialog: React.FC<HijikiChatDialogProps> = ({ onClose }) =
                 </div>
 
                 <div className="text-white prose prose-sm md:prose-base max-w-none prose-invert">
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                    rehypePlugins={[rehypeSanitize]}
-                    components={{
-                      p: ({ ...props }) => <p style={{ color: '#FFFFFF', marginBottom: '0.5em', lineHeight: '1.8', fontSize: window.innerWidth < 768 ? '14px' : '16px' }} {...props} />,
-                      strong: ({ ...props }) => <strong style={{ color: '#E0E7FF', fontWeight: 'bold' }} {...props} />,
-                      em: ({ ...props }) => <em style={{ color: '#C7D2FE' }} {...props} />,
-                    }}
-                  >
-                    {currentResponse}
-                  </ReactMarkdown>
-                  {/* 打字游標 */}
-                  <span className="inline-block w-2 h-5 md:h-6 ml-1 bg-white animate-pulse" style={{ animationDuration: '0.8s' }} />
+                  {currentResponse === '思考中...' ? (
+                    // 顯示浮動的"思考中"動畫
+                    <div className="inline-flex items-center gap-1 text-indigo-200">
+                      <span className="animate-bounce" style={{ animationDelay: '0ms' }}>思</span>
+                      <span className="animate-bounce" style={{ animationDelay: '150ms' }}>考</span>
+                      <span className="animate-bounce" style={{ animationDelay: '300ms' }}>中</span>
+                      <span className="animate-bounce" style={{ animationDelay: '450ms' }}>.</span>
+                      <span className="animate-bounce" style={{ animationDelay: '600ms' }}>.</span>
+                      <span className="animate-bounce" style={{ animationDelay: '750ms' }}>.</span>
+                    </div>
+                  ) : (
+                    <>
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        rehypePlugins={[rehypeSanitize]}
+                        components={{
+                          p: ({ ...props }) => <p style={{ color: '#FFFFFF', marginBottom: '0.5em', lineHeight: '1.8', fontSize: window.innerWidth < 768 ? '14px' : '16px' }} {...props} />,
+                          strong: ({ ...props }) => <strong style={{ color: '#E0E7FF', fontWeight: 'bold' }} {...props} />,
+                          em: ({ ...props }) => <em style={{ color: '#C7D2FE' }} {...props} />,
+                        }}
+                      >
+                        {currentResponse}
+                      </ReactMarkdown>
+                      {/* 打字游標 */}
+                      <span className="inline-block w-2 h-5 md:h-6 ml-1 bg-white animate-pulse" style={{ animationDuration: '0.8s' }} />
+                    </>
+                  )}
                 </div>
               </div>
             </div>

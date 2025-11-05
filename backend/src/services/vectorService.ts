@@ -96,8 +96,8 @@ export class VectorService {
   async semanticSearch(
     userId: string,
     query: string,
-    limit: number = 10,
-    minSimilarity: number = 0.5
+    limit: number = 15,
+    minSimilarity: number = 0.3
   ): Promise<
     Array<{
       memoryId: string

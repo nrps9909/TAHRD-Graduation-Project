@@ -25,7 +25,7 @@ export function MemoryDetailModal({ memory, island, isOpen, onClose }: MemoryDet
   // 使用島嶼信息顯示，如果沒有島嶼則使用默認值
   const displayInfo = island
     ? {
-        name: island.name,
+        name: island.nameChinese,
         emoji: island.emoji,
         color: island.color
       }
