@@ -270,13 +270,13 @@ jobs:
             echo "🔄 重新創建容器..."
             docker compose -f docker-compose.production-prebuilt.yml up -d --force-recreate
 
-            # 4.5. 同步資料庫 Schema
-            # 注意：Prisma Client 已在 Docker 映像構建時生成，這裡只需同步資料庫
-            echo "🗄️ 同步資料庫 Schema..."
-            docker exec heart-whisper-backend npx prisma db push --skip-generate || {
-              echo "⚠️ 資料庫 Schema 同步失敗，但繼續部署..."
-            }
-            echo "✅ 資料庫 Schema 同步完成"
+            # 4.5. 跳過資料庫 Schema 同步
+            # 原因：
+            # 1. VPS 內存有限，Prisma CLI 執行會導致 OOM (status 137)
+            # 2. MongoDB 是 schema-less 的，不需要嚴格的遷移
+            # 3. Prisma Client 已在 Docker 映像構建時生成並包含最新 schema
+            # 4. Prisma 會在運行時自動適配資料庫結構
+            echo "ℹ️ 跳過資料庫 Schema 同步（避免 OOM）"
 
             # 5. 快速健康檢查（優化重試邏輯）
             echo "🏥 執行健康檢查..."
