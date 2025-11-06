@@ -270,17 +270,13 @@ jobs:
             echo "🔄 重新創建容器..."
             docker compose -f docker-compose.production-prebuilt.yml up -d --force-recreate
 
-            # 4.5. 重新生成 Prisma Client 並同步資料庫 Schema
-            echo "🗄️ 重新生成 Prisma Client..."
-            docker exec heart-whisper-backend npx prisma generate || {
-              echo "⚠️ Prisma Client 生成失敗，但繼續部署..."
-            }
-
+            # 4.5. 同步資料庫 Schema
+            # 注意：Prisma Client 已在 Docker 映像構建時生成，這裡只需同步資料庫
             echo "🗄️ 同步資料庫 Schema..."
             docker exec heart-whisper-backend npx prisma db push --skip-generate || {
               echo "⚠️ 資料庫 Schema 同步失敗，但繼續部署..."
             }
-            echo "✅ Prisma Client 和資料庫 Schema 同步完成"
+            echo "✅ 資料庫 Schema 同步完成"
 
             # 5. 快速健康檢查（優化重試邏輯）
             echo "🏥 執行健康檢查..."
