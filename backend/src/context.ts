@@ -48,9 +48,9 @@ export const createContext = async ({ req, prisma, redis, io }: CreateContextArg
           }
         })
       }
-    } catch (error) {
+    } catch (error: any) {
       // Token 無效或過期，但不拋出錯誤，讓解析器處理
-      console.log('Invalid token:', error)
+      logger.warn(`[Auth] Invalid token: ${error.message}`)
     }
   }
 

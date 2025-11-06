@@ -603,7 +603,8 @@ const baseTypeDefs = gql`
     id: ID!
     title: String!
     emoji: String!
-    category: String!
+    islandName: String!
+    islandEmoji: String!
     importance: Int!
     summary: String!
   }
@@ -635,7 +636,8 @@ const baseTypeDefs = gql`
     id: ID!
     title: String!
     emoji: String!
-    category: String!
+    islandName: String!
+    islandEmoji: String!
     importance: Int!
     date: String!
     summary: String!

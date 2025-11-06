@@ -27,7 +27,8 @@ export const CREATE_MEMORY_WITH_TORORO = gql`
         id
         title
         emoji
-        category
+        islandName
+        islandEmoji
         importance
         summary
       }
@@ -65,7 +66,8 @@ export const SEARCH_MEMORIES_WITH_HIJIKI = gql`
         id
         title
         emoji
-        category
+        islandName
+        islandEmoji
         importance
         date
         summary
@@ -121,7 +123,8 @@ export interface TororoResponse {
     id: string
     title: string
     emoji: string
-    category: string
+    islandName: string
+    islandEmoji: string
     importance: number
     summary: string
   }
@@ -139,7 +142,7 @@ export interface TororoResponse {
 }
 
 export interface HijikiFilterInput {
-  categories?: string[]
+  islandIds?: string[]
   tags?: string[]
   dateRange?: {
     start: string
@@ -151,7 +154,8 @@ export interface HijikiSearchResult {
   id: string
   title: string
   emoji: string
-  category: string
+  islandName: string
+  islandEmoji: string
   importance: number
   date: string
   summary: string

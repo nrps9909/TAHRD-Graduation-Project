@@ -29,21 +29,19 @@ export const UPLOAD_KNOWLEDGE = gql`
       }
       agentDecisions {
         id
-        assistantId
+        targetIslandId
         relevanceScore
         shouldStore
         reasoning
         confidence
-        suggestedCategory
         suggestedTags
         keyInsights
         createdAt
-        assistant {
+        island {
           id
           name
           nameChinese
           emoji
-          type
         }
       }
       memoriesCreated {
@@ -53,7 +51,8 @@ export const UPLOAD_KNOWLEDGE = gql`
         tags
         emoji
         createdAt
-        assistant {
+        islandId
+        island {
           id
           name
           nameChinese
@@ -67,18 +66,18 @@ export const UPLOAD_KNOWLEDGE = gql`
 `
 
 /**
- * Chat with Chief Agent
+ * Chat with Chief Agent (Island)
  */
 export const CHAT_WITH_CHIEF = gql`
-  mutation ChatWithAssistant($input: ChatWithAssistantInput!) {
-    chatWithAssistant(input: $input) {
+  mutation ChatWithIsland($input: ChatWithIslandInput!) {
+    chatWithIsland(input: $input) {
       id
       userMessage
       assistantResponse
       contextType
       processingTime
       createdAt
-      assistant {
+      island {
         id
         name
         nameChinese
@@ -89,41 +88,49 @@ export const CHAT_WITH_CHIEF = gql`
 `
 
 /**
- * Get Chief Assistant info
+ * Get all islands (replaces assistant queries)
  */
-export const GET_CHIEF_ASSISTANT = gql`
-  query GetChiefAssistant {
-    chiefAssistant {
+export const GET_ISLANDS = gql`
+  query GetIslands {
+    islands {
       id
-      type
       name
       nameChinese
       emoji
       color
-      systemPrompt
-      personality
-      chatStyle
-      totalMemories
-      totalChats
+      description
+      memoryCount
+      isActive
+      position
+      positionX
+      positionY
+      positionZ
+      createdAt
+      updatedAt
     }
   }
 `
 
 /**
- * Get all assistants
+ * Get single island
  */
-export const GET_ASSISTANTS = gql`
-  query GetAssistants {
-    assistants {
+export const GET_ISLAND = gql`
+  query GetIsland($id: ID!) {
+    island(id: $id) {
       id
-      type
       name
       nameChinese
       emoji
       color
-      totalMemories
-      totalChats
+      description
+      memoryCount
       isActive
+      position
+      positionX
+      positionY
+      positionZ
+      createdAt
+      updatedAt
     }
   }
 `
@@ -144,10 +151,11 @@ export const GET_KNOWLEDGE_DISTRIBUTIONS = gql`
       createdAt
       agentDecisions {
         id
+        targetIslandId
         relevanceScore
         shouldStore
         reasoning
-        assistant {
+        island {
           id
           name
           nameChinese
@@ -187,22 +195,21 @@ export const GET_KNOWLEDGE_DISTRIBUTION = gql`
       createdAt
       agentDecisions {
         id
+        targetIslandId
         relevanceScore
         shouldStore
         reasoning
         confidence
-        suggestedCategory
         suggestedTags
         keyInsights
         processingTime
         createdAt
-        assistant {
+        island {
           id
           name
           nameChinese
           emoji
           color
-          type
         }
       }
       memories {
@@ -212,7 +219,8 @@ export const GET_KNOWLEDGE_DISTRIBUTION = gql`
         tags
         emoji
         createdAt
-        assistant {
+        islandId
+        island {
           id
           name
           nameChinese
@@ -243,8 +251,8 @@ export interface UploadKnowledgeInput {
   contentType?: 'TEXT' | 'IMAGE' | 'DOCUMENT' | 'LINK' | 'MIXED'
 }
 
-export interface ChatWithAssistantInput {
-  assistantId: string
+export interface ChatWithIslandInput {
+  islandId: string
   message: string
   contextType?: 'MEMORY_CREATION' | 'MEMORY_QUERY' | 'GENERAL_CHAT' | 'SUMMARY_REQUEST' | 'CLASSIFICATION'
   memoryId?: string
