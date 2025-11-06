@@ -97,17 +97,28 @@ export class RAGConversationService {
         `total ${allMemories.length} memories`
       )
 
-      // 2. 轉換為統一格式
-      const allMemoriesFormatted = allMemories.map((m) => ({
-        memoryId: m.id,
-        title: m.title || '無標題',
-        content: m.summary || m.rawContent || '',
-        tags: m.tags,
-        islandName: m.island?.nameChinese || '未分類',
-        islandEmoji: m.island?.emoji || '📝',
-        importance: m.importanceScore || 5,
-        createdAt: m.createdAt,
-      }))
+      // 2. 轉換為統一格式（包含摘要 + 原始內容片段）
+      const allMemoriesFormatted = allMemories.map((m) => {
+        // 準備摘要
+        const summary = m.summary || '無摘要'
+
+        // 準備原始內容片段（限制長度避免 token 過多）
+        const rawContentPreview = m.rawContent
+          ? m.rawContent.substring(0, 300) + (m.rawContent.length > 300 ? '...' : '')
+          : ''
+
+        return {
+          memoryId: m.id,
+          title: m.title || '無標題',
+          summary,
+          rawContentPreview,
+          tags: m.tags,
+          islandName: m.island?.nameChinese || '未分類',
+          islandEmoji: m.island?.emoji || '📝',
+          importance: m.importanceScore || 5,
+          createdAt: m.createdAt,
+        }
+      })
 
       // 3. 獲取對話歷史
       const sessionStartTime = Date.now()
@@ -317,13 +328,15 @@ ${query}
    *
    * 不使用 RAG 檢索，直接將所有記憶 feed 給 LLM
    * Gemini 2.5 Flash 有 1M token 窗口，足以容納所有記憶
+   * ✨ 同時包含摘要和原始內容片段，確保能搜尋到人名等細節
    */
   private buildFullContextPrompt(
     query: string,
     allMemories: Array<{
       memoryId: string
       title: string
-      content: string
+      summary: string
+      rawContentPreview: string
       tags: string[]
       islandName: string
       islandEmoji: string
@@ -332,7 +345,7 @@ ${query}
     }>,
     history: Array<{ role: string; content: string }>
   ): string {
-    // 構建完整的記憶庫文本
+    // 構建完整的記憶庫文本（包含摘要 + 原始內容片段）
     const memoriesText = allMemories.length > 0
       ? allMemories
           .map((m, i) => {
@@ -342,10 +355,19 @@ ${query}
               hour: '2-digit',
               minute: '2-digit'
             })
-            return `${i + 1}. ${m.islandEmoji} **${m.title}** [${m.islandName}] (${dateStr})
+
+            // 構建記憶條目：標題 + 摘要 + 原始內容片段
+            let memoryText = `${i + 1}. ${m.islandEmoji} **${m.title}** [${m.islandName}] (${dateStr})
    重要度: ${m.importance}/10
-   內容: ${m.content}
+   摘要: ${m.summary}
    標籤: ${m.tags.join(', ') || '無'}`
+
+            // 如果有原始內容，追加預覽（用於搜尋人名等細節）
+            if (m.rawContentPreview) {
+              memoryText += `\n   原始內容: ${m.rawContentPreview}`
+            }
+
+            return memoryText
           })
           .join('\n\n')
       : '（還沒有任何記憶）'
@@ -362,6 +384,7 @@ ${query}
     return `你是小黑（Hijiki），一個溫暖且專業的知識管理員 🌙
 
 你可以看到用戶的**所有記憶**，不會漏掉任何一條。
+每條記憶都包含：摘要（整體描述）和原始內容（對話細節、人名等）。
 
 【完整知識庫】（共 ${allMemories.length} 條記憶）
 ${memoriesText}
@@ -373,15 +396,16 @@ ${query}
 【回答要求】
 1. 直接回答問題，不要每次都自我介紹
 2. 使用親切自然的語氣（用「你」而非「您」），像朋友一樣聊天
-3. **你可以看到所有 ${allMemories.length} 條記憶，請充分利用它們來回答**
-4. **如果問題涉及多條記憶，請全部列出來**
-5. 引用記憶時，直接使用記憶標題（例如：「你在『心情記錄』中提到...」）
-6. 用列表或項目符號清楚呈現多條記憶（例如：• 項目一）
-7. 每條記憶都要簡單說明內容，不要只列標題
-8. 如果沒有相關資訊，誠實告知並主動提供幫助
-9. 避免使用官腔用語（如「關於您詢問」、「不過我觀察到」）
-10. **回應長度：根據找到的記憶數量調整，1-2 條記憶用 2-3 句話，3 條以上用更長的回應**
-11. 像朋友一樣表達興趣和關心，而不是只報告結果
+3. **你可以看到所有 ${allMemories.length} 條記憶的摘要和原始內容，請充分利用它們來回答**
+4. **搜尋人名時，請特別注意「原始內容」欄位，因為人名通常在對話細節中**
+5. **如果問題涉及多條記憶，請全部列出來**
+6. 引用記憶時，直接使用記憶標題（例如：「你在『心情記錄』中提到...」）
+7. 用列表或項目符號清楚呈現多條記憶（例如：• 項目一）
+8. 每條記憶都要簡單說明內容，不要只列標題
+9. 如果沒有相關資訊，誠實告知並主動提供幫助
+10. 避免使用官腔用語（如「關於您詢問」、「不過我觀察到」）
+11. **回應長度：根據找到的記憶數量調整，1-2 條記憶用 2-3 句話，3 條以上用更長的回應**
+12. 像朋友一樣表達興趣和關心，而不是只報告結果
 
 請回答：`
   }
