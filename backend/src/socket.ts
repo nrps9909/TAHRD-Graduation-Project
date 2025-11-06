@@ -138,7 +138,8 @@ export const socketHandler = (io: Server, prisma: PrismaClient, redis: Redis) =>
     })
 
     // 獲取任務隊列狀態（用戶專屬）
-    socket.on('get-queue-stats', ({ userId }) => {
+    socket.on('get-queue-stats', (data) => {
+      const userId = data?.userId
       if (!userId) {
         // 如果沒有提供 userId，返回全局統計（向後兼容）
         const stats = taskQueueService.getStats()
@@ -151,7 +152,8 @@ export const socketHandler = (io: Server, prisma: PrismaClient, redis: Redis) =>
     })
 
     // 獲取用戶的任務列表
-    socket.on('get-user-tasks', ({ userId }) => {
+    socket.on('get-user-tasks', (data) => {
+      const userId = data?.userId
       if (!userId) {
         socket.emit('error', { message: 'User ID required' })
         return
@@ -161,7 +163,8 @@ export const socketHandler = (io: Server, prisma: PrismaClient, redis: Redis) =>
     })
 
     // 獲取特定任務狀態
-    socket.on('get-task-status', ({ taskId, userId }) => {
+    socket.on('get-task-status', (data) => {
+      const { taskId, userId } = data || {}
       if (!taskId || !userId) {
         socket.emit('error', { message: 'Task ID and User ID required' })
         return
