@@ -117,6 +117,12 @@ export class SubAgentService {
         sentiment: parsed.sentiment,
         importanceScore: typeof parsed.importanceScore === 'number' ? parsed.importanceScore : undefined,
         actionableAdvice: parsed.actionableAdvice,
+        // 社交成長紀錄專用字段（從 AI 響應中提取）
+        socialContext: parsed.socialContext,
+        userReaction: parsed.userReaction,
+        aiFeedback: parsed.aiFeedback,
+        socialSkillTags: Array.isArray(parsed.socialSkillTags) ? parsed.socialSkillTags : [],
+        progressChange: typeof parsed.progressChange === 'number' ? parsed.progressChange : undefined,
       }
 
       logger.info(`[${island.nameChinese}] 評估完成 - 相關性: ${evaluation.relevanceScore.toFixed(2)}, 是否儲存: ${evaluation.shouldStore}`)
