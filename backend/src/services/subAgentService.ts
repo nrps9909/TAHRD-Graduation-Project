@@ -277,8 +277,10 @@ ${distribution.chiefSummary}
 6. **情感分析** - 判斷內容的情感傾向
 7. **重要性評分** - 1-10分，評估這個知識的重要程度
 8. **行動建議** - 如果適用，提供後續行動建議
-${island.nameChinese.includes('社交') || island.nameChinese.includes('人際') ? `
-**🌟 特別要求 - 社交成長紀錄格式（人際關係島專用）：**
+
+**🌟 特殊要求 - 聊天記錄/社交互動分析格式：**
+
+${island.nameChinese.includes('社交') || island.nameChinese.includes('人際') ? `**✨ 你在「${island.nameChinese}」島嶼，` : `**如果用戶上傳的內容是「聊天記錄」、「對話內容」或「社交互動記錄」，`}請使用以下結構化格式進行深度分析：
 
 這是與一般知識不同的特殊格式，專門用來追蹤用戶的社交成長軌跡。
 請額外提供以下專屬分析，讓用戶能看到自己的進步：
@@ -296,9 +298,9 @@ ${island.nameChinese.includes('社交') || island.nameChinese.includes('人際')
 - **[建議行動] actionableAdvice** - AI 給下一步具體任務（例：「下次可以嘗試更深入地分享你的感受」、「保持這種開放的態度繼續與朋友交流」）
 
 **重要提醒：**
-這個格式能幫助使用者看到自己的社交成長軌跡，提供具體證據證明系統真的能解決社交困擾。
-即使是看似普通的對話，也要從社交能力培養的角度進行分析！
-` : ''}
+這個格式能幫助使用者看到自己的成長軌跡，提供具體證據追蹤進步。
+${island.nameChinese.includes('社交') || island.nameChinese.includes('人際') ? `即使是看似普通的對話，也要從社交能力培養的角度進行分析！` : `對於聊天記錄，請從人際互動和個人成長的角度進行分析。`}
+
 
 請以 JSON 格式返回完整分析（只返回 JSON，不要其他文字）：
 {
@@ -316,13 +318,16 @@ ${island.nameChinese.includes('社交') || island.nameChinese.includes('人際')
   "suggestedTitle": "XXX學習筆記",
   "sentiment": "positive|neutral|negative",
   "importanceScore": 8,
-  "actionableAdvice": "建議用戶可以..."${island.nameChinese.includes('社交') || island.nameChinese.includes('人際') ? `,
-  "socialContext": "在 Bumble 上聊到台藝大認識的人，與朋友討論交友狀況",
-  "userReaction": "好奇並積極參與討論，主動分享自己的觀察",
-  "aiFeedback": "你能主動參與社交話題並分享想法，這顯示你對人際關係保持開放態度！",
-  "socialSkillTags": ["#主動互動", "#社交好奇", "#開放討論", "#情感表達"],
-  "progressChange": 1` : ''}
+  "actionableAdvice": "建議用戶可以...",
+  "socialContext": "（如果是聊天記錄）簡述對話發生的情境",
+  "userReaction": "（如果是聊天記錄）描述使用者的反應",
+  "aiFeedback": "（如果是聊天記錄）提供具體建議或鼓勵",
+  "socialSkillTags": ["（如果是聊天記錄）相關的社交能力標籤"],
+  "progressChange": 0
 }
+
+**注意：** socialContext, userReaction, aiFeedback, socialSkillTags, progressChange 這些欄位只在分析聊天記錄時需要填寫。
+一般知識（學習筆記、文章、資源等）可以省略這些欄位或設為 null。
 
 **評估準則：**
 - **高度相關 (>0.7)**: 核心內容完全匹配 ${island.nameChinese} 島嶼主題，具有長期價值
