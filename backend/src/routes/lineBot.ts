@@ -17,8 +17,13 @@ const config = {
   channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN || ''
 }
 
-// 初始化 LINE Client
-const lineClient = new Client(config)
+// 初始化 LINE Client（只在有 token 時初始化）
+let lineClient: Client | null = null
+if (config.channelAccessToken && config.channelSecret) {
+  lineClient = new Client(config)
+} else {
+  logger.warn('[LINE Bot] LINE credentials not configured, LINE Bot features disabled')
+}
 
 /**
  * 驗證 LINE Webhook Signature
@@ -127,6 +132,11 @@ async function handleEvent(event: WebhookEvent): Promise<void> {
  * 回應訊息給用戶
  */
 async function replyMessage(replyToken: string, text: string): Promise<void> {
+  if (!lineClient) {
+    logger.warn('[LINE Bot] LINE Client not initialized, cannot reply message')
+    return
+  }
+
   const message: TextMessage = {
     type: 'text',
     text
