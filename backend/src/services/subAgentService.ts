@@ -280,54 +280,70 @@ ${distribution.chiefSummary}
 
 **🌟 特殊要求 - 聊天記錄/社交互動分析格式：**
 
-${island.nameChinese.includes('社交') || island.nameChinese.includes('人際') ? `**✨ 你在「${island.nameChinese}」島嶼，` : `**如果用戶上傳的內容是「聊天記錄」、「對話內容」或「社交互動記錄」，`}請使用以下結構化格式進行深度分析：
+**⚠️ 重要：請先判斷內容類型！**
 
-這是與一般知識不同的特殊格式，專門用來追蹤用戶的社交成長軌跡。
-請額外提供以下專屬分析，讓用戶能看到自己的進步：
+如果用戶上傳的內容符合以下任一特徵，則視為「聊天記錄」：
+- 包含對話形式（例："A: ...", "B: ...", "replied to", "You sent", "You replied"）
+- 有多人之間的互動交流
+- 包含社交訊息應用的格式（例：LINE、Discord、WhatsApp、Messenger）
+- 內容主要是人際交流和對話
 
-- **[主題]** - 用 suggestedTitle 表示對話/事件名稱（例：「與藝術女聊天」、「與朋友討論感情」、「練習主動打招呼」）
-- **[情境] socialContext** - 用一句話簡述當下發生了什麼（例：「在 Bumble 上聊到認識的人」、「朋友討論交友狀況」）
-- **[使用者反應] userReaction** - 描述使用者的情緒或行為反應（例：「好奇並積極討論」、「感到不確定」、「主動分享想法」）
-- **[AI 回饋] aiFeedback** - 提供具體一句話的建議或安撫（例：「你能主動參與社交話題，這很棒！」、「討論感情話題顯示你願意探索人際關係」）
-- **[社交能力標籤] socialSkillTags** - 從以下選項中選擇適用的標籤（可多選）：
-  #表達情緒 #傾聽 #自我覺察 #主動互動 #同理心 #衝突解決 #建立關係 #維持友誼 #情感表達 #社交好奇 #開放討論
-- **[進度變化] progressChange** - 評估這次互動對使用者社交能力的影響：
-  • 成長 +1：有明確進步（例：主動互動、表達情感、解決衝突）
-  • 維持 0：持平狀態（例：一般對話、觀察學習）
-  • 退步 -1：遇到挫折（例：迴避、衝突升級、情緒失控）
-- **[建議行動] actionableAdvice** - AI 給下一步具體任務（例：「下次可以嘗試更深入地分享你的感受」、「保持這種開放的態度繼續與朋友交流」）
+${island.nameChinese.includes('社交') || island.nameChinese.includes('人際') ? `**✨ 你在「${island.nameChinese}」島嶼，所有對話都應該被視為社交成長的素材！**` : `**如果判斷為聊天記錄，請使用以下結構化格式：**`}
 
-**重要提醒：**
-這個格式能幫助使用者看到自己的成長軌跡，提供具體證據追蹤進步。
-${island.nameChinese.includes('社交') || island.nameChinese.includes('人際') ? `即使是看似普通的對話，也要從社交能力培養的角度進行分析！` : `對於聊天記錄，請從人際互動和個人成長的角度進行分析。`}
+**如果是聊天記錄，請務必填寫以下專屬欄位：**
 
+1. **[主題] suggestedTitle** - 對話/事件名稱（例：「與朋友討論購物經驗」、「練習主動打招呼」）
+2. **[情境] socialContext** - 一句話簡述對話背景（例：「與朋友閔討論淘寶購物」）
+3. **[使用者反應] userReaction** - 描述使用者的情緒或行為（例：「積極分享經驗並詢問建議」）
+4. **[AI 回饋] aiFeedback** - 具體的鼓勵或建議（例：「你能主動與朋友交流購物心得，展現出良好的社交互動能力」）
+5. **[社交能力標籤] socialSkillTags** - 選擇適用標籤（可多選）：
+   #表達情緒 #傾聽 #自我覺察 #主動互動 #同理心 #衝突解決 #建立關係 #維持友誼 #情感表達 #社交好奇 #開放討論 #分享經驗
+6. **[進度變化] progressChange** - 評估社交能力變化：
+   • +1 = 成長（主動互動、表達情感、解決衝突）
+   • 0 = 維持（一般對話、觀察學習）
+   • -1 = 退步（迴避、衝突升級、情緒失控）
+7. **[建議行動] actionableAdvice** - 下一步具體行動（例：「繼續與朋友保持這種開放的交流態度」）
 
-請以 JSON 格式返回完整分析（只返回 JSON，不要其他文字）：
+**JSON 格式（只返回 JSON，不要其他文字）：**
+
+如果是**聊天記錄**，JSON 必須包含：
 {
   "relevanceScore": 0.95,
   "shouldStore": true,
-  "reasoning": "這是一個關於XXX的重要知識，因為...，對用戶的XXX方面有幫助",
+  "reasoning": "這是用戶與朋友閔的購物討論對話...",
   "confidence": 0.9,
-  "suggestedTags": ["標籤1", "標籤2", "標籤3"],
+  "suggestedTags": ["購物", "淘寶", "朋友交流"],
   "keyInsights": [
-    "關鍵洞察1：...",
-    "關鍵洞察2：...",
-    "關鍵洞察3：..."
+    "用戶主動分享購物經驗",
+    "朋友提供實用建議",
+    "展現良好的社交互動"
   ],
-  "detailedSummary": "這個知識主要討論...",
-  "suggestedTitle": "XXX學習筆記",
-  "sentiment": "positive|neutral|negative",
-  "importanceScore": 8,
-  "actionableAdvice": "建議用戶可以...",
-  "socialContext": "（如果是聊天記錄）簡述對話發生的情境",
-  "userReaction": "（如果是聊天記錄）描述使用者的反應",
-  "aiFeedback": "（如果是聊天記錄）提供具體建議或鼓勵",
-  "socialSkillTags": ["（如果是聊天記錄）相關的社交能力標籤"],
-  "progressChange": 0
+  "detailedSummary": "用戶與朋友閔討論淘寶購物經驗...",
+  "suggestedTitle": "與閔討論淘寶購物",
+  "sentiment": "positive",
+  "importanceScore": 7,
+  "actionableAdvice": "繼續保持這種開放的交流態度，與朋友分享更多生活經驗",
+  "socialContext": "用戶與朋友閔在聊天中討論淘寶和蝦皮的購物經驗",
+  "userReaction": "積極參與對話，主動詢問集運事宜，表現出對購物話題的興趣",
+  "aiFeedback": "你能主動與朋友交流購物心得並尋求建議，這展現了良好的社交互動能力！",
+  "socialSkillTags": ["主動互動", "開放討論", "分享經驗", "維持友誼"],
+  "progressChange": 1
 }
 
-**注意：** socialContext, userReaction, aiFeedback, socialSkillTags, progressChange 這些欄位只在分析聊天記錄時需要填寫。
-一般知識（學習筆記、文章、資源等）可以省略這些欄位或設為 null。
+如果是**一般知識**（非聊天記錄），JSON 格式：
+{
+  "relevanceScore": 0.85,
+  "shouldStore": true,
+  "reasoning": "...",
+  "confidence": 0.9,
+  "suggestedTags": ["標籤1", "標籤2"],
+  "keyInsights": ["洞察1", "洞察2", "洞察3"],
+  "detailedSummary": "...",
+  "suggestedTitle": "XXX學習筆記",
+  "sentiment": "neutral",
+  "importanceScore": 8,
+  "actionableAdvice": "建議用戶可以..."
+}
 
 **評估準則：**
 - **高度相關 (>0.7)**: 核心內容完全匹配 ${island.nameChinese} 島嶼主題，具有長期價值
