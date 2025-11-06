@@ -284,19 +284,24 @@ ${distribution.chiefSummary}
 7. **重要性評分** - 1-10分，評估這個知識的重要程度
 8. **行動建議** - 如果適用，提供後續行動建議
 
-**🌟 特殊要求 - 聊天記錄/社交互動分析格式：**
+**🌟 特殊要求 - 社交成長紀錄分析格式：**
 
-**⚠️ 重要：請先判斷內容類型！**
+${island.nameChinese.includes('社交') || island.nameChinese.includes('人際') ?
+  `**🔥 重要：你在「${island.nameChinese}」島嶼！**
 
-如果用戶上傳的內容符合以下任一特徵，則視為「聊天記錄」：
+所有上傳到社交島的內容都必須使用社交成長紀錄格式進行分析！
+包括：對話記錄、社交互動、人際交流、朋友聊天、任何涉及社交的內容。
+
+**請務必填寫以下所有社交專屬欄位（不是選填，是必填！）：**` :
+  `**⚠️ 內容類型判斷：**
+
+如果用戶上傳的內容符合以下任一特徵，則視為「聊天記錄/社交互動」：
 - 包含對話形式（例："A: ...", "B: ...", "replied to", "You sent", "You replied"）
 - 有多人之間的互動交流
 - 包含社交訊息應用的格式（例：LINE、Discord、WhatsApp、Messenger）
 - 內容主要是人際交流和對話
 
-${island.nameChinese.includes('社交') || island.nameChinese.includes('人際') ? `**✨ 你在「${island.nameChinese}」島嶼，所有對話都應該被視為社交成長的素材！**` : `**如果判斷為聊天記錄，請使用以下結構化格式：**`}
-
-**如果是聊天記錄，請務必填寫以下專屬欄位：**
+**如果是聊天記錄/社交互動，請務必填寫以下專屬欄位：**`}
 
 1. **[主題] suggestedTitle** - 對話/事件名稱（例：「與朋友討論購物經驗」、「練習主動打招呼」）
 2. **[情境] socialContext** - 一句話簡述對話背景（例：「與朋友閔討論淘寶購物」）
@@ -312,7 +317,33 @@ ${island.nameChinese.includes('社交') || island.nameChinese.includes('人際')
 
 **JSON 格式（只返回 JSON，不要其他文字）：**
 
-如果是**聊天記錄**，JSON 必須包含：
+${island.nameChinese.includes('社交') || island.nameChinese.includes('人際') ?
+  `**🔥 社交島專用格式（所有內容都必須包含社交欄位）：**
+{
+  "relevanceScore": 0.95,
+  "shouldStore": true,
+  "reasoning": "這是用戶的社交互動記錄...",
+  "confidence": 0.9,
+  "suggestedTags": ["朋友玩笑", "幽默互動", "關係維繫"],
+  "keyInsights": [
+    "用戶能參與輕鬆的玩笑對話",
+    "朋友之間的幽默互動",
+    "透過貼圖找到共鳴"
+  ],
+  "detailedSummary": "用戶與朋友Lina進行輕鬆的玩笑對話...",
+  "suggestedTitle": "朋友玩笑與共鳴",
+  "sentiment": "positive",
+  "importanceScore": 7,
+  "actionableAdvice": "繼續保持這種輕鬆的交流方式...",
+  "socialContext": "用戶與朋友Lina進行幽默的玩笑對話",
+  "userReaction": "能參與玩笑並表達自己的想法",
+  "aiFeedback": "你能用輕鬆幽默的方式與朋友互動，展現良好的社交關係！",
+  "socialSkillTags": ["幽默對話", "維持友誼", "社交共鳴"],
+  "progressChange": 1
+}
+
+⚠️ 注意：在社交島，所有 7 個社交欄位都是必填的！` :
+  `如果是**聊天記錄/社交互動**，JSON 必須包含所有社交欄位：
 {
   "relevanceScore": 0.95,
   "shouldStore": true,
@@ -349,7 +380,7 @@ ${island.nameChinese.includes('社交') || island.nameChinese.includes('人際')
   "sentiment": "neutral",
   "importanceScore": 8,
   "actionableAdvice": "建議用戶可以..."
-}
+}`}
 
 **評估準則：**
 - **高度相關 (>0.7)**: 核心內容完全匹配 ${island.nameChinese} 島嶼主題，具有長期價值
