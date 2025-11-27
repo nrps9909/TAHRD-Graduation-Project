@@ -14,6 +14,7 @@ import { Z_INDEX_CLASSES } from '../constants/zIndex'
 import { API_ENDPOINTS } from '../config/api'
 import axios from 'axios'
 import { useAuthStore } from '../stores/authStore'
+import { useOnboardingStore } from '../stores/onboardingStore'
 import { Live2DDisplay } from './Live2DDisplay'
 import { ChatHistorySidebar } from './ChatHistorySidebar'
 
@@ -100,6 +101,9 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
   // REMOVED: useQuery(GET_CHIEF_ASSISTANT) - migrated to Island-based architecture
   const { play, playRandomMeow } = useSound()
   const { token } = useAuthStore()
+
+  // 新手教學追蹤
+  const { recordAction, isOnboardingActive } = useOnboardingStore()
 
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -215,7 +219,7 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
         const session = data.getTororoSession
 
         // 轉換消息格式
-        const loadedMessages: ChatItem[] = session.messages.map((msg: any, index: number) => ({
+        const loadedMessages: ChatItem[] = session.messages.map((msg: { role: string; content: string; timestamp: string }, index: number) => ({
           id: `${msg.role}-${session.sessionId}-${index}`,
           type: msg.role as 'user' | 'assistant',
           content: msg.content,
@@ -393,6 +397,16 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
               console.error('[Tororo] Failed to save message:', error)
             }
 
+            // 🎓 記錄新手教學操作（上傳知識）
+            console.log('🎓 [TororoChatDialog] 檢查新手教學狀態:', { isOnboardingActive })
+            if (isOnboardingActive) {
+              console.log('🎓 [TororoChatDialog] 即將記錄 knowledgeUploaded')
+              recordAction('knowledgeUploaded')
+              console.log('✅ [TororoChatDialog] 已記錄知識上傳操作')
+            } else {
+              console.log('⚠️ [TororoChatDialog] 新手教學未啟動，跳過記錄')
+            }
+
             resolve()
             play('message_received')
             playRandomMeow()
@@ -562,24 +576,44 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
         <div className="absolute bottom-40 right-32 text-3xl animate-bounce" style={{ animationDuration: '4.5s' }}>☁️</div>
       </div>
 
-      {/* 主對話容器 - 左右佈局：充分利用橫向空間 */}
-      <div className="relative w-full max-w-7xl h-full flex p-4 gap-8">
-        {/* 關閉按鈕 - 固定在右上角 */}
-        <div className="absolute top-6 right-6 z-10">
-          <button
-            onClick={() => {
-              play('button_click')
-              onClose()
-            }}
-            className="text-amber-900/70 hover:text-amber-900 transition-colors text-3xl"
-            aria-label="關閉對話視窗"
-          >
-            ✕
-          </button>
+      {/* 關閉按鈕 - 固定在視窗右上角 */}
+      <button
+        onClick={() => {
+          play('button_click')
+          onClose()
+        }}
+        className="fixed top-4 right-4 z-50 w-10 h-10 flex items-center justify-center rounded-full bg-white/90 hover:bg-white text-amber-800 hover:text-amber-900 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110"
+        aria-label="關閉對話視窗"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+
+      {/* 主對話容器 - 手機垂直、桌面左右佈局 */}
+      <div className="relative w-full max-w-7xl h-full flex flex-col md:flex-row p-2 sm:p-4 gap-3 md:gap-8">
+        {/* Live2D 模型區域 - 響應式大小 */}
+        {/* 手機版：小尺寸，頂部顯示 */}
+        <div className="flex-shrink-0 flex flex-col items-center justify-center md:hidden">
+          <Live2DDisplay
+            modelPath="/models/tororo_white/tororo.model3.json"
+            width={180}
+            height={230}
+            isThinking={false}
+            isSpeaking={chatHistory.some(msg => msg.type === 'assistant' && !msg.isComplete)}
+          />
+          <div className="mt-2 text-center">
+            <h2 className="text-xl font-bold flex items-center justify-center gap-2" style={{ color: '#8B5C2E' }}>
+              <span className="text-2xl">☁️</span>
+              白噗噗
+            </h2>
+            <p className="text-xs" style={{ color: '#A67C52' }}>知識園丁・幫你整理一切</p>
+          </div>
         </div>
 
-        {/* 左側：Live2D 模型 - 固定寬度，垂直置中 */}
-        <div className="flex-shrink-0 flex flex-col items-center justify-center" style={{ width: '320px' }}>
+        {/* 桌面版：大尺寸，左側顯示 */}
+        <div className="flex-shrink-0 flex-col items-center justify-center hidden md:flex" style={{ width: '320px' }}>
           <Live2DDisplay
             modelPath="/models/tororo_white/tororo.model3.json"
             width={320}
@@ -597,23 +631,23 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
         </div>
 
         {/* 右側：對話區域 - 彈性寬度 */}
-        <div className="flex-1 flex flex-col min-w-0 pl-4">
+        <div className="flex-1 flex flex-col min-w-0">
           {/* 對話歷史 - 佔據剩餘空間 */}
-        <div className="flex-1 overflow-y-auto mb-6 space-y-3 sm:space-y-4">
+        <div className="flex-1 overflow-y-auto mb-3 md:mb-6 space-y-3 sm:space-y-4">
           {chatHistory.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center px-4">
-              <div className="space-y-4">
-                <p className="text-amber-900/60 text-lg">跟我說點什麼吧～ ☁️</p>
+            <div className="flex flex-col items-center justify-center h-full text-center px-2 md:px-4">
+              <div className="space-y-3 md:space-y-4">
+                <p className="text-amber-900/60 text-base md:text-lg">跟我說點什麼吧～ ☁️</p>
                 <div className="flex flex-wrap gap-2 justify-center">
                   {[
-                    '我想記錄今天的心情',
-                    '上傳一些學習筆記',
-                    '分享一個連結'
+                    '記錄今天心情',
+                    '上傳學習筆記',
+                    '分享連結'
                   ].map((suggestion) => (
                     <button
                       key={suggestion}
                       onClick={() => setInputText(suggestion)}
-                      className="px-4 py-2 rounded-full text-sm transition-colors"
+                      className="px-3 py-1.5 md:px-4 md:py-2 rounded-full text-xs md:text-sm transition-colors"
                       style={{
                         background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.3) 0%, rgba(245, 158, 11, 0.25) 100%)',
                         backdropFilter: 'blur(10px)',
@@ -638,7 +672,7 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
                   {item.type === 'user' ? (
                     // 用戶訊息 - 統一樣式
                     <div
-                      className="max-w-[75%] rounded-2xl px-4 py-3 text-sm"
+                      className="max-w-[85%] md:max-w-[75%] rounded-xl md:rounded-2xl px-3 py-2 md:px-4 md:py-3 text-xs md:text-sm"
                       style={{
                         background: 'rgba(251, 191, 36, 0.5)',
                         backdropFilter: 'blur(5px)',
@@ -657,7 +691,7 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
                   ) : (
                     // 白噗噗回答 - 從左側模型說出來
                     <div
-                      className="max-w-[75%] rounded-2xl px-4 py-3 relative"
+                      className="max-w-[90%] md:max-w-[75%] rounded-xl md:rounded-2xl px-3 py-2 md:px-4 md:py-3 relative"
                       style={{
                         background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(254, 252, 247, 0.95) 100%)',
                         backdropFilter: 'blur(20px)',
@@ -666,10 +700,10 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
                         border: '2px solid rgba(251, 191, 36, 0.3)'
                       }}
                     >
-                        {/* 對話氣泡尾巴 - 只在第一個泡泡顯示 */}
+                        {/* 對話氣泡尾巴 - 只在桌面版第一個泡泡顯示 */}
                         {index === chatHistory.findIndex(msg => msg.type === 'assistant') && (
                           <div
-                            className="absolute -left-3 top-8 w-6 h-6 rotate-45"
+                            className="hidden md:block absolute -left-3 top-8 w-6 h-6 rotate-45"
                             style={{
                               background: 'rgba(255, 255, 255, 0.98)',
                               border: '2px solid rgba(251, 191, 36, 0.3)',
@@ -679,7 +713,7 @@ export const TororoChatDialog: React.FC<TororoChatDialogProps> = ({ onClose }) =
                           />
                         )}
 
-                      <div className="text-base" style={{ lineHeight: '1.6', fontSize: '16px', whiteSpace: 'pre-line' }}>
+                      <div className="text-sm md:text-base" style={{ lineHeight: '1.6', whiteSpace: 'pre-line' }}>
                         {item.content.trim() || (
                           // 如果內容為空，顯示思考中動畫
                           <span className="inline-flex items-center gap-1 text-amber-600/70">

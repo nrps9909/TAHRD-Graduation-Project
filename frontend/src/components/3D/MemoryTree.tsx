@@ -44,6 +44,7 @@ function calculateGrowthStage(memory: Memory) {
 
 /**
  * 根據島嶼顏色和成長階段計算樹的顏色
+ * 樹的顏色與島嶼顏色一致，只調整飽和度和亮度
  */
 function calculateTreeColor(islandColor: string, growthStage: typeof GROWTH_STAGES.SEEDLING): string {
   const baseColor = new THREE.Color(islandColor)
@@ -51,14 +52,13 @@ function calculateTreeColor(islandColor: string, growthStage: typeof GROWTH_STAG
   baseColor.getHSL(hsl)
 
   // 成長階段越高，顏色越鮮艷
-  const saturation = 0.5 + (growthStage.sizeMultiplier - 0.5) * 0.4 // 0.5 到 0.9
+  const saturation = Math.min(1, hsl.s * (0.9 + growthStage.sizeMultiplier * 0.2))
 
-  // 向綠色偏移
-  const hueShift = -0.05
-  const newHue = (hsl.h + hueShift + 1) % 1
+  // 保持島嶼的色調，不做偏移
+  const newHue = hsl.h
 
-  // 成長階段越高，亮度越高
-  const newLightness = Math.max(0.3, Math.min(0.6, hsl.l * 0.8 + growthStage.sizeMultiplier * 0.1))
+  // 成長階段越高，亮度稍微提高
+  const newLightness = Math.max(0.35, Math.min(0.65, hsl.l * (0.85 + growthStage.sizeMultiplier * 0.15)))
 
   const treeColor = new THREE.Color().setHSL(newHue, saturation, newLightness)
   return '#' + treeColor.getHexString()
@@ -174,7 +174,7 @@ export function MemoryTree({ memory, islandColor, position, seed, onClick }: Mem
   })
 
   // 點擊處理
-  const handleClick = (e: any) => {
+  const handleClick = (e: { stopPropagation: () => void }) => {
     e.stopPropagation()
     setIsClicked(true)
     setTimeout(() => setIsClicked(false), 500) // 彈跳動畫持續 0.5 秒

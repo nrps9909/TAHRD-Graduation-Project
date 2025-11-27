@@ -10,6 +10,7 @@ import type { HijikiChatResponse } from '../graphql/hijikiChat'
 import { GET_HIJIKI_SESSIONS, DELETE_HIJIKI_SESSION } from '../graphql/chatHistory'
 import { useSound } from '../hooks/useSound'
 import { usePersistedChat } from '../hooks/usePersistedChat'
+import { useOnboardingStore } from '../stores/onboardingStore'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeSanitize from 'rehype-sanitize'
@@ -49,18 +50,9 @@ export const HijikiChatDialog: React.FC<HijikiChatDialogProps> = ({ onClose }) =
     const authToken = localStorage.getItem('auth_token')
     const authStorage = localStorage.getItem('auth-storage')
 
-    console.log('[Hijiki Sessions Debug]', {
-      loading: sessionsLoading,
-      error: sessionsError,
-      errorMessage: sessionsError?.message,
-      graphQLErrors: sessionsError?.graphQLErrors,
-      networkError: sessionsError?.networkError,
-      data: sessionsData,
-      sessions: sessionsData?.getHijikiSessions,
-      count: sessionsData?.getHijikiSessions?.length,
-      authToken: authToken ? `${authToken.substring(0, 20)}...` : 'NO TOKEN',
-      authStorage: authStorage ? JSON.parse(authStorage) : 'NO AUTH STORAGE',
-    })
+    // Debug logging removed for production
+    void authToken
+    void authStorage
   }, [sessionsData, sessionsError, sessionsLoading])
 
   // 刪除會話 mutation
@@ -102,6 +94,10 @@ export const HijikiChatDialog: React.FC<HijikiChatDialogProps> = ({ onClose }) =
   }>(CHAT_WITH_HIJIKI)
 
   const { play, playRandomMeow } = useSound()
+
+  // 新手教學追蹤
+  const { recordAction, isOnboardingActive } = useOnboardingStore()
+
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const responseEndRef = useRef<HTMLDivElement>(null)
   const typeIntervalRef = useRef<NodeJS.Timeout | null>(null)
@@ -137,7 +133,7 @@ export const HijikiChatDialog: React.FC<HijikiChatDialogProps> = ({ onClose }) =
         const session = data.getHijikiSession
 
         // 將後端的訊息轉換為前端的聊天記錄格式
-        const loadedMessages: HijikiChatMessage[] = session.messages.map((msg: any, index: number) => ({
+        const loadedMessages: HijikiChatMessage[] = session.messages.map((msg: { role: string; content: string; timestamp: string }, index: number) => ({
           id: `${msg.role}-${session.sessionId}-${index}`,
           type: msg.role as 'user' | 'assistant',
           content: msg.content,
@@ -251,6 +247,11 @@ export const HijikiChatDialog: React.FC<HijikiChatDialogProps> = ({ onClose }) =
             play('message_received')
             playRandomMeow()
 
+            // 記錄新手教學操作（使用黑噗噗查詢）
+            if (isOnboardingActive) {
+              recordAction('hijikiQueried')
+            }
+
             // 刷新會話列表
             refetchSessions()
           }
@@ -323,21 +324,23 @@ export const HijikiChatDialog: React.FC<HijikiChatDialogProps> = ({ onClose }) =
         <div className="absolute bottom-40 right-32 text-3xl animate-pulse" style={{ animationDuration: '4.5s' }}>💫</div>
       </div>
 
+      {/* 關閉按鈕 - 固定在視窗右上角 */}
+      <button
+        onClick={() => {
+          play('button_click')
+          onClose()
+        }}
+        className="fixed top-4 right-4 z-50 w-10 h-10 flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 text-white/90 hover:text-white shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110 backdrop-blur-sm"
+        aria-label="關閉對話視窗"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+
       {/* 主對話容器 - 手機垂直、桌面左右佈局 */}
       <div className="relative w-full max-w-7xl h-full flex flex-col md:flex-row p-2 sm:p-4 gap-3 md:gap-8">
-        {/* 關閉按鈕 - 固定在右上角 */}
-        <div className="absolute top-2 right-2 sm:top-4 sm:right-4 md:top-6 md:right-6 z-10">
-          <button
-            onClick={() => {
-              play('button_click')
-              onClose()
-            }}
-            className="text-white/70 hover:text-white transition-colors text-2xl md:text-3xl"
-          >
-            ✕
-          </button>
-        </div>
-
         {/* Live2D 模型區域 - 響應式大小 */}
         {/* 手機版：小尺寸，頂部顯示 */}
         <div className="flex-shrink-0 flex flex-col items-center justify-center block md:hidden">

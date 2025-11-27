@@ -67,7 +67,6 @@ export function ProcessingQueuePanel() {
   // WebSocket 連接
   useEffect(() => {
     const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000'
-    console.log('[Queue] 連接到 Socket.IO:', backendUrl, '用戶ID:', userId)
 
     const newSocket = io(backendUrl, {
       // ⚠️ Cloudflare 問題：WebSocket 升級會失敗，只使用 polling
@@ -83,64 +82,40 @@ export function ProcessingQueuePanel() {
     })
 
     newSocket.on('connect', () => {
-      console.log('[Queue] WebSocket 已連接 ✅')
       newSocket.emit('join-room', { roomId: userId })
       newSocket.emit('get-queue-stats', { userId })
     })
 
-    newSocket.on('connect_error', (error) => {
-      console.error('[Queue] WebSocket 連接錯誤:', error)
-    })
-
     newSocket.on('disconnect', (reason) => {
-      console.warn('[Queue] WebSocket 斷線:', reason)
       // 如果是伺服器主動斷開或傳輸關閉，嘗試立即重連
       if (reason === 'io server disconnect' || reason === 'transport close') {
-        console.log('[Queue] 嘗試立即重新連接...')
         newSocket.connect()
       }
     })
 
-    newSocket.on('reconnect', (attemptNumber) => {
-      console.log(`[Queue] 重連成功 (第 ${attemptNumber} 次嘗試)`)
+    newSocket.on('reconnect', () => {
       // 重連後重新加入房間和獲取狀態
       newSocket.emit('join-room', { roomId: userId })
       newSocket.emit('get-queue-stats', { userId })
     })
 
-    newSocket.on('reconnect_attempt', (attemptNumber) => {
-      console.log(`[Queue] 嘗試重連... (第 ${attemptNumber} 次)`)
-    })
-
-    newSocket.on('reconnect_error', (error) => {
-      console.error('[Queue] 重連失敗:', error)
-    })
-
-    newSocket.on('reconnect_failed', () => {
-      console.error('[Queue] 重連失敗，已達最大重試次數')
-    })
-
     // 監聽隊列統計
     newSocket.on('queue-stats', (data: QueueStats) => {
-      console.log('[Queue] 隊列統計更新:', data)
       setStats(data)
     })
 
     // 監聽隊列更新
     newSocket.on('queue-update', (data: { stats: QueueStats }) => {
-      console.log('[Queue] 隊列更新:', data)
       setStats(data.stats)
     })
 
     // 監聽任務開始
-    newSocket.on('task-start', (data: { taskId: string }) => {
-      console.log('[Queue] 任務開始:', data)
+    newSocket.on('task-start', () => {
       newSocket.emit('get-queue-stats', { userId })
     })
 
     // 監聽任務進度
     newSocket.on('task-progress', (data: { taskId: string, progress: TaskProgress, elapsedTime: number }) => {
-      console.log('[Queue] 任務進度:', data)
       setProcessingTasks(prev => {
         const newMap = new Map(prev)
         newMap.set(data.taskId, { elapsedTime: data.elapsedTime })
@@ -150,13 +125,6 @@ export function ProcessingQueuePanel() {
 
     // 監聽任務完成
     newSocket.on('task-complete', (data: { taskId: string, progress?: TaskProgress, categoriesInfo?: CategoryInfo[] }) => {
-      console.log('[Queue] ✅ 任務完成事件觸發:', {
-        taskId: data.taskId,
-        progress: data.progress,
-        categoriesInfo: data.categoriesInfo,
-        categoriesInfoLength: data.categoriesInfo?.length || 0
-      })
-
       // 添加到臨時完成列表(用於顯示通知)
       const completedTask: CompletedTask = {
         id: data.taskId,
@@ -165,36 +133,29 @@ export function ProcessingQueuePanel() {
         categoriesInfo: data.categoriesInfo || []
       }
       setCompletedTasks(prev => [completedTask, ...prev].slice(0, 10))
-      console.log('[Queue] ✅ 已添加到完成列表:', completedTask)
 
       // 顯示完成通知 5 秒
       setShowCompleted(true)
-      console.log('[Queue] ✅ 顯示完成通知')
       setTimeout(() => {
         setShowCompleted(false)
-        console.log('[Queue] ⏰ 隱藏完成通知')
       }, 5000)
 
       // 清除處理中狀態
       setProcessingTasks(prev => {
         const newMap = new Map(prev)
-        const hadTask = newMap.has(data.taskId)
         newMap.delete(data.taskId)
-        console.log(`[Queue] ${hadTask ? '✅ 已移除' : '⚠️ 未找到'} 處理中任務:`, data.taskId)
         return newMap
       })
 
       // 重新載入資料庫歷史記錄
       setTimeout(() => {
-        console.log('[Queue] 🔄 重新載入歷史記錄和隊列狀態')
         refetchHistories()
         newSocket.emit('get-queue-stats', { userId })
       }, 500)
     })
 
     // 監聽任務錯誤
-    newSocket.on('task-error', (data: { taskId: string, error?: string }) => {
-      console.error('[Queue] 任務錯誤 ❌:', data)
+    newSocket.on('task-error', (data: { taskId: string }) => {
       setProcessingTasks(prev => {
         const newMap = new Map(prev)
         newMap.delete(data.taskId)
@@ -242,23 +203,6 @@ export function ProcessingQueuePanel() {
 
   // 獲取資料庫歷史記錄（使用 useMemo 避免不必要的重新渲染）
   const dbHistories = useMemo(() => historiesData?.taskHistories || [], [historiesData?.taskHistories])
-
-  // 🔍 調試日誌 - 查看歷史記錄數據
-  useEffect(() => {
-    if (dbHistories.length > 0) {
-      console.log('[ProcessingQueue] 📊 資料庫歷史記錄:', dbHistories.length, '條')
-      dbHistories.slice(0, 3).forEach((history, i) => {
-        console.log(`[ProcessingQueue] 記錄 ${i + 1}:`, {
-          id: history.id,
-          message: history.message,
-          categoriesInfo: history.categoriesInfo,
-          categoriesInfoType: typeof history.categoriesInfo,
-          categoriesInfoIsArray: Array.isArray(history.categoriesInfo),
-          categoriesInfoLength: history.categoriesInfo?.length || 0
-        })
-      })
-    }
-  }, [dbHistories])
 
   // 如果沒有任務且沒有歷史記錄，不顯示面板
   if (!stats || (stats.queueSize === 0 && stats.processing === 0 && completedTasks.length === 0 && dbHistories.length === 0)) {

@@ -1,7 +1,10 @@
 import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import ProtectedRoute from './components/ProtectedRoute'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { useAuthStore } from './stores/authStore'
+import { useOnboarding } from './hooks/useOnboarding'
+import { OnboardingOverlay } from './components/Onboarding'
 import './styles/cursor.css'
 
 // Lazy load route components for better code splitting
@@ -24,9 +27,14 @@ const PageLoader = () => (
 
 function App() {
   const { isAuthenticated } = useAuthStore()
+  const {
+    isOnboardingActive,
+    currentStep,
+    completeOnboarding
+  } = useOnboarding()
 
   return (
-    <>
+    <ErrorBoundary>
       <Suspense fallback={<PageLoader />}>
         <Routes>
           {/* Public Routes - 統一使用 AuthPage 組件 */}
@@ -106,7 +114,15 @@ function App() {
           />
         </Routes>
       </Suspense>
-    </>
+
+      {/* 新手教學覆蓋層 - 強制完成 */}
+      {isAuthenticated && isOnboardingActive && (
+        <OnboardingOverlay
+          currentStep={currentStep}
+          onComplete={completeOnboarding}
+        />
+      )}
+    </ErrorBoundary>
   )
 }
 
