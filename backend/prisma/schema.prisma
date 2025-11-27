@@ -66,6 +66,11 @@ model UserSettings {
   // Privacy
   dataRetentionDays Int     @default(365) @map("data_retention_days")
 
+  // Onboarding (新手教學)
+  hasCompletedOnboarding Boolean @default(false) @map("has_completed_onboarding")
+  onboardingStep         Int     @default(0) @map("onboarding_step") // 0-7: 當前教學步驟
+  onboardingProgress     Json?   @map("onboarding_progress") // 詳細進度記錄
+
   updatedAt         DateTime @updatedAt @map("updated_at")
 
   // Relations

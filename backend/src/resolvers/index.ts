@@ -6,6 +6,7 @@
 
 import { scalarResolvers } from './scalarResolvers'
 import { authResolvers } from './authResolvers'
+import { settingsResolvers } from './settingsResolvers'
 import { chatSessionResolvers } from './chatSessionResolvers'
 // REMOVED: assistantResolvers - migrated to island-based architecture
 // import { assistantResolvers } from './assistantResolvers'
@@ -29,6 +30,8 @@ export const resolvers = {
     ...memoryResolvers.Query,
     ...chatSessionResolvers.Query,
     ...knowledgeDistributionResolvers.Query,
+    // Settings System (用戶設置系統)
+    ...settingsResolvers.Query,
     // Island System (島嶼系統)
     ...islandResolvers.Query,
     // Cat Agent System (Tororo & Hijiki)
@@ -48,6 +51,8 @@ export const resolvers = {
   Mutation: {
     // Auth System
     ...authResolvers.Mutation,
+    // Settings System (用戶設置系統)
+    ...settingsResolvers.Mutation,
     // New Architecture (新知識助手系統)
     // REMOVED: assistantResolvers - migrated to island-based
     ...memoryResolvers.Mutation,
