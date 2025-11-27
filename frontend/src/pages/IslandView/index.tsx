@@ -103,7 +103,6 @@ export default function IslandView() {
     }
 
     const handleContextRestored = () => {
-      console.log('✅ WebGL context restored successfully')
       setWebglContextLost(false)
     }
 
@@ -197,19 +196,8 @@ export default function IslandView() {
 
   // 处理島嶼編輯保存成功
   const handleIslandSaveSuccess = async () => {
-    console.log('🟢 [IslandView] handleIslandSaveSuccess 被調用')
-    console.log('🟢 [IslandView] 當前 island 顏色:', island?.color)
-
     // 重新獲取資料以更新 3D 場景
-    console.log('🟢 [IslandView] 準備 refetch 資料...')
-    const result = await refetch()
-
-    console.log('✅ [IslandView] refetch 完成')
-    console.log('✅ [IslandView] 新的 islands 資料:', result.data.islands)
-
-    const updatedIsland = result.data.islands.find((i: Island) => i.id === islandId)
-    console.log('✅ [IslandView] 更新後的 island:', updatedIsland)
-    console.log('✅ [IslandView] 新顏色:', updatedIsland?.color)
+    await refetch()
   }
 
   return (
@@ -448,7 +436,6 @@ export default function IslandView() {
             position={memory.position}
             seed={index * 123.456} // 使用 index 作為種子，確保每棵樹都不同
             onClick={(clickedMemory) => {
-              console.log('🌳 Clicked memory tree:', clickedMemory)
               setSelectedMemory(clickedMemory)
             }}
           />

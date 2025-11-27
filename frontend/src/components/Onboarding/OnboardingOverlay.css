@@ -1,0 +1,291 @@
+/**
+ * 新手教學覆蓋層樣式
+ * 心語小鎮 - 動物森友會風格對話框
+ */
+
+/* ========== 基礎容器 ========== */
+.onboarding-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10000;
+  pointer-events: none;
+  font-family: 'Noto Sans TC', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* ========== 動森風格對話框 ========== */
+.ac-dialogue-box {
+  position: fixed;
+  bottom: 20px; /* 貼近底部 */
+  left: 20px; /* 靠左 */
+  transform: none;
+  width: auto;
+  max-width: 380px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 253, 245, 0.97) 0%,
+    rgba(255, 250, 235, 0.98) 100%
+  );
+  border-radius: 12px;
+  padding: 0;
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.15),
+    0 0 0 3px rgba(139, 90, 43, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  pointer-events: auto;
+  overflow: hidden;
+}
+
+/* ========== 角色名牌 ========== */
+.ac-name-tag {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: linear-gradient(
+    90deg,
+    rgba(139, 90, 43, 0.9) 0%,
+    rgba(160, 110, 60, 0.85) 100%
+  );
+  border-bottom: 2px solid rgba(100, 60, 20, 0.3);
+}
+
+.ac-mascot {
+  width: 22px;
+  height: 22px;
+  background: linear-gradient(135deg, #fff9e6 0%, #ffe4a0 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.ac-mascot-icon {
+  font-size: 13px;
+  line-height: 1;
+}
+
+.ac-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+  letter-spacing: 1px;
+}
+
+.ac-progress {
+  margin-left: auto;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 500;
+}
+
+/* ========== 對話內容 ========== */
+.ac-dialogue-content {
+  padding: 10px 14px;
+  min-height: 40px;
+}
+
+.ac-dialogue-text {
+  font-size: 14px;
+  line-height: 1.5;
+  color: #4a3520;
+  margin: 0;
+  font-weight: 500;
+}
+
+/* 打字游標 */
+.ac-cursor {
+  display: inline-block;
+  color: #8b5a2b;
+  animation: cursorBlink 0.6s ease-in-out infinite;
+  margin-left: 2px;
+}
+
+@keyframes cursorBlink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+/* ========== 操作提示 ========== */
+.ac-action-hint {
+  margin: 0 14px 8px;
+  padding: 6px 10px;
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.2) 0%, rgba(245, 158, 11, 0.15) 100%);
+  border: 1px dashed rgba(139, 90, 43, 0.4);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #8b5a2b;
+  text-align: center;
+}
+
+.ac-action-hint.completed {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(22, 163, 74, 0.1) 100%);
+  border-color: rgba(34, 197, 94, 0.4);
+  color: #15803d;
+}
+
+.ac-action-hint.waiting {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(37, 99, 235, 0.1) 100%);
+  border-color: rgba(59, 130, 246, 0.4);
+  color: #1d4ed8;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* ========== 按鈕區 ========== */
+.ac-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+  padding: 6px 10px 8px;
+  border-top: none;
+  background: transparent;
+}
+
+.ac-btn {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  outline: none;
+}
+
+.ac-btn-skip,
+.ac-btn-later {
+  background: transparent;
+  color: #a07850;
+  padding: 4px 8px;
+}
+
+.ac-btn-skip:hover,
+.ac-btn-later:hover {
+  background: rgba(139, 90, 43, 0.1);
+}
+
+.ac-btn-prev {
+  background: rgba(139, 90, 43, 0.08);
+  color: #8b5a2b;
+  padding: 4px 10px;
+}
+
+.ac-btn-prev:hover {
+  background: rgba(139, 90, 43, 0.15);
+}
+
+.ac-btn-next {
+  background: linear-gradient(135deg, #8b5a2b 0%, #a07850 100%);
+  color: #fff;
+  padding: 4px 12px;
+  box-shadow: 0 1px 4px rgba(139, 90, 43, 0.25);
+}
+
+.ac-btn-next:hover:not(.disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(139, 90, 43, 0.35);
+}
+
+.ac-btn-next.disabled {
+  background: #ccc;
+  color: #888;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* ========== 點擊加速提示 ========== */
+.ac-skip-typing {
+  padding: 8px 16px 12px;
+  text-align: right;
+  font-size: 11px;
+  color: #a07850;
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.ac-skip-typing:hover {
+  opacity: 1;
+}
+
+/* ========== 響應式設計 ========== */
+@media (max-width: 480px) {
+  .ac-dialogue-box {
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-width: none;
+    border-radius: 14px;
+  }
+
+  .ac-name-tag {
+    padding: 8px 14px;
+  }
+
+  .ac-mascot {
+    width: 24px;
+    height: 24px;
+  }
+
+  .ac-mascot-icon {
+    font-size: 14px;
+  }
+
+  .ac-name {
+    font-size: 14px;
+  }
+
+  .ac-dialogue-content {
+    padding: 12px 14px;
+    min-height: 50px;
+  }
+
+  .ac-dialogue-text {
+    font-size: 14px;
+  }
+
+  .ac-action-hint {
+    margin: 0 14px 10px;
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  .ac-buttons {
+    padding: 8px 12px 12px;
+    gap: 6px;
+  }
+
+  .ac-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  .ac-btn-next {
+    padding: 6px 16px;
+  }
+}
+
+@media (max-width: 360px) {
+  .ac-dialogue-box {
+    left: 8px;
+    right: 8px;
+  }
+
+  .ac-dialogue-text {
+    font-size: 13px;
+  }
+
+  .ac-btn {
+    padding: 5px 10px;
+    font-size: 11px;
+  }
+}

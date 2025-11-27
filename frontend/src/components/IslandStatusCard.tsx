@@ -75,14 +75,14 @@ export function IslandStatusCard({
     : []
 
   return (
-    <div className={`fixed top-4 left-4 ${Z_INDEX_CLASSES.FIXED_PANEL} w-80 ${className}`}>
+    <div className={`fixed top-3 left-3 sm:top-4 sm:left-4 ${Z_INDEX_CLASSES.FIXED_PANEL} w-[calc(100vw-1.5rem)] sm:w-72 md:w-80 max-w-80 ${className}`}>
       <div
-        className="relative rounded-[28px] overflow-hidden transition-all duration-300 hover:scale-[1.02]"
+        className="relative rounded-2xl sm:rounded-[28px] overflow-hidden transition-all duration-300 hover:scale-[1.02]"
         style={{
-          background: 'linear-gradient(145deg, rgba(255, 250, 240, 0.7) 0%, rgba(255, 245, 230, 0.6) 100%)',
+          background: 'linear-gradient(145deg, rgba(255, 250, 240, 0.85) 0%, rgba(255, 245, 230, 0.8) 100%)',
           backdropFilter: 'blur(24px) saturate(180%)',
           WebkitBackdropFilter: 'blur(24px) saturate(180%)',
-          border: '3px solid rgba(255, 255, 255, 0.6)',
+          border: '2px sm:border-[3px] solid rgba(255, 255, 255, 0.6)',
           boxShadow: `
             0 20px 50px -12px rgba(139, 92, 46, 0.25),
             0 0 0 1px rgba(251, 191, 36, 0.1) inset,
@@ -92,16 +92,16 @@ export function IslandStatusCard({
       >
         {/* 頂部光澤效果 */}
         <div
-          className="absolute top-0 left-0 right-0 h-20 pointer-events-none"
+          className="absolute top-0 left-0 right-0 h-12 sm:h-20 pointer-events-none"
           style={{
             background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.4) 0%, transparent 100%)',
           }}
         />
 
         {/* 頭部 - 島嶼資訊 */}
-        <div className="relative p-4">
+        <div className="relative p-2.5 sm:p-4">
           <div
-            className="rounded-[20px] p-4 relative overflow-hidden"
+            className="rounded-xl sm:rounded-[20px] p-2.5 sm:p-4 relative overflow-hidden"
             style={{
               background: `linear-gradient(135deg, ${color}dd 0%, ${color}bb 100%)`,
               boxShadow: '0 6px 20px rgba(0, 0, 0, 0.15), inset 0 2px 4px rgba(255, 255, 255, 0.3)',
@@ -109,20 +109,20 @@ export function IslandStatusCard({
           >
             {/* 內部光澤 */}
             <div
-              className="absolute top-0 left-0 right-0 h-12 pointer-events-none"
+              className="absolute top-0 left-0 right-0 h-8 sm:h-12 pointer-events-none"
               style={{
                 background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.25) 0%, transparent 100%)',
               }}
             />
 
-            {/* 裝飾圓圈 */}
-            <div className="absolute top-0 right-0 w-20 h-20 rounded-full opacity-10 transform translate-x-6 -translate-y-6" style={{ background: 'white' }} />
-            <div className="absolute bottom-0 left-0 w-16 h-16 rounded-full opacity-10 transform -translate-x-4 translate-y-4" style={{ background: 'white' }} />
+            {/* 裝飾圓圈 - 手機上縮小 */}
+            <div className="absolute top-0 right-0 w-12 sm:w-20 h-12 sm:h-20 rounded-full opacity-10 transform translate-x-4 sm:translate-x-6 -translate-y-4 sm:-translate-y-6" style={{ background: 'white' }} />
+            <div className="absolute bottom-0 left-0 w-10 sm:w-16 h-10 sm:h-16 rounded-full opacity-10 transform -translate-x-3 sm:-translate-x-4 translate-y-3 sm:translate-y-4" style={{ background: 'white' }} />
 
-            <div className="relative flex items-center gap-3">
+            <div className="relative flex items-center gap-2 sm:gap-3">
               {/* Emoji 圖標框 */}
               <div
-                className="w-14 h-14 rounded-[16px] flex items-center justify-center text-2xl"
+                className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-[16px] flex items-center justify-center text-lg sm:text-2xl flex-shrink-0"
                 style={{
                   background: 'rgba(255, 255, 255, 0.3)',
                   backdropFilter: 'blur(8px)',
@@ -134,21 +134,21 @@ export function IslandStatusCard({
 
               {/* 文字資訊 */}
               <div className="flex-1 min-w-0">
-                <h3 className="text-lg font-bold text-white mb-0.5" style={{ textShadow: '0 2px 6px rgba(0, 0, 0, 0.2)' }}>
+                <h3 className="text-sm sm:text-lg font-bold text-white mb-0.5 truncate" style={{ textShadow: '0 2px 6px rgba(0, 0, 0, 0.2)' }}>
                   {name}
                 </h3>
-                <p className="text-xs text-white/90 font-medium" style={{ textShadow: '0 1px 3px rgba(0, 0, 0, 0.15)' }}>
+                <p className="text-[10px] sm:text-xs text-white/90 font-medium line-clamp-1 sm:line-clamp-2" style={{ textShadow: '0 1px 3px rgba(0, 0, 0, 0.15)' }}>
                   {description}
                 </p>
               </div>
 
               {/* 按鈕組 */}
-              <div className="flex gap-2">
+              <div className="flex gap-1.5 sm:gap-2 flex-shrink-0">
                 {/* 返回總覽按鈕 */}
                 {onBackClick && (
                   <button
                     onClick={onBackClick}
-                    className="w-10 h-10 rounded-[12px] flex items-center justify-center text-lg transition-all duration-200 hover:scale-110 active:scale-95"
+                    className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-[12px] flex items-center justify-center text-sm sm:text-lg transition-all duration-200 hover:scale-110 active:scale-95"
                     style={{
                       background: 'rgba(255, 255, 255, 0.35)',
                       backdropFilter: 'blur(8px)',
@@ -164,7 +164,7 @@ export function IslandStatusCard({
                 {onEditClick && (
                   <button
                     onClick={onEditClick}
-                    className="w-10 h-10 rounded-[12px] flex items-center justify-center text-lg transition-all duration-200 hover:scale-110 active:scale-95"
+                    className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-[12px] flex items-center justify-center text-sm sm:text-lg transition-all duration-200 hover:scale-110 active:scale-95"
                     style={{
                       background: 'rgba(255, 255, 255, 0.35)',
                       backdropFilter: 'blur(8px)',
@@ -180,11 +180,11 @@ export function IslandStatusCard({
           </div>
         </div>
 
-        {/* 主要資訊 */}
-        <div className="px-4 pb-4 space-y-3">
+        {/* 主要資訊 - 手機端簡化顯示 */}
+        <div className="px-2.5 sm:px-4 pb-2.5 sm:pb-4 space-y-2 sm:space-y-3">
           {/* 記憶總數卡片 */}
           <div
-            className="rounded-[18px] p-4 relative overflow-hidden"
+            className="rounded-xl sm:rounded-[18px] p-2.5 sm:p-4 relative overflow-hidden"
             style={{
               background: `linear-gradient(135deg, ${color}20 0%, ${color}10 100%)`,
               border: `2px solid ${color}30`,
@@ -192,20 +192,20 @@ export function IslandStatusCard({
             }}
           >
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2">
                 <div
-                  className="w-9 h-9 rounded-[12px] flex items-center justify-center"
+                  className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg sm:rounded-[12px] flex items-center justify-center"
                   style={{
                     background: `linear-gradient(135deg, ${color}40 0%, ${color}25 100%)`,
                     boxShadow: 'inset 0 1px 2px rgba(255, 255, 255, 0.4)',
                   }}
                 >
-                  <span className="text-base">🌺</span>
+                  <span className="text-sm sm:text-base">🌺</span>
                 </div>
-                <span className="text-sm font-bold text-gray-700">記憶總數</span>
+                <span className="text-xs sm:text-sm font-bold text-gray-700">記憶總數</span>
               </div>
               <span
-                className="text-3xl font-black"
+                className="text-xl sm:text-3xl font-black"
                 style={{ color }}
               >
                 {memoryCount}
@@ -213,9 +213,9 @@ export function IslandStatusCard({
             </div>
           </div>
 
-          {/* 類別標籤 */}
+          {/* 類別標籤 - 手機上隱藏 */}
           {categories.length > 0 && (
-            <div>
+            <div className="hidden sm:block">
               <div className="flex items-center gap-1.5 mb-2">
                 <div
                   className="w-7 h-7 rounded-[10px] flex items-center justify-center"
@@ -249,9 +249,9 @@ export function IslandStatusCard({
             </div>
           )}
 
-          {/* 最活躍區域 */}
+          {/* 最活躍區域 - 手機上隱藏 */}
           {topRegions.length > 0 && (
-            <div>
+            <div className="hidden sm:block">
               <div className="flex items-center gap-1.5 mb-2">
                 <div
                   className="w-7 h-7 rounded-[10px] flex items-center justify-center"
@@ -319,20 +319,20 @@ export function IslandStatusCard({
             </div>
           )}
 
-          {/* 最近更新 */}
+          {/* 最近更新 - 手機上簡化 */}
           {updatedAt && (
             <div
-              className="flex items-center gap-2 px-3 py-2 rounded-[14px] mt-2"
+              className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-xl sm:rounded-[14px] mt-1 sm:mt-2"
               style={{
                 background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(245, 158, 11, 0.1) 100%)',
                 border: '1.5px solid rgba(251, 191, 36, 0.2)',
               }}
             >
-              <span className="text-sm">⏱️</span>
-              <span className="text-xs font-semibold" style={{ color: '#92400E' }}>
+              <span className="text-xs sm:text-sm">⏱️</span>
+              <span className="text-[10px] sm:text-xs font-semibold hidden sm:inline" style={{ color: '#92400E' }}>
                 最近更新：
               </span>
-              <span className="text-xs font-bold" style={{ color: '#78350F' }}>
+              <span className="text-[10px] sm:text-xs font-bold" style={{ color: '#78350F' }}>
                 {formatDistanceToNow(updatedAt, { addSuffix: true, locale: zhTW })}
               </span>
             </div>

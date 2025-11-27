@@ -185,9 +185,7 @@ export default function TororoKnowledgeAssistant({
       setAudioDialogResponse(response)
 
     } catch (error) {
-      if ((error as Error).name === 'AbortError') {
-        console.log('AI 生成被取消')
-      } else {
+      if ((error as Error).name !== 'AbortError') {
         console.error('生成 AI 回應失敗:', error)
       }
     }
@@ -221,9 +219,8 @@ export default function TororoKnowledgeAssistant({
       try {
         const history = await getTororoChatHistory(token)
         setConversationHistory(history.messages)
-        console.log(`[Tororo Chat] 載入 ${history.messages.length} 條歷史對話`)
       } catch (error) {
-        console.error('[Tororo Chat] 載入歷史失敗:', error)
+        console.error('載入聊天歷史失敗:', error)
       } finally {
         setIsLoadingChatHistory(false)
       }
@@ -247,8 +244,6 @@ export default function TororoKnowledgeAssistant({
 
     if (pendingRecords.length === 0) return
 
-    console.log(`[Tororo] 🔄 檢查 ${pendingRecords.length} 個 pending 任務的狀態`)
-
     for (const record of pendingRecords) {
       try {
         const { data } = await getDistribution({
@@ -262,8 +257,6 @@ export default function TororoKnowledgeAssistant({
 
           // 如果已經有 memories 創建，說明處理完成了
           if (memoriesCount > 0) {
-            console.log(`[Tororo] ✅ Distribution ${record.distributionId} 已完成，創建了 ${memoriesCount} 個記憶`)
-
             setHistory(prev => {
               const updated = prev.map(r => {
                 if (r.distributionId === record.distributionId) {
@@ -300,7 +293,6 @@ export default function TororoKnowledgeAssistant({
 
     // 如果沒有 userId，不建立連接
     if (!userId || userId === 'guest-user-id') {
-      console.log('[Tororo] 等待用戶認證，暫不建立 WebSocket 連接')
       return
     }
 
@@ -321,7 +313,6 @@ export default function TororoKnowledgeAssistant({
     })
 
     newSocket.on('connect', () => {
-      console.log('[Tororo] WebSocket connected ✅')
       if (userId) {
         newSocket.emit('join-room', { roomId: userId })
       }
@@ -329,8 +320,7 @@ export default function TororoKnowledgeAssistant({
       setTimeout(() => syncPendingTasks(), 1000)
     })
 
-    newSocket.on('reconnect', (attemptNumber) => {
-      console.log('[Tororo] WebSocket reconnected after', attemptNumber, 'attempts')
+    newSocket.on('reconnect', () => {
       if (userId) {
         newSocket.emit('join-room', { roomId: userId })
       }
@@ -338,8 +328,8 @@ export default function TororoKnowledgeAssistant({
       setTimeout(() => syncPendingTasks(), 1000)
     })
 
-    newSocket.on('disconnect', (reason) => {
-      console.log('[Tororo] WebSocket disconnected:', reason)
+    newSocket.on('disconnect', () => {
+      // WebSocket disconnected
     })
 
     // 監聽任務開始事件
@@ -348,8 +338,6 @@ export default function TororoKnowledgeAssistant({
       distributionId: string
       progress: { message: string }
     }) => {
-      console.log('[Tororo] 收到 task-start 事件:', data)
-
       // 更新對應的歷史記錄狀態為 processing
       setHistory(prev => {
         const updated = prev.map(record => {
@@ -381,8 +369,6 @@ export default function TororoKnowledgeAssistant({
       progress: { current: number; total: number; message: string }
       elapsedTime: number
     }) => {
-      console.log('[Tororo] 收到 task-progress 事件:', data)
-
       // 更新對應的歷史記錄進度資訊
       setHistory(prev => {
         const updated = prev.map(record => {
@@ -414,8 +400,6 @@ export default function TororoKnowledgeAssistant({
       progress: { message: string }
       result: { memoriesCreated: number }
     }) => {
-      console.log('[Tororo] 收到 task-complete 事件:', data)
-
       // 更新對應的歷史記錄狀態
       setHistory(prev => {
         const updated = prev.map(record => {
@@ -443,14 +427,12 @@ export default function TororoKnowledgeAssistant({
       play('notification')
     })
 
-    // 監聽任務錯誤事件
+    // 監聯任務錯誤事件
     newSocket.on('task-error', (data: {
       taskId: string
       distributionId: string
       error: string
     }) => {
-      console.log('[Tororo] 收到 task-error 事件:', data)
-
       // 更新對應的歷史記錄狀態
       setHistory(prev => {
         const updated = prev.map(record => {
@@ -974,9 +956,8 @@ export default function TororoKnowledgeAssistant({
                 }
 
                 setConversationHistory(prev => [...prev, newMessage])
-                console.log('[Tororo Chat] 對話已儲存')
               } catch (error) {
-                console.error('[Tororo Chat] 儲存對話失敗:', error)
+                console.error('儲存對話失敗:', error)
                 // 即使儲存失敗也更新 UI（使用臨時 ID）
                 const tempMessage: TororoMessage = {
                   id: `temp-${Date.now()}`,
@@ -992,10 +973,9 @@ export default function TororoKnowledgeAssistant({
 
           playRandomMeow()
           play('notification')
-          console.log('✅ 知識已加入處理隊列:', result.distribution?.id)
         })
       } catch (error) {
-        console.error('❌ 上傳失敗:', error)
+        console.error('上傳失敗:', error)
         const errorMessage = error instanceof Error ? error.message : '未知錯誤'
         setAudioDialogResponse('哎呀，出錯了！可以再試一次～ ☁️')
         play('notification')

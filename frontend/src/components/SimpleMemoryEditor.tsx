@@ -272,25 +272,25 @@ export default function SimpleMemoryEditor({ memoryId, onClose }: SimpleMemoryEd
       <div className="sticky top-0 z-10 bg-[#252525] border-b border-gray-800">
         <div className="px-2 md:px-4 py-2 flex items-center justify-between gap-2">
           {/* 左側 */}
-          <div className="flex items-center gap-1 md:gap-2 min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 md:gap-2 min-w-0 flex-1">
             <button
               onClick={handleClose}
-              className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center rounded hover:bg-gray-700 transition-colors text-gray-300 hover:text-white flex-shrink-0"
+              className="w-9 h-9 md:w-8 md:h-8 flex items-center justify-center rounded-lg md:rounded hover:bg-gray-700 transition-colors text-gray-300 hover:text-white flex-shrink-0"
               title="關閉（會自動保存）"
             >
-              <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
 
-            <div className="h-4 md:h-6 w-px bg-gray-600 flex-shrink-0"></div>
+            <div className="h-5 md:h-6 w-px bg-gray-600 flex-shrink-0"></div>
 
             {/* 檔案名稱 */}
-            <div className="flex items-center gap-1 md:gap-2 text-gray-300 min-w-0 flex-1">
-              <svg className="w-3 h-3 md:w-4 md:h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="flex items-center gap-1.5 md:gap-2 text-gray-300 min-w-0 flex-1">
+              <svg className="w-4 h-4 md:w-4 md:h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              <span className="text-xs md:text-sm font-medium truncate">{title || '未命名文件'}</span>
+              <span className="text-sm md:text-sm font-medium truncate">{title || '未命名文件'}</span>
             </div>
 
             {/* 保存狀態指示器 */}
@@ -308,7 +308,7 @@ export default function SimpleMemoryEditor({ memoryId, onClose }: SimpleMemoryEd
           </div>
 
           {/* 右側工具 */}
-          <div className="flex items-center gap-0.5 md:gap-1 flex-shrink-0">
+          <div className="flex items-center gap-1 md:gap-1.5 flex-shrink-0">
             {/* 檢視模式切換 - HackMD 風格 */}
             <ViewModeToggle
               viewMode={viewMode}

@@ -52,15 +52,12 @@ export default function IslandCreator() {
   // GraphQL mutation for updating island
   const [updateIslandMutation] = useMutation(UPDATE_ISLAND, {
     refetchQueries: [{ query: GET_ISLANDS }],
-    onCompleted: (data) => {
-      console.log('✅ 島嶼更新成功:', data.updateIsland)
+    onCompleted: () => {
       setIsSaving(false)
-      alert(`✅ 島嶼「${config.name}」已更新！\n\n形狀點數: ${config.shape.length}\n高度: ${(config.height ?? 2).toFixed(1)}\n斜率: ${(config.bevel ?? 0.5).toFixed(1)}`)
       navigate('/', { replace: true })
     },
     onError: (error) => {
-      console.error('❌ 島嶼更新失敗:', error)
-      alert('更新失敗：' + error.message)
+      console.error('島嶼更新失敗:', error)
       setIsSaving(false)
     }
   })
@@ -72,7 +69,6 @@ export default function IslandCreator() {
   // 載入現有島嶼配置（編輯模式）
   useEffect(() => {
     if (isEditMode && currentIsland) {
-      // 嘗試從 localStorage 載入形狀數據
       let loadedShape: Point[] = []
       let loadedHeight = 2
       let loadedBevel = 0.5
@@ -81,7 +77,6 @@ export default function IslandCreator() {
         const customShapeData = currentIsland.customShapeData
         if (customShapeData && typeof customShapeData === 'string') {
           loadedShape = JSON.parse(customShapeData)
-          console.log('✅ [IslandCreator] 載入自訂形狀:', loadedShape.length, '個點')
         }
 
         const islandHeight = currentIsland.islandHeight
@@ -93,8 +88,8 @@ export default function IslandCreator() {
         if (islandBevel != null) {
           loadedBevel = islandBevel
         }
-      } catch (error) {
-        console.warn('⚠️ [IslandCreator] 載入形狀資料失敗:', error)
+      } catch {
+        // Failed to parse shape data, use default
       }
 
       setConfig({
@@ -104,13 +99,6 @@ export default function IslandCreator() {
         bevel: loadedBevel,
         texture: 'grass',
         name: currentIsland.name
-      })
-
-      console.log('🔵 [IslandCreator] 已載入島嶼配置:', {
-        name: currentIsland.name,
-        shapePoints: loadedShape.length,
-        height: loadedHeight,
-        bevel: loadedBevel
       })
     }
   }, [isEditMode, currentIsland])
@@ -132,9 +120,6 @@ export default function IslandCreator() {
 
       try {
         setIsSaving(true)
-        console.log('🔵 [IslandCreator] 開始保存島嶼...')
-        console.log('🔵 [IslandCreator] Island ID:', islandId)
-        console.log('🔵 [IslandCreator] Config:', config)
 
         // 將 shape 轉換為 JSON 字符串
         const customShapeData = config.shape.length > 0 ? JSON.stringify(config.shape) : null
@@ -160,16 +145,9 @@ export default function IslandCreator() {
           islandBevel: config.bevel ?? 0.5,
           updatedAt: new Date().toISOString(),
         })
-
-        console.log('✅ [IslandCreator] 島嶼配置已保存到資料庫', {
-          shape: config.shape.length,
-          height: config.height ?? 2,
-          bevel: config.bevel ?? 0.5
-        })
       } catch (error) {
-        console.error('❌ [IslandCreator] 更新失敗:', error)
+        console.error('島嶼更新失敗:', error)
         setIsSaving(false)
-        // Error handled in onError callback
       }
     } else {
       // 創建模式：保存到 localStorage
@@ -180,7 +158,6 @@ export default function IslandCreator() {
       const updated = [...savedIslands, newConfig]
       setSavedIslands(updated)
       localStorage.setItem('savedIslands', JSON.stringify(updated))
-      alert(`✅ 島嶼「${name}」已保存！`)
     }
   }
 
