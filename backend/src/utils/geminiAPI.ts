@@ -40,7 +40,7 @@ export async function callGeminiAPI(
   const {
     model = 'gemini-2.5-flash',
     temperature = 0.7,
-    maxOutputTokens = 2048,
+    maxOutputTokens = 8192, // 增加到 8192 以支持 thinking mode
     timeout = 30000, // 增加默認超時時間到 30 秒
     images = []
   } = config
@@ -95,15 +95,31 @@ export async function callGeminiAPI(
     // 调试：打印完整响应
     logger.info(`[Gemini API] Response data: ${JSON.stringify(response.data, null, 2).substring(0, 500)}`)
 
-    const text = response.data?.candidates?.[0]?.content?.parts?.[0]?.text
+    const candidate = response.data?.candidates?.[0]
+    const text = candidate?.content?.parts?.[0]?.text
+    const finishReason = candidate?.finishReason
+
+    // 檢查 finish reason
+    if (finishReason === 'MAX_TOKENS') {
+      const usageMetadata = response.data?.usageMetadata
+      logger.error(`[Gemini API] Response truncated due to MAX_TOKENS:`, {
+        finishReason,
+        promptTokenCount: usageMetadata?.promptTokenCount,
+        thoughtsTokenCount: usageMetadata?.thoughtsTokenCount,
+        totalTokenCount: usageMetadata?.totalTokenCount,
+        maxOutputTokens
+      })
+      throw new Error(`Response truncated: reached max tokens limit (${maxOutputTokens}). Consider increasing maxOutputTokens or simplifying the prompt.`)
+    }
 
     if (!text) {
       logger.error(`[Gemini API] Empty response structure:`, {
         hasCandidates: !!response.data?.candidates,
         candidatesLength: response.data?.candidates?.length,
-        firstCandidate: response.data?.candidates?.[0]
+        firstCandidate: candidate,
+        finishReason
       })
-      throw new Error('Empty response from Gemini API')
+      throw new Error(`Empty response from Gemini API (finish reason: ${finishReason})`)
     }
 
     const duration = Date.now() - startTime

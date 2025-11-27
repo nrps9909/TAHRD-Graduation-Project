@@ -72,10 +72,9 @@ export default function ChatBubble({
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => setIsExpanded(true)}
-            className="rounded-full shadow-2xl cursor-pointer relative"
+            className="rounded-full shadow-2xl cursor-pointer relative w-16 h-16 sm:w-20 sm:h-20"
+            aria-label={`開啟與${theme.name}的對話`}
             style={{
-              width: '80px',
-              height: '80px',
               background: theme.headerBg,
               border: theme.border,
               boxShadow: theme.boxShadow,
@@ -102,10 +101,11 @@ export default function ChatBubble({
             initial={{ scale: 0.9, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.9, opacity: 0, y: 20 }}
-            className="relative overflow-hidden rounded-3xl shadow-2xl"
+            className="relative overflow-hidden rounded-3xl shadow-2xl w-[calc(100vw-2rem)] sm:w-[380px] md:w-[420px] h-[calc(100vh-6rem)] sm:h-[580px] md:h-[650px] max-h-[85vh]"
+            role="dialog"
+            aria-labelledby="chat-dialog-title"
+            aria-modal="true"
             style={{
-              width: '420px',
-              height: '650px',
               background: theme.background,
               backdropFilter: theme.backdropFilter,
               WebkitBackdropFilter: theme.backdropFilter,
@@ -157,12 +157,14 @@ export default function ChatBubble({
                 {/* 歷史記錄 */}
                 <button
                   onClick={() => setShowHistory(!showHistory)}
-                  className="w-10 h-10 rounded-xl flex items-center justify-center text-lg transition-all hover:scale-110 active:scale-95 relative"
+                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center text-base sm:text-lg transition-all hover:scale-110 active:scale-95 relative"
                   style={{
                     background: theme.buttonBg,
                     boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.1)'
                   }}
                   title="查看歷史紀錄"
+                  aria-label="查看歷史紀錄"
+                  aria-pressed={showHistory}
                 >
                   <span>📜</span>
                   {chatHistory.length > 0 && (
@@ -180,12 +182,13 @@ export default function ChatBubble({
                 {/* 切換貓咪 */}
                 <button
                   onClick={() => onSwitchCat(currentCat === CatAgent.TORORO ? CatAgent.HIJIKI : CatAgent.TORORO)}
-                  className="w-10 h-10 rounded-xl flex items-center justify-center text-lg transition-all hover:scale-110 active:scale-95"
+                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center text-base sm:text-lg transition-all hover:scale-110 active:scale-95"
                   style={{
                     background: theme.buttonBg,
                     boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.1)'
                   }}
                   title={`切換到 ${currentCat === CatAgent.TORORO ? '黑噗噗' : '白噗噗'}`}
+                  aria-label={`切換到 ${currentCat === CatAgent.TORORO ? '黑噗噗' : '白噗噗'}`}
                 >
                   <span>{currentCat === CatAgent.TORORO ? '🌙' : '☁️'}</span>
                 </button>
@@ -193,12 +196,13 @@ export default function ChatBubble({
                 {/* 關閉按鈕 */}
                 <button
                   onClick={() => setIsExpanded(false)}
-                  className="w-10 h-10 rounded-xl flex items-center justify-center font-bold transition-all hover:scale-110 active:scale-95"
+                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center font-bold transition-all hover:scale-110 active:scale-95"
                   style={{
                     background: theme.buttonBg,
                     color: theme.headerText,
                     boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.1)'
                   }}
+                  aria-label="關閉對話視窗"
                 >
                   ✕
                 </button>
@@ -209,7 +213,7 @@ export default function ChatBubble({
             <div className="h-[2px] rounded-full" style={{ background: theme.divider }} />
 
             {/* 訊息區域 */}
-            <div className="relative overflow-y-auto p-5 space-y-3 sm:space-y-4" style={{ height: '470px' }}>
+            <div className="relative overflow-y-auto p-3 sm:p-5 space-y-3 sm:space-y-4 flex-1 min-h-0" style={{ height: 'calc(100% - 200px)' }}>
               {showHistory ? (
                 <ChatHistoryView
                   chatHistory={chatHistory}

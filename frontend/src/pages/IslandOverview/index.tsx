@@ -12,6 +12,7 @@ import SettingsMenu from '../../components/SettingsMenu'
 import { IslandStatusCard } from '../../components/IslandStatusCard'
 import { QueueFloatingButton } from '../../components/QueueFloatingButton'
 import { useIslandStore } from '../../stores/islandStore'
+import { useOnboardingStore } from '../../stores/onboardingStore'
 import { convertGraphQLIslandsToIslands } from '../../utils/islandDataConverter'
 import { Memory } from '../../types/memory'
 import { useSound } from '../../hooks/useSound'
@@ -44,6 +45,9 @@ export default function IslandOverview() {
   // Auth store for user ID
   const { user } = useAuthStore()
 
+  // Onboarding store for tracking actions
+  const { recordAction, isOnboardingActive, setIsInMainView } = useOnboardingStore()
+
   // 音频系统
   const sound = useSound()
 
@@ -59,6 +63,13 @@ export default function IslandOverview() {
       return () => document.removeEventListener('click', initAudio)
     }
   }, [audioInitialized, sound])
+
+  // 教學模式：頁面載入時重置為主畫面狀態（用於從知識庫返回時）
+  useEffect(() => {
+    if (isOnboardingActive && currentIslandId === 'overview') {
+      setIsInMainView(true)
+    }
+  }, [isOnboardingActive, currentIslandId, setIsInMainView])
 
   // 首次進入自動打開白噗噗對話
   useEffect(() => {
@@ -150,17 +161,34 @@ export default function IslandOverview() {
     // Tororo (小白) - 知識園丁，使用 Tororo 白色模型
     setCurrentLive2DModel('/models/tororo_white/tororo.model3.json')
     setShowLive2D(true)
+
+    // 更新主畫面狀態（教學用）
+    if (isOnboardingActive) {
+      setIsInMainView(false)
+      recordAction('tororoClicked')
+    }
   }
 
   const handleHijikiClick = () => {
     // Hijiki (小黑) - 知識管理員，使用 Hijiki 黑色模型
     setCurrentLive2DModel('/models/hijiki/hijiki.model3.json')
     setShowLive2D(true)
+
+    // 更新主畫面狀態（教學用）
+    if (isOnboardingActive) {
+      setIsInMainView(false)
+      recordAction('hijikiClicked')
+    }
   }
 
   const handleCloseLive2D = () => {
     setShowLive2D(false)
     setCurrentLive2DModel('')
+
+    // 更新主畫面狀態（教學用）
+    if (isOnboardingActive) {
+      setIsInMainView(true)
+    }
   }
 
   // 處理小地圖島嶼點擊 - 切換島嶼並移動相機視角
@@ -168,9 +196,17 @@ export default function IslandOverview() {
     // 特殊處理：點擊中央房子回到總覽
     if (islandId === 'overview') {
       resetToOverview()
+      // 更新主畫面狀態（教學用）- 返回總覽視為回到主畫面
+      if (isOnboardingActive) {
+        setIsInMainView(true)
+      }
     } else {
       // 更新 store 中的當前島嶼
       switchIsland(islandId)
+      // 更新主畫面狀態（教學用）- 切換到島嶼視為離開主畫面
+      if (isOnboardingActive) {
+        setIsInMainView(false)
+      }
     }
 
     // 播放點擊音效
@@ -205,12 +241,18 @@ export default function IslandOverview() {
             initial={{ x: -100, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             transition={{ delay: 0.5, type: 'spring', stiffness: 200 }}
-            onClick={() => setShowSettings(true)}
+            onClick={() => {
+              setShowSettings(true)
+              // 記錄教學操作
+              if (isOnboardingActive) {
+                recordAction('settingsClicked')
+              }
+            }}
             whileHover={{ scale: 1.05, opacity: 1 }}
             className={`${Z_INDEX_CLASSES.FIXED_PANEL} group`}
             title="遊戲設定"
           >
-            <div className="relative w-10 h-10 md:w-12 md:h-12 rounded-2xl backdrop-blur-md bg-white/10 border border-white/20 shadow-lg transition-all group-hover:bg-white/20 group-hover:border-white/30">
+            <div className="relative w-11 h-11 md:w-12 md:h-12 rounded-2xl backdrop-blur-md bg-white/10 border border-white/20 shadow-lg transition-all group-hover:bg-white/20 group-hover:border-white/30">
               <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-pink-300/20 to-yellow-300/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
               <div className="absolute inset-0 flex items-center justify-center text-white/70 group-hover:text-white text-lg md:text-xl transition-all group-hover:rotate-90 duration-500">
                 ⚙️
@@ -223,14 +265,13 @@ export default function IslandOverview() {
       {/* 設定選單 */}
       <SettingsMenu isOpen={showSettings} onClose={() => setShowSettings(false)} />
 
-      {/* 島嶼狀態卡片 - 左上角 - 當聚焦到某個島嶼時顯示，手機端隱藏 */}
+      {/* 島嶼狀態卡片 - 左上角 - 當聚焦到某個島嶼時顯示 */}
       {!showLive2D && currentIslandId !== 'overview' && getCurrentIsland() && (
         <motion.div
           initial={{ x: -100, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           exit={{ x: -100, opacity: 0 }}
           transition={{ type: 'spring', stiffness: 200, damping: 25 }}
-          className="hidden md:block"
         >
           <IslandStatusCard
             name={getCurrentIsland()!.nameChinese}

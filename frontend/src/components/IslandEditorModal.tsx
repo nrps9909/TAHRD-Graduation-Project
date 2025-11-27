@@ -17,6 +17,7 @@ import { Z_INDEX_CLASSES } from '../constants/zIndex'
 import { TEXTURE_CONFIGS, getTextureConfig } from '../constants/textures'
 import { applyTexture } from '../utils/textureLoader'
 import { UPDATE_ISLAND } from '../graphql/category'
+import { useToast } from './Toast'
 
 interface IslandEditorModalProps {
   isOpen: boolean
@@ -193,6 +194,7 @@ export function IslandEditorModal({
   const [modelUrl, setModelUrl] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const toast = useToast()
 
   // GraphQL mutation
   const [updateIsland] = useMutation(UPDATE_ISLAND, {
@@ -211,7 +213,7 @@ export function IslandEditorModal({
     const fileExtension = file.name.toLowerCase().slice(file.name.lastIndexOf('.'))
 
     if (!validExtensions.includes(fileExtension)) {
-      alert('請上傳 GLTF 或 GLB 格式的 3D 模型文件')
+      toast.warning('請上傳 GLTF 或 GLB 格式的 3D 模型文件')
       return
     }
 
@@ -236,36 +238,10 @@ export function IslandEditorModal({
 
   // 保存島嶼設置
   const handleSave = async () => {
-    console.log('🔵 [IslandEditor] handleSave 開始執行')
-    console.log('🔵 [IslandEditor] 參數:', {
-      islandId,
-      selectedColor,
-      selectedTexture,
-      modelFile: modelFile?.name
-    })
-
     setIsLoading(true)
     try {
-      // 1. 上傳模型文件到服務器（如果有）
-      if (modelFile) {
-        // TODO: 實現文件上傳到服務器
-        // 目前使用本地 URL 作為示例
-        console.log('🔵 [IslandEditor] Model file to upload:', modelFile.name, 'URL:', modelUrl)
-      }
-
-      console.log('🔵 [IslandEditor] 準備調用 updateIsland mutation...')
-      console.log('🔵 [IslandEditor] Variables:', {
-        id: islandId,
-        input: {
-          color: selectedColor,
-          customShapeData: selectedShape,
-          islandHeight: undefined,
-          islandBevel: undefined,
-        }
-      })
-
-      // 2. 更新島嶼配置（顏色、紋理、形狀等）
-      const result = await updateIsland({
+      // 更新島嶼配置（顏色、紋理、形狀等）
+      await updateIsland({
         variables: {
           id: islandId,
           input: {
@@ -275,28 +251,21 @@ export function IslandEditorModal({
         },
       })
 
-      console.log('✅ [IslandEditor] Mutation 成功返回:', result)
-      console.log('✅ [IslandEditor] Updated island:', result.data?.updateIsland)
-
       // 調用成功回調，通知父組件更新
-      console.log('🔵 [IslandEditor] 準備調用 onSaveSuccess 回調...')
       if (onSaveSuccess) {
         await onSaveSuccess({
           color: selectedColor,
           textureId: selectedTexture,
           shape: selectedShape,
         })
-        console.log('✅ [IslandEditor] onSaveSuccess 回調執行完成')
-      } else {
-        console.warn('⚠️ [IslandEditor] onSaveSuccess 回調未定義！')
       }
 
       const shapeOption = SHAPE_OPTIONS.find(s => s.id === selectedShape)
-      alert(`島嶼 "${islandName}" 已成功更新！\n\n顏色: ${selectedColor}\n紋理: ${selectedTexture}\n形狀: ${shapeOption?.name || selectedShape}`)
+      toast.success(`島嶼 "${islandName}" 已成功更新！\n顏色: ${selectedColor}\n紋理: ${selectedTexture}\n形狀: ${shapeOption?.name || selectedShape}`)
       onClose()
     } catch (error) {
-      console.error('❌ [IslandEditor] 保存失敗:', error)
-      alert(`保存失敗: ${error instanceof Error ? error.message : '未知錯誤'}`)
+      console.error('保存島嶼失敗:', error)
+      toast.error(`保存失敗: ${error instanceof Error ? error.message : '未知錯誤'}`)
     } finally {
       setIsLoading(false)
     }
@@ -539,7 +508,6 @@ export function IslandEditorModal({
             onClick={(e) => {
               e.preventDefault()
               e.stopPropagation()
-              console.log('🔴 [DEBUG] 保存按鈕被點擊！')
               handleSave()
             }}
             disabled={isLoading}

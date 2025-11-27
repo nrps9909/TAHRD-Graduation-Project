@@ -169,7 +169,7 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen grid lg:grid-cols-[38.2fr_61.8fr] grid-cols-1 bg-gradient-to-br from-indigo-950 via-purple-950 to-blue-950 relative overflow-hidden">
+    <div className="fixed inset-0 grid lg:grid-cols-[38.2fr_61.8fr] grid-cols-1 bg-gradient-to-br from-indigo-950 via-purple-950 to-blue-950 overflow-hidden">
       {/* 背景裝飾 - 動物森友會風格星星 */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
         {/* 月亮 */}
@@ -219,21 +219,34 @@ export default function AuthPage() {
         initial={{ x: -50, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         transition={{ delay: 0.2 }}
-        className="flex flex-col items-center justify-center p-4 sm:p-6 lg:p-10 bg-gradient-to-br from-indigo-900/70 via-purple-900/70 to-blue-900/70 backdrop-blur-xl lg:rounded-r-3xl shadow-2xl border-r border-yellow-400/20 z-10 order-2 lg:order-1 min-h-screen overflow-y-auto"
+        className="relative flex flex-col bg-gradient-to-br from-indigo-900/70 via-purple-900/70 to-blue-900/70 backdrop-blur-xl lg:rounded-r-3xl shadow-2xl border-r border-yellow-400/20 z-10 h-full overflow-hidden"
       >
-        <div className="w-full max-w-md py-4 sm:py-6">
+        {/* 可滾動內容區 */}
+        <div className="flex-1 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
+          <div className="flex flex-col items-center justify-start lg:justify-center min-h-full p-4 sm:p-6 lg:p-10 pb-[max(1rem,env(safe-area-inset-bottom))]">
+            <div className="w-full max-w-md py-4 sm:py-6">
+
+          {/* 手機版裝飾島嶼 */}
+          <motion.div
+            className="lg:hidden text-center mb-2 sm:mb-4"
+            initial={{ y: -20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.2 }}
+          >
+            <span className="text-4xl sm:text-5xl">🏝️</span>
+          </motion.div>
 
           {/* Logo / Title */}
           <motion.div
-            className="text-center mb-4 sm:mb-6"
+            className="text-center mb-3 sm:mb-4 lg:mb-6"
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ type: 'spring', stiffness: 200, delay: 0.3 }}
           >
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-black mb-1.5 sm:mb-2 font-display bg-gradient-to-r from-yellow-300 via-orange-400 to-yellow-300 bg-clip-text text-transparent drop-shadow-lg">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-black mb-1 sm:mb-2 font-display bg-gradient-to-r from-yellow-300 via-orange-400 to-yellow-300 bg-clip-text text-transparent drop-shadow-lg">
               {isLogin ? '🌙 心語小鎮 🌙' : '✨ 加入我們 ✨'}
             </h1>
-            <p className="text-yellow-100 font-medium text-sm sm:text-base lg:text-lg">
+            <p className="text-yellow-100 font-medium text-xs sm:text-sm lg:text-base">
               {isLogin ? '歡迎回到療癒之旅' : '開始你的療癒之旅'}
             </p>
           </motion.div>
@@ -327,65 +340,65 @@ export default function AuthPage() {
                 exit={{ opacity: 0, x: 20 }}
                 transition={{ duration: 0.3 }}
                 onSubmit={handleRegisterSubmit}
-                className="space-y-3 sm:space-y-4"
+                className="space-y-2.5 sm:space-y-3 lg:space-y-4"
               >
                 <div>
-                  <label className="block text-sm font-bold mb-1.5 sm:mb-2 text-yellow-200">
+                  <label className="block text-xs sm:text-sm font-bold mb-1 sm:mb-1.5 text-yellow-200">
                     👤 使用者名稱 *
                   </label>
                   <input
                     type="text"
                     value={registerData.username}
                     onChange={(e) => setRegisterData({ ...registerData, username: e.target.value })}
-                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 lg:py-4 text-sm sm:text-base bg-indigo-800/50 border-2 border-yellow-400/40 rounded-xl focus:bg-indigo-800/70 focus:border-yellow-400 focus:outline-none transition-all font-medium text-white placeholder:text-indigo-300"
+                    className="w-full px-3 py-2 sm:py-2.5 lg:py-3 text-sm bg-indigo-800/50 border-2 border-yellow-400/40 rounded-lg sm:rounded-xl focus:bg-indigo-800/70 focus:border-yellow-400 focus:outline-none transition-all font-medium text-white placeholder:text-indigo-300"
                     placeholder="你的獨特名稱"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold mb-1.5 sm:mb-2 text-yellow-200">
+                  <label className="block text-xs sm:text-sm font-bold mb-1 sm:mb-1.5 text-yellow-200">
                     📧 電子郵件 *
                   </label>
                   <input
                     type="email"
                     value={registerData.email}
                     onChange={(e) => setRegisterData({ ...registerData, email: e.target.value })}
-                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 lg:py-4 text-sm sm:text-base bg-indigo-800/50 border-2 border-yellow-400/40 rounded-xl focus:bg-indigo-800/70 focus:border-yellow-400 focus:outline-none transition-all font-medium text-white placeholder:text-indigo-300"
+                    className="w-full px-3 py-2 sm:py-2.5 lg:py-3 text-sm bg-indigo-800/50 border-2 border-yellow-400/40 rounded-lg sm:rounded-xl focus:bg-indigo-800/70 focus:border-yellow-400 focus:outline-none transition-all font-medium text-white placeholder:text-indigo-300"
                     placeholder="your@email.com"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold mb-1.5 sm:mb-2 text-yellow-200">
-                    🎭 顯示名稱
+                  <label className="block text-xs sm:text-sm font-bold mb-1 sm:mb-1.5 text-yellow-200">
+                    🎭 顯示名稱 <span className="text-yellow-200/50 font-normal">(選填)</span>
                   </label>
                   <input
                     type="text"
                     value={registerData.displayName}
                     onChange={(e) => setRegisterData({ ...registerData, displayName: e.target.value })}
-                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 lg:py-4 text-sm sm:text-base bg-indigo-800/50 border-2 border-yellow-400/40 rounded-xl focus:bg-indigo-800/70 focus:border-yellow-400 focus:outline-none transition-all font-medium text-white placeholder:text-indigo-300"
+                    className="w-full px-3 py-2 sm:py-2.5 lg:py-3 text-sm bg-indigo-800/50 border-2 border-yellow-400/40 rounded-lg sm:rounded-xl focus:bg-indigo-800/70 focus:border-yellow-400 focus:outline-none transition-all font-medium text-white placeholder:text-indigo-300"
                     placeholder="其他人看到的名字"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold mb-1.5 sm:mb-2 text-yellow-200">
+                  <label className="block text-xs sm:text-sm font-bold mb-1 sm:mb-1.5 text-yellow-200">
                     🔒 密碼 *
                   </label>
                   <input
                     type="password"
                     value={registerData.password}
                     onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
-                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 lg:py-4 text-sm sm:text-base bg-indigo-800/50 border-2 border-yellow-400/40 rounded-xl focus:bg-indigo-800/70 focus:border-yellow-400 focus:outline-none transition-all font-medium text-white placeholder:text-indigo-300"
+                    className="w-full px-3 py-2 sm:py-2.5 lg:py-3 text-sm bg-indigo-800/50 border-2 border-yellow-400/40 rounded-lg sm:rounded-xl focus:bg-indigo-800/70 focus:border-yellow-400 focus:outline-none transition-all font-medium text-white placeholder:text-indigo-300"
                     placeholder="至少 6 個字元"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold mb-1.5 sm:mb-2 text-yellow-200">
+                  <label className="block text-xs sm:text-sm font-bold mb-1 sm:mb-1.5 text-yellow-200">
                     🔐 確認密碼 *
                   </label>
                   <input
@@ -393,7 +406,7 @@ export default function AuthPage() {
                     value={registerData.confirmPassword}
                     onChange={(e) => setRegisterData({ ...registerData, confirmPassword: e.target.value })}
                     onKeyDown={(e) => e.key === 'Enter' && handleRegisterSubmit(e)}
-                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 lg:py-4 text-sm sm:text-base bg-indigo-800/50 border-2 border-yellow-400/40 rounded-xl focus:bg-indigo-800/70 focus:border-yellow-400 focus:outline-none transition-all font-medium text-white placeholder:text-indigo-300"
+                    className="w-full px-3 py-2 sm:py-2.5 lg:py-3 text-sm bg-indigo-800/50 border-2 border-yellow-400/40 rounded-lg sm:rounded-xl focus:bg-indigo-800/70 focus:border-yellow-400 focus:outline-none transition-all font-medium text-white placeholder:text-indigo-300"
                     placeholder="再次輸入密碼"
                     required
                   />
@@ -404,7 +417,7 @@ export default function AuthPage() {
                   disabled={registerLoading}
                   whileHover={{ scale: 1.02, boxShadow: '0 8px 25px rgba(251, 191, 36, 0.5)' }}
                   whileTap={{ scale: 0.98 }}
-                  className="w-full py-3 sm:py-3.5 rounded-xl font-black text-indigo-950 text-base sm:text-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg mt-1 sm:mt-2"
+                  className="w-full py-2.5 sm:py-3 rounded-lg sm:rounded-xl font-black text-indigo-950 text-sm sm:text-base lg:text-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg mt-2 sm:mt-3"
                   style={{
                     background: registerLoading
                       ? 'linear-gradient(135deg, #94a3b8, #64748b)'
@@ -430,16 +443,18 @@ export default function AuthPage() {
           </AnimatePresence>
 
           {/* Toggle Link */}
-          <div className="mt-4 sm:mt-6 text-center">
+          <div className="mt-6 sm:mt-8 text-center pb-6 sm:pb-8">
             <p className="text-yellow-100 font-medium text-sm sm:text-base">
               {isLogin ? '還沒有帳號？' : '已經有帳號了？'}
-              <button
-                onClick={switchMode}
-                className="ml-2 font-black bg-gradient-to-r from-yellow-300 via-orange-400 to-yellow-300 bg-clip-text text-transparent hover:from-yellow-400 hover:to-orange-500 transition-all"
-              >
-                {isLogin ? '立即註冊 ✨' : '立即登入 🚀'}
-              </button>
             </p>
+            <button
+              onClick={switchMode}
+              className="mt-2 px-6 py-2.5 sm:py-2 font-black bg-gradient-to-r from-yellow-300 via-orange-400 to-yellow-300 bg-clip-text text-transparent hover:from-yellow-400 hover:to-orange-500 transition-all text-base sm:text-lg"
+            >
+              {isLogin ? '立即註冊 ✨' : '立即登入 🚀'}
+            </button>
+          </div>
+            </div>
           </div>
         </div>
       </motion.div>

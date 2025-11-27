@@ -154,12 +154,16 @@ export function CustomIsland({
 
         const treeSeed = memory.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) + index
 
+        // 樹根貼合頂部平台 (頂部 Y=0.6 + depth*0.25/2)
+        // 考慮到整個 group 有 -1 的 Y 偏移，頂部實際在 0.6 + height*0.25
+        const surfaceY = 0.6 + height * 0.25 + bevel * 0.6
+
         return (
           <MemoryTree
             key={memory.id}
             memory={memory}
             islandColor={color}
-            position={[treePos.x, treePos.y + 1.2, treePos.z]}
+            position={[treePos.x, surfaceY, treePos.z]}
             seed={treeSeed}
             onClick={onMemoryClick}
           />

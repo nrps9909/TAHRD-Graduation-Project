@@ -10,6 +10,7 @@ import { useMutation } from '@apollo/client'
 import { UPLOAD_KNOWLEDGE } from '../graphql/knowledge'
 import type { UploadKnowledgeInput } from '../graphql/knowledge'
 import { useSound } from '../hooks/useSound'
+import { useOnboardingStore } from '../stores/onboardingStore'
 import { Z_INDEX_CLASSES } from '../constants/zIndex'
 import { useCatChat } from '../hooks/useCatChat'
 import type { ChatMessage } from '../stores/chatStore'
@@ -120,6 +121,9 @@ export default function Live2DCat({
   const isBlackCat = modelPath.includes('hijiki')
   const theme = isBlackCat ? AC_COLORS.hijiki : AC_COLORS.tororo
 
+  // Onboarding store for tracking actions
+  const { recordAction, isOnboardingActive } = useOnboardingStore()
+
   // === 使用優化的 Hook 管理對話狀態 ===
   const {
     messages,
@@ -221,7 +225,6 @@ export default function Live2DCat({
             }
           })
 
-          console.log('Live2D model loaded successfully!')
         } catch (modelError) {
           console.warn('Failed to load Live2D model:', modelError)
           setShowFallback(true)
@@ -285,8 +288,8 @@ export default function Live2DCat({
 
       const motionGroup = motionMap[state]
       internalModel.motionManager.startMotion(motionGroup, 0)
-    } catch (e) {
-      console.log('Motion trigger error:', e)
+    } catch {
+      // Motion trigger may fail silently when model is not ready
     }
   }, [])
 
@@ -338,15 +341,16 @@ export default function Live2DCat({
     }, 500)
 
     try {
-      if (hasAttachments) {
+      // 白噗噗支持上傳知識（文字或附件）
+      if (!isBlackCat) {
         const input: UploadKnowledgeInput = {
           content: userContent,
-          files: attachments.map(att => ({
+          files: hasAttachments ? attachments.map(att => ({
             url: att.url,
             name: att.name,
             type: att.type,
-          })),
-          contentType: determineContentType(attachments),
+          })) : undefined,
+          contentType: hasAttachments ? determineContentType(attachments) : 'TEXT',
         }
 
         const { data } = await uploadKnowledge({
@@ -384,11 +388,15 @@ export default function Live2DCat({
           }, 300)
 
           addMessage(assistantMessage)
+
+          // 記錄教學操作（上傳知識）
+          if (isOnboardingActive) {
+            recordAction('knowledgeUploaded')
+          }
         }
       } else {
-        // REMOVED: General chat with Chief Assistant (migrated to Island-based architecture)
-        // This feature has been replaced by Island-specific chat functionality
-        throw new Error('一般聊天功能已遷移至島嶼系統，請使用島嶼頁面的聊天功能')
+        // 黑噗噗不支持上傳，只能查詢
+        throw new Error('黑噗噗用於查詢知識，請使用白噗噗上傳知識')
       }
     } catch (error) {
       console.error('處理失敗:', error)

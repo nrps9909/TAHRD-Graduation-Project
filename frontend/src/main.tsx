@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import { ApolloProvider } from '@apollo/client'
 import { BrowserRouter } from 'react-router-dom'
 import { apolloClient } from './network/apollo'
+import { ToastProvider } from './components/Toast'
 import App from './App'
 import './index.css'
 // import './styles/fullscreen.css' // Removed - old game UI
@@ -25,7 +26,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ApolloProvider client={apolloClient}>
       <BrowserRouter>
-        <App />
+        <ToastProvider>
+          <App />
+        </ToastProvider>
       </BrowserRouter>
     </ApolloProvider>
   </React.StrictMode>,

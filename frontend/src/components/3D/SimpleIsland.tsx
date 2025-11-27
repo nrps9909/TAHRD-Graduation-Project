@@ -206,12 +206,16 @@ export function SimpleIsland({
         // 計算樹的種子（基於記憶ID和索引）
         const treeSeed = memory.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) + index
 
+        // 計算樹的 Y 位置，讓樹根部貼合島嶼頂部
+        // isPawPad 時頂部平台在 Y=1.2，普通島嶼頂層在 Y=1.1
+        const surfaceY = isPawPad ? 1.4 : 1.1
+
         return (
           <MemoryTree
             key={memory.id}
             memory={memory}
             islandColor={color}
-            position={[treePos.x, treePos.y, treePos.z]}
+            position={[treePos.x, surfaceY, treePos.z]}
             seed={treeSeed}
             onClick={onMemoryClick}
           />

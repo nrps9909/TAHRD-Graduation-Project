@@ -5,6 +5,7 @@
 
 import { useState } from 'react'
 import { useIslandStore } from '../stores/islandStore'
+import { useOnboardingStore } from '../stores/onboardingStore'
 import { Z_INDEX_CLASSES } from '../constants/zIndex'
 import type { Island } from '../types/island'
 
@@ -71,7 +72,17 @@ function convertTo2DMapPosition(
 
 export function MiniMap({ onIslandClick }: MiniMapProps) {
   const { islands, currentIslandId } = useIslandStore()
+  const { isOnboardingActive, currentStep, recordAction } = useOnboardingStore()
   const [hoveredIslandId, setHoveredIslandId] = useState<string | null>(null)
+
+  // 處理島嶼點擊，包含新手教學追蹤
+  const handleIslandClick = (islandId: string) => {
+    // 如果在新手教學步驟 5（小地圖導覽），記錄操作
+    if (isOnboardingActive && currentStep === 5) {
+      recordAction('minimapClicked')
+    }
+    onIslandClick(islandId)
+  }
 
   // 根據螢幕大小動態調整尺寸
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
@@ -191,7 +202,7 @@ export function MiniMap({ onIslandClick }: MiniMapProps) {
                     className="cursor-pointer transition-all duration-200"
                     onMouseEnter={() => setHoveredIslandId(island.id)}
                     onMouseLeave={() => setHoveredIslandId(null)}
-                    onClick={() => onIslandClick(island.id)}
+                    onClick={() => handleIslandClick(island.id)}
                     filter={isCurrent ? "url(#island-glow)" : "url(#island-shadow)"}
                   >
                     {/* 擴大點擊區域 */}

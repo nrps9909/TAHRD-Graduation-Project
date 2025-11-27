@@ -142,12 +142,15 @@ export function PawIsland({
 
         const treeSeed = memory.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) + index
 
+        // 樹根貼合頂部平台 (Y=0.4 + 0.3/2 = 0.55)
+        const surfaceY = 0.55
+
         return (
           <MemoryTree
             key={memory.id}
             memory={memory}
             islandColor={color}
-            position={[treePos.x, treePos.y + 0.6, treePos.z]}
+            position={[treePos.x, surfaceY, treePos.z]}
             seed={treeSeed}
             onClick={onMemoryClick}
           />

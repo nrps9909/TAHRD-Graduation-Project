@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import { Text } from '@react-three/drei'
 import * as THREE from 'three'
 import { useNavigate } from 'react-router-dom'
+import { useOnboardingStore } from '../../stores/onboardingStore'
 
 interface CentralIslandProps {
   position?: [number, number, number]
@@ -15,6 +16,9 @@ export function CentralIsland({ position = [0, 0, 0], disableInteraction = false
   const crystalRef = useRef<THREE.Group>(null)
   const [hovered, setHovered] = useState(false)
 
+  // Onboarding store
+  const { recordAction, isOnboardingActive, setIsInMainView } = useOnboardingStore()
+
   // 水晶球旋轉動畫
   useFrame((state) => {
     if (crystalRef.current) {
@@ -25,6 +29,11 @@ export function CentralIsland({ position = [0, 0, 0], disableInteraction = false
   })
 
   const handleClick = () => {
+    // 記錄教學操作
+    if (isOnboardingActive) {
+      recordAction('databaseClicked')
+      setIsInMainView(false) // 離開主畫面
+    }
     navigate('/database')
   }
 

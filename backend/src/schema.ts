@@ -37,6 +37,12 @@ const baseTypeDefs = gql`
     defaultView: String!
     emailNotifications: Boolean!
     dataRetentionDays: Int!
+
+    # Onboarding (新手教學)
+    hasCompletedOnboarding: Boolean!
+    onboardingStep: Int!
+    onboardingProgress: JSON
+
     updatedAt: DateTime!
   }
 
@@ -687,6 +693,7 @@ const baseTypeDefs = gql`
   type Query {
     # ===== User Queries =====
     me: User
+    userSettings: UserSettings
 
     # ===== Memory Queries =====
     memories(filter: MemoryFilterInput, limit: Int = 50, offset: Int = 0): [Memory!]!
@@ -850,6 +857,12 @@ const baseTypeDefs = gql`
 
     # ===== Settings Mutations =====
     updateUserSettings(theme: String, language: String, defaultView: String): UserSettings!
+
+    # ===== Onboarding Mutations (新手教學) =====
+    updateOnboardingProgress(step: Int!): UserSettings!
+    completeOnboarding: UserSettings!
+    skipOnboarding: UserSettings!
+    resetOnboarding: UserSettings!
 
     # ===== Cat Agent Mutations (Tororo) =====
     createMemoryWithTororo(content: String!, files: [TororoFileInput!], links: [TororoLinkInput!]): TororoResponse!

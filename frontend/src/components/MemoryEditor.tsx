@@ -82,7 +82,6 @@ export default function MemoryEditor({ memory, onClose, onUpdate, islands = [] }
         type: memory.fileTypes?.[index] || 'application/octet-stream'
       }))
       setAttachments(initialAttachments)
-      console.log('📎 初始化附件:', initialAttachments.length, '個檔案')
     }
 
     // 模擬數據載入完成
@@ -116,14 +115,10 @@ export default function MemoryEditor({ memory, onClose, onUpdate, islands = [] }
     }
   }, [])
 
-  // 組件卸載時自動保存
+  // 組件卸載時自動保存（注意：handleClose 已處理保存邏輯）
   useEffect(() => {
     return () => {
-      // 如果有未保存的變更，嘗試保存
-      if (latestStateRef.current && !savingInProgressRef.current) {
-        console.log('🔄 組件卸載，嘗試保存最新狀態')
-        // 這裡無法使用異步操作，但我們已經有 handleClose 處理了
-      }
+      // 無法在卸載時使用異步操作，但 handleClose 已處理保存
     }
   }, [])
 
@@ -132,14 +127,11 @@ export default function MemoryEditor({ memory, onClose, onUpdate, islands = [] }
     // 如果正在保存，標記為有待處理的保存，然後返回
     if (savingInProgressRef.current) {
       pendingSaveRef.current = true
-      console.log('⏳ 保存進行中，稍後重試')
       return false
     }
 
     // 從 ref 讀取最新狀態，避免閉包陷阱
     const currentState = latestStateRef.current
-
-    console.log('🔄 自動儲存觸發 (MemoryEditor)', { memoryId: memory.id, retryCount })
 
     savingInProgressRef.current = true
     setIsSaving(true)
@@ -160,7 +152,6 @@ export default function MemoryEditor({ memory, onClose, onUpdate, islands = [] }
           },
         },
       })
-      console.log('✅ 自動儲存成功 (MemoryEditor)')
       setLastSaved(new Date())
       setHasUnsavedChanges(false)
       setIsSaving(false)
@@ -169,18 +160,16 @@ export default function MemoryEditor({ memory, onClose, onUpdate, islands = [] }
       // 如果在保存過程中有新的更改，立即觸發新的保存
       if (pendingSaveRef.current) {
         pendingSaveRef.current = false
-        console.log('🔄 執行待處理的保存')
         setTimeout(() => autoSave(), 100)
       }
 
       return true
     } catch (error) {
-      console.error('❌ 自動儲存失敗 (MemoryEditor)', error)
+      console.error('自動儲存失敗:', error)
       savingInProgressRef.current = false
 
       // 最多重試 2 次
       if (retryCount < 2) {
-        console.log(`🔄 重試保存 (${retryCount + 1}/2)`)
         await new Promise(resolve => setTimeout(resolve, 1000)) // 等待 1 秒後重試
         return autoSave(retryCount + 1)
       }
@@ -219,7 +208,6 @@ export default function MemoryEditor({ memory, onClose, onUpdate, islands = [] }
 
     // 如果正在保存，等待完成（避免數據丟失）
     if (savingInProgressRef.current) {
-      console.log('⏳ 等待保存完成...')
       // 最多等待 5 秒
       const maxWaitTime = 5000
       const startTime = Date.now()
@@ -227,21 +215,16 @@ export default function MemoryEditor({ memory, onClose, onUpdate, islands = [] }
       while (savingInProgressRef.current && Date.now() - startTime < maxWaitTime) {
         await new Promise(resolve => setTimeout(resolve, 100))
       }
-
-      if (savingInProgressRef.current) {
-        console.warn('⚠️ 保存超時，但仍關閉編輯器')
-      }
     }
 
     // 如果有未保存的變更，先保存
     if (hasUnsavedChanges) {
-      console.log('💾 關閉前保存變更...')
       try {
         await autoSave()
         // 等待保存完成
         await new Promise(resolve => setTimeout(resolve, 200))
       } catch (error) {
-        console.error('Failed to save before closing:', error)
+        console.error('關閉前保存失敗:', error)
         const shouldClose = window.confirm('保存失敗，確定要關閉嗎？未保存的變更將會丟失。')
         if (!shouldClose) {
           return
@@ -262,7 +245,7 @@ export default function MemoryEditor({ memory, onClose, onUpdate, islands = [] }
       }
       onUpdate()
     } catch (error) {
-      console.error('Pin error:', error)
+      console.error('Pin 操作失敗:', error)
     }
   }
 
@@ -397,24 +380,24 @@ export default function MemoryEditor({ memory, onClose, onUpdate, islands = [] }
       <div className="sticky top-0 z-10 bg-[#252525] border-b border-gray-800">
         <div className="px-2 md:px-4 py-2 flex items-center justify-between gap-2">
           {/* 左側 */}
-          <div className="flex items-center gap-1 md:gap-2 min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 md:gap-2 min-w-0 flex-1">
             <button
               onClick={handleClose}
-              className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center rounded hover:bg-gray-700 transition-colors text-gray-300 hover:text-white flex-shrink-0"
+              className="w-9 h-9 md:w-8 md:h-8 flex items-center justify-center rounded-lg md:rounded hover:bg-gray-700 transition-colors text-gray-300 hover:text-white flex-shrink-0"
             >
-              <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
 
-            <div className="h-4 md:h-6 w-px bg-gray-600 flex-shrink-0"></div>
+            <div className="h-5 md:h-6 w-px bg-gray-600 flex-shrink-0"></div>
 
             {/* 檔案名稱 */}
-            <div className="flex items-center gap-1 md:gap-2 text-gray-300 min-w-0 flex-1">
-              <svg className="w-3 h-3 md:w-4 md:h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="flex items-center gap-1.5 md:gap-2 text-gray-300 min-w-0 flex-1">
+              <svg className="w-4 h-4 md:w-4 md:h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              <span className="text-xs md:text-sm font-medium truncate">{title || '未命名文件'}</span>
+              <span className="text-sm md:text-sm font-medium truncate">{title || '未命名文件'}</span>
             </div>
 
             {/* 保存狀態指示器 */}
@@ -430,35 +413,35 @@ export default function MemoryEditor({ memory, onClose, onUpdate, islands = [] }
           </div>
 
           {/* 右側工具 */}
-          <div className="flex items-center gap-0.5 md:gap-1 flex-shrink-0">
+          <div className="flex items-center gap-1 md:gap-1.5 flex-shrink-0">
             {/* 檢視模式切換 */}
             <ViewModeToggle
               viewMode={viewMode}
               onViewModeChange={setViewMode}
             />
 
-            <div className="w-px h-4 md:h-5 bg-gray-600 mx-0.5 md:mx-1"></div>
+            <div className="w-px h-5 md:h-6 bg-gray-600 mx-0.5 md:mx-1"></div>
 
             <button
               onClick={handlePin}
-              className={`w-7 h-7 md:w-8 md:h-8 flex items-center justify-center rounded transition-all ${
+              className={`w-9 h-9 md:w-8 md:h-8 flex items-center justify-center rounded-lg md:rounded transition-all ${
                 memory.isPinned
                   ? 'bg-yellow-600 text-white hover:bg-yellow-700'
                   : 'text-gray-300 hover:bg-gray-700 hover:text-white'
               }`}
               title={memory.isPinned ? '取消釘選' : '釘選'}
             >
-              <svg className="w-3.5 h-3.5 md:w-4 md:h-4" fill={memory.isPinned ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 md:w-4 md:h-4" fill={memory.isPinned ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
               </svg>
             </button>
 
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center rounded text-gray-300 hover:bg-gray-700 hover:text-white transition-all hidden sm:flex"
+              className="w-9 h-9 md:w-8 md:h-8 flex items-center justify-center rounded-lg md:rounded text-gray-300 hover:bg-gray-700 hover:text-white transition-all hidden sm:flex"
               title="插入附件"
             >
-              <svg className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
               </svg>
             </button>
@@ -473,10 +456,10 @@ export default function MemoryEditor({ memory, onClose, onUpdate, islands = [] }
 
             <button
               onClick={handleDelete}
-              className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center rounded text-gray-300 hover:bg-red-600 hover:text-white transition-all"
+              className="w-9 h-9 md:w-8 md:h-8 flex items-center justify-center rounded-lg md:rounded text-gray-300 hover:bg-red-600 hover:text-white transition-all"
               title="刪除"
             >
-              <svg className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
             </button>

@@ -135,23 +135,16 @@ export default function CuteDatabaseView() {
   // 處理 URL 參數中的 memoryId，自動打開記憶編輯器
   useEffect(() => {
     const memoryId = searchParams.get('memoryId')
-    console.log('🔍 [DatabaseView] URL memoryId:', memoryId)
-    console.log('🔍 [DatabaseView] memoriesData loaded:', !!memoriesData?.memories)
-    console.log('🔍 [DatabaseView] loading:', loading)
 
     if (memoryId && memoriesData?.memories && !loading) {
       const memory = memoriesData.memories.find((m: Memory) => m.id === memoryId)
-      console.log('🔍 [DatabaseView] Found memory:', memory?.title || '未找到')
 
       if (memory) {
-        console.log('✅ [DatabaseView] 設置選中的記憶:', memory.title)
         setSelectedMemory(memory)
         // 延遲清除 URL 參數，確保記憶已經打開
         setTimeout(() => {
           navigate('/database', { replace: true })
         }, 100)
-      } else {
-        console.warn('⚠️ [DatabaseView] 找不到 memoryId 對應的記憶:', memoryId)
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -359,7 +352,7 @@ export default function CuteDatabaseView() {
       <div
         className="border-r flex flex-col transition-all duration-300 ease-in-out md:relative absolute inset-y-0 left-0 z-50"
         style={{
-          width: sidebarOpen ? '280px' : '0',
+          width: sidebarOpen ? 'min(280px, 85vw)' : '0',
           background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.98) 0%, rgba(26, 26, 46, 0.98) 100%)',
           backdropFilter: 'blur(16px) saturate(150%)',
           WebkitBackdropFilter: 'blur(16px) saturate(150%)',
@@ -682,23 +675,23 @@ export default function CuteDatabaseView() {
                   setCustomOrder(filteredMemories.map((m: Memory) => m.id))
                 }
               }}
-              className="hidden md:block px-3 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold focus:outline-none transition-all cursor-pointer flex-shrink-0"
+              className="px-2.5 sm:px-3 py-2.5 sm:py-2.5 rounded-lg sm:rounded-xl text-[10px] sm:text-sm font-bold focus:outline-none transition-all cursor-pointer flex-shrink-0 min-h-[44px]"
               style={{
                 border: '2px solid rgba(251, 191, 36, 0.3)',
                 background: 'rgba(30, 41, 59, 0.7)',
                 color: '#cbd5e1',
               }}
             >
-              <option value="createdAt">⏰ 最新</option>
-              <option value="title">🔤 標題</option>
-              <option value="custom">✋ 自訂</option>
+              <option value="createdAt">⏰ 新</option>
+              <option value="title">🔤 名</option>
+              <option value="custom">✋</option>
             </select>
 
             {/* 批量選擇按鈕/工具 */}
             {!bulkSelectMode ? (
               <button
                 onClick={() => setBulkSelectMode(true)}
-                className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl font-bold transition-all hover:scale-105 active:scale-95 text-xs sm:text-sm flex items-center gap-1 sm:gap-2 flex-shrink-0"
+                className="px-3 sm:px-4 py-2.5 sm:py-2.5 rounded-xl font-bold transition-all hover:scale-105 active:scale-95 text-xs sm:text-sm flex items-center gap-1 sm:gap-2 flex-shrink-0 min-h-[44px]"
                 style={{
                   background: 'rgba(30, 41, 59, 0.7)',
                   color: '#cbd5e1',
@@ -723,12 +716,13 @@ export default function CuteDatabaseView() {
                     setBulkSelectMode(false)
                     setSelectedMemoryIds(new Set())
                   }}
-                  className="px-2 py-1.5 rounded-lg font-medium transition-all hover:scale-105 active:scale-95 text-xs"
+                  className="px-2.5 py-2 rounded-lg font-medium transition-all hover:scale-105 active:scale-95 text-xs min-w-[36px] min-h-[36px]"
                   style={{
                     background: 'rgba(100, 116, 139, 0.3)',
                     color: '#cbd5e1',
                     border: '1px solid rgba(148, 163, 184, 0.3)',
                   }}
+                  aria-label="取消批量選擇"
                 >
                   ✕
                 </button>
@@ -737,7 +731,7 @@ export default function CuteDatabaseView() {
                 </span>
                 <button
                   onClick={selectedMemoryIds.size === allMemories.length ? handleDeselectAll : handleSelectAll}
-                  className="px-2 py-1 rounded-lg font-medium transition-all hover:scale-105 active:scale-95 text-xs hidden sm:inline-block"
+                  className="px-2.5 py-2 rounded-lg font-medium transition-all hover:scale-105 active:scale-95 text-xs hidden sm:inline-block min-h-[36px]"
                   style={{
                     background: 'rgba(251, 191, 36, 0.25)',
                     color: '#fbbf24',
@@ -749,7 +743,7 @@ export default function CuteDatabaseView() {
                 <button
                   onClick={handleBulkDelete}
                   disabled={selectedMemoryIds.size === 0}
-                  className="px-2 py-1 rounded-lg font-bold transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed text-xs"
+                  className="px-2.5 py-2 rounded-lg font-bold transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed text-xs min-h-[36px]"
                   style={{
                     background: selectedMemoryIds.size > 0
                       ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.9) 0%, rgba(220, 38, 38, 0.9) 100%)'
@@ -768,7 +762,7 @@ export default function CuteDatabaseView() {
             {/* 新增按鈕 */}
             <button
               onClick={handleCreateNewMemory}
-              className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl font-bold transition-all hover:scale-105 active:scale-95 text-xs sm:text-sm flex items-center gap-1 sm:gap-2 flex-shrink-0"
+              className="px-3 sm:px-4 py-2.5 sm:py-2.5 rounded-xl font-bold transition-all hover:scale-105 active:scale-95 text-xs sm:text-sm flex items-center gap-1 sm:gap-2 flex-shrink-0 min-h-[44px]"
               style={{
                 background: 'linear-gradient(135deg, #fbbf24 0%, #fb923c 100%)',
                 color: '#1a1a2e',
@@ -782,7 +776,7 @@ export default function CuteDatabaseView() {
             {/* 返回按鈕 */}
             <button
               onClick={() => navigate('/')}
-              className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl font-bold transition-all hover:scale-105 active:scale-95 text-xs sm:text-sm flex items-center gap-1 sm:gap-2 flex-shrink-0"
+              className="px-3 sm:px-4 py-2.5 sm:py-2.5 rounded-xl font-bold transition-all hover:scale-105 active:scale-95 text-xs sm:text-sm flex items-center gap-1 sm:gap-2 flex-shrink-0 min-h-[44px]"
               style={{
                 background: 'rgba(30, 41, 59, 0.7)',
                 color: '#cbd5e1',
@@ -807,26 +801,26 @@ export default function CuteDatabaseView() {
         {/* 內容區域 - 響應式內距，添加滾動支持 */}
         <div className="flex-1 overflow-y-auto p-2 sm:p-3 md:p-4">
         {error ? (
-          <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="w-32 h-32 mb-6 rounded-3xl flex items-center justify-center" style={{
+          <div className="flex flex-col items-center justify-center py-10 sm:py-20 text-center px-4">
+            <div className="w-20 h-20 sm:w-32 sm:h-32 mb-4 sm:mb-6 rounded-2xl sm:rounded-3xl flex items-center justify-center" style={{
               background: 'rgba(30, 41, 59, 0.6)',
               border: '3px solid rgba(251, 191, 36, 0.3)',
               boxShadow: '0 8px 30px rgba(0, 0, 0, 0.4)',
             }}>
-              <span className="text-6xl">😢</span>
+              <span className="text-4xl sm:text-6xl">😢</span>
             </div>
-            <h3 className="text-2xl font-black mb-3" style={{ color: '#fef3c7', textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)' }}>
+            <h3 className="text-xl sm:text-2xl font-black mb-2 sm:mb-3" style={{ color: '#fef3c7', textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)' }}>
               載入失敗
             </h3>
-            <p className="text-sm mb-8 font-semibold" style={{ color: '#94a3b8' }}>
+            <p className="text-xs sm:text-sm mb-5 sm:mb-8 font-semibold max-w-xs" style={{ color: '#94a3b8' }}>
               {error.message.includes('Network') || error.message.includes('fetch')
                 ? '無法連線到伺服器，請檢查網路連線'
                 : '發生了一些問題，請稍後再試'}
             </p>
-            <div className="flex gap-3">
+            <div className="flex gap-2 sm:gap-3">
               <button
                 onClick={() => window.location.reload()}
-                className="px-6 py-3 rounded-2xl font-bold transition-all hover:scale-105"
+                className="px-4 py-2.5 sm:px-6 sm:py-3 rounded-xl sm:rounded-2xl font-bold transition-all hover:scale-105 text-sm sm:text-base"
                 style={{
                   background: 'linear-gradient(135deg, #fbbf24 0%, #fb923c 100%)',
                   color: '#1a1a2e',
@@ -837,7 +831,7 @@ export default function CuteDatabaseView() {
               </button>
               <button
                 onClick={() => refetch()}
-                className="px-6 py-3 rounded-2xl font-bold transition-all hover:scale-105"
+                className="px-4 py-2.5 sm:px-6 sm:py-3 rounded-xl sm:rounded-2xl font-bold transition-all hover:scale-105 text-sm sm:text-base"
                 style={{
                   background: 'rgba(30, 41, 59, 0.6)',
                   border: '2px solid rgba(251, 191, 36, 0.3)',
@@ -850,22 +844,22 @@ export default function CuteDatabaseView() {
           </div>
         ) : loading ? (
           <div className="flex flex-col items-center justify-center" style={{ minHeight: 'calc(100vh - 160px)' }}>
-            <div className="text-8xl mb-6 animate-bounce">💝</div>
-            <p className="text-2xl font-black" style={{ color: '#fef3c7', textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)' }}>載入記憶中...</p>
+            <div className="text-6xl sm:text-8xl mb-4 sm:mb-6 animate-bounce">💝</div>
+            <p className="text-lg sm:text-2xl font-black" style={{ color: '#fef3c7', textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)' }}>載入記憶中...</p>
           </div>
         ) : allMemories.length === 0 ? (
-          <div className="flex flex-col items-center justify-center text-center" style={{ minHeight: 'calc(100vh - 160px)' }}>
-            <div className="w-40 h-40 mb-8 rounded-3xl flex items-center justify-center animate-bounce" style={{
+          <div className="flex flex-col items-center justify-center text-center px-4" style={{ minHeight: 'calc(100vh - 160px)' }}>
+            <div className="w-24 h-24 sm:w-40 sm:h-40 mb-5 sm:mb-8 rounded-2xl sm:rounded-3xl flex items-center justify-center animate-bounce" style={{
               background: 'rgba(30, 41, 59, 0.6)',
               border: '3px solid rgba(251, 191, 36, 0.3)',
               boxShadow: '0 10px 40px rgba(0, 0, 0, 0.4)',
             }}>
-              <span className="text-8xl">💝</span>
+              <span className="text-5xl sm:text-8xl">💝</span>
             </div>
-            <h3 className="text-3xl font-black mb-4" style={{ color: '#fef3c7', textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)' }}>
+            <h3 className="text-xl sm:text-3xl font-black mb-2 sm:mb-4" style={{ color: '#fef3c7', textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)' }}>
               {searchQuery ? '找不到相關記憶' : '開始記錄你的美好回憶吧！'}
             </h3>
-            <p className="text-base mb-10 font-semibold" style={{ color: '#94a3b8' }}>
+            <p className="text-sm sm:text-base mb-6 sm:mb-10 font-semibold max-w-xs sm:max-w-none" style={{ color: '#94a3b8' }}>
               {searchQuery
                 ? '試試其他關鍵字，或清除搜尋看看全部記憶'
                 : '按 ⌘N 或點擊上方的「新增」按鈕開始'}
@@ -873,7 +867,7 @@ export default function CuteDatabaseView() {
             {!searchQuery && (
               <button
                 onClick={handleCreateNewMemory}
-                className="px-10 py-5 rounded-2xl font-black transition-all hover:scale-105 text-xl"
+                className="px-6 py-3 sm:px-10 sm:py-5 rounded-xl sm:rounded-2xl font-black transition-all hover:scale-105 text-base sm:text-xl"
                 style={{
                   background: 'linear-gradient(135deg, #fbbf24 0%, #fb923c 100%)',
                   color: '#1a1a2e',
