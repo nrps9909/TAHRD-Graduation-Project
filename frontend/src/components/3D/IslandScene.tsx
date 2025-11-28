@@ -179,11 +179,11 @@ export function IslandScene({
 
         {/* Tororo - 知識園丁（小白）- 守護肉球左側 */}
         {/* 總覽視角顯示標籤，聚焦島嶼時隱藏 */}
-        <TororoCat position={[-25, 3, -8]} scale={12} onClick={onTororoClick} hideLabel={hideLabels || !isOverviewMode} />
+        <TororoCat position={[-25, 3, -8]} scale={36} onClick={onTororoClick} hideLabel={hideLabels || !isOverviewMode} />
 
         {/* Hijiki - 知識管理員（小黑）- 守護肉球右側 */}
         {/* 總覽視角顯示標籤，聚焦島嶼時隱藏 */}
-        <HijikiCat position={[25, 5, -8]} scale={12} onClick={onHijikiClick} hideLabel={hideLabels || !isOverviewMode} />
+        <HijikiCat position={[25, 5, -8]} scale={36} onClick={onHijikiClick} hideLabel={hideLabels || !isOverviewMode} />
 
         {/* Camera controls - 智能攝影機控制，點擊島嶼自動飛過去 */}
         <CameraController targetPosition={cameraTarget} />
