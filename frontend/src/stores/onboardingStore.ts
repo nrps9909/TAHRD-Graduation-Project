@@ -5,6 +5,7 @@ interface OnboardingState {
   isOnboardingActive: boolean
   currentStep: number
   hasCompletedOnboarding: boolean
+  isMinimized: boolean // 教學視窗是否最小化
 
   // 主畫面狀態追蹤（用於教學流程）
   isInMainView: boolean // 是否在主島嶼畫面（沒有打開對話框）
@@ -27,6 +28,8 @@ interface OnboardingState {
   completeOnboarding: () => void
   skipOnboarding: () => void
   resetOnboarding: () => void
+  setMinimized: (minimized: boolean) => void
+  toggleMinimized: () => void
 
   // 主畫面狀態
   setIsInMainView: (isInMain: boolean) => void
@@ -43,6 +46,7 @@ export const useOnboardingStore = create<OnboardingState>()(
       isOnboardingActive: false,
       currentStep: 0,
       hasCompletedOnboarding: false,
+      isMinimized: false,
 
       // 主畫面狀態
       isInMainView: true,
@@ -63,6 +67,7 @@ export const useOnboardingStore = create<OnboardingState>()(
           isOnboardingActive: true,
           currentStep: 0,
           hasCompletedOnboarding: false,
+          isMinimized: false,
           isInMainView: true,
           waitingForReturn: false,
           userActions: {
@@ -96,11 +101,20 @@ export const useOnboardingStore = create<OnboardingState>()(
         })
       },
 
+      setMinimized: (minimized: boolean) => {
+        set({ isMinimized: minimized })
+      },
+
+      toggleMinimized: () => {
+        set((state) => ({ isMinimized: !state.isMinimized }))
+      },
+
       resetOnboarding: () => {
         set({
           isOnboardingActive: true,
           currentStep: 0,
           hasCompletedOnboarding: false,
+          isMinimized: false,
           isInMainView: true,
           waitingForReturn: false,
           userActions: {

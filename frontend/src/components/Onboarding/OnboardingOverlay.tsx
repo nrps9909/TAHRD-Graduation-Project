@@ -88,7 +88,7 @@ export const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({
   const maxRetries = 5
 
   // 從 store 獲取用戶操作狀態
-  const { userActions, setCurrentStep: setStoreStep, isInMainView } = useOnboardingStore()
+  const { userActions, setCurrentStep: setStoreStep, isInMainView, isMinimized, setMinimized } = useOnboardingStore()
 
   const [updateProgress] = useMutation(UPDATE_ONBOARDING_PROGRESS)
   const [completeOnboarding] = useMutation(COMPLETE_ONBOARDING)
@@ -207,7 +207,7 @@ export const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({
           return '🗺️ 點擊右下角小地圖中的島嶼'
         }
         if (!isInMainView) {
-          return '🏠 點擊小地圖中央的房子返回總覽'
+          return '點擊左上角返回按鈕返回主頁面'
         }
         return '✅ 太棒了！你學會使用小地圖了'
       default:
@@ -274,6 +274,26 @@ export const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({
     .replace(/\n/g, ' ')
   const { displayText, isTyping } = useTypewriter(plainDescription, 25, true)
 
+  // 最小化狀態 - 顯示小圖示
+  if (isMinimized) {
+    return (
+      <div className="onboarding-overlay onboarding-minimized">
+        <motion.button
+          className="ac-minimized-btn"
+          onClick={() => setMinimized(false)}
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.95 }}
+          title="展開教學"
+        >
+          <span className="ac-minimized-icon">🐱</span>
+          <span className="ac-minimized-badge">{currentStep + 1}/{getTotalSteps()}</span>
+        </motion.button>
+      </div>
+    )
+  }
+
   return (
     <div className="onboarding-overlay" ref={overlayRef}>
       {/* 動森風格對話框 - 底部左右置中 */}
@@ -291,6 +311,14 @@ export const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({
             <MascotAvatar />
             <span className="ac-name">白噗噗</span>
             <span className="ac-progress">{currentStep + 1}/{getTotalSteps()}</span>
+            {/* 最小化按鈕 */}
+            <button
+              className="ac-minimize-btn"
+              onClick={() => setMinimized(true)}
+              title="稍後再看"
+            >
+              ▼
+            </button>
           </div>
 
           {/* 對話內容區 */}
