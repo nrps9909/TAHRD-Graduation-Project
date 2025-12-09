@@ -158,8 +158,21 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
   const [currentOutput, setCurrentOutput] = useState<SimulatedOutput | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [conversationHistory, setConversationHistory] = useState<SimulatedOutput[]>([])
+  const [historyPreviews, setHistoryPreviews] = useState<Record<number, boolean>>({})
   const outputRef = useRef<HTMLDivElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
+
+  // 切換歷史訊息的預覽
+  const toggleHistoryPreview = (index: number) => {
+    setHistoryPreviews(prev => ({ ...prev, [index]: !prev[index] }))
+  }
+
+  // 複製歷史訊息的程式碼
+  const copyHistoryCode = (code: string) => {
+    navigator.clipboard.writeText(code)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   const apiAvailable = useRealApi && isApiAvailable()
 
@@ -391,24 +404,87 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
                 </div>
                 {historyItem.codeOutput && (
                   <div className="relative">
-                    <Highlight
-                      theme={themes.nightOwl}
-                      code={historyItem.codeOutput}
-                      language="javascript"
-                    >
-                      {({ className, style, tokens, getLineProps, getTokenProps }) => (
-                        <pre className={`${className} rounded-lg p-4 text-sm overflow-x-auto`} style={style}>
-                          {tokens.map((line, i) => (
-                            <div key={i} {...getLineProps({ line })}>
-                              <span className="text-gray-500 mr-4 select-none">{String(i + 1).padStart(3, ' ')}</span>
-                              {line.map((token, key) => (
-                                <span key={key} {...getTokenProps({ token })} />
-                              ))}
-                            </div>
-                          ))}
-                        </pre>
+                    {/* 工具列 */}
+                    <div className="absolute top-2 right-2 flex gap-2 z-10">
+                      {detectCodeType(historyItem.codeOutput) !== 'none' && (
+                        <button
+                          onClick={() => toggleHistoryPreview(index)}
+                          className={`p-1.5 rounded transition-colors flex items-center gap-1 ${
+                            historyPreviews[index]
+                              ? 'bg-amber-600 text-white'
+                              : 'bg-gray-700 hover:bg-gray-600'
+                          }`}
+                          title={historyPreviews[index] ? '顯示程式碼' : '預覽結果'}
+                        >
+                          {historyPreviews[index] ? (
+                            <>
+                              <Code size={14} />
+                              <span className="text-xs">程式碼</span>
+                            </>
+                          ) : (
+                            <>
+                              <Eye size={14} className="text-green-400" />
+                              <span className="text-xs text-green-400">
+                                {detectCodeType(historyItem.codeOutput) === 'javascript' ? '執行' : '預覽'}
+                              </span>
+                            </>
+                          )}
+                        </button>
                       )}
-                    </Highlight>
+                      <button
+                        onClick={() => copyHistoryCode(historyItem.codeOutput!)}
+                        className="p-1.5 bg-gray-700 rounded hover:bg-gray-600 transition-colors"
+                        title="複製程式碼"
+                      >
+                        {copied ? (
+                          <Check size={14} className="text-green-400" />
+                        ) : (
+                          <Copy size={14} className="text-gray-400" />
+                        )}
+                      </button>
+                    </div>
+
+                    {/* 預覽模式 */}
+                    {historyPreviews[index] && detectCodeType(historyItem.codeOutput) !== 'none' ? (
+                      <div className="rounded-lg overflow-hidden border border-gray-600">
+                        <div className="bg-gray-700 px-3 py-1.5 flex items-center gap-2">
+                          <Eye size={14} className="text-green-400" />
+                          <span className="text-gray-300 text-xs">
+                            {detectCodeType(historyItem.codeOutput) === 'javascript' ? '執行結果' : '即時預覽'}
+                          </span>
+                        </div>
+                        <iframe
+                          srcDoc={
+                            detectCodeType(historyItem.codeOutput) === 'javascript'
+                              ? wrapJavaScriptForPreview(historyItem.codeOutput)
+                              : historyItem.codeOutput
+                          }
+                          className="w-full bg-white"
+                          style={{ height: '300px', minHeight: '200px' }}
+                          title={`Code Preview ${index}`}
+                          sandbox="allow-scripts"
+                        />
+                      </div>
+                    ) : (
+                      <Highlight
+                        theme={themes.nightOwl}
+                        code={historyItem.codeOutput}
+                        language="javascript"
+                      >
+                        {({ className, style, tokens, getLineProps, getTokenProps }) => (
+                          <pre className={`${className} rounded-lg p-4 text-sm overflow-x-auto`} style={style}>
+                            {tokens.map((line, i) => (
+                              <div key={i} {...getLineProps({ line })}>
+                                <span className="text-gray-500 mr-4 select-none">{String(i + 1).padStart(3, ' ')}</span>
+                                {line.map((token, key) => (
+                                  <span key={key} {...getTokenProps({ token })} />
+                                ))}
+                              </div>
+                            ))}
+                          </pre>
+                        )}
+                      </Highlight>
+                    )}
                   </div>
                 )}
                 {historyItem.explanation && (
