@@ -98,7 +98,6 @@ export async function generateCode(userPrompt: string): Promise<CodeGenerationRe
         ],
         generationConfig: {
           temperature: 0.7,
-          maxOutputTokens: 8192,
         }
       })
     })
