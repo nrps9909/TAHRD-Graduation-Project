@@ -4,61 +4,91 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Baby pink and goose yellow themed colors - 統一主題配色
-        'cat-cream': '#FFF9E6', // Light goose yellow
-        'cat-beige': '#FFEAA7', // Goose yellow
-        'cat-pink': '#F8BBD9', // Baby pink
-        'cat-pink-dark': '#F48FB1', // Deeper baby pink
-        'cat-purple': '#F8BBD9', // Baby pink tone
-        'cat-purple-dark': '#E91E63', // Rose pink
-        'cat-blue': '#F8BBD9', // Converted to baby pink
-        'cat-blue-dark': '#F48FB1', // Deeper baby pink
-        'cat-yellow': '#FFEAA7', // Goose yellow
-        'cat-orange': '#FFEAA7', // Goose yellow (unified)
-        'cat-brown': '#D2B48C', // Keep neutral
-        'cat-gray': '#F5F5F5', // Keep neutral
-        'cat-dark': '#8B4B7C', // Deep pink-purple
-        'text-primary': '#8B4B7C', // Deep pink-purple
-        'text-secondary': '#AD1457', // Rose pink
-        'text-light': '#E91E63', // Bright pink
+        // Dark theme - ChatGPT style
+        'bg-primary': '#212121',
+        'bg-secondary': '#171717',
+        'bg-tertiary': '#2f2f2f',
+        'bg-hover': '#424242',
 
-        // 統一的終端機和復古色彩 - 全部改為寶寶粉和鵝黃色主題
-        'terminal-bg': '#FFF8F5', // Very light pink
-        'terminal-text': '#8B4B7C', // Deep pink-purple
-        'retro-bg': '#FFF0F3', // Light pink background
-        'retro-green': '#FFEAA7', // Goose yellow (was green)
-        'retro-amber': '#FFEAA7', // Goose yellow (was amber)
-        'retro-coral': '#F8BBD9', // Baby pink
-        'retro-peach': '#F8BBD9', // Baby pink
-        'retro-cyan': '#F8BBD9', // Baby pink (was cyan)
-        'retro-blue': '#F8BBD9', // Baby pink (was blue)
-        'retro-purple': '#F48FB1', // Deeper baby pink (was purple)
-        'retro-yellow': '#FFEAA7', // Goose yellow
+        // Text colors
+        'text-primary': '#ececec',
+        'text-secondary': '#9ca3af',
+        'text-muted': '#6b7280',
+
+        // Accent color - ChatGPT green
+        'accent': '#10a37f',
+        'accent-hover': '#1ed89e',
+
+        // Border colors
+        'border-primary': '#2f2f2f',
+        'border-secondary': '#424242',
+
+        // Legacy compatibility - mapped to dark theme
+        'cat-cream': '#2f2f2f',
+        'cat-beige': '#424242',
+        'cat-pink': '#10a37f',
+        'cat-pink-dark': '#0d8a6f',
+        'cat-purple': '#10a37f',
+        'cat-purple-dark': '#0d8a6f',
+        'cat-blue': '#3b82f6',
+        'cat-blue-dark': '#2563eb',
+        'cat-yellow': '#fbbf24',
+        'cat-orange': '#f59e0b',
+        'cat-brown': '#78716c',
+        'cat-gray': '#424242',
+        'cat-dark': '#171717',
+
+        // Terminal colors - dark
+        'terminal-bg': '#0d0d0d',
+        'terminal-text': '#ececec',
+        'retro-bg': '#171717',
+        'retro-green': '#10a37f',
+        'retro-amber': '#fbbf24',
+        'retro-coral': '#f87171',
+        'retro-peach': '#fca5a5',
+        'retro-cyan': '#22d3ee',
+        'retro-blue': '#60a5fa',
+        'retro-purple': '#a78bfa',
+        'retro-yellow': '#fbbf24',
       },
       fontFamily: {
-        mono: ['Courier New', 'monospace'],
-        pixel: ['Press Start 2P', 'cursive'],
-        cute: ['jf open 粉圓', 'Comfortaa', 'cursive'],
-        chinese: ['jf open 粉圓', 'Noto Sans TC', 'sans-serif'],
-        display: ['jf open 粉圓', 'Comfortaa', 'sans-serif'],
+        sans: ['Inter', 'Noto Sans TC', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        mono: ['SF Mono', 'Fira Code', 'Consolas', 'monospace'],
+        chinese: ['Noto Sans TC', 'Inter', 'sans-serif'],
+        display: ['Inter', 'Noto Sans TC', 'sans-serif'],
+      },
+      fontSize: {
+        'xs': ['0.75rem', { lineHeight: '1rem' }],
+        'sm': ['0.875rem', { lineHeight: '1.25rem' }],
+        'base': ['1rem', { lineHeight: '1.6' }],
+        'lg': ['1.125rem', { lineHeight: '1.75rem' }],
+        'xl': ['1.25rem', { lineHeight: '1.75rem' }],
+        '2xl': ['1.5rem', { lineHeight: '2rem' }],
+        '3xl': ['1.875rem', { lineHeight: '2.25rem' }],
+        '4xl': ['2.25rem', { lineHeight: '2.5rem' }],
+      },
+      borderRadius: {
+        'lg': '0.5rem',
+        'xl': '0.75rem',
+        '2xl': '1rem',
       },
       animation: {
-        blink: 'blink 1s step-end infinite',
-        glow: 'glow 2s ease-in-out infinite',
-        typewriter: 'typewriter 2s steps(40) 1s forwards',
+        'fade-in': 'fade-in 0.2s ease-out',
+        'slide-in': 'slide-in 0.3s ease-out',
+        'pulse-slow': 'pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
       },
       keyframes: {
-        blink: {
-          '0%, 50%': { opacity: '1' },
-          '51%, 100%': { opacity: '0' },
+        'fade-in': {
+          from: { opacity: '0' },
+          to: { opacity: '1' },
         },
-        glow: {
-          '0%, 100%': { boxShadow: '0 0 20px rgba(248, 187, 217, 0.5)' },
-          '50%': { boxShadow: '0 0 30px rgba(248, 187, 217, 0.8)' },
+        'slide-in': {
+          from: { transform: 'translateX(100%)', opacity: '0' },
+          to: { transform: 'translateX(0)', opacity: '1' },
         },
-        typewriter: {
-          from: { width: '0' },
-          to: { width: '100%' },
+        'pulse-slow': {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0.7' },
         },
       },
     },
