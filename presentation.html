@@ -126,44 +126,93 @@
         }
 
         .eyebrow {
-            font-size: 21px;
+            font-size: 14px;
             font-weight: 600;
             letter-spacing: -0.01em;
             color: #2997ff;
         }
 
         .headline {
-            font-size: 80px;
-            line-height: 1.05;
+            font-size: 36px;
+            line-height: 1.1;
             font-weight: 700;
             letter-spacing: -0.03em;
         }
 
         .subhead {
-            font-size: 28px;
-            line-height: 1.2;
+            font-size: 16px;
+            line-height: 1.3;
             font-weight: 400;
             color: #86868b;
         }
 
         .icon-box {
-            width: 56px;
-            height: 56px;
-            border-radius: 16px;
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
         }
 
+        /* Responsive styles */
+        @media (min-width: 640px) {
+            .eyebrow {
+                font-size: 18px;
+            }
+            .headline {
+                font-size: 56px;
+            }
+            .subhead {
+                font-size: 22px;
+            }
+            .icon-box {
+                width: 50px;
+                height: 50px;
+                border-radius: 14px;
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .eyebrow {
+                font-size: 21px;
+            }
+            .headline {
+                font-size: 80px;
+                line-height: 1.05;
+            }
+            .subhead {
+                font-size: 28px;
+                line-height: 1.2;
+            }
+            .icon-box {
+                width: 56px;
+                height: 56px;
+                border-radius: 16px;
+            }
+        }
+
         /* Apple-style number display */
         .stat-number {
-            font-size: 64px;
+            font-size: 32px;
             font-weight: 700;
             letter-spacing: -0.03em;
             background: linear-gradient(180deg, #fff 0%, rgba(255,255,255,0.6) 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
+        }
+
+        @media (min-width: 640px) {
+            .stat-number {
+                font-size: 48px;
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .stat-number {
+                font-size: 64px;
+            }
         }
 
         /* Slide transitions */
@@ -308,117 +357,117 @@
     </div>
 
     <!-- Slide 1: Cover -->
-    <div class="slide active h-full w-full flex-col justify-center items-center text-center px-8" id="slide-1">
-        <p class="eyebrow mb-4 animate-item">AI-Powered Learning</p>
-        <h1 class="headline mb-6 animate-item">
+    <div class="slide active h-full w-full flex-col justify-center items-center text-center px-4 sm:px-8" id="slide-1">
+        <p class="eyebrow mb-2 sm:mb-4 animate-item">AI-Powered Learning</p>
+        <h1 class="headline mb-4 sm:mb-6 animate-item">
             Claude Code<br>
             <span class="text-gradient">Adventure</span>
         </h1>
-        <p class="subhead max-w-lg mb-20 animate-item">
+        <p class="subhead max-w-lg mb-10 sm:mb-16 lg:mb-20 animate-item">
             讓每個人都能用 AI 寫程式
         </p>
-        <div class="flex items-center gap-12 animate-item">
-            <img src="qr.ioi.tw.png" alt="QR Code" class="w-40 h-40 rounded-3xl bg-white p-4">
-            <div class="text-left">
-                <p class="text-apple-gray text-lg mb-2">立即體驗</p>
-                <p class="text-3xl font-semibold tracking-tight">jesse-chen.com</p>
+        <div class="flex flex-col sm:flex-row items-center gap-6 sm:gap-12 animate-item">
+            <img src="qr.ioi.tw.png" alt="QR Code" class="w-28 h-28 sm:w-36 sm:h-36 lg:w-40 lg:h-40 rounded-2xl sm:rounded-3xl bg-white p-3 sm:p-4">
+            <div class="text-center sm:text-left">
+                <p class="text-apple-gray text-sm sm:text-lg mb-1 sm:mb-2">立即體驗</p>
+                <p class="text-xl sm:text-2xl lg:text-3xl font-semibold tracking-tight">jesse-chen.com</p>
             </div>
         </div>
     </div>
 
     <!-- Slide 2: About Me -->
-    <div class="slide h-full w-full flex-col justify-center items-center px-8" id="slide-2">
-        <div class="max-w-5xl w-full flex gap-24 items-center">
+    <div class="slide h-full w-full flex-col justify-center items-center px-4 sm:px-8" id="slide-2">
+        <div class="max-w-5xl w-full flex flex-col lg:flex-row gap-8 sm:gap-16 lg:gap-24 items-center">
             <div class="flex flex-col items-center animate-item">
-                <div class="w-44 h-44 rounded-full bg-gradient-to-br from-apple-blue to-apple-purple p-[2px] mb-8">
+                <div class="w-28 h-28 sm:w-36 sm:h-36 lg:w-44 lg:h-44 rounded-full bg-gradient-to-br from-apple-blue to-apple-purple p-[2px] mb-4 sm:mb-6 lg:mb-8">
                     <div class="w-full h-full rounded-full bg-black flex items-center justify-center">
-                        <svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" class="text-white/40">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" class="text-white/40 sm:w-[60px] sm:h-[60px] lg:w-[72px] lg:h-[72px]">
                             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                             <circle cx="12" cy="7" r="4"/>
                         </svg>
                     </div>
                 </div>
-                <h3 class="text-3xl font-semibold tracking-tight">陳廷安</h3>
-                <p class="text-apple-gray mt-3 text-lg">41171214H・科技系 115</p>
+                <h3 class="text-xl sm:text-2xl lg:text-3xl font-semibold tracking-tight">陳廷安</h3>
+                <p class="text-apple-gray mt-2 sm:mt-3 text-sm sm:text-base lg:text-lg">41171214H・科技系 115</p>
             </div>
-            <div class="flex-1">
-                <h2 class="text-6xl font-bold leading-[1.08] tracking-tight mb-8 animate-item">
+            <div class="flex-1 text-center lg:text-left">
+                <h2 class="text-2xl sm:text-4xl lg:text-6xl font-bold leading-tight lg:leading-[1.08] tracking-tight mb-4 sm:mb-6 lg:mb-8 animate-item">
                     讓每個人都能<br>
                     <span class="text-gradient">用程式解決問題</span>
                 </h2>
-                <p class="text-2xl text-apple-gray leading-relaxed font-light animate-item">
-                    不需要成為工程師，也能提高生產力、<br>自動化重複工作。
+                <p class="text-base sm:text-xl lg:text-2xl text-apple-gray leading-relaxed font-light animate-item">
+                    不需要成為工程師，也能提高生產力、<br class="hidden sm:inline">自動化重複工作。
                 </p>
             </div>
         </div>
     </div>
 
     <!-- Slide 3: Target Audience -->
-    <div class="slide h-full w-full flex-col justify-center items-center px-8" id="slide-3">
-        <h2 class="text-6xl font-bold tracking-tight mb-4 animate-item">為誰而做？</h2>
-        <p class="subhead mb-20 animate-item">給想解決問題的人，不是給想當工程師的人</p>
+    <div class="slide h-full w-full flex-col justify-center items-center px-4 sm:px-8" id="slide-3">
+        <h2 class="text-3xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-2 sm:mb-4 animate-item">為誰而做？</h2>
+        <p class="subhead mb-8 sm:mb-16 lg:mb-20 animate-item">給想解決問題的人，不是給想當工程師的人</p>
 
-        <div class="grid grid-cols-3 gap-6 max-w-5xl animate-item">
-            <div class="card p-12 text-center">
-                <div class="icon-box bg-apple-blue/10 mx-auto mb-8">
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2997ff" stroke-width="1.5">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 max-w-5xl w-full animate-item">
+            <div class="card p-6 sm:p-10 lg:p-12 text-center">
+                <div class="icon-box bg-apple-blue/10 mx-auto mb-4 sm:mb-8">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2997ff" stroke-width="1.5">
                         <path d="M18 6 6 18M6 6l12 12"/>
                     </svg>
                 </div>
-                <h3 class="text-2xl font-semibold tracking-tight mb-3">不想學語法</h3>
-                <p class="text-apple-gray text-lg">只想把事情做完</p>
+                <h3 class="text-lg sm:text-xl lg:text-2xl font-semibold tracking-tight mb-2 sm:mb-3">不想學語法</h3>
+                <p class="text-apple-gray text-sm sm:text-base lg:text-lg">只想把事情做完</p>
             </div>
 
-            <div class="card p-12 text-center">
-                <div class="icon-box bg-apple-purple/10 mx-auto mb-8">
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#bf5af2" stroke-width="1.5">
+            <div class="card p-6 sm:p-10 lg:p-12 text-center">
+                <div class="icon-box bg-apple-purple/10 mx-auto mb-4 sm:mb-8">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#bf5af2" stroke-width="1.5">
                         <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
                     </svg>
                 </div>
-                <h3 class="text-2xl font-semibold tracking-tight mb-3">想提高生產力</h3>
-                <p class="text-apple-gray text-lg">自動化重複性工作</p>
+                <h3 class="text-lg sm:text-xl lg:text-2xl font-semibold tracking-tight mb-2 sm:mb-3">想提高生產力</h3>
+                <p class="text-apple-gray text-sm sm:text-base lg:text-lg">自動化重複性工作</p>
             </div>
 
-            <div class="card p-12 text-center">
-                <div class="icon-box bg-apple-violet/10 mx-auto mb-8">
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#5e5ce6" stroke-width="1.5">
+            <div class="card p-6 sm:p-10 lg:p-12 text-center">
+                <div class="icon-box bg-apple-violet/10 mx-auto mb-4 sm:mb-8">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#5e5ce6" stroke-width="1.5">
                         <circle cx="12" cy="12" r="10"/>
                         <path d="M12 16v-4M12 8h.01"/>
                     </svg>
                 </div>
-                <h3 class="text-2xl font-semibold tracking-tight mb-3">有想法要實現</h3>
-                <p class="text-apple-gray text-lg">缺一個好用的工具</p>
+                <h3 class="text-lg sm:text-xl lg:text-2xl font-semibold tracking-tight mb-2 sm:mb-3">有想法要實現</h3>
+                <p class="text-apple-gray text-sm sm:text-base lg:text-lg">缺一個好用的工具</p>
             </div>
         </div>
     </div>
 
     <!-- Slide 4: The Problem -->
-    <div class="slide h-full w-full flex-col justify-center items-center px-8" id="slide-4">
-        <h2 class="text-6xl font-bold tracking-tight mb-4 animate-item">學程式，太難了</h2>
-        <p class="subhead mb-20 animate-item">90% 的初學者在三個月內放棄</p>
+    <div class="slide h-full w-full flex-col justify-center items-center px-4 sm:px-8" id="slide-4">
+        <h2 class="text-3xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-2 sm:mb-4 animate-item">學程式，太難了</h2>
+        <p class="subhead mb-8 sm:mb-16 lg:mb-20 animate-item">90% 的初學者在三個月內放棄</p>
 
-        <div class="grid grid-cols-3 gap-6 max-w-5xl animate-item">
-            <div class="card p-10">
-                <h3 class="text-2xl font-semibold tracking-tight mb-4">語法地獄</h3>
-                <p class="text-apple-gray text-lg mb-8">花 80% 時間記語法，<br>忘了解決問題才是重點</p>
-                <div class="p-5 bg-white/[0.03] rounded-2xl font-mono text-sm text-[#ff453a]">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 max-w-5xl w-full animate-item">
+            <div class="card p-5 sm:p-8 lg:p-10">
+                <h3 class="text-lg sm:text-xl lg:text-2xl font-semibold tracking-tight mb-2 sm:mb-4">語法地獄</h3>
+                <p class="text-apple-gray text-sm sm:text-base lg:text-lg mb-4 sm:mb-8">花 80% 時間記語法，<br>忘了解決問題才是重點</p>
+                <div class="p-3 sm:p-5 bg-white/[0.03] rounded-xl sm:rounded-2xl font-mono text-xs sm:text-sm text-[#ff453a]">
                     SyntaxError: Unexpected token
                 </div>
             </div>
 
-            <div class="card p-10">
-                <h3 class="text-2xl font-semibold tracking-tight mb-4">缺乏成就感</h3>
-                <p class="text-apple-gray text-lg mb-8">學了一個月，<br>還在印 Hello World</p>
-                <div class="p-5 bg-white/[0.03] rounded-2xl font-mono text-sm text-apple-gray">
+            <div class="card p-5 sm:p-8 lg:p-10">
+                <h3 class="text-lg sm:text-xl lg:text-2xl font-semibold tracking-tight mb-2 sm:mb-4">缺乏成就感</h3>
+                <p class="text-apple-gray text-sm sm:text-base lg:text-lg mb-4 sm:mb-8">學了一個月，<br>還在印 Hello World</p>
+                <div class="p-3 sm:p-5 bg-white/[0.03] rounded-xl sm:rounded-2xl font-mono text-xs sm:text-sm text-apple-gray">
                     > print("Hello World")<br>
                     > # 然後呢？
                 </div>
             </div>
 
-            <div class="card p-10">
-                <h3 class="text-2xl font-semibold tracking-tight mb-4">卡關無人問</h3>
-                <p class="text-apple-gray text-lg mb-8">遇到 Bug<br>不知道怎麼描述問題</p>
-                <div class="p-5 bg-white/[0.03] rounded-2xl font-mono text-sm text-[#ffd60a]">
+            <div class="card p-5 sm:p-8 lg:p-10">
+                <h3 class="text-lg sm:text-xl lg:text-2xl font-semibold tracking-tight mb-2 sm:mb-4">卡關無人問</h3>
+                <p class="text-apple-gray text-sm sm:text-base lg:text-lg mb-4 sm:mb-8">遇到 Bug<br>不知道怎麼描述問題</p>
+                <div class="p-3 sm:p-5 bg-white/[0.03] rounded-xl sm:rounded-2xl font-mono text-xs sm:text-sm text-[#ffd60a]">
                     Stack Overflow: 0 results
                 </div>
             </div>
@@ -426,11 +475,11 @@
     </div>
 
     <!-- Slide 5: Why Claude Code -->
-    <div class="slide h-full w-full flex-col justify-center items-center px-8" id="slide-5">
-        <h2 class="text-6xl font-bold tracking-tight mb-4 animate-item">為什麼是 <span class="text-gradient">Claude Code</span></h2>
-        <p class="subhead mb-20 animate-item">在眾多 AI 工具中，它是最佳選擇</p>
+    <div class="slide h-full w-full flex-col justify-center items-center px-4 sm:px-8" id="slide-5">
+        <h2 class="text-3xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-2 sm:mb-4 animate-item">為什麼是 <span class="text-gradient">Claude Code</span></h2>
+        <p class="subhead mb-8 sm:mb-16 lg:mb-20 animate-item">在眾多 AI 工具中，它是最佳選擇</p>
 
-        <div class="grid grid-cols-2 gap-8 max-w-4xl w-full animate-item">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8 max-w-4xl w-full animate-item">
             <div class="card p-12">
                 <p class="text-apple-gray text-sm font-semibold tracking-wide uppercase mb-8">其他工具的限制</p>
                 <div class="space-y-6">
@@ -512,11 +561,11 @@
     </div>
 
     <!-- Slide 6: Environment Setup -->
-    <div class="slide h-full w-full flex-col justify-center items-center px-8" id="slide-6">
-        <h2 class="text-6xl font-bold tracking-tight mb-4 animate-item">環境<span class="text-gradient">架設教學</span></h2>
-        <p class="subhead mb-16 animate-item">四個步驟，輕鬆上手</p>
+    <div class="slide h-full w-full flex-col justify-center items-center px-4 sm:px-8" id="slide-6">
+        <h2 class="text-3xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-2 sm:mb-4 animate-item">環境<span class="text-gradient">架設教學</span></h2>
+        <p class="subhead mb-6 sm:mb-12 lg:mb-16 animate-item">四個步驟，輕鬆上手</p>
 
-        <div class="grid grid-cols-4 gap-6 max-w-5xl animate-item">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-6 max-w-5xl animate-item">
             <div class="card p-8 text-center">
                 <div class="w-14 h-14 rounded-full bg-gradient-to-br from-apple-blue to-apple-purple flex items-center justify-center mx-auto mb-6 text-xl font-bold">1</div>
                 <h3 class="font-semibold text-lg mb-3">安裝 Node.js</h3>
@@ -564,11 +613,11 @@
     </div>
 
     <!-- Slide 7: How to Use Claude Code -->
-    <div class="slide h-full w-full flex-col justify-center items-center px-8" id="slide-7">
-        <h2 class="text-6xl font-bold tracking-tight mb-4 animate-item">如何使用 <span class="text-gradient">Claude Code</span></h2>
-        <p class="subhead mb-16 animate-item">用自然語言下指令</p>
+    <div class="slide h-full w-full flex-col justify-center items-center px-4 sm:px-8" id="slide-7">
+        <h2 class="text-3xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-2 sm:mb-4 animate-item">如何使用 <span class="text-gradient">Claude Code</span></h2>
+        <p class="subhead mb-6 sm:mb-12 lg:mb-16 animate-item">用自然語言下指令</p>
 
-        <div class="max-w-4xl w-full grid grid-cols-2 gap-8 animate-item">
+        <div class="max-w-4xl w-full grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8 animate-item">
             <div class="card p-8">
                 <p class="text-apple-blue text-sm font-semibold tracking-wide uppercase mb-6">基本指令</p>
                 <div class="space-y-4 font-mono text-sm">
@@ -608,11 +657,11 @@
     </div>
 
     <!-- Slide 8: Cost Explanation -->
-    <div class="slide h-full w-full flex-col justify-center items-center px-8" id="slide-8">
-        <h2 class="text-6xl font-bold tracking-tight mb-4 animate-item">費用<span class="text-gradient">說明</span></h2>
-        <p class="subhead mb-16 animate-item">按使用量計費，用多少付多少</p>
+    <div class="slide h-full w-full flex-col justify-center items-center px-4 sm:px-8" id="slide-8">
+        <h2 class="text-3xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-2 sm:mb-4 animate-item">費用<span class="text-gradient">說明</span></h2>
+        <p class="subhead mb-6 sm:mb-12 lg:mb-16 animate-item">按使用量計費，用多少付多少</p>
 
-        <div class="grid grid-cols-3 gap-8 max-w-4xl animate-item">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-8 max-w-4xl animate-item">
             <div class="card p-10 text-center">
                 <div class="icon-box bg-apple-blue/10 mx-auto mb-6">
                     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2997ff" stroke-width="1.5">
@@ -657,10 +706,10 @@
     </div>
 
     <!-- Slide 9: What is Vibe Coding -->
-    <div class="slide h-full w-full flex-col justify-center items-center px-8" id="slide-9">
-        <h2 class="text-6xl font-bold tracking-tight mb-20 animate-item">什麼是 <span class="text-gradient">Vibe Coding</span></h2>
+    <div class="slide h-full w-full flex-col justify-center items-center px-4 sm:px-8" id="slide-9">
+        <h2 class="text-3xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-8 sm:mb-16 lg:mb-20 animate-item">什麼是 <span class="text-gradient">Vibe Coding</span></h2>
 
-        <div class="card p-12 max-w-3xl mb-16 animate-item">
+        <div class="card p-6 sm:p-10 lg:p-12 max-w-3xl mb-8 sm:mb-12 lg:mb-16 animate-item">
             <div class="flex items-center gap-6 mb-8">
                 <div class="w-16 h-16 rounded-full bg-gradient-to-br from-apple-blue to-apple-purple flex items-center justify-center text-xl font-bold">AK</div>
                 <div>
@@ -673,7 +722,7 @@
             </p>
         </div>
 
-        <div class="grid grid-cols-3 gap-12 max-w-3xl animate-item">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-12 max-w-3xl animate-item">
             <div class="text-center">
                 <div class="icon-box bg-apple-blue/10 mx-auto mb-6">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2997ff" stroke-width="1.5">
@@ -704,11 +753,11 @@
     </div>
 
     <!-- Slide 10: Use Cases -->
-    <div class="slide h-full w-full flex-col justify-center items-center px-8" id="slide-10">
-        <h2 class="text-6xl font-bold tracking-tight mb-4 animate-item">能做什麼？</h2>
-        <p class="subhead mb-16 animate-item">不用寫程式，也能完成這些</p>
+    <div class="slide h-full w-full flex-col justify-center items-center px-4 sm:px-8" id="slide-10">
+        <h2 class="text-3xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-2 sm:mb-4 animate-item">能做什麼？</h2>
+        <p class="subhead mb-6 sm:mb-12 lg:mb-16 animate-item">不用寫程式，也能完成這些</p>
 
-        <div class="grid grid-cols-4 gap-5 max-w-5xl mb-16 animate-item">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5 max-w-5xl mb-16 animate-item">
             <div class="card p-8 text-center">
                 <div class="icon-box bg-apple-blue/10 mx-auto mb-6">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2997ff" stroke-width="1.5">
@@ -772,63 +821,63 @@
     </div>
 
     <!-- Slide 11: CCAdventure -->
-    <div class="slide h-full w-full flex-col justify-center items-center px-8" id="slide-11">
-        <div class="max-w-6xl w-full flex gap-20 items-center">
-            <div class="flex-1">
-                <h2 class="text-5xl font-bold leading-tight tracking-tight mb-6 animate-item">
+    <div class="slide h-full w-full flex-col justify-center items-center px-4 sm:px-8" id="slide-11">
+        <div class="max-w-6xl w-full flex flex-col lg:flex-row gap-8 sm:gap-12 lg:gap-20 items-center">
+            <div class="flex-1 text-center lg:text-left">
+                <h2 class="text-2xl sm:text-4xl lg:text-5xl font-bold leading-tight tracking-tight mb-3 sm:mb-6 animate-item">
                     <span class="text-gradient">Claude Code Adventure</span>
                 </h2>
-                <p class="text-2xl text-apple-gray mb-12 font-light animate-item">
+                <p class="text-base sm:text-xl lg:text-2xl text-apple-gray mb-6 sm:mb-12 font-light animate-item">
                     學會「與 AI 溝通」的遊戲化平台
                 </p>
-                <div class="space-y-8 animate-item">
-                    <div class="flex items-center gap-5">
+                <div class="space-y-4 sm:space-y-6 lg:space-y-8 animate-item">
+                    <div class="flex items-center gap-3 sm:gap-5 justify-center lg:justify-start">
                         <div class="icon-box bg-apple-blue/10">
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2997ff" stroke-width="1.5">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2997ff" stroke-width="1.5" class="sm:w-[22px] sm:h-[22px]">
                                 <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
                             </svg>
                         </div>
-                        <div>
-                            <p class="font-semibold text-lg">遊戲化學習</p>
-                            <p class="text-apple-gray">6 大關卡、成就系統</p>
+                        <div class="text-left">
+                            <p class="font-semibold text-sm sm:text-base lg:text-lg">遊戲化學習</p>
+                            <p class="text-apple-gray text-xs sm:text-sm">6 大關卡、成就系統</p>
                         </div>
                     </div>
-                    <div class="flex items-center gap-5">
+                    <div class="flex items-center gap-3 sm:gap-5 justify-center lg:justify-start">
                         <div class="icon-box bg-apple-purple/10">
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#bf5af2" stroke-width="1.5">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#bf5af2" stroke-width="1.5" class="sm:w-[22px] sm:h-[22px]">
                                 <polyline points="16 18 22 12 16 6"/>
                                 <polyline points="8 6 2 12 8 18"/>
                             </svg>
                         </div>
-                        <div>
-                            <p class="font-semibold text-lg">安全練習環境</p>
-                            <p class="text-apple-gray">模擬 Claude Code</p>
+                        <div class="text-left">
+                            <p class="font-semibold text-sm sm:text-base lg:text-lg">安全練習環境</p>
+                            <p class="text-apple-gray text-xs sm:text-sm">模擬 Claude Code</p>
                         </div>
                     </div>
-                    <div class="flex items-center gap-5">
+                    <div class="flex items-center gap-3 sm:gap-5 justify-center lg:justify-start">
                         <div class="icon-box bg-apple-violet/10">
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5e5ce6" stroke-width="1.5">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5e5ce6" stroke-width="1.5" class="sm:w-[22px] sm:h-[22px]">
                                 <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
                                 <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
                             </svg>
                         </div>
-                        <div>
-                            <p class="font-semibold text-lg">完全免費開源</p>
-                            <p class="text-apple-gray">任何人都能學習</p>
+                        <div class="text-left">
+                            <p class="font-semibold text-sm sm:text-base lg:text-lg">完全免費開源</p>
+                            <p class="text-apple-gray text-xs sm:text-sm">任何人都能學習</p>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="flex-1 animate-item">
-                <div class="card p-8 aspect-video">
-                    <div class="flex gap-2 mb-5">
-                        <div class="w-3 h-3 rounded-full bg-[#ff5f57]"></div>
-                        <div class="w-3 h-3 rounded-full bg-[#febc2e]"></div>
-                        <div class="w-3 h-3 rounded-full bg-[#28c840]"></div>
+            <div class="flex-1 w-full animate-item hidden sm:block">
+                <div class="card p-4 sm:p-6 lg:p-8 aspect-video">
+                    <div class="flex gap-1.5 sm:gap-2 mb-3 sm:mb-5">
+                        <div class="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-[#ff5f57]"></div>
+                        <div class="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-[#febc2e]"></div>
+                        <div class="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-[#28c840]"></div>
                     </div>
-                    <div class="bg-white/[0.03] rounded-2xl p-6 h-[calc(100%-40px)] font-mono text-sm">
-                        <p class="text-apple-blue mb-4 font-semibold">Level 5: 小型專案開發</p>
-                        <p class="text-apple-gray mb-5">任務：建立 Todo App</p>
+                    <div class="bg-white/[0.03] rounded-xl sm:rounded-2xl p-3 sm:p-6 h-[calc(100%-30px)] sm:h-[calc(100%-40px)] font-mono text-xs sm:text-sm">
+                        <p class="text-apple-blue mb-2 sm:mb-4 font-semibold">Level 5: 小型專案開發</p>
+                        <p class="text-apple-gray mb-3 sm:mb-5">任務：建立 Todo App</p>
                         <p class="text-[#30d158]">
                             > 請幫我建立一個 Todo App<br>
                             > 要有新增、完成、刪除功能<br>
@@ -841,11 +890,11 @@
     </div>
 
     <!-- Slide 12: How It Was Built -->
-    <div class="slide h-full w-full flex-col justify-center items-center px-8" id="slide-12">
-        <h2 class="text-6xl font-bold tracking-tight mb-4 animate-item">這個網站<span class="text-gradient">怎麼做的</span></h2>
-        <p class="subhead mb-20 animate-item">用 Vibe Coding 打造</p>
+    <div class="slide h-full w-full flex-col justify-center items-center px-4 sm:px-8" id="slide-12">
+        <h2 class="text-3xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-2 sm:mb-4 animate-item">這個網站<span class="text-gradient">怎麼做的</span></h2>
+        <p class="subhead mb-8 sm:mb-16 lg:mb-20 animate-item">用 Vibe Coding 打造</p>
 
-        <div class="grid grid-cols-4 gap-8 max-w-4xl mb-16 animate-item">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-8 max-w-4xl mb-16 animate-item">
             <div class="text-center">
                 <div class="w-20 h-20 rounded-full bg-gradient-to-br from-apple-blue to-apple-purple flex items-center justify-center mx-auto mb-6 text-2xl font-bold">1</div>
                 <p class="font-semibold text-lg mb-2">描述需求</p>
@@ -885,11 +934,11 @@
     </div>
 
     <!-- Slide 13: Learning Path -->
-    <div class="slide h-full w-full flex-col justify-center items-center px-8" id="slide-13">
-        <h2 class="text-6xl font-bold tracking-tight mb-4 animate-item">6 大關卡</h2>
-        <p class="subhead mb-16 animate-item">從零開始成為 Vibe Coder</p>
+    <div class="slide h-full w-full flex-col justify-center items-center px-4 sm:px-8" id="slide-13">
+        <h2 class="text-3xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-2 sm:mb-4 animate-item">6 大關卡</h2>
+        <p class="subhead mb-6 sm:mb-12 lg:mb-16 animate-item">從零開始成為 Vibe Coder</p>
 
-        <div class="grid grid-cols-6 gap-4 max-w-5xl mb-16 animate-item">
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 max-w-5xl mb-16 animate-item">
             <div class="card p-8 text-center">
                 <p class="text-4xl font-bold text-gradient mb-3">01</p>
                 <p class="font-semibold">認識</p>
@@ -939,39 +988,39 @@
     </div>
 
     <!-- Slide 14: CTA -->
-    <div class="slide h-full w-full flex-col justify-center items-center px-8 text-center" id="slide-14">
-        <h2 class="headline mb-6 animate-item">
+    <div class="slide h-full w-full flex-col justify-center items-center px-4 sm:px-8 text-center" id="slide-14">
+        <h2 class="headline mb-4 sm:mb-6 animate-item">
             開始你的<br>
             <span class="text-gradient">Vibe Coding</span> 冒險
         </h2>
-        <p class="subhead mb-20 max-w-lg animate-item">
+        <p class="subhead mb-8 sm:mb-16 lg:mb-20 max-w-lg animate-item">
             AI 時代已經來臨，學會與 AI 協作是必備技能
         </p>
 
-        <div class="flex items-center gap-20 mb-20 animate-item">
+        <div class="flex flex-col sm:flex-row items-center gap-8 sm:gap-16 lg:gap-20 mb-8 sm:mb-16 lg:mb-20 animate-item">
             <!-- 體驗網站 QR -->
             <div class="text-center">
-                <img src="qr.ioi.tw.png" alt="QR Code" class="w-40 h-40 rounded-3xl bg-white p-4 mb-4">
-                <p class="text-2xl font-semibold tracking-tight">jesse-chen.com</p>
-                <p class="text-apple-gray mt-2">立即體驗</p>
+                <img src="qr.ioi.tw.png" alt="QR Code" class="w-28 h-28 sm:w-36 sm:h-36 lg:w-40 lg:h-40 rounded-2xl sm:rounded-3xl bg-white p-3 sm:p-4 mb-3 sm:mb-4">
+                <p class="text-lg sm:text-xl lg:text-2xl font-semibold tracking-tight">jesse-chen.com</p>
+                <p class="text-apple-gray text-sm sm:text-base mt-1 sm:mt-2">立即體驗</p>
             </div>
 
             <!-- 回饋表單 QR -->
             <div class="text-center">
-                <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://docs.google.com/forms/d/e/1FAIpQLSeGD7JKmORPoIZufGhZjy0V66cTHzlFH1mdOjlgOtgQ_BRw7A/viewform" alt="Feedback QR Code" class="w-40 h-40 rounded-3xl bg-white p-4 mb-4">
-                <p class="text-2xl font-semibold tracking-tight">回饋表單</p>
-                <p class="text-apple-gray mt-2">歡迎填寫意見</p>
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://docs.google.com/forms/d/e/1FAIpQLSeGD7JKmORPoIZufGhZjy0V66cTHzlFH1mdOjlgOtgQ_BRw7A/viewform" alt="Feedback QR Code" class="w-28 h-28 sm:w-36 sm:h-36 lg:w-40 lg:h-40 rounded-2xl sm:rounded-3xl bg-white p-3 sm:p-4 mb-3 sm:mb-4">
+                <p class="text-lg sm:text-xl lg:text-2xl font-semibold tracking-tight">回饋表單</p>
+                <p class="text-apple-gray text-sm sm:text-base mt-1 sm:mt-2">歡迎填寫意見</p>
             </div>
         </div>
 
-        <div class="flex gap-5 animate-item">
-            <a href="https://github.com/nrps9909/CCAdventure" target="_blank" class="btn-secondary px-10 py-4 font-medium flex items-center gap-3 text-lg">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+        <div class="flex flex-col sm:flex-row gap-3 sm:gap-5 w-full sm:w-auto animate-item">
+            <a href="https://github.com/nrps9909/CCAdventure" target="_blank" class="btn-secondary px-6 sm:px-10 py-3 sm:py-4 font-medium flex items-center justify-center gap-2 sm:gap-3 text-sm sm:text-lg">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" class="sm:w-[22px] sm:h-[22px]">
                     <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
                 </svg>
                 GitHub
             </a>
-            <button onclick="window.open('https://jesse-chen.com', '_blank')" class="btn-primary px-12 py-4 text-lg font-semibold">
+            <button onclick="window.open('https://jesse-chen.com', '_blank')" class="btn-primary px-8 sm:px-12 py-3 sm:py-4 text-sm sm:text-lg font-semibold">
                 Start Adventure
             </button>
         </div>
