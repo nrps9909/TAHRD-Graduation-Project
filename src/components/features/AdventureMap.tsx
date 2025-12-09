@@ -77,17 +77,17 @@ const AdventureMap: React.FC<AdventureMapProps> = ({ onStartLevel }) => {
         <p className="text-apple-gray-300 mb-5 sm:mb-8 text-sm sm:text-lg">
           踏上 Vibe Coding 的冒險之旅
         </p>
-        <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
           <button
             onClick={() => setShowSetupGuide(true)}
-            className="inline-flex items-center gap-1.5 sm:gap-2 px-5 sm:px-7 py-3 sm:py-3.5 bg-apple-gray-700 text-white rounded-full hover:bg-apple-gray-600 transition-all duration-300 text-sm sm:text-base font-medium border border-white/10"
+            className="inline-flex items-center justify-center gap-1.5 sm:gap-2 px-5 sm:px-7 py-3 sm:py-3.5 bg-apple-gray-700 text-white rounded-full hover:bg-apple-gray-600 transition-all duration-300 text-sm sm:text-base font-medium border border-white/10 w-full sm:w-auto"
           >
             <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
             <span>環境架設教學</span>
           </button>
           <Link
             to="/playground"
-            className="inline-flex items-center gap-1.5 sm:gap-2 px-5 sm:px-7 py-3 sm:py-3.5 bg-apple-blue text-white rounded-full hover:bg-apple-blue-light transition-all duration-300 text-sm sm:text-base font-medium"
+            className="inline-flex items-center justify-center gap-1.5 sm:gap-2 px-5 sm:px-7 py-3 sm:py-3.5 bg-apple-blue text-white rounded-full hover:bg-apple-blue-light transition-all duration-300 text-sm sm:text-base font-medium w-full sm:w-auto"
           >
             <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
             <span>Playground 體驗區</span>
