@@ -238,8 +238,9 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
 
       const typeInterval = setInterval(() => {
         if (charIndex < response.length) {
-          setDisplayedResponse(response.slice(0, charIndex + 1))
-          charIndex++
+          // 每次顯示 3 個字元，加速打字效果
+          charIndex = Math.min(charIndex + 3, response.length)
+          setDisplayedResponse(response.slice(0, charIndex))
         } else {
           clearInterval(typeInterval)
           if (output.codeOutput) {
@@ -248,7 +249,7 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
             setIsTyping(false)
           }
         }
-      }, 15)
+      }, 10)
 
       return () => clearInterval(typeInterval)
     } else if (output && showOutput && !showTypingEffect) {
@@ -259,6 +260,13 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
   }, [currentOutput, simulatedOutput, showOutput, showTypingEffect])
 
   const typeCode = (code: string) => {
+    // 如果程式碼超過 500 字元，直接顯示不用打字效果
+    if (code.length > 500) {
+      setDisplayedCode(code)
+      setIsTyping(false)
+      return
+    }
+
     let charIndex = 0
     const codeInterval = setInterval(() => {
       if (charIndex < code.length) {
@@ -268,7 +276,7 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
         clearInterval(codeInterval)
         setIsTyping(false)
       }
-    }, 8)
+    }, 5) // 加速打字效果
   }
 
   // 自動滾動
