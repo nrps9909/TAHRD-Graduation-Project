@@ -53,6 +53,10 @@ jobs:
             set -e
             cd /home/jesse
 
+            echo "========================================="
+            echo "1. 設置網站目錄..."
+            echo "========================================="
+
             # 建立網站目錄
             sudo mkdir -p /var/www/jesse-chen.com
             sudo chown jesse:jesse /var/www/jesse-chen.com
@@ -65,6 +69,45 @@ jobs:
             rm deploy.tar.gz
 
             echo "========================================="
-            echo "Deployment complete!"
-            ls -la /var/www/jesse-chen.com/
+            echo "2. 配置 Nginx..."
             echo "========================================="
+
+            # 停止 Docker 容器（如果存在）
+            cd /home/jesse/heart-whisper-town 2>/dev/null && docker compose -f docker-compose.production-prebuilt.yml down 2>/dev/null || true
+
+            # 建立 nginx 配置
+            sudo tee /etc/nginx/sites-available/jesse-chen.com > /dev/null << 'NGINX_CONF'
+            server {
+                listen 80;
+                server_name jesse-chen.com www.jesse-chen.com;
+
+                root /var/www/jesse-chen.com;
+                index index.html;
+
+                # Gzip 壓縮
+                gzip on;
+                gzip_types text/plain text/css application/json application/javascript text/xml application/xml;
+
+                # SPA 路由支持
+                location / {
+                    try_files $uri $uri/ /index.html;
+                }
+
+                # 靜態資源快取
+                location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2)$ {
+                    expires 1y;
+                    add_header Cache-Control "public, immutable";
+                }
+            }
+            NGINX_CONF
+
+            # 啟用網站
+            sudo ln -sf /etc/nginx/sites-available/jesse-chen.com /etc/nginx/sites-enabled/
+
+            # 測試並重載 nginx
+            sudo nginx -t && sudo systemctl reload nginx
+
+            echo "========================================="
+            echo "3. 部署完成！"
+            echo "========================================="
+            ls -la /var/www/jesse-chen.com/
