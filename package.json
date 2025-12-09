@@ -21,9 +21,7 @@
     "lint-staged": "lint-staged",
     "pre-commit": "npm run lint:fix && npm run format",
     "build:analyze": "npm run build && npx vite-bundle-analyzer dist",
-    "prepare": "husky",
-    "cat-animate": "node live2d-converter/cat-animator.cjs",
-    "cat-preview": "node live2d-converter/cat-server.cjs"
+    "prepare": "husky"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
@@ -37,9 +35,6 @@
     "express": "^4.21.2",
     "framer-motion": "^12.23.12",
     "lucide-react": "^0.544.0",
-    "mongoose": "8.18.2",
-    "pixi-live2d-display": "^0.4.0",
-    "pixi.js": "^6.5.10",
     "prism-react-renderer": "^2.4.1",
     "prismjs": "^1.30.0",
     "react": "^19.1.1",

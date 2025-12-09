@@ -6,7 +6,6 @@ import { useGameStore } from '@/store/gameStore'
 import CodeChallenge from '@/components/features/CodeChallenge'
 import InteractiveDemo from '@/components/features/InteractiveDemo'
 import WSLSetupGuide from '@/components/features/WSLSetupGuide'
-import InteractiveLesson from '@/components/features/InteractiveLesson'
 import MissionPage from '@/components/features/MissionPage'
 
 interface SceneRendererProps {
@@ -42,9 +41,6 @@ const SceneRenderer = ({ sceneId }: SceneRendererProps) => {
     )
   }
 
-  // Use InteractiveLesson for all tutorial scenes
-  const useInteractiveMode = scene?.type === 'tutorial'
-
   if (!scene) {
     return (
       <div className="text-center py-20">
@@ -66,11 +62,6 @@ const SceneRenderer = ({ sceneId }: SceneRendererProps) => {
         navigateToScene(scene.nextScene!)
       }, 1500)
     }
-  }
-
-  // If it's a tutorial, use the interactive lesson component
-  if (useInteractiveMode) {
-    return <InteractiveLesson sceneId={sceneId} />
   }
 
   return (

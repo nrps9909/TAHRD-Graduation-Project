@@ -1,6 +1,15 @@
-import React, { useRef, useEffect, memo, useCallback, useMemo } from 'react'
+import React, { useRef, useEffect, memo, useCallback, useMemo, useState } from 'react'
 import { Highlight, themes } from 'prism-react-renderer'
-import { useDebounce } from '@/hooks/usePerformance'
+
+// Simple useDebounce hook
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value)
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedValue(value), delay)
+    return () => clearTimeout(timer)
+  }, [value, delay])
+  return debouncedValue
+}
 
 interface CodeEditorProps {
   value: string

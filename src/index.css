@@ -47,7 +47,16 @@
   /* Paragraphs and text - Apple style */
   p, span, div, li {
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', 'Noto Sans TC', sans-serif;
+  }
+
+  /* Default text color for standalone text elements */
+  p, li {
     color: #86868b;
+  }
+
+  /* Span and div should inherit color from parent (for buttons, links, etc.) */
+  span, div {
+    color: inherit;
   }
 
   /* Links - Apple blue */
