@@ -86,7 +86,7 @@ const GameLayout: React.FC<GameLayoutProps> = ({ triggerFeedback }) => {
   }
 
   return (
-    <div className="h-screen flex bg-retro-bg overflow-hidden max-h-screen">
+    <div className="h-screen flex bg-bg-primary overflow-hidden max-h-screen">
       {/* 學習地圖側邊欄 - 只在當前課程頁面顯示 */}
       {currentView === 'lesson' && (
         <Suspense fallback={null}>
@@ -100,20 +100,20 @@ const GameLayout: React.FC<GameLayoutProps> = ({ triggerFeedback }) => {
       )}
 
       <div className="flex-1 flex flex-col h-screen">
-        <header className="border-b border-cat-pink/50 p-4 flex-shrink-0">
+        <header className="border-b border-border-primary p-4 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <h1 className="font-pixel text-text-primary font-semibold chinese-text">
                   萬中選一的AI Coding奇才
                 </h1>
-                <div className="flex bg-cat-pink/20 backdrop-blur rounded-lg p-1">
+                <div className="flex bg-bg-tertiary rounded-lg p-1">
                   <button
                     onClick={() => setCurrentView('lesson')}
                     className={`px-3 py-1 rounded text-xs flex items-center gap-1 transition-colors ${
                       currentView === 'lesson'
-                        ? 'bg-cat-pink text-text-primary'
-                        : 'text-text-secondary hover:text-text-primary hover:bg-cat-pink/40'
+                        ? 'bg-accent text-white'
+                        : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
                     }`}
                   >
                     <BookOpen size={12} />
@@ -123,8 +123,8 @@ const GameLayout: React.FC<GameLayoutProps> = ({ triggerFeedback }) => {
                     onClick={() => setCurrentView('chat')}
                     className={`px-3 py-1 rounded text-xs flex items-center gap-1 transition-colors ${
                       currentView === 'chat'
-                        ? 'bg-cat-pink text-text-primary'
-                        : 'text-text-secondary hover:text-text-primary hover:bg-cat-pink/40'
+                        ? 'bg-accent text-white'
+                        : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
                     }`}
                   >
                     <MessageCircle size={12} />
@@ -134,8 +134,8 @@ const GameLayout: React.FC<GameLayoutProps> = ({ triggerFeedback }) => {
                     onClick={() => setCurrentView('workspace')}
                     className={`px-3 py-1 rounded text-xs flex items-center gap-1 transition-colors ${
                       currentView === 'workspace'
-                        ? 'bg-cat-pink text-text-primary'
-                        : 'text-text-secondary hover:text-text-primary hover:bg-cat-pink/40'
+                        ? 'bg-accent text-white'
+                        : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
                     }`}
                   >
                     <FolderOpen size={12} />
@@ -149,7 +149,7 @@ const GameLayout: React.FC<GameLayoutProps> = ({ triggerFeedback }) => {
                 {playerName}
               </span>
               {selectedOS && (
-                <span className="px-2 py-1 bg-cat-cream text-text-primary rounded text-xs font-mono font-medium">
+                <span className="px-2 py-1 bg-bg-tertiary text-text-primary rounded text-xs font-mono font-medium border border-border-primary">
                   {selectedOS === 'windows' ? '🪟 Windows' : '🍎 macOS'}
                 </span>
               )}
@@ -180,7 +180,7 @@ const GameLayout: React.FC<GameLayoutProps> = ({ triggerFeedback }) => {
               </motion.div>
 
               {/* 右側終端機 */}
-              <div className="hidden lg:flex w-[400px] xl:w-[450px] border-l border-cat-pink/30 h-full overflow-hidden bg-gradient-to-b from-cat-cream/20 to-white/20">
+              <div className="hidden lg:flex w-[400px] xl:w-[450px] border-l border-border-primary h-full overflow-hidden bg-bg-secondary">
                 {sharedGeminiCLI}
               </div>
             </div>

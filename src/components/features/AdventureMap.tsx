@@ -56,7 +56,7 @@ const AdventureMap: React.FC<AdventureMapProps> = ({ onStartLevel }) => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-indigo-900 via-purple-900 to-indigo-900 p-6">
+    <div className="min-h-screen bg-bg-primary p-6">
       {/* 標題區域 */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
@@ -66,12 +66,12 @@ const AdventureMap: React.FC<AdventureMapProps> = ({ onStartLevel }) => {
         <h1 className="text-4xl font-bold text-white mb-2 chinese-text">
           Claude Code Adventure
         </h1>
-        <p className="text-purple-200 mb-4 chinese-text">
+        <p className="text-text-secondary mb-4 chinese-text">
           踏上 Vibe Coding 的冒險之旅
         </p>
         <Link
           to="/playground"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg hover:from-amber-600 hover:to-orange-600 transition-all shadow-lg"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-all shadow-lg"
         >
           <Sparkles className="w-4 h-4" />
           <span className="chinese-text">Playground 體驗區</span>
@@ -82,30 +82,30 @@ const AdventureMap: React.FC<AdventureMapProps> = ({ onStartLevel }) => {
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="max-w-2xl mx-auto mb-8 bg-white/10 backdrop-blur rounded-2xl p-6"
+        className="max-w-2xl mx-auto mb-8 bg-bg-tertiary border border-border-primary rounded-2xl p-6"
       >
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <Trophy className="w-8 h-8 text-yellow-400" />
+            <Trophy className="w-8 h-8 text-accent" />
             <div>
               <h2 className="text-xl font-bold text-white chinese-text">
                 冒險進度
               </h2>
-              <p className="text-purple-200 text-sm chinese-text">
+              <p className="text-text-secondary text-sm chinese-text">
                 {completedCount} / {totalScenes} 場景完成
               </p>
             </div>
           </div>
-          <div className="text-3xl font-bold text-yellow-400">
+          <div className="text-3xl font-bold text-accent">
             {overallProgress}%
           </div>
         </div>
-        <div className="h-3 bg-white/20 rounded-full overflow-hidden">
+        <div className="h-3 bg-bg-hover rounded-full overflow-hidden">
           <motion.div
             initial={{ width: 0 }}
             animate={{ width: `${overallProgress}%` }}
             transition={{ duration: 1, ease: 'easeOut' }}
-            className="h-full bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full"
+            className="h-full bg-accent rounded-full"
           />
         </div>
       </motion.div>
@@ -127,7 +127,7 @@ const AdventureMap: React.FC<AdventureMapProps> = ({ onStartLevel }) => {
                 y1={`${index * 140 + 80}px`}
                 x2="50%"
                 y2={`${(index + 1) * 140 + 20}px`}
-                stroke={isCompleted ? '#fbbf24' : '#6b7280'}
+                stroke={isCompleted ? '#10a37f' : '#424242'}
                 strokeWidth="4"
                 strokeDasharray={isCompleted ? '0' : '8 8'}
                 initial={{ pathLength: 0 }}
@@ -163,19 +163,19 @@ const AdventureMap: React.FC<AdventureMapProps> = ({ onStartLevel }) => {
                     onClick={() => handleLevelClick(index, stage.isAvailable)}
                     className={`inline-block p-4 rounded-xl cursor-pointer transition-all ${
                       stage.isCompleted
-                        ? 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 border-2 border-green-400'
+                        ? 'bg-accent/10 border-2 border-accent'
                         : stage.isCurrent
-                          ? 'bg-gradient-to-r from-purple-500/20 to-pink-500/20 border-2 border-purple-400 animate-pulse'
+                          ? 'bg-bg-tertiary border-2 border-accent animate-pulse'
                           : stage.isAvailable
-                            ? 'bg-white/10 border-2 border-white/30 hover:border-purple-400'
-                            : 'bg-gray-800/50 border-2 border-gray-600 opacity-50 cursor-not-allowed'
+                            ? 'bg-bg-tertiary border-2 border-border-secondary hover:border-accent'
+                            : 'bg-bg-secondary border-2 border-border-primary opacity-50 cursor-not-allowed'
                     }`}
                   >
                     <div
                       className={`flex items-center gap-2 ${isEven ? 'justify-end' : 'justify-start'}`}
                     >
                       {stage.isBoss && (
-                        <Crown className="w-5 h-5 text-yellow-400" />
+                        <Crown className="w-5 h-5 text-accent" />
                       )}
                       <span className="text-lg font-bold text-white chinese-text">
                         Level {level.level}
@@ -184,25 +184,21 @@ const AdventureMap: React.FC<AdventureMapProps> = ({ onStartLevel }) => {
                     <h3 className="text-white font-semibold mt-1 chinese-text">
                       {level.title}
                     </h3>
-                    <p className="text-purple-200 text-sm mt-1 chinese-text">
+                    <p className="text-text-secondary text-sm mt-1 chinese-text">
                       {level.description}
                     </p>
 
                     {/* 進度條 */}
                     {stage.isAvailable && (
                       <div className="mt-3">
-                        <div className="h-2 bg-white/20 rounded-full overflow-hidden">
+                        <div className="h-2 bg-bg-hover rounded-full overflow-hidden">
                           <motion.div
                             initial={{ width: 0 }}
                             animate={{ width: `${stage.progress}%` }}
-                            className={`h-full rounded-full ${
-                              stage.isCompleted
-                                ? 'bg-green-400'
-                                : 'bg-purple-400'
-                            }`}
+                            className="h-full rounded-full bg-accent"
                           />
                         </div>
-                        <p className="text-xs text-purple-300 mt-1">
+                        <p className="text-xs text-text-muted mt-1">
                           {stage.progress}% 完成
                         </p>
                       </div>
@@ -217,18 +213,18 @@ const AdventureMap: React.FC<AdventureMapProps> = ({ onStartLevel }) => {
                   onClick={() => handleLevelClick(index, stage.isAvailable)}
                   className={`w-20 h-20 rounded-full flex items-center justify-center cursor-pointer transition-all ${
                     stage.isCompleted
-                      ? 'bg-gradient-to-br from-green-400 to-emerald-500 shadow-lg shadow-green-500/50'
+                      ? 'bg-accent shadow-lg shadow-accent/30'
                       : stage.isCurrent
-                        ? 'bg-gradient-to-br from-purple-400 to-pink-500 shadow-lg shadow-purple-500/50 animate-pulse'
+                        ? 'bg-accent shadow-lg shadow-accent/30 animate-pulse'
                         : stage.isAvailable
-                          ? 'bg-gradient-to-br from-gray-400 to-gray-500 hover:from-purple-400 hover:to-pink-500'
-                          : 'bg-gray-700 cursor-not-allowed'
+                          ? 'bg-bg-tertiary border-2 border-border-secondary hover:border-accent hover:bg-bg-hover'
+                          : 'bg-bg-secondary cursor-not-allowed'
                   }`}
                 >
                   {stage.isCompleted ? (
                     <CheckCircle className="w-10 h-10 text-white" />
                   ) : !stage.isAvailable ? (
-                    <Lock className="w-8 h-8 text-gray-400" />
+                    <Lock className="w-8 h-8 text-text-muted" />
                   ) : stage.isBoss ? (
                     <Crown className="w-10 h-10 text-white" />
                   ) : (
@@ -258,7 +254,7 @@ const AdventureMap: React.FC<AdventureMapProps> = ({ onStartLevel }) => {
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.8, opacity: 0 }}
-              className="bg-gradient-to-br from-gray-900 to-purple-900 rounded-2xl p-6 max-w-md w-full border border-purple-500/30"
+              className="bg-bg-secondary rounded-2xl p-6 max-w-md w-full border border-border-primary"
               onClick={e => e.stopPropagation()}
             >
               {(() => {
@@ -271,42 +267,42 @@ const AdventureMap: React.FC<AdventureMapProps> = ({ onStartLevel }) => {
                       <h3 className="text-2xl font-bold text-white chinese-text">
                         Level {level.level}：{level.title}
                       </h3>
-                      <p className="text-purple-200 mt-2 chinese-text">
+                      <p className="text-text-secondary mt-2 chinese-text">
                         {level.description}
                       </p>
                     </div>
 
                     {/* 進度 */}
-                    <div className="bg-white/10 rounded-xl p-4 mb-4">
+                    <div className="bg-bg-tertiary rounded-xl p-4 mb-4 border border-border-primary">
                       <div className="flex justify-between text-sm mb-2">
-                        <span className="text-purple-200">進度</span>
+                        <span className="text-text-secondary">進度</span>
                         <span className="text-white font-bold">
                           {stage.progress}%
                         </span>
                       </div>
-                      <div className="h-2 bg-white/20 rounded-full overflow-hidden">
+                      <div className="h-2 bg-bg-hover rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-gradient-to-r from-purple-400 to-pink-500 rounded-full"
+                          className="h-full bg-accent rounded-full"
                           style={{ width: `${stage.progress}%` }}
                         />
                       </div>
                     </div>
 
                     {/* 獎勵 */}
-                    <div className="bg-white/10 rounded-xl p-4 mb-6">
+                    <div className="bg-bg-tertiary rounded-xl p-4 mb-6 border border-border-primary">
                       <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
-                        <Star className="w-5 h-5 text-yellow-400" />
+                        <Star className="w-5 h-5 text-accent" />
                         完成獎勵
                       </h4>
                       <div className="flex items-center gap-4">
                         <div className="flex items-center gap-2">
-                          <Zap className="w-5 h-5 text-yellow-400" />
+                          <Zap className="w-5 h-5 text-accent" />
                           <span className="text-white">
                             {level.level * 200} 分
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Trophy className="w-5 h-5 text-yellow-400" />
+                          <Trophy className="w-5 h-5 text-accent" />
                           <span className="text-white chinese-text">
                             {level.badge}
                           </span>
@@ -318,13 +314,13 @@ const AdventureMap: React.FC<AdventureMapProps> = ({ onStartLevel }) => {
                     <div className="flex gap-3">
                       <button
                         onClick={() => setSelectedLevel(null)}
-                        className="flex-1 py-3 bg-white/10 text-white rounded-xl font-semibold hover:bg-white/20 transition-colors chinese-text"
+                        className="flex-1 py-3 bg-bg-tertiary text-white rounded-xl font-semibold hover:bg-bg-hover transition-colors border border-border-primary chinese-text"
                       >
                         返回
                       </button>
                       <button
                         onClick={() => handleStartLevel(selectedLevel)}
-                        className="flex-1 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-semibold hover:from-purple-600 hover:to-pink-600 transition-all flex items-center justify-center gap-2 chinese-text"
+                        className="flex-1 py-3 bg-accent text-white rounded-xl font-semibold hover:bg-accent-hover transition-all flex items-center justify-center gap-2 chinese-text"
                       >
                         <Play className="w-5 h-5" />
                         {stage.progress > 0 ? '繼續冒險' : '開始冒險'}

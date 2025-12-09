@@ -190,19 +190,19 @@ const Playground: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 via-purple-900 to-gray-900">
+    <div className="min-h-screen bg-bg-primary">
       {/* 導航列 */}
-      <nav className="bg-black/30 backdrop-blur border-b border-white/10 px-6 py-4">
+      <nav className="bg-bg-secondary border-b border-border-primary px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <Link
             to="/"
-            className="flex items-center gap-2 text-white hover:text-purple-300 transition-colors"
+            className="flex items-center gap-2 text-text-primary hover:text-accent transition-colors"
           >
             <ArrowLeft size={20} />
             <span className="chinese-text">返回冒險地圖</span>
           </Link>
           <h1 className="text-xl font-bold text-white flex items-center gap-2">
-            <Sparkles className="w-6 h-6 text-purple-400" />
+            <Sparkles className="w-6 h-6 text-accent" />
             Claude Playground
           </h1>
           <div className="w-24"></div>
@@ -217,13 +217,13 @@ const Playground: React.FC = () => {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-white/10 backdrop-blur rounded-xl p-6"
+              className="bg-bg-tertiary border border-border-primary rounded-xl p-6"
             >
               <h2 className="text-xl font-bold text-white mb-3 flex items-center gap-2">
-                <Lightbulb className="w-5 h-5 text-yellow-400" />
+                <Lightbulb className="w-5 h-5 text-accent" />
                 什麼是 Playground？
               </h2>
-              <p className="text-purple-200 text-sm leading-relaxed chinese-text">
+              <p className="text-text-secondary text-sm leading-relaxed chinese-text">
                 這是一個模擬環境，讓你體驗用自然語言請求程式碼的感覺。選擇範例或輸入你的需求，看看
                 Claude 會如何回應！
               </p>
@@ -234,10 +234,10 @@ const Playground: React.FC = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="bg-white/10 backdrop-blur rounded-xl p-6"
+              className="bg-bg-tertiary border border-border-primary rounded-xl p-6"
             >
               <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                <BookOpen className="w-5 h-5 text-purple-400" />
+                <BookOpen className="w-5 h-5 text-accent" />
                 選擇範例
               </h2>
 
@@ -247,8 +247,8 @@ const Playground: React.FC = () => {
                   onClick={() => setSelectedCategory(null)}
                   className={`px-3 py-1 rounded-full text-sm transition-colors ${
                     selectedCategory === null
-                      ? 'bg-purple-500 text-white'
-                      : 'bg-white/10 text-white/70 hover:bg-white/20'
+                      ? 'bg-accent text-white'
+                      : 'bg-bg-hover text-text-secondary hover:text-text-primary'
                   }`}
                 >
                   全部
@@ -259,8 +259,8 @@ const Playground: React.FC = () => {
                     onClick={() => setSelectedCategory(cat)}
                     className={`px-3 py-1 rounded-full text-sm transition-colors ${
                       selectedCategory === cat
-                        ? 'bg-purple-500 text-white'
-                        : 'bg-white/10 text-white/70 hover:bg-white/20'
+                        ? 'bg-accent text-white'
+                        : 'bg-bg-hover text-text-secondary hover:text-text-primary'
                     }`}
                   >
                     {categoryInfo[cat].icon} {categoryInfo[cat].name}
@@ -274,8 +274,8 @@ const Playground: React.FC = () => {
                   onClick={() => handleExampleSelect('hello-world')}
                   className={`w-full p-3 rounded-lg text-left transition-all ${
                     selectedExample === 'hello-world'
-                      ? 'bg-purple-500 text-white'
-                      : 'bg-white/5 text-white/80 hover:bg-white/10'
+                      ? 'bg-accent text-white'
+                      : 'bg-bg-hover text-text-primary hover:bg-bg-secondary'
                   }`}
                 >
                   <div className="font-semibold">Hello World</div>
@@ -287,8 +287,8 @@ const Playground: React.FC = () => {
                   onClick={() => handleExampleSelect('calculator')}
                   className={`w-full p-3 rounded-lg text-left transition-all ${
                     selectedExample === 'calculator'
-                      ? 'bg-purple-500 text-white'
-                      : 'bg-white/5 text-white/80 hover:bg-white/10'
+                      ? 'bg-accent text-white'
+                      : 'bg-bg-hover text-text-primary hover:bg-bg-secondary'
                   }`}
                 >
                   <div className="font-semibold">計算機</div>
@@ -300,8 +300,8 @@ const Playground: React.FC = () => {
                   onClick={() => handleExampleSelect('todo-app')}
                   className={`w-full p-3 rounded-lg text-left transition-all ${
                     selectedExample === 'todo-app'
-                      ? 'bg-purple-500 text-white'
-                      : 'bg-white/5 text-white/80 hover:bg-white/10'
+                      ? 'bg-accent text-white'
+                      : 'bg-bg-hover text-text-primary hover:bg-bg-secondary'
                   }`}
                 >
                   <div className="font-semibold">待辦事項 App</div>
@@ -317,7 +317,7 @@ const Playground: React.FC = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="bg-white/10 backdrop-blur rounded-xl p-6"
+              className="bg-bg-tertiary border border-border-primary rounded-xl p-6"
             >
               <h2 className="text-lg font-bold text-white mb-4">
                 或是輸入你的需求
@@ -326,12 +326,12 @@ const Playground: React.FC = () => {
                 value={customInput}
                 onChange={e => setCustomInput(e.target.value)}
                 placeholder="例如：幫我做一個倒數計時器..."
-                className="w-full h-24 bg-white/10 text-white rounded-lg p-3 text-sm placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                className="w-full h-24 bg-bg-hover text-text-primary rounded-lg p-3 text-sm placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent resize-none border border-border-primary"
               />
               <button
                 onClick={handleCustomSubmit}
                 disabled={!customInput.trim()}
-                className="mt-3 w-full py-2 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed chinese-text"
+                className="mt-3 w-full py-2 bg-accent text-white rounded-lg font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed chinese-text"
               >
                 送出請求
               </button>
@@ -353,13 +353,13 @@ const Playground: React.FC = () => {
             />
 
             {/* 提示 */}
-            <div className="mt-4 p-4 bg-yellow-500/20 rounded-xl border border-yellow-500/30">
-              <p className="text-yellow-200 text-sm chinese-text">
+            <div className="mt-4 p-4 bg-accent/20 rounded-xl border border-accent/30">
+              <p className="text-text-primary text-sm chinese-text">
                 💡
                 這是模擬環境，使用預設的回應。想要學習完整的 Vibe Coding 技巧，請前往{' '}
                 <Link
                   to="/"
-                  className="underline hover:text-yellow-100"
+                  className="underline text-accent hover:text-accent-hover"
                 >
                   冒險地圖
                 </Link>{' '}

@@ -70,7 +70,7 @@ function AppContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-indigo-900 via-purple-900 to-indigo-900 font-display">
+    <div className="min-h-screen bg-bg-primary font-sans">
       <AnimatePresence mode="wait">
         <Routes>
           {/* 首頁 - 冒險地圖 */}

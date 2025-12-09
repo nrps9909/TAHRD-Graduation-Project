@@ -78,7 +78,7 @@ const LearningPathSidebar: React.FC<LearningPathSidebarProps> = ({
       {/* 浮動開關按鈕 */}
       <motion.button
         onClick={onToggle}
-        className={`fixed ${isOpen ? 'left-80' : 'left-4'} top-1/2 -translate-y-1/2 z-[101] bg-gradient-to-r from-cat-pink to-cat-beige text-white p-3 rounded-r-full shadow-lg hover:shadow-xl transition-all duration-300`}
+        className={`fixed ${isOpen ? 'left-80' : 'left-4'} top-1/2 -translate-y-1/2 z-[101] bg-accent text-white p-3 rounded-r-full shadow-lg hover:bg-accent-hover transition-all duration-300`}
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
       >
@@ -118,53 +118,53 @@ const LearningPathSidebar: React.FC<LearningPathSidebarProps> = ({
                 stiffness: 300,
                 mass: 0.8,
               }}
-              className="fixed left-0 top-0 h-full w-80 bg-gradient-to-b from-cat-cream/98 to-white/98 backdrop-blur-xl border-r-4 border-cat-pink/50 z-[100] flex flex-col shadow-2xl"
+              className="fixed left-0 top-0 h-full w-80 bg-bg-secondary border-r border-border-primary z-[100] flex flex-col shadow-2xl"
             >
               {/* 標題區 */}
-              <div className="bg-gradient-to-r from-cat-pink to-cat-beige p-4 flex-shrink-0">
+              <div className="bg-bg-tertiary p-4 flex-shrink-0 border-b border-border-primary">
                 <div className="flex items-center justify-between">
                   <div>
                     <h2 className="text-xl font-bold text-white chinese-text flex items-center gap-2">
-                      <Map className="w-5 h-5" />
+                      <Map className="w-5 h-5 text-accent" />
                       學習地圖
                     </h2>
-                    <p className="text-sm text-white/90 mt-1 chinese-text">
-                      與貓咪老師一起冒險！
+                    <p className="text-sm text-text-secondary mt-1 chinese-text">
+                      開始你的 Coding 冒險！
                     </p>
                   </div>
                   <button
                     onClick={onToggle}
-                    className="text-white/80 hover:text-white transition-colors"
+                    className="text-text-secondary hover:text-text-primary transition-colors"
                   >
                     <ChevronLeft className="w-6 h-6" />
                   </button>
                 </div>
 
                 {/* 總進度 */}
-                <div className="mt-4 bg-white/20 rounded-lg p-3">
+                <div className="mt-4 bg-bg-hover rounded-lg p-3 border border-border-primary">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-white/90 text-sm chinese-text">
+                    <span className="text-text-secondary text-sm chinese-text">
                       總體進度
                     </span>
-                    <span className="text-white font-bold text-lg">
+                    <span className="text-accent font-bold text-lg">
                       {progressStats.progressPercentage}%
                     </span>
                   </div>
-                  <div className="bg-white/30 rounded-full h-2">
+                  <div className="bg-bg-tertiary rounded-full h-2">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{
                         width: `${progressStats.progressPercentage}%`,
                       }}
                       transition={{ duration: 1 }}
-                      className="bg-white rounded-full h-2"
+                      className="bg-accent rounded-full h-2"
                     />
                   </div>
                 </div>
               </div>
 
               {/* 學習階段列表 */}
-              <div className="flex-1 overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-cat-pink/50 scrollbar-track-transparent">
+              <div className="flex-1 overflow-y-auto p-4">
                 <div className="space-y-3">
                   {visualizationData.map((stage, index) => (
                     <motion.div
@@ -182,12 +182,12 @@ const LearningPathSidebar: React.FC<LearningPathSidebarProps> = ({
                       onClick={() => setSelectedStage(stage)}
                       className={`relative p-3 rounded-xl transition-all duration-200 ${
                         stage.isCompleted
-                          ? 'bg-cat-beige/20 border border-cat-beige/30 cursor-pointer hover:bg-cat-beige/30'
+                          ? 'bg-accent/10 border border-accent/30 cursor-pointer hover:bg-accent/20'
                           : stage.isCurrent
-                            ? 'bg-cat-pink/20 border border-cat-pink/30 shadow-md cursor-pointer'
+                            ? 'bg-bg-tertiary border border-accent shadow-md cursor-pointer'
                             : stage.isAvailable
-                              ? 'bg-white/50 border border-cat-cream/30 hover:shadow-md hover:bg-cat-cream/20 cursor-pointer'
-                              : 'bg-gray-100 border border-gray-200 opacity-60 cursor-not-allowed'
+                              ? 'bg-bg-tertiary border border-border-primary hover:border-border-secondary cursor-pointer'
+                              : 'bg-bg-primary border border-border-primary opacity-60 cursor-not-allowed'
                       }`}
                     >
                       {/* 階段圖標和狀態 */}
@@ -195,12 +195,12 @@ const LearningPathSidebar: React.FC<LearningPathSidebarProps> = ({
                         <div
                           className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
                             stage.isCompleted
-                              ? 'bg-cat-beige text-white'
+                              ? 'bg-accent text-white'
                               : stage.isCurrent
-                                ? 'bg-cat-pink text-white animate-pulse'
+                                ? 'bg-accent text-white animate-pulse'
                                 : stage.isAvailable
-                                  ? 'bg-cat-cream text-text-primary'
-                                  : 'bg-gray-300 text-gray-500'
+                                  ? 'bg-bg-hover text-text-primary'
+                                  : 'bg-bg-hover text-text-muted'
                           }`}
                         >
                           {stage.isCompleted ? (
@@ -219,17 +219,17 @@ const LearningPathSidebar: React.FC<LearningPathSidebarProps> = ({
                             </h4>
                             <div className="flex items-center gap-2 flex-wrap">
                               {stage.isCurrent && (
-                                <span className="bg-cat-pink text-white px-2 py-0.5 rounded-full text-xs font-bold chinese-text">
+                                <span className="bg-accent text-white px-2 py-0.5 rounded-full text-xs font-bold chinese-text">
                                   進行中
                                 </span>
                               )}
                               {stage.isCompleted && (
-                                <span className="bg-cat-beige text-white px-2 py-0.5 rounded-full text-xs font-bold chinese-text">
+                                <span className="bg-accent text-white px-2 py-0.5 rounded-full text-xs font-bold chinese-text">
                                   已完成 · 可重玩
                                 </span>
                               )}
                               {!stage.isAvailable && !stage.isCompleted && (
-                                <span className="bg-gray-400 text-white px-2 py-0.5 rounded-full text-xs font-bold chinese-text">
+                                <span className="bg-bg-hover text-text-muted px-2 py-0.5 rounded-full text-xs font-bold chinese-text">
                                   未解鎖
                                 </span>
                               )}
@@ -237,14 +237,14 @@ const LearningPathSidebar: React.FC<LearningPathSidebarProps> = ({
                           </div>
 
                           {stage.description && (
-                            <p className="text-xs text-gray-600 mb-2 chinese-text line-clamp-2">
+                            <p className="text-xs text-text-muted mb-2 chinese-text line-clamp-2">
                               {stage.description}
                             </p>
                           )}
 
                           {/* 迷你進度條 */}
                           {stage.progress > 0 && (
-                            <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
+                            <div className="w-full bg-bg-hover rounded-full h-1.5 mt-2">
                               <motion.div
                                 initial={{ width: 0 }}
                                 animate={{ width: `${stage.progress}%` }}
@@ -253,11 +253,7 @@ const LearningPathSidebar: React.FC<LearningPathSidebarProps> = ({
                                   delay: index * 0.02,
                                   ease: 'easeOut',
                                 }}
-                                className={`h-1.5 rounded-full ${
-                                  stage.isCompleted
-                                    ? 'bg-cat-beige'
-                                    : 'bg-cat-pink'
-                                }`}
+                                className="h-1.5 rounded-full bg-accent"
                               />
                             </div>
                           )}
@@ -269,10 +265,10 @@ const LearningPathSidebar: React.FC<LearningPathSidebarProps> = ({
               </div>
 
               {/* 底部統計 */}
-              <div className="p-4 bg-gradient-to-r from-cat-cream/50 to-cat-pink/20 border-t border-cat-pink/30 flex-shrink-0">
+              <div className="p-4 bg-bg-tertiary border-t border-border-primary flex-shrink-0">
                 <div className="grid grid-cols-3 gap-2 text-center">
                   <div>
-                    <p className="text-2xl font-bold text-cat-pink">
+                    <p className="text-2xl font-bold text-accent">
                       {progressStats.completedStages}
                     </p>
                     <p className="text-xs text-text-secondary chinese-text">
@@ -280,7 +276,7 @@ const LearningPathSidebar: React.FC<LearningPathSidebarProps> = ({
                     </p>
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-cat-beige">
+                    <p className="text-2xl font-bold text-accent">
                       {visualizationData.filter(s => s.isCurrent).length}
                     </p>
                     <p className="text-xs text-text-secondary chinese-text">
@@ -288,7 +284,7 @@ const LearningPathSidebar: React.FC<LearningPathSidebarProps> = ({
                     </p>
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-gray-400">
+                    <p className="text-2xl font-bold text-text-muted">
                       {progressStats.totalStages -
                         progressStats.completedStages -
                         visualizationData.filter(s => s.isCurrent).length}
@@ -322,12 +318,12 @@ const LearningPathSidebar: React.FC<LearningPathSidebarProps> = ({
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="fixed inset-x-4 top-1/2 -translate-y-1/2 max-w-md mx-auto bg-white rounded-2xl shadow-2xl z-[103] overflow-hidden"
+              className="fixed inset-x-4 top-1/2 -translate-y-1/2 max-w-md mx-auto bg-bg-secondary rounded-2xl shadow-2xl z-[103] overflow-hidden border border-border-primary"
             >
-              <div className="bg-gradient-to-r from-cat-pink to-cat-beige p-5">
+              <div className="bg-bg-tertiary p-5 border-b border-border-primary">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-white/30 rounded-full flex items-center justify-center">
+                    <div className="w-12 h-12 bg-accent/20 rounded-full flex items-center justify-center">
                       <span className="text-2xl">{selectedStage.icon}</span>
                     </div>
                     <h3 className="text-xl font-bold text-white chinese-text">
@@ -337,7 +333,7 @@ const LearningPathSidebar: React.FC<LearningPathSidebarProps> = ({
                   </div>
                   <button
                     onClick={() => setSelectedStage(null)}
-                    className="text-white/80 hover:text-white transition-colors"
+                    className="text-text-secondary hover:text-text-primary transition-colors"
                   >
                     <X className="w-6 h-6" />
                   </button>
@@ -347,23 +343,23 @@ const LearningPathSidebar: React.FC<LearningPathSidebarProps> = ({
               <div className="p-5 space-y-4">
                 {/* 章節描述 */}
                 <div>
-                  <p className="text-gray-700 chinese-text">
+                  <p className="text-text-secondary chinese-text">
                     {selectedStage.description}
                   </p>
                 </div>
 
                 {/* 學習內容 */}
                 <div>
-                  <h4 className="flex items-center gap-2 text-lg font-bold text-gray-800 mb-3 chinese-text">
-                    <BookOpen className="w-5 h-5 text-cat-pink" />
+                  <h4 className="flex items-center gap-2 text-lg font-bold text-white mb-3 chinese-text">
+                    <BookOpen className="w-5 h-5 text-accent" />
                     將會學到：
                   </h4>
                   <div className="space-y-2">
                     {selectedStage.skills.map(
                       (skill: string, index: number) => (
                         <div key={index} className="flex items-center gap-2">
-                          <div className="w-2 h-2 bg-cat-yellow rounded-full" />
-                          <span className="text-sm text-gray-600 chinese-text">
+                          <div className="w-2 h-2 bg-accent rounded-full" />
+                          <span className="text-sm text-text-secondary chinese-text">
                             {skill}
                           </span>
                         </div>
@@ -374,25 +370,25 @@ const LearningPathSidebar: React.FC<LearningPathSidebarProps> = ({
 
                 {/* 其他資訊 */}
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-cat-cream/30 rounded-lg p-3">
+                  <div className="bg-bg-tertiary rounded-lg p-3 border border-border-primary">
                     <div className="flex items-center gap-2 mb-1">
-                      <Clock className="w-4 h-4 text-cat-pink" />
-                      <span className="text-sm font-medium text-gray-700 chinese-text">
+                      <Clock className="w-4 h-4 text-accent" />
+                      <span className="text-sm font-medium text-text-secondary chinese-text">
                         預計時間
                       </span>
                     </div>
-                    <p className="text-lg font-bold text-gray-800">
+                    <p className="text-lg font-bold text-white">
                       {selectedStage.estimatedTime} 分鐘
                     </p>
                   </div>
-                  <div className="bg-cat-yellow/20 rounded-lg p-3">
+                  <div className="bg-bg-tertiary rounded-lg p-3 border border-border-primary">
                     <div className="flex items-center gap-2 mb-1">
-                      <Star className="w-4 h-4 text-cat-beige" />
-                      <span className="text-sm font-medium text-gray-700 chinese-text">
+                      <Star className="w-4 h-4 text-accent" />
+                      <span className="text-sm font-medium text-text-secondary chinese-text">
                         獎勵積分
                       </span>
                     </div>
-                    <p className="text-lg font-bold text-gray-800">
+                    <p className="text-lg font-bold text-white">
                       +{selectedStage.rewards.points}
                     </p>
                   </div>
@@ -402,7 +398,7 @@ const LearningPathSidebar: React.FC<LearningPathSidebarProps> = ({
                 <div className="flex gap-3 pt-2">
                   <button
                     onClick={() => setSelectedStage(null)}
-                    className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-300 transition-colors chinese-text"
+                    className="flex-1 bg-bg-tertiary text-text-primary py-3 rounded-xl font-bold hover:bg-bg-hover transition-colors border border-border-primary chinese-text"
                   >
                     關閉
                   </button>
@@ -412,7 +408,7 @@ const LearningPathSidebar: React.FC<LearningPathSidebarProps> = ({
                         handleStageClick(selectedStage)
                         setSelectedStage(null)
                       }}
-                      className="flex-1 bg-gradient-to-r from-cat-pink to-cat-beige text-white py-3 rounded-xl font-bold hover:shadow-lg transition-all chinese-text"
+                      className="flex-1 bg-accent text-white py-3 rounded-xl font-bold hover:bg-accent-hover transition-all chinese-text"
                     >
                       {selectedStage.isCompleted ? '重新學習' : '開始學習'}
                     </button>

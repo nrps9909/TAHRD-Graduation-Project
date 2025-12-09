@@ -27,42 +27,42 @@ const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
             initial={{ x: -300 }}
             animate={{ x: 0 }}
             exit={{ x: -300 }}
-            className="fixed left-0 top-0 h-full w-80 bg-cat-pink/20 backdrop-blur border-r border-cat-pink/50 z-50"
+            className="fixed left-0 top-0 h-full w-80 bg-bg-secondary border-r border-border-primary z-50"
           >
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-cute text-cat-pink-dark">
+                <h2 className="text-xl font-semibold text-text-primary">
                   學習進度
                 </h2>
                 <button
                   onClick={onToggle}
-                  className="text-cat-pink-dark hover:text-cat-purple-dark"
+                  className="text-text-secondary hover:text-text-primary"
                 >
                   <X className="w-6 h-6" />
                 </button>
               </div>
 
               <div className="space-y-6">
-                <div className="bg-cat-pink/30 backdrop-blur rounded-lg p-4 border border-cat-pink/40">
+                <div className="bg-bg-tertiary rounded-lg p-4 border border-border-primary">
                   <div className="flex items-center gap-3 mb-2">
-                    <Trophy className="w-5 h-5 text-cat-pink-dark" />
-                    <span className="font-cute text-sm text-cat-pink-dark">
+                    <Trophy className="w-5 h-5 text-accent" />
+                    <span className="text-sm text-text-secondary">
                       積分
                     </span>
                   </div>
-                  <p className="text-2xl font-cute text-text-primary">
+                  <p className="text-2xl font-semibold text-text-primary">
                     {totalScore}
                   </p>
                 </div>
 
-                <div className="bg-cat-cream/30 backdrop-blur rounded-lg p-4 border border-cat-yellow/40">
+                <div className="bg-bg-tertiary rounded-lg p-4 border border-border-primary">
                   <div className="flex items-center gap-3 mb-2">
-                    <BookOpen className="w-5 h-5 text-cat-beige" />
-                    <span className="font-cute text-sm text-text-primary">
+                    <BookOpen className="w-5 h-5 text-accent" />
+                    <span className="text-sm text-text-secondary">
                       課程進度
                     </span>
                   </div>
-                  <p className="font-cute text-text-primary">
+                  <p className="text-text-primary">
                     {completedScenes.length} / 9 已完成
                   </p>
                   <div className="mt-2 flex gap-1">
@@ -71,22 +71,22 @@ const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
                         key={i}
                         className={`w-8 h-2 rounded ${
                           i < completedScenes.length
-                            ? 'bg-cat-beige'
-                            : 'bg-cat-cream/50'
+                            ? 'bg-accent'
+                            : 'bg-bg-hover'
                         }`}
                       />
                     ))}
                   </div>
                 </div>
 
-                <div className="bg-cat-pink/30 backdrop-blur rounded-lg p-4 border border-cat-pink/40">
+                <div className="bg-bg-tertiary rounded-lg p-4 border border-border-primary">
                   <div className="flex items-center gap-3 mb-2">
-                    <Star className="w-5 h-5 text-cat-pink-dark" />
-                    <span className="font-cute text-sm text-cat-pink-dark">
+                    <Star className="w-5 h-5 text-accent" />
+                    <span className="text-sm text-text-secondary">
                       成就
                     </span>
                   </div>
-                  <p className="font-cute text-text-primary mb-3">
+                  <p className="text-text-primary mb-3">
                     {unlockedCount} / {achievements.length} 已解鎖
                   </p>
                   <div className="space-y-2">
@@ -95,16 +95,16 @@ const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
                         key={achievement.id}
                         className={`flex items-center gap-2 p-2 rounded ${
                           achievement.unlocked
-                            ? 'bg-cat-cream/30 border border-cat-yellow/50'
+                            ? 'bg-bg-hover border border-border-secondary'
                             : 'opacity-50'
                         }`}
                       >
                         <span className="text-2xl">{achievement.icon}</span>
                         <div className="flex-1">
-                          <p className="font-cute text-xs text-text-primary">
+                          <p className="text-xs text-text-primary">
                             {achievement.name}
                           </p>
-                          <p className="font-cute text-xs text-text-secondary">
+                          <p className="text-xs text-text-muted">
                             {achievement.description}
                           </p>
                         </div>
@@ -122,7 +122,7 @@ const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
                       onToggle()
                     }
                   }}
-                  className="retro-button w-full text-sm"
+                  className="btn-secondary w-full text-sm"
                 >
                   RESET GAME
                 </button>
