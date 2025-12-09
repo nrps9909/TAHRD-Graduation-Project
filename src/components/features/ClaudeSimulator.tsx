@@ -301,12 +301,6 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
     }
   }
 
-  const handleTryDemo = () => {
-    if (simulatedOutput) {
-      setInput(simulatedOutput.userInput)
-    }
-  }
-
   const activeOutput = currentOutput || simulatedOutput
 
   return (
@@ -428,17 +422,45 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
         ))}
 
         {/* 載入中 */}
-        {isLoading && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex items-center gap-3 text-gray-400"
-          >
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center flex-shrink-0">
-              <Loader2 size={16} className="text-white animate-spin" />
-            </div>
-            <span>Gemini 正在思考中...</span>
-          </motion.div>
+        {isLoading && currentOutput && (
+          <>
+            {/* 顯示使用者訊息 */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex gap-3"
+            >
+              <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
+                <span className="text-white text-sm">你</span>
+              </div>
+              <div className="flex-1">
+                <div className="bg-gray-800 rounded-lg p-3 text-gray-200 text-sm">
+                  {currentOutput.userInput}
+                </div>
+              </div>
+            </motion.div>
+
+            {/* AI 思考中 */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex gap-3"
+            >
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center flex-shrink-0">
+                <Loader2 size={16} className="text-white animate-spin" />
+              </div>
+              <div className="flex-1">
+                <div className="bg-gray-800 rounded-lg p-3 text-gray-400 text-sm flex items-center gap-2">
+                  <span>AI 正在思考中</span>
+                  <span className="flex gap-1">
+                    <span className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                    <span className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                    <span className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                  </span>
+                </div>
+              </div>
+            </motion.div>
+          </>
         )}
 
         {/* 錯誤訊息 */}
@@ -452,9 +474,9 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
           </motion.div>
         )}
 
-        {/* 使用者輸入和回應 */}
+        {/* 當前正在輸入的回應（只在 API 模式下顯示，且只顯示還沒加入歷史的訊息） */}
         <AnimatePresence>
-          {showOutput && activeOutput && !isLoading && (
+          {showOutput && activeOutput && !isLoading && !conversationHistory.some(h => h.userInput === activeOutput.userInput && h.claudeResponse === activeOutput.claudeResponse) && (
             <>
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
@@ -471,26 +493,22 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
                 </div>
               </motion.div>
 
-              {/* Claude/Gemini 回應 */}
+              {/* AI 回應 */}
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
                 className="flex gap-3"
               >
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                  apiAvailable
-                    ? 'bg-gradient-to-br from-amber-500 to-amber-600'
-                    : 'bg-gradient-to-br from-emerald-500 to-emerald-600'
-                }`}>
-                  <span className="text-white text-sm">{apiAvailable ? 'G' : 'C'}</span>
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center flex-shrink-0">
+                  <span className="text-white text-sm">AI</span>
                 </div>
                 <div className="flex-1 space-y-3">
                   {/* 文字回應 */}
                   <div className="bg-gray-800 rounded-lg p-3 text-gray-200 text-sm whitespace-pre-wrap">
                     {displayedResponse}
                     {isTyping && displayedCode === '' && (
-                      <span className="inline-block w-2 h-4 bg-emerald-500 ml-1 animate-pulse"></span>
+                      <span className="inline-block w-2 h-4 bg-amber-500 ml-1 animate-pulse"></span>
                     )}
                   </div>
 
@@ -508,7 +526,7 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
                             onClick={() => setShowPreview(!showPreview)}
                             className={`p-1.5 rounded transition-colors flex items-center gap-1 ${
                               showPreview
-                                ? 'bg-emerald-600 text-white'
+                                ? 'bg-amber-600 text-white'
                                 : 'bg-gray-700 hover:bg-gray-600'
                             }`}
                             title={showPreview ? '顯示程式碼' : '預覽結果'}
@@ -596,7 +614,7 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
                             )}
                           </Highlight>
                           {isTyping && (
-                            <span className="inline-block w-2 h-4 bg-emerald-500 ml-1 animate-pulse absolute bottom-4 right-4"></span>
+                            <span className="inline-block w-2 h-4 bg-amber-500 ml-1 animate-pulse absolute bottom-4 right-4"></span>
                           )}
                         </>
                       )}
@@ -609,7 +627,7 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ delay: 0.5 }}
-                      className="bg-emerald-900/30 border border-emerald-700/50 rounded-lg p-3 text-emerald-200 text-sm"
+                      className="bg-amber-900/30 border border-amber-700/50 rounded-lg p-3 text-amber-200 text-sm"
                     >
                       💡 {activeOutput.explanation}
                     </motion.div>
