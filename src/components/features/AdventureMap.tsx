@@ -11,10 +11,12 @@ import {
   Crown,
   Sparkles,
   ChevronRight,
+  Settings,
 } from 'lucide-react'
 import { useGameStore } from '@/store/gameStore'
 import { getClaudeCodeVisualization } from '@/data/unifiedLearningPath'
 import { claudeCodeLevels } from '@/data/claudeCodeScenes'
+import SetupGuide from './SetupGuide'
 
 interface AdventureMapProps {
   onStartLevel: (levelId: string, firstSceneId: string) => void
@@ -23,6 +25,7 @@ interface AdventureMapProps {
 const AdventureMap: React.FC<AdventureMapProps> = ({ onStartLevel }) => {
   const { completedScenes } = useGameStore()
   const [selectedLevel, setSelectedLevel] = useState<number | null>(null)
+  const [showSetupGuide, setShowSetupGuide] = useState(false)
 
   const visualizationData = getClaudeCodeVisualization(completedScenes)
 
@@ -74,14 +77,23 @@ const AdventureMap: React.FC<AdventureMapProps> = ({ onStartLevel }) => {
         <p className="text-apple-gray-300 mb-5 sm:mb-8 text-sm sm:text-lg">
           踏上 Vibe Coding 的冒險之旅
         </p>
-        <Link
-          to="/playground"
-          className="inline-flex items-center gap-1.5 sm:gap-2 px-5 sm:px-7 py-3 sm:py-3.5 bg-apple-blue text-white rounded-full hover:bg-apple-blue-light transition-all duration-300 text-sm sm:text-base font-medium"
-        >
-          <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
-          <span>Playground 體驗區</span>
-          <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4" />
-        </Link>
+        <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4">
+          <button
+            onClick={() => setShowSetupGuide(true)}
+            className="inline-flex items-center gap-1.5 sm:gap-2 px-5 sm:px-7 py-3 sm:py-3.5 bg-apple-gray-700 text-white rounded-full hover:bg-apple-gray-600 transition-all duration-300 text-sm sm:text-base font-medium border border-white/10"
+          >
+            <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span>環境架設教學</span>
+          </button>
+          <Link
+            to="/playground"
+            className="inline-flex items-center gap-1.5 sm:gap-2 px-5 sm:px-7 py-3 sm:py-3.5 bg-apple-blue text-white rounded-full hover:bg-apple-blue-light transition-all duration-300 text-sm sm:text-base font-medium"
+          >
+            <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span>Playground 體驗區</span>
+            <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4" />
+          </Link>
+        </div>
       </motion.div>
 
       {/* 總進度卡片 */}
@@ -356,6 +368,9 @@ const AdventureMap: React.FC<AdventureMapProps> = ({ onStartLevel }) => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* 環境架設教學 */}
+      <SetupGuide isOpen={showSetupGuide} onClose={() => setShowSetupGuide(false)} />
     </div>
   )
 }
