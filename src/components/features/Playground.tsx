@@ -350,9 +350,10 @@ const Playground: React.FC = () => {
           >
             <ClaudeSimulator
               {...(currentSimulation ? { simulatedOutput: currentSimulation } : {})}
-              readOnly={true}
+              readOnly={false}
               showTypingEffect={true}
               placeholder="選擇左側的範例或輸入你的需求..."
+              useRealApi={true}
             />
 
             {/* 提示 */}

@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Send, Copy, Check, Sparkles, Terminal, Eye, Code } from 'lucide-react'
+import { Send, Copy, Check, Sparkles, Terminal, Eye, Code, Loader2, Zap } from 'lucide-react'
 import { Highlight, themes } from 'prism-react-renderer'
+import { generateCode, isApiAvailable } from '@/services/geminiApi'
 
 interface SimulatedOutput {
   userInput: string
   claudeResponse: string
-  codeOutput?: string
-  explanation?: string
+  codeOutput?: string | undefined
+  explanation?: string | undefined
 }
 
 interface ClaudeSimulatorProps {
@@ -16,6 +17,7 @@ interface ClaudeSimulatorProps {
   placeholder?: string
   readOnly?: boolean
   showTypingEffect?: boolean
+  useRealApi?: boolean
 }
 
 // 判斷程式碼類型
@@ -139,42 +141,49 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
   placeholder = '輸入你的請求...',
   readOnly = false,
   showTypingEffect = true,
+  useRealApi = false,
 }) => {
   const [input, setInput] = useState('')
   const [isTyping, setIsTyping] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
   const [displayedResponse, setDisplayedResponse] = useState('')
   const [displayedCode, setDisplayedCode] = useState('')
   const [showOutput, setShowOutput] = useState(false)
   const [copied, setCopied] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
+  const [currentOutput, setCurrentOutput] = useState<SimulatedOutput | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [conversationHistory, setConversationHistory] = useState<SimulatedOutput[]>([])
   const outputRef = useRef<HTMLDivElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
 
+  const apiAvailable = useRealApi && isApiAvailable()
+
   // 當 simulatedOutput 變更時，重置狀態
   useEffect(() => {
-    setInput('')
-    setIsTyping(false)
-    setDisplayedResponse('')
-    setDisplayedCode('')
-    setShowOutput(false)
-    setCopied(false)
-    setShowPreview(false)
-  }, [simulatedOutput?.userInput])
+    if (!useRealApi) {
+      setInput('')
+      setIsTyping(false)
+      setDisplayedResponse('')
+      setDisplayedCode('')
+      setShowOutput(false)
+      setCopied(false)
+      setShowPreview(false)
+      setCurrentOutput(null)
+      setError(null)
+    }
+  }, [simulatedOutput?.userInput, useRealApi])
 
   // 打字機效果
   useEffect(() => {
-    if (
-      simulatedOutput &&
-      showOutput &&
-      showTypingEffect &&
-      simulatedOutput.claudeResponse
-    ) {
+    const output = currentOutput || simulatedOutput
+    if (output && showOutput && showTypingEffect && output.claudeResponse) {
       setIsTyping(true)
       setDisplayedResponse('')
       setDisplayedCode('')
 
       let charIndex = 0
-      const response = simulatedOutput.claudeResponse
+      const response = output.claudeResponse
 
       const typeInterval = setInterval(() => {
         if (charIndex < response.length) {
@@ -183,8 +192,8 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
         } else {
           clearInterval(typeInterval)
           // 開始顯示程式碼
-          if (simulatedOutput.codeOutput) {
-            typeCode(simulatedOutput.codeOutput)
+          if (output.codeOutput) {
+            typeCode(output.codeOutput)
           } else {
             setIsTyping(false)
           }
@@ -192,12 +201,12 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
       }, 20)
 
       return () => clearInterval(typeInterval)
-    } else if (simulatedOutput && showOutput && !showTypingEffect) {
-      setDisplayedResponse(simulatedOutput.claudeResponse)
-      setDisplayedCode(simulatedOutput.codeOutput || '')
+    } else if (output && showOutput && !showTypingEffect) {
+      setDisplayedResponse(output.claudeResponse)
+      setDisplayedCode(output.codeOutput || '')
     }
     return undefined
-  }, [simulatedOutput, showOutput, showTypingEffect])
+  }, [currentOutput, simulatedOutput, showOutput, showTypingEffect])
 
   const typeCode = (code: string) => {
     let charIndex = 0
@@ -217,21 +226,51 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
     if (outputRef.current) {
       outputRef.current.scrollTop = outputRef.current.scrollHeight
     }
-  }, [displayedResponse, displayedCode])
+  }, [displayedResponse, displayedCode, conversationHistory])
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!input.trim()) return
 
+    const userInput = input.trim()
+    setInput('')
+    setError(null)
+
     if (onUserInput) {
-      onUserInput(input)
+      onUserInput(userInput)
     }
 
-    // 如果有模擬輸出，顯示它
-    if (simulatedOutput) {
+    // 使用真實 API
+    if (apiAvailable) {
+      setIsLoading(true)
+      setShowOutput(true)
+
+      // 添加用戶輸入到對話歷史
+      const userMessage: SimulatedOutput = {
+        userInput,
+        claudeResponse: '',
+      }
+      setCurrentOutput(userMessage)
+
+      try {
+        const result = await generateCode(userInput)
+        const newOutput: SimulatedOutput = {
+          userInput,
+          claudeResponse: result.response,
+          codeOutput: result.code,
+          explanation: result.explanation,
+        }
+        setCurrentOutput(newOutput)
+        setConversationHistory(prev => [...prev, newOutput])
+      } catch (err) {
+        setError(err instanceof Error ? err.message : '發生錯誤')
+        setCurrentOutput(null)
+      } finally {
+        setIsLoading(false)
+      }
+    } else if (simulatedOutput) {
+      // 使用模擬輸出
       setShowOutput(true)
     }
-
-    setInput('')
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -242,8 +281,9 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
   }
 
   const copyCode = () => {
-    if (simulatedOutput?.codeOutput) {
-      navigator.clipboard.writeText(simulatedOutput.codeOutput)
+    const output = currentOutput || simulatedOutput
+    if (output?.codeOutput) {
+      navigator.clipboard.writeText(output.codeOutput)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     }
@@ -254,6 +294,8 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
       setInput(simulatedOutput.userInput)
     }
   }
+
+  const activeOutput = currentOutput || simulatedOutput
 
   return (
     <div className="bg-gray-900 rounded-xl overflow-hidden border border-gray-700 shadow-2xl">
@@ -269,8 +311,17 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
           <span>Claude Code Simulator</span>
         </div>
         <div className="ml-auto flex items-center gap-2">
-          <Sparkles size={14} className="text-emerald-400" />
-          <span className="text-emerald-400 text-xs">模擬模式</span>
+          {apiAvailable ? (
+            <>
+              <Zap size={14} className="text-amber-400" />
+              <span className="text-amber-400 text-xs">Gemini 2.5 Flash</span>
+            </>
+          ) : (
+            <>
+              <Sparkles size={14} className="text-emerald-400" />
+              <span className="text-emerald-400 text-xs">模擬模式</span>
+            </>
+          )}
         </div>
       </div>
 
@@ -280,15 +331,21 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
         className="h-80 overflow-y-auto p-4 space-y-4 bg-gray-900"
       >
         {/* 預設提示 */}
-        {!showOutput && (
+        {!showOutput && !isLoading && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="text-center py-8"
           >
-            <Sparkles className="w-12 h-12 text-emerald-500 mx-auto mb-4" />
-            <p className="text-gray-400 mb-4">試試看輸入你的請求</p>
-            {simulatedOutput && (
+            {apiAvailable ? (
+              <Zap className="w-12 h-12 text-amber-500 mx-auto mb-4" />
+            ) : (
+              <Sparkles className="w-12 h-12 text-emerald-500 mx-auto mb-4" />
+            )}
+            <p className="text-gray-400 mb-4">
+              {apiAvailable ? '輸入你的需求，Gemini 會幫你生成程式碼' : '試試看輸入你的請求'}
+            </p>
+            {simulatedOutput && !apiAvailable && (
               <button
                 onClick={handleTryDemo}
                 className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm"
@@ -299,9 +356,34 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
           </motion.div>
         )}
 
-        {/* 使用者輸入 */}
+        {/* 載入中 */}
+        {isLoading && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex items-center gap-3 text-gray-400"
+          >
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center flex-shrink-0">
+              <Loader2 size={16} className="text-white animate-spin" />
+            </div>
+            <span>Gemini 正在思考中...</span>
+          </motion.div>
+        )}
+
+        {/* 錯誤訊息 */}
+        {error && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="bg-red-500/20 border border-red-500/30 rounded-lg p-4 text-red-300"
+          >
+            ❌ {error}
+          </motion.div>
+        )}
+
+        {/* 使用者輸入和回應 */}
         <AnimatePresence>
-          {showOutput && simulatedOutput && (
+          {showOutput && activeOutput && !isLoading && (
             <>
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
@@ -313,20 +395,24 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
                 </div>
                 <div className="flex-1">
                   <div className="bg-gray-800 rounded-lg p-3 text-gray-200 text-sm">
-                    {simulatedOutput.userInput}
+                    {activeOutput.userInput}
                   </div>
                 </div>
               </motion.div>
 
-              {/* Claude 回應 */}
+              {/* Claude/Gemini 回應 */}
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
                 className="flex gap-3"
               >
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center flex-shrink-0">
-                  <span className="text-white text-sm">C</span>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                  apiAvailable
+                    ? 'bg-gradient-to-br from-amber-500 to-amber-600'
+                    : 'bg-gradient-to-br from-emerald-500 to-emerald-600'
+                }`}>
+                  <span className="text-white text-sm">{apiAvailable ? 'G' : 'C'}</span>
                 </div>
                 <div className="flex-1 space-y-3">
                   {/* 文字回應 */}
@@ -447,14 +533,14 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
                   )}
 
                   {/* 說明 */}
-                  {simulatedOutput.explanation && !isTyping && (
+                  {activeOutput.explanation && !isTyping && (
                     <motion.div
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ delay: 0.5 }}
                       className="bg-emerald-900/30 border border-emerald-700/50 rounded-lg p-3 text-emerald-200 text-sm"
                     >
-                      💡 {simulatedOutput.explanation}
+                      💡 {activeOutput.explanation}
                     </motion.div>
                   )}
                 </div>
@@ -472,16 +558,21 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={placeholder}
+              placeholder={apiAvailable ? '描述你想要的程式...' : placeholder}
               className="flex-1 bg-gray-900 text-gray-200 rounded-lg px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500 border border-gray-700"
               rows={2}
+              disabled={isLoading}
             />
             <button
               onClick={handleSubmit}
-              disabled={!input.trim() || isTyping}
-              className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed self-end"
+              disabled={!input.trim() || isTyping || isLoading}
+              className={`px-4 py-2 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed self-end ${
+                apiAvailable
+                  ? 'bg-amber-600 hover:bg-amber-700'
+                  : 'bg-emerald-600 hover:bg-emerald-700'
+              }`}
             >
-              <Send size={18} />
+              {isLoading ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
             </button>
           </div>
           <p className="text-gray-500 text-xs mt-2">
