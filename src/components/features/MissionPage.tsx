@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Target,
@@ -42,6 +42,14 @@ const MissionPage: React.FC<MissionPageProps> = ({
   const hasDemo = !!content.simulatedOutput
   const hasTemplates =
     content.promptTemplates && content.promptTemplates.length > 0
+
+  // 當場景變更時，重置所有狀態到初始值
+  useEffect(() => {
+    setActiveTab('objective')
+    setQuizAnswer(null)
+    setQuizSubmitted(false)
+    setCopiedTemplate(null)
+  }, [scene.id])
 
   const handleQuizSubmit = () => {
     if (quizAnswer === null) return

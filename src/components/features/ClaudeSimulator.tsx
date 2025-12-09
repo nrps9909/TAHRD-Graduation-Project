@@ -43,6 +43,17 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
   const outputRef = useRef<HTMLDivElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
 
+  // 當 simulatedOutput 變更時，重置狀態
+  useEffect(() => {
+    setInput('')
+    setIsTyping(false)
+    setDisplayedResponse('')
+    setDisplayedCode('')
+    setShowOutput(false)
+    setCopied(false)
+    setShowPreview(false)
+  }, [simulatedOutput?.userInput])
+
   // 打字機效果
   useEffect(() => {
     if (
