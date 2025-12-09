@@ -762,7 +762,7 @@ const GeminiCLI: React.FC<GeminiCLIProps> = ({ triggerFeedback }) => {
                   </motion.div>
                   <div className="text-right">
                     <div className="text-xs font-chinese opacity-90">
-                      {aiState.progress.stage.replace(/[🔍🧠⚙️🛠️🔧⏳]/gu, '').trim()}
+                      {aiState.progress.stage.replace(/🔍|🧠|⚙️|🛠️|🔧|⏳/gu, '').trim()}
                     </div>
                     <div className="text-xs font-chinese opacity-75">
                       {Math.round(aiState.progress.percentage)}% • {aiState.progress.elapsedTime}秒
