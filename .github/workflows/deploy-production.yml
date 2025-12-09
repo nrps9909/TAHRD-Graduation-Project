@@ -45,6 +45,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: "deploy.tar.gz"
           target: "/home/jesse"
+          debug: true
 
       - name: Extract and setup on server
         uses: appleboy/ssh-action@v1.0.0
