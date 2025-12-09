@@ -104,15 +104,34 @@ jobs:
             # 移除預設配置（如果存在）
             sudo rm -f /etc/nginx/sites-enabled/default
 
+            # 顯示生成的配置
+            echo "========================================="
+            echo "Nginx 配置內容:"
+            echo "========================================="
+            cat /etc/nginx/sites-available/jesse-chen.com
+
             # 測試 nginx 配置
+            echo "========================================="
+            echo "測試 Nginx 配置:"
+            echo "========================================="
             sudo nginx -t
 
             # 啟用並重啟 nginx
             sudo systemctl enable nginx
-            sudo systemctl restart nginx
+            sudo systemctl stop nginx || true
+            sudo systemctl start nginx
 
             # 確認 nginx 運行狀態
-            sudo systemctl status nginx --no-pager
+            echo "========================================="
+            echo "Nginx 狀態:"
+            echo "========================================="
+            sudo systemctl status nginx --no-pager || true
+
+            # 檢查端口監聽
+            echo "========================================="
+            echo "端口 80 監聽狀態:"
+            echo "========================================="
+            sudo ss -tlnp | grep :80 || echo "沒有服務監聽端口 80"
 
             echo "========================================="
             echo "3. 部署完成！"

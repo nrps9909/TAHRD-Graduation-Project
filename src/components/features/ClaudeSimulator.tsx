@@ -18,6 +18,8 @@ interface ClaudeSimulatorProps {
   readOnly?: boolean
   showTypingEffect?: boolean
   useRealApi?: boolean
+  initialInput?: string | null
+  onInputUsed?: () => void
 }
 
 // 判斷程式碼類型
@@ -142,6 +144,8 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
   readOnly = false,
   showTypingEffect = true,
   useRealApi = false,
+  initialInput,
+  onInputUsed,
 }) => {
   const [input, setInput] = useState('')
   const [isTyping, setIsTyping] = useState(false)
@@ -158,6 +162,14 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
   const iframeRef = useRef<HTMLIFrameElement>(null)
 
   const apiAvailable = useRealApi && isApiAvailable()
+
+  // 處理 initialInput 變化
+  useEffect(() => {
+    if (initialInput) {
+      setInput(initialInput)
+      onInputUsed?.()
+    }
+  }, [initialInput, onInputUsed])
 
   // 當 simulatedOutput 變更時，重置狀態
   useEffect(() => {
@@ -328,33 +340,92 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
       {/* 輸出區域 */}
       <div
         ref={outputRef}
-        className="h-80 overflow-y-auto p-4 space-y-4 bg-gray-900"
+        className="h-[400px] overflow-y-auto p-4 space-y-4 bg-gray-900"
       >
         {/* 預設提示 */}
-        {!showOutput && !isLoading && (
+        {conversationHistory.length === 0 && !showOutput && !isLoading && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="text-center py-8"
+            className="text-center py-12"
           >
             {apiAvailable ? (
-              <Zap className="w-12 h-12 text-amber-500 mx-auto mb-4" />
+              <Zap className="w-16 h-16 text-amber-500/50 mx-auto mb-4" />
             ) : (
-              <Sparkles className="w-12 h-12 text-emerald-500 mx-auto mb-4" />
+              <Sparkles className="w-16 h-16 text-emerald-500/50 mx-auto mb-4" />
             )}
-            <p className="text-gray-400 mb-4">
-              {apiAvailable ? '輸入你的需求，Gemini 會幫你生成程式碼' : '試試看輸入你的請求'}
+            <p className="text-gray-500 mb-2 text-lg">
+              {apiAvailable ? '準備好了！' : '模擬模式'}
             </p>
-            {simulatedOutput && !apiAvailable && (
-              <button
-                onClick={handleTryDemo}
-                className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm"
-              >
-                使用範例輸入
-              </button>
-            )}
+            <p className="text-gray-600 text-sm">
+              {apiAvailable ? '輸入你的需求，開始 Vibe Coding' : '請設定 API Key 以使用真實 AI'}
+            </p>
           </motion.div>
         )}
+
+        {/* 對話歷史 */}
+        {conversationHistory.map((historyItem, index) => (
+          <div key={index} className="space-y-4">
+            {/* 使用者訊息 */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex gap-3"
+            >
+              <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
+                <span className="text-white text-sm">你</span>
+              </div>
+              <div className="flex-1">
+                <div className="bg-gray-800 rounded-lg p-3 text-gray-200 text-sm">
+                  {historyItem.userInput}
+                </div>
+              </div>
+            </motion.div>
+
+            {/* AI 回應 */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex gap-3"
+            >
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center flex-shrink-0">
+                <span className="text-white text-sm">AI</span>
+              </div>
+              <div className="flex-1 space-y-3">
+                <div className="bg-gray-800 rounded-lg p-3 text-gray-200 text-sm whitespace-pre-wrap">
+                  {historyItem.claudeResponse}
+                </div>
+                {historyItem.codeOutput && (
+                  <div className="relative">
+                    <Highlight
+                      theme={themes.nightOwl}
+                      code={historyItem.codeOutput}
+                      language="javascript"
+                    >
+                      {({ className, style, tokens, getLineProps, getTokenProps }) => (
+                        <pre className={`${className} rounded-lg p-4 text-sm overflow-x-auto`} style={style}>
+                          {tokens.map((line, i) => (
+                            <div key={i} {...getLineProps({ line })}>
+                              <span className="text-gray-500 mr-4 select-none">{String(i + 1).padStart(3, ' ')}</span>
+                              {line.map((token, key) => (
+                                <span key={key} {...getTokenProps({ token })} />
+                              ))}
+                            </div>
+                          ))}
+                        </pre>
+                      )}
+                    </Highlight>
+                  </div>
+                )}
+                {historyItem.explanation && (
+                  <div className="bg-emerald-900/30 border border-emerald-700/50 rounded-lg p-3 text-emerald-200 text-sm">
+                    💡 {historyItem.explanation}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        ))}
 
         {/* 載入中 */}
         {isLoading && (
