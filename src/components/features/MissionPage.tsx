@@ -476,6 +476,11 @@ const MissionPage: React.FC<MissionPageProps> = ({
                 下一關
                 <ChevronRight size={20} />
               </button>
+            ) : activeTab === 'quiz' ? (
+              // 已在測驗頁面，顯示提示
+              <span className="text-gray-500 text-sm">
+                請完成上方測驗後繼續
+              </span>
             ) : (
               <button
                 onClick={() => setActiveTab('quiz')}

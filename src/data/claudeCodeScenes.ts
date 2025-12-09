@@ -410,11 +410,8 @@ const level3Scenes: Record<string, ClaudeCodeScene> = {
       instructions: [
         'Code Smell 是指程式碼中的壞味道',
         '它不一定是 bug，但會讓程式難以維護',
-        '常見的 Code Smell 包含：',
-        '• 重複的程式碼',
-        '• 過長的函式',
-        '• 神秘的變數名稱',
-        '• 過度嵌套的 if-else',
+        '常見的 Code Smell：重複的程式碼、過長的函式',
+        '其他 Code Smell：神秘的變數名稱、過度嵌套的 if-else',
       ],
       example: `❌ 有問題的程式碼：
 function calc(a, b, c) {
@@ -625,10 +622,8 @@ const level4Scenes: Record<string, ClaudeCodeScene> = {
       instructions: [
         '當程式出錯，Console 會顯示錯誤訊息',
         '這些訊息是 Claude 除錯的關鍵線索',
-        '完整複製錯誤訊息，包含：',
-        '• 錯誤類型（如 TypeError, ReferenceError）',
-        '• 錯誤訊息內容',
-        '• 發生錯誤的檔案和行數',
+        '完整複製錯誤訊息，包含錯誤類型（如 TypeError）',
+        '也要包含錯誤訊息內容、發生錯誤的檔案和行數',
       ],
       example: `❌ 不好的描述：
 「我的程式壞了」
@@ -1224,11 +1219,8 @@ const level6Scenes: Record<string, ClaudeCodeScene> = {
       instructions: [
         '歡迎來到最終挑戰！',
         '你將獨立完成一個完整的網頁專案',
-        '可選擇的專案類型：',
-        '• 個人記帳本',
-        '• 天氣查詢 App',
-        '• 番茄鐘計時器',
-        '• 隨機名言產生器',
+        '可選擇：個人記帳本、天氣查詢 App',
+        '或是：番茄鐘計時器、隨機名言產生器',
       ],
       example: `需求分析範例：個人記帳本
 
@@ -1269,10 +1261,8 @@ const level6Scenes: Record<string, ClaudeCodeScene> = {
       missionObjective: '與 Claude 協作，設計專案的技術架構',
       instructions: [
         '把你的需求分析告訴 Claude',
-        '請它幫你設計：',
-        '• 檔案結構',
-        '• 資料格式',
-        '• 功能模組',
+        '請它幫你設計檔案結構和資料格式',
+        '同時規劃功能模組的分工',
       ],
       promptTemplates: [
         {
