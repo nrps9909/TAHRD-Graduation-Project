@@ -2,6 +2,10 @@ const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY
 const GEMINI_MODEL = 'gemini-2.5-flash'
 const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`
 
+// Debug log
+console.log('[Gemini API] Key available:', !!GEMINI_API_KEY)
+console.log('[Gemini API] Model:', GEMINI_MODEL)
+
 interface GeminiResponse {
   candidates: {
     content: {
@@ -44,11 +48,15 @@ const SYSTEM_PROMPT = `你是 Claude Code，一個運行在終端機中的 AI �
 「這個實作包含了基本的四則運算和錯誤處理。」`
 
 export async function generateCode(userPrompt: string): Promise<CodeGenerationResult> {
+  console.log('[Gemini API] generateCode called with:', userPrompt)
+
   if (!GEMINI_API_KEY) {
+    console.error('[Gemini API] API Key is not set!')
     throw new Error('Gemini API Key 未設定')
   }
 
   try {
+    console.log('[Gemini API] Making request to:', API_URL)
     const response = await fetch(`${API_URL}?key=${GEMINI_API_KEY}`, {
       method: 'POST',
       headers: {
@@ -70,14 +78,19 @@ export async function generateCode(userPrompt: string): Promise<CodeGenerationRe
       })
     })
 
+    console.log('[Gemini API] Response status:', response.status)
+
     if (!response.ok) {
       const error = await response.text()
-      console.error('Gemini API Error:', error)
-      throw new Error(`API 錯誤: ${response.status}`)
+      console.error('[Gemini API] Error response:', error)
+      throw new Error(`API 錯誤: ${response.status} - ${error}`)
     }
 
     const data: GeminiResponse = await response.json()
+    console.log('[Gemini API] Response data:', JSON.stringify(data, null, 2))
+
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+    console.log('[Gemini API] Extracted text:', text.substring(0, 200) + '...')
 
     // 解析回應，分離文字和程式碼
     const codeMatch = text.match(/```[\w]*\n?([\s\S]*?)```/)
