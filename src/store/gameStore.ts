@@ -19,6 +19,14 @@ export interface GameProgress {
   terminalHistory: string[]
 }
 
+// Claude Code Adventure 專屬狀態
+export interface ClaudeCodeProgress {
+  currentLevel: number
+  levelProgress: Record<number, number> // level -> 完成百分比
+  collectedCards: string[] // 收集的 Prompt Cards
+  unlockedNPCs: string[] // 解鎖的 NPC
+}
+
 interface GameState {
   isPlaying: boolean
   currentScene: string
@@ -33,6 +41,9 @@ interface GameState {
   waitingForAI: boolean
   aiResponseReceived: boolean
 
+  // Claude Code Adventure 狀態
+  claudeCodeProgress: ClaudeCodeProgress
+
   startGame: (playerName: string) => void
   setOS: (os: 'windows' | 'mac') => void
   completeScene: (sceneId: string, score: number) => void
@@ -43,6 +54,11 @@ interface GameState {
   resetGame: () => void
   setWaitingForAI: (waiting: boolean) => void
   setAIResponseReceived: (received: boolean) => void
+
+  // Claude Code Adventure 方法
+  collectPromptCard: (cardId: string) => void
+  unlockNPC: (npcId: string) => void
+  updateClaudeCodeLevel: (level: number, progress: number) => void
 }
 
 const initialAchievements: Achievement[] = [
@@ -83,6 +99,14 @@ const initialAchievements: Achievement[] = [
   },
 ]
 
+// 初始 Claude Code Progress
+const initialClaudeCodeProgress: ClaudeCodeProgress = {
+  currentLevel: 1,
+  levelProgress: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 },
+  collectedCards: [],
+  unlockedNPCs: [],
+}
+
 export const useGameStore = create<GameState>()(
   persist(
     set => ({
@@ -98,6 +122,7 @@ export const useGameStore = create<GameState>()(
       selectedOS: null,
       waitingForAI: false,
       aiResponseReceived: false,
+      claudeCodeProgress: initialClaudeCodeProgress,
 
       startGame: playerName =>
         set({
@@ -152,12 +177,51 @@ export const useGameStore = create<GameState>()(
           playerName: '',
           waitingForAI: false,
           aiResponseReceived: false,
+          claudeCodeProgress: initialClaudeCodeProgress,
         }),
 
       setWaitingForAI: waiting =>
         set({ waitingForAI: waiting, aiResponseReceived: false }),
 
       setAIResponseReceived: received => set({ aiResponseReceived: received }),
+
+      // Claude Code Adventure 方法
+      collectPromptCard: cardId =>
+        set(state => ({
+          claudeCodeProgress: {
+            ...state.claudeCodeProgress,
+            collectedCards: state.claudeCodeProgress.collectedCards.includes(
+              cardId
+            )
+              ? state.claudeCodeProgress.collectedCards
+              : [...state.claudeCodeProgress.collectedCards, cardId],
+          },
+        })),
+
+      unlockNPC: npcId =>
+        set(state => ({
+          claudeCodeProgress: {
+            ...state.claudeCodeProgress,
+            unlockedNPCs: state.claudeCodeProgress.unlockedNPCs.includes(npcId)
+              ? state.claudeCodeProgress.unlockedNPCs
+              : [...state.claudeCodeProgress.unlockedNPCs, npcId],
+          },
+        })),
+
+      updateClaudeCodeLevel: (level, progress) =>
+        set(state => ({
+          claudeCodeProgress: {
+            ...state.claudeCodeProgress,
+            currentLevel: Math.max(state.claudeCodeProgress.currentLevel, level),
+            levelProgress: {
+              ...state.claudeCodeProgress.levelProgress,
+              [level]: Math.max(
+                state.claudeCodeProgress.levelProgress[level] || 0,
+                progress
+              ),
+            },
+          },
+        })),
     }),
     {
       name: 'claude-code-adventure',

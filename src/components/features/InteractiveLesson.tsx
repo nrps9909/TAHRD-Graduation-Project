@@ -366,7 +366,7 @@ const InteractiveLesson = ({
               <VirtualTeacher
                 currentDialogue={currentDialogue?.text || ''}
                 mood={currentDialogue?.mood || 'happy'}
-                onNext={!showChoices ? handleNext : undefined}
+                {...(!showChoices && { onNext: handleNext })}
                 requiresAIResponse={currentDialogue?.action === 'show_terminal'}
               />
             </div>

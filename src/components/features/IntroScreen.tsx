@@ -1,7 +1,7 @@
 import { useState, useEffect, Suspense, lazy, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Mail, Lock, User } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { Mail, Lock, User, Map, Sparkles } from 'lucide-react'
+import { useNavigate, Link } from 'react-router-dom'
 import { useGameStore } from '@/store/gameStore'
 import { apiService } from '@/services/api.service'
 import { APP_CONFIG } from '@/config/app.config'
@@ -452,6 +452,34 @@ const IntroScreen = ({}: IntroScreenProps) => {
                           🎉
                         </motion.div>
                       </div>
+                    </div>
+                  </motion.div>
+
+                  {/* Claude Code Adventure 快速體驗入口 */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 1.0, duration: 0.5 }}
+                    className="mt-4 sm:mt-5"
+                  >
+                    <div className="text-center mb-3">
+                      <span className="text-xs text-gray-500">或者先體驗一下</span>
+                    </div>
+                    <div className="flex gap-2 sm:gap-3">
+                      <Link
+                        to="/adventure"
+                        className="flex-1 flex items-center justify-center gap-2 py-2.5 sm:py-3 bg-gradient-to-r from-purple-500/10 to-indigo-500/10 hover:from-purple-500/20 hover:to-indigo-500/20 border border-purple-300/40 rounded-xl transition-all group"
+                      >
+                        <Map className="w-4 h-4 text-purple-500 group-hover:scale-110 transition-transform" />
+                        <span className="text-sm font-medium text-purple-600">冒險地圖</span>
+                      </Link>
+                      <Link
+                        to="/playground"
+                        className="flex-1 flex items-center justify-center gap-2 py-2.5 sm:py-3 bg-gradient-to-r from-amber-500/10 to-orange-500/10 hover:from-amber-500/20 hover:to-orange-500/20 border border-amber-300/40 rounded-xl transition-all group"
+                      >
+                        <Sparkles className="w-4 h-4 text-amber-500 group-hover:scale-110 transition-transform" />
+                        <span className="text-sm font-medium text-amber-600">Playground</span>
+                      </Link>
                     </div>
                   </motion.div>
                 </div>

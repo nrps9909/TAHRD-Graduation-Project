@@ -48,7 +48,7 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({
   embedded = false,
 }) => {
   const [files, setFiles] = useState<WorkspaceFile[]>([])
-  const [loading, setLoading] = useState(false)
+  const [_loading, setLoading] = useState(false)
   const [isOpen, setIsOpen] = useState(embedded)
   const [isMobile, setIsMobile] = useState(false)
   const [isCreatingFile, setIsCreatingFile] = useState(false)
@@ -85,9 +85,7 @@ const WorkspaceViewer: React.FC<WorkspaceViewerProps> = ({
     }))
   }, [playerName, setWorkspaceState])
 
-  // Auto-save and auto-refresh are always enabled
-  const autoSave = true
-  const autoRefresh = true
+  // Auto-save and auto-refresh are always enabled (values used implicitly in the codebase)
 
   // Auto-save timer ref
   const autoSaveTimerRef = useRef<number | null>(null)

@@ -201,8 +201,8 @@ export const useInstantFeedback = () => {
       id: `feedback-${Date.now()}-${Math.random()}`,
       type,
       message,
-      value: options?.value,
-      position: options?.position,
+      ...(options?.value !== undefined && { value: options.value }),
+      ...(options?.position && { position: options.position }),
     }
 
     setFeedbacks(prev => [...prev, feedback])
@@ -214,46 +214,46 @@ export const useInstantFeedback = () => {
 
   // 便捷方法
   const showPoints = (points: number, position?: { x: number; y: number }) => {
-    showFeedback('points', '獲得積分', { value: points, position })
+    showFeedback('points', '獲得積分', { value: points, ...(position && { position }) })
   }
 
   const showProgress = (
     message: string,
     position?: { x: number; y: number }
   ) => {
-    showFeedback('progress', message, { position })
+    showFeedback('progress', message, position ? { position } : undefined)
   }
 
   const showSkill = (
     skillName: string,
     position?: { x: number; y: number }
   ) => {
-    showFeedback('skill', `學會了 ${skillName}`, { position })
+    showFeedback('skill', `學會了 ${skillName}`, position ? { position } : undefined)
   }
 
   const showEncouragement = (
     message: string,
     position?: { x: number; y: number }
   ) => {
-    showFeedback('encouragement', message, { position })
+    showFeedback('encouragement', message, position ? { position } : undefined)
   }
 
   const showMilestone = (
     message: string,
     position?: { x: number; y: number }
   ) => {
-    showFeedback('milestone', message, { position })
+    showFeedback('milestone', message, position ? { position } : undefined)
   }
 
   const showCombo = (count: number, position?: { x: number; y: number }) => {
-    showFeedback('combo', `${count} 連擊！`, { position })
+    showFeedback('combo', `${count} 連擊！`, position ? { position } : undefined)
   }
 
   const showPerfect = (
     message: string = '完美！',
     position?: { x: number; y: number }
   ) => {
-    showFeedback('perfect', message, { position })
+    showFeedback('perfect', message, position ? { position } : undefined)
   }
 
   return {

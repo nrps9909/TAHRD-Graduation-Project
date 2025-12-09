@@ -1,14 +1,13 @@
 import React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { CheckCircle, Lock, Clock, Play, Target, Zap } from 'lucide-react'
+import { CheckCircle, Lock, Play, Target, Zap } from 'lucide-react'
 import { useGameStore } from '@/store/gameStore'
 import {
-  unifiedLearningPath,
   LearningPathManager,
   getLearningPathVisualization,
   LearningStage,
 } from '@/data/unifiedLearningPath'
-import { Achievement } from './AchievementNotification'
+import { Achievement } from '@/types/achievement'
 import { usePageStatePersistence } from '@/hooks/usePageStatePersistence'
 
 interface TriggerFeedback {
@@ -33,7 +32,7 @@ const LearningPathMap: React.FC<LearningPathMapProps> = ({
   onStartStage,
   triggerFeedback,
 }) => {
-  const { completedScenes, currentScore } = useGameStore()
+  const { completedScenes } = useGameStore()
   const [mapState, setMapState] = usePageStatePersistence('learningPathMap', {
     selectedStageId: null as string | null,
   })

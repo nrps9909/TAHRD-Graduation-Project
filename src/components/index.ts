@@ -30,10 +30,7 @@ export { default as QuickProjectCreator } from './features/QuickProjectCreator'
 export { default as Live2DPixi6 } from './features/Live2DPixi6'
 
 // Additional feature components (currently unused but available)
-export { default as GeminiAssistant } from './features/GeminiAssistant'
-export { default as GeminiCLI } from './features/GeminiCLI'
 export { default as Terminal } from './features/Terminal'
 export { default as GitTerminal } from './features/GitTerminal'
-export { default as LearningPathMap } from './features/LearningPathMap'
 export { default as VirtualChatList } from './features/VirtualChatList'
 export { OSAwareContent } from './features/OSAwareContent'

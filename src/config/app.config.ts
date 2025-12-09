@@ -3,7 +3,7 @@ export const APP_CONFIG = {
   // API 端點
   api: {
     baseUrl:
-      process.env.NODE_ENV === 'production'
+      import.meta.env.PROD
         ? 'https://api.ccadventure.com'
         : '',
     endpoints: {

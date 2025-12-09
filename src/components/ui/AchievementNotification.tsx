@@ -3,8 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Trophy, Star, Zap, Gift, Sparkles } from 'lucide-react'
 import confetti from 'canvas-confetti'
 
-import { Achievement } from '../types/achievement'
-export type { Achievement } from '../types/achievement'
+import { Achievement } from '@/types/achievement'
+export type { Achievement } from '@/types/achievement'
 
 interface AchievementNotificationProps {
   achievement: Achievement
@@ -53,6 +53,7 @@ const AchievementNotification: React.FC<AchievementNotificationProps> = ({
 
       return () => clearTimeout(timer)
     }
+    return undefined
   }, [show, achievement, onClose])
 
   const getRarityStyles = () => {

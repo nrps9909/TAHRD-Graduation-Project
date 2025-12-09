@@ -1,4 +1,9 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  useNavigate,
+} from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 import { Suspense, useState, lazy } from 'react'
 import {
@@ -9,25 +14,33 @@ import {
 } from './components'
 import { useInstantFeedback } from './components/ui/InstantFeedback'
 import { type Achievement } from './components/ui/AchievementNotification'
-import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 
-// Lazy load heavy components
-const IntroScreen = lazy(() => import('./components/features/IntroScreen'))
-const OSSelection = lazy(() => import('./components/features/OSSelection'))
-const GameLayout = lazy(() => import('./components/game/GameLayout'))
+// Lazy load components
+const AdventureMap = lazy(() => import('./components/features/AdventureMap'))
+const Playground = lazy(() => import('./components/features/Playground'))
 const TutorialScene = lazy(() => import('./components/game/TutorialScene'))
 const CompletionScreen = lazy(
   () => import('./components/features/CompletionScreen')
 )
 
+// AdventureMap Wrapper - 處理導航
+function AdventureMapWrapper() {
+  const navigate = useNavigate()
+
+  const handleStartLevel = (_levelId: string, firstSceneId: string) => {
+    navigate(`/tutorial/${firstSceneId}`)
+  }
+
+  return <AdventureMap onStartLevel={handleStartLevel} />
+}
+
 function AppContent() {
-  useKeyboardShortcuts()
   const feedbackSystem = useInstantFeedback()
   const [currentAchievement, setCurrentAchievement] =
     useState<Achievement | null>(null)
   const [showAchievement, setShowAchievement] = useState(false)
 
-  // 全域回饋系統 - 提供給所有組件使用
+  // 全域回饋系統
   const triggerFeedback = {
     showPoints: (points: number, position?: { x: number; y: number }) => {
       feedbackSystem.showPoints(points, position)
@@ -57,25 +70,22 @@ function AppContent() {
   }
 
   return (
-    <div className="min-h-screen bg-retro-bg font-display">
+    <div className="min-h-screen bg-gradient-to-b from-indigo-900 via-purple-900 to-indigo-900 font-display">
       <AnimatePresence mode="wait">
         <Routes>
-          <Route
-            path="/"
-            element={<IntroScreen triggerFeedback={triggerFeedback} />}
-          />
-          <Route
-            path="/os-selection"
-            element={<OSSelection triggerFeedback={triggerFeedback} />}
-          />
-          <Route
-            path="/game"
-            element={<GameLayout triggerFeedback={triggerFeedback} />}
-          />
+          {/* 首頁 - 冒險地圖 */}
+          <Route path="/" element={<AdventureMapWrapper />} />
+
+          {/* Playground - 模擬體驗 */}
+          <Route path="/playground" element={<Playground />} />
+
+          {/* 教學場景 */}
           <Route
             path="/tutorial/:sceneId"
             element={<TutorialScene triggerFeedback={triggerFeedback} />}
           />
+
+          {/* 完成畫面 */}
           <Route
             path="/complete"
             element={<CompletionScreen triggerFeedback={triggerFeedback} />}

@@ -1,18 +1,46 @@
 import { motion } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
 import { scenes } from '@/data/scenes'
+import { claudeCodeScenes } from '@/data/claudeCodeScenes'
 import { useGameStore } from '@/store/gameStore'
 import CodeChallenge from '@/components/features/CodeChallenge'
 import InteractiveDemo from '@/components/features/InteractiveDemo'
 import WSLSetupGuide from '@/components/features/WSLSetupGuide'
 import InteractiveLesson from '@/components/features/InteractiveLesson'
+import MissionPage from '@/components/features/MissionPage'
 
 interface SceneRendererProps {
   sceneId: string
 }
 
 const SceneRenderer = ({ sceneId }: SceneRendererProps) => {
+  const navigate = useNavigate()
   const { completeScene, navigateToScene } = useGameStore()
-  const scene = scenes[sceneId]
+
+  // 檢查是否為 Claude Code Adventure 場景
+  const isClaudeCodeScene = sceneId.startsWith('cc-')
+  const claudeScene = isClaudeCodeScene ? claudeCodeScenes[sceneId] : null
+  const scene = isClaudeCodeScene ? null : scenes[sceneId]
+
+  // 如果是 Claude Code 場景，使用 MissionPage 渲染
+  if (isClaudeCodeScene && claudeScene) {
+    const handleComplete = (score: number) => {
+      completeScene(sceneId, score)
+    }
+
+    return (
+      <MissionPage
+        scene={claudeScene}
+        onComplete={handleComplete}
+        {...(claudeScene.nextScene && {
+          onNext: () => navigate(`/tutorial/${claudeScene.nextScene}`),
+        })}
+        {...(claudeScene.previousScene && {
+          onPrevious: () => navigate(`/tutorial/${claudeScene.previousScene}`),
+        })}
+      />
+    )
+  }
 
   // Use InteractiveLesson for all tutorial scenes
   const useInteractiveMode = scene?.type === 'tutorial'
@@ -59,76 +87,22 @@ const SceneRenderer = ({ sceneId }: SceneRendererProps) => {
       </header>
 
       <div className="flex-1 overflow-hidden">
-        {false && (
-          <div className="space-y-6">
-            <div className="terminal-window">
-              <h3 className="text-retro-amber font-pixel text-sm mb-4">
-                INSTRUCTIONS
-              </h3>
-              <div className="space-y-2 text-terminal-text font-mono text-sm">
-                {scene.content.instructions &&
-                  scene.content.instructions.map(
-                    (instruction: string, index: number) => (
-                      <motion.div
-                        key={index}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: index * 0.1 }}
-                        className="flex items-start"
-                      >
-                        <span className="text-amber-500 mr-2">
-                          {index + 1}.
-                        </span>
-                        <span>{instruction}</span>
-                      </motion.div>
-                    )
-                  )}
-              </div>
-            </div>
-
-            {scene.content.example && (
-              <div className="terminal-window">
-                <h3 className="text-retro-amber font-pixel text-sm mb-4">
-                  EXAMPLE
-                </h3>
-                <pre className="text-terminal-text font-mono text-sm overflow-x-auto">
-                  {scene.content.example}
-                </pre>
-              </div>
-            )}
-
-            {scene.content.tips && (
-              <div className="terminal-window bg-opacity-50">
-                <h3 className="text-retro-cyan font-pixel text-sm mb-4">
-                  💡 TIPS
-                </h3>
-                <ul className="space-y-1 text-terminal-text font-mono text-sm">
-                  {scene.content.tips &&
-                    scene.content.tips.map((tip: string, index: number) => (
-                      <li key={index}>• {tip}</li>
-                    ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        )}
-
         {scene.type === 'challenge' && (
           <CodeChallenge
-            challenge={scene.content}
+            challenge={scene.content as { task: string; code?: string; solution: string; hints: string[]; requirements?: string[]; starter?: string }}
             onComplete={handleSceneComplete}
           />
         )}
 
         {scene.type === 'interactive' && (
           <InteractiveDemo
-            demo={scene.content}
+            demo={scene.content as { steps: string[]; expectedCommands: string[] }}
             onComplete={handleSceneComplete}
           />
         )}
 
-        {scene.type === ('setup' as any) && (
-          <WSLSetupGuide content={scene.content} />
+        {scene.type === ('setup' as string) && (
+          <WSLSetupGuide content={scene.content as { instructions: string[]; commands: { title: string; steps: string[]; description: string }[]; tips: string[] }} />
         )}
       </div>
 

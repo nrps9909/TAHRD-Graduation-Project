@@ -4,7 +4,7 @@ import { useGameStore } from '@/store/gameStore'
 import { usePageStatePersistence } from '@/hooks/usePageStatePersistence'
 import WebPreview from './WebPreview'
 import QuickProjectCreator from './QuickProjectCreator'
-import { Achievement } from './AchievementNotification'
+import { Achievement } from '@/types/achievement'
 
 interface ChatMessage {
   type: 'user' | 'assistant' | 'system'

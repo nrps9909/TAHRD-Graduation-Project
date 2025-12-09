@@ -14,7 +14,6 @@ import { useGameStore } from '@/store/gameStore'
 import {
   LearningPathManager,
   getLearningPathVisualization,
-  LearningStage,
 } from '@/data/unifiedLearningPath'
 import { Achievement } from '../ui/AchievementNotification'
 
@@ -41,7 +40,7 @@ interface LearningPathSidebarProps {
 const LearningPathSidebar: React.FC<LearningPathSidebarProps> = ({
   isOpen,
   onToggle,
-  onStartStage,
+  onStartStage: _onStartStage,
   triggerFeedback,
 }) => {
   const { completedScenes } = useGameStore()

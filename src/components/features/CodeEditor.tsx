@@ -383,7 +383,7 @@ const CodeEditor: React.FC<CodeEditorProps> = memo(
             <textarea
               ref={textareaRef}
               value={value}
-              onChange={useCallback(e => onChange(e.target.value), [onChange])}
+              onChange={useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => onChange(e.target.value), [onChange])}
               onKeyDown={handleKeyDown}
               className="absolute inset-0 w-full h-full bg-transparent text-transparent caret-pink-400 resize-none focus:outline-none scrollbar-hide"
               style={{

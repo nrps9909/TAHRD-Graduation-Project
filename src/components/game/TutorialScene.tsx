@@ -35,11 +35,11 @@ const TutorialScene = ({}: TutorialSceneProps) => {
     >
       <header className="mb-8">
         <button
-          onClick={() => navigate('/game')}
-          className="flex items-center gap-2 text-amber-500 hover:text-retro-cyan transition-colors"
+          onClick={() => navigate('/')}
+          className="flex items-center gap-2 text-purple-300 hover:text-purple-100 transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
-          <span className="font-cute">Back to Game</span>
+          <span className="font-cute chinese-text">返回冒險地圖</span>
         </button>
       </header>
 
