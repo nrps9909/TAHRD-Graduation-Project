@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Send, Copy, Check, Sparkles, Terminal, Eye, Code, Loader2, Zap } from 'lucide-react'
+import { Send, Copy, Check, Terminal, ExternalLink, Loader2, Zap } from 'lucide-react'
 import { Highlight, themes } from 'prism-react-renderer'
 import { generateCode, isApiAvailable } from '@/services/geminiApi'
 
@@ -20,26 +20,23 @@ interface ClaudeSimulatorProps {
   useRealApi?: boolean
   initialInput?: string | null
   onInputUsed?: () => void
+  fullHeight?: boolean
 }
 
 // 判斷程式碼類型
 type CodeType = 'html' | 'javascript' | 'none'
 
 const detectCodeType = (code: string): CodeType => {
-  // 檢查是否為 HTML
   if (code.includes('<!DOCTYPE html>') ||
       code.includes('<html') ||
       (code.includes('<body') && code.includes('</body>')) ||
       (code.includes('<div') && code.includes('style'))) {
     return 'html'
   }
-
-  // 檢查是否為 JavaScript (有 function 或 console.log)
   if ((code.includes('function ') || code.includes('const ') || code.includes('let ')) &&
       (code.includes('console.log') || code.includes('return '))) {
     return 'javascript'
   }
-
   return 'none'
 }
 
@@ -49,76 +46,97 @@ const wrapJavaScriptForPreview = (code: string): string => {
 <html>
 <head>
   <meta charset="UTF-8">
+  <title>JavaScript 執行結果</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: 'Consolas', 'Monaco', monospace;
-      background: #1a1a2e;
-      color: #eee;
-      padding: 16px;
+      font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+      background: #0d0d0d;
+      color: #e0e0e0;
+      padding: 20px;
       min-height: 100vh;
     }
-    .output-title {
-      color: #82aaff;
-      font-size: 12px;
-      margin-bottom: 8px;
+    .header {
+      color: #00d9ff;
+      font-size: 14px;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #333;
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
     }
-    .output-title::before {
+    .header::before {
       content: '▶';
-      color: #addb67;
+      color: #00ff88;
     }
     .console-output {
-      background: #0d1117;
-      border: 1px solid #30363d;
-      border-radius: 6px;
-      padding: 12px;
-      font-size: 13px;
-      line-height: 1.5;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 16px;
+      font-size: 14px;
+      line-height: 1.6;
     }
     .log-line {
-      padding: 4px 0;
-      border-bottom: 1px solid #21262d;
+      padding: 6px 0;
+      border-bottom: 1px solid #222;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
     }
     .log-line:last-child { border-bottom: none; }
-    .log-type { color: #7ee787; margin-right: 8px; }
-    .log-value { color: #f0f6fc; }
-    .log-object { color: #79c0ff; }
-    .log-number { color: #f78166; }
-    .log-string { color: #a5d6ff; }
-    .error { color: #f85149; }
+    .log-type {
+      color: #888;
+      font-size: 11px;
+      text-transform: uppercase;
+      min-width: 40px;
+    }
+    .log-value { color: #fff; flex: 1; }
+    .log-object { color: #00d9ff; }
+    .log-number { color: #ff9500; }
+    .log-string { color: #00ff88; }
+    .log-boolean { color: #ff6b6b; }
+    .error {
+      color: #ff4444;
+      background: rgba(255, 68, 68, 0.1);
+      padding: 12px;
+      border-radius: 6px;
+      margin-top: 8px;
+    }
+    .empty-state {
+      color: #666;
+      font-style: italic;
+    }
   </style>
 </head>
 <body>
-  <div class="output-title">Console 輸出結果</div>
+  <div class="header">Console 輸出結果</div>
   <div class="console-output" id="output"></div>
   <script>
     const output = document.getElementById('output');
     const originalLog = console.log;
     const logs = [];
 
-    // 格式化輸出值
     function formatValue(val) {
       if (val === null) return '<span class="log-object">null</span>';
       if (val === undefined) return '<span class="log-object">undefined</span>';
       if (typeof val === 'number') return '<span class="log-number">' + val + '</span>';
-      if (typeof val === 'string') return '<span class="log-string">"' + val + '"</span>';
+      if (typeof val === 'string') return '<span class="log-string">"' + val.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '"</span>';
+      if (typeof val === 'boolean') return '<span class="log-boolean">' + val + '</span>';
       if (typeof val === 'object') {
         try {
-          return '<span class="log-object">' + JSON.stringify(val, null, 2) + '</span>';
+          return '<span class="log-object">' + JSON.stringify(val, null, 2).replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</span>';
         } catch(e) {
           return '<span class="log-object">[Object]</span>';
         }
       }
-      return '<span class="log-value">' + String(val) + '</span>';
+      return '<span class="log-value">' + String(val).replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</span>';
     }
 
-    // 攔截 console.log
     console.log = function(...args) {
       const formatted = args.map(formatValue).join(' ');
-      logs.push('<div class="log-line"><span class="log-type">log:</span>' + formatted + '</div>');
+      logs.push('<div class="log-line"><span class="log-type">log</span><div class="log-value">' + formatted + '</div></div>');
       output.innerHTML = logs.join('');
       originalLog.apply(console, args);
     };
@@ -126,15 +144,37 @@ const wrapJavaScriptForPreview = (code: string): string => {
     try {
       ${code}
     } catch(e) {
-      output.innerHTML += '<div class="log-line error">❌ Error: ' + e.message + '</div>';
+      output.innerHTML += '<div class="error">Error: ' + e.message + '</div>';
     }
 
     if (logs.length === 0) {
-      output.innerHTML = '<div class="log-line" style="color: #8b949e;">（此程式碼沒有 console.log 輸出）</div>';
+      output.innerHTML = '<div class="empty-state">此程式碼沒有 console.log 輸出</div>';
     }
   </script>
 </body>
 </html>`
+}
+
+// 生成完整 HTML 預覽頁面
+const generatePreviewHTML = (code: string, codeType: CodeType): string => {
+  if (codeType === 'javascript') {
+    return wrapJavaScriptForPreview(code)
+  }
+  // HTML 直接返回
+  return code
+}
+
+// 在新分頁開啟預覽
+const openPreviewInNewTab = (code: string) => {
+  const codeType = detectCodeType(code)
+  if (codeType === 'none') return
+
+  const previewHTML = generatePreviewHTML(code, codeType)
+  const blob = new Blob([previewHTML], { type: 'text/html' })
+  const url = URL.createObjectURL(blob)
+  window.open(url, '_blank')
+  // 延遲釋放 URL 以確保新分頁載入完成
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
 const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
@@ -146,6 +186,7 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
   useRealApi = false,
   initialInput,
   onInputUsed,
+  fullHeight = false,
 }) => {
   const [input, setInput] = useState('')
   const [isTyping, setIsTyping] = useState(false)
@@ -154,25 +195,11 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
   const [displayedCode, setDisplayedCode] = useState('')
   const [showOutput, setShowOutput] = useState(false)
   const [copied, setCopied] = useState(false)
-  const [showPreview, setShowPreview] = useState(false)
   const [currentOutput, setCurrentOutput] = useState<SimulatedOutput | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [conversationHistory, setConversationHistory] = useState<SimulatedOutput[]>([])
-  const [historyPreviews, setHistoryPreviews] = useState<Record<number, boolean>>({})
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
   const outputRef = useRef<HTMLDivElement>(null)
-  const iframeRef = useRef<HTMLIFrameElement>(null)
-
-  // 切換歷史訊息的預覽
-  const toggleHistoryPreview = (index: number) => {
-    setHistoryPreviews(prev => ({ ...prev, [index]: !prev[index] }))
-  }
-
-  // 複製歷史訊息的程式碼
-  const copyHistoryCode = (code: string) => {
-    navigator.clipboard.writeText(code)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
 
   const apiAvailable = useRealApi && isApiAvailable()
 
@@ -193,7 +220,6 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
       setDisplayedCode('')
       setShowOutput(false)
       setCopied(false)
-      setShowPreview(false)
       setCurrentOutput(null)
       setError(null)
     }
@@ -216,14 +242,13 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
           charIndex++
         } else {
           clearInterval(typeInterval)
-          // 開始顯示程式碼
           if (output.codeOutput) {
             typeCode(output.codeOutput)
           } else {
             setIsTyping(false)
           }
         }
-      }, 20)
+      }, 15)
 
       return () => clearInterval(typeInterval)
     } else if (output && showOutput && !showTypingEffect) {
@@ -243,16 +268,15 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
         clearInterval(codeInterval)
         setIsTyping(false)
       }
-    }, 10)
+    }, 8)
   }
 
-  // 自動滾動到底部 - 只在新訊息時滾動，且用戶在底部附近時才滾動
+  // 自動滾動
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true)
 
   const handleScroll = () => {
     if (outputRef.current) {
       const { scrollTop, scrollHeight, clientHeight } = outputRef.current
-      // 如果用戶滾動到距離底部 100px 以內，啟用自動滾動
       setShouldAutoScroll(scrollHeight - scrollTop - clientHeight < 100)
     }
   }
@@ -261,7 +285,7 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
     if (outputRef.current && shouldAutoScroll) {
       outputRef.current.scrollTop = outputRef.current.scrollHeight
     }
-  }, [conversationHistory.length, isLoading, shouldAutoScroll])
+  }, [conversationHistory.length, isLoading, displayedResponse, displayedCode, shouldAutoScroll])
 
   const handleSubmit = async () => {
     if (!input.trim()) return
@@ -274,12 +298,10 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
       onUserInput(userInput)
     }
 
-    // 使用真實 API
     if (apiAvailable) {
       setIsLoading(true)
       setShowOutput(true)
 
-      // 添加用戶輸入到對話歷史
       const userMessage: SimulatedOutput = {
         userInput,
         claudeResponse: '',
@@ -303,7 +325,6 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
         setIsLoading(false)
       }
     } else if (simulatedOutput) {
-      // 使用模擬輸出
       setShowOutput(true)
     }
   }
@@ -315,442 +336,306 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
     }
   }
 
-  const copyCode = () => {
-    const output = currentOutput || simulatedOutput
-    if (output?.codeOutput) {
-      navigator.clipboard.writeText(output.codeOutput)
+  const copyCode = useCallback((code: string, index?: number) => {
+    navigator.clipboard.writeText(code)
+    if (index !== undefined) {
+      setCopiedIndex(index)
+      setTimeout(() => setCopiedIndex(null), 2000)
+    } else {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     }
-  }
+  }, [])
 
   const activeOutput = currentOutput || simulatedOutput
 
   return (
-    <div className="glass rounded-2xl overflow-hidden shadow-apple-lg">
-      {/* 標題列 - Apple 風格 */}
-      <div className="bg-apple-gray-800/80 px-3 sm:px-4 py-2.5 sm:py-3 flex items-center gap-2 sm:gap-3 border-b border-white/10">
-        <div className="flex gap-1.5 sm:gap-2">
-          <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-apple-red"></div>
-          <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-apple-yellow"></div>
-          <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-apple-green"></div>
+    <div className={`flex flex-col bg-[#0d0d0d] ${fullHeight ? 'h-full' : 'rounded-xl overflow-hidden'}`}>
+      {/* 終端機標題列 */}
+      <div className="flex-shrink-0 bg-[#1a1a1a] px-3 py-2 flex items-center gap-2 border-b border-white/5">
+        <div className="flex gap-1.5">
+          <div className="w-3 h-3 rounded-full bg-[#ff5f56]"></div>
+          <div className="w-3 h-3 rounded-full bg-[#ffbd2e]"></div>
+          <div className="w-3 h-3 rounded-full bg-[#27ca40]"></div>
         </div>
-        <div className="flex items-center gap-1.5 sm:gap-2 text-apple-gray-400 text-xs sm:text-sm">
-          <Terminal size={12} className="sm:w-3.5 sm:h-3.5" />
-          <span className="hidden xs:inline">Claude Code Simulator</span>
-          <span className="xs:hidden">Simulator</span>
+        <div className="flex-1 flex items-center justify-center gap-1.5 text-gray-500 text-xs">
+          <Terminal size={12} />
+          <span>claude-code — bash</span>
         </div>
-        <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
+        <div className="flex items-center gap-1">
           {apiAvailable ? (
-            <>
-              <Zap size={12} className="sm:w-3.5 sm:h-3.5 text-apple-orange" />
-              <span className="text-apple-orange text-[10px] sm:text-xs">Gemini 2.5</span>
-            </>
-          ) : (
-            <>
-              <Sparkles size={12} className="sm:w-3.5 sm:h-3.5 text-apple-blue" />
-              <span className="text-apple-blue text-[10px] sm:text-xs">模擬模式</span>
-            </>
-          )}
+            <Zap size={10} className="text-orange-400" />
+          ) : null}
         </div>
       </div>
 
-      {/* 輸出區域 */}
+      {/* 終端機輸出區域 */}
       <div
         ref={outputRef}
         onScroll={handleScroll}
-        className="h-[300px] sm:h-[400px] overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4 bg-apple-gray-800"
+        className={`flex-1 overflow-y-auto p-4 font-mono text-sm ${fullHeight ? '' : 'h-[400px]'}`}
+        style={{ backgroundColor: '#0d0d0d' }}
       >
-        {/* 預設提示 */}
+        {/* 歡迎訊息 */}
         {conversationHistory.length === 0 && !showOutput && !isLoading && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-center py-8 sm:py-12"
-          >
-            {apiAvailable ? (
-              <Zap className="w-12 h-12 sm:w-16 sm:h-16 text-apple-orange/50 mx-auto mb-3 sm:mb-4" />
-            ) : (
-              <Sparkles className="w-12 h-12 sm:w-16 sm:h-16 text-apple-blue/50 mx-auto mb-3 sm:mb-4" />
-            )}
-            <p className="text-apple-gray-300 mb-1.5 sm:mb-2 text-base sm:text-lg">
-              {apiAvailable ? '準備好了！' : '模擬模式'}
-            </p>
-            <p className="text-apple-gray-500 text-xs sm:text-sm px-4">
-              {apiAvailable ? '輸入你的需求，開始 Vibe Coding' : '請設定 API Key 以使用真實 AI'}
-            </p>
-          </motion.div>
+          <div className="text-gray-500 mb-4">
+            <div className="text-cyan-400 mb-2">╭─ Claude Code Simulator</div>
+            <div className="text-gray-400 mb-1">│</div>
+            <div className="text-gray-400 mb-1">│ {apiAvailable ? '✓ Gemini API 已連接' : '○ 模擬模式'}</div>
+            <div className="text-gray-400 mb-1">│</div>
+            <div className="text-gray-400 mb-2">╰─ 輸入你的需求開始 Vibe Coding...</div>
+          </div>
         )}
 
         {/* 對話歷史 */}
-        {conversationHistory.map((historyItem, index) => (
-          <div key={index} className="space-y-3 sm:space-y-4">
-            {/* 使用者訊息 */}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex gap-2 sm:gap-3"
-            >
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-apple-blue flex items-center justify-center flex-shrink-0">
-                <span className="text-white text-xs sm:text-sm">你</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="bg-apple-gray-700 rounded-2xl p-2.5 sm:p-3 text-apple-gray-100 text-xs sm:text-sm break-words">
-                  {historyItem.userInput}
-                </div>
-              </div>
-            </motion.div>
+        {conversationHistory.map((item, index) => (
+          <div key={index} className="mb-6">
+            {/* 用戶輸入 */}
+            <div className="flex items-start gap-2 mb-3">
+              <span className="text-green-400 flex-shrink-0">❯</span>
+              <span className="text-white">{item.userInput}</span>
+            </div>
 
             {/* AI 回應 */}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex gap-2 sm:gap-3"
-            >
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-apple-purple to-apple-pink flex items-center justify-center flex-shrink-0">
-                <span className="text-white text-xs sm:text-sm">AI</span>
-              </div>
-              <div className="flex-1 min-w-0 space-y-2 sm:space-y-3">
-                <div className="bg-apple-gray-700 rounded-2xl p-2.5 sm:p-3 text-apple-gray-100 text-xs sm:text-sm whitespace-pre-wrap break-words">
-                  {historyItem.claudeResponse}
-                </div>
-                {historyItem.codeOutput && (
-                  <div className="relative">
-                    {/* 工具列 */}
-                    <div className="absolute top-1.5 sm:top-2 right-1.5 sm:right-2 flex gap-1.5 sm:gap-2 z-10">
-                      {detectCodeType(historyItem.codeOutput) !== 'none' && (
+            <div className="pl-4 border-l border-gray-700">
+              <div className="text-gray-300 whitespace-pre-wrap mb-3">{item.claudeResponse}</div>
+
+              {/* 程式碼區塊 */}
+              {item.codeOutput && (
+                <div className="relative mt-3 rounded-lg overflow-hidden border border-gray-700">
+                  {/* 程式碼標題列 */}
+                  <div className="flex items-center justify-between px-3 py-2 bg-[#1a1a1a] border-b border-gray-700">
+                    <span className="text-gray-400 text-xs">
+                      {detectCodeType(item.codeOutput) === 'html' ? 'HTML' :
+                       detectCodeType(item.codeOutput) === 'javascript' ? 'JavaScript' : 'Code'}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      {detectCodeType(item.codeOutput) !== 'none' && (
                         <button
-                          onClick={() => toggleHistoryPreview(index)}
-                          className={`p-1 sm:p-1.5 rounded-lg transition-colors flex items-center gap-0.5 sm:gap-1 ${
-                            historyPreviews[index]
-                              ? 'bg-apple-blue text-white'
-                              : 'bg-apple-gray-600 hover:bg-apple-gray-500'
-                          }`}
-                          title={historyPreviews[index] ? '顯示程式碼' : '預覽結果'}
+                          onClick={() => openPreviewInNewTab(item.codeOutput!)}
+                          className="flex items-center gap-1 px-2 py-1 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 rounded text-xs transition-colors"
+                          title="在新分頁預覽"
                         >
-                          {historyPreviews[index] ? (
-                            <>
-                              <Code size={12} className="sm:w-3.5 sm:h-3.5" />
-                              <span className="text-[10px] sm:text-xs hidden xs:inline">程式碼</span>
-                            </>
-                          ) : (
-                            <>
-                              <Eye size={12} className="sm:w-3.5 sm:h-3.5 text-apple-green" />
-                              <span className="text-[10px] sm:text-xs text-apple-green hidden xs:inline">
-                                {detectCodeType(historyItem.codeOutput) === 'javascript' ? '執行' : '預覽'}
-                              </span>
-                            </>
-                          )}
+                          <ExternalLink size={12} />
+                          <span>預覽</span>
                         </button>
                       )}
                       <button
-                        onClick={() => copyHistoryCode(historyItem.codeOutput!)}
-                        className="p-1 sm:p-1.5 bg-apple-gray-600 rounded-lg hover:bg-apple-gray-500 transition-colors"
+                        onClick={() => copyCode(item.codeOutput!, index)}
+                        className="flex items-center gap-1 px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs transition-colors"
                         title="複製程式碼"
                       >
-                        {copied ? (
-                          <Check size={12} className="sm:w-3.5 sm:h-3.5 text-apple-green" />
+                        {copiedIndex === index ? (
+                          <Check size={12} className="text-green-400" />
                         ) : (
-                          <Copy size={12} className="sm:w-3.5 sm:h-3.5 text-apple-gray-400" />
+                          <Copy size={12} className="text-gray-400" />
                         )}
                       </button>
                     </div>
+                  </div>
 
-                    {/* 預覽模式 */}
-                    {historyPreviews[index] && detectCodeType(historyItem.codeOutput) !== 'none' ? (
-                      <div className="rounded-xl overflow-hidden border border-white/10">
-                        <div className="bg-apple-gray-700 px-2 sm:px-3 py-1.5 sm:py-2 flex items-center gap-1.5 sm:gap-2">
-                          <Eye size={12} className="sm:w-3.5 sm:h-3.5 text-apple-green" />
-                          <span className="text-apple-gray-300 text-[10px] sm:text-xs">
-                            {detectCodeType(historyItem.codeOutput) === 'javascript' ? '執行結果' : '即時預覽'}
-                          </span>
-                        </div>
-                        <iframe
-                          srcDoc={
-                            detectCodeType(historyItem.codeOutput) === 'javascript'
-                              ? wrapJavaScriptForPreview(historyItem.codeOutput)
-                              : historyItem.codeOutput
-                          }
-                          className="w-full bg-white"
-                          style={{ height: '200px', minHeight: '150px' }}
-                          title={`Code Preview ${index}`}
-                          sandbox="allow-scripts"
-                        />
-                      </div>
-                    ) : (
-                      <Highlight
-                        theme={themes.nightOwl}
-                        code={historyItem.codeOutput}
-                        language="javascript"
+                  {/* 程式碼內容 */}
+                  <Highlight
+                    theme={themes.nightOwl}
+                    code={item.codeOutput}
+                    language={detectCodeType(item.codeOutput) === 'html' ? 'markup' : 'javascript'}
+                  >
+                    {({ className, style, tokens, getLineProps, getTokenProps }) => (
+                      <pre
+                        className={`${className} p-4 text-xs overflow-x-auto`}
+                        style={{ ...style, background: '#0d0d0d', margin: 0 }}
                       >
-                        {({ className, style, tokens, getLineProps, getTokenProps }) => (
-                          <pre className={`${className} rounded-lg p-2.5 sm:p-4 text-[10px] sm:text-sm overflow-x-auto`} style={style}>
-                            {tokens.map((line, i) => (
-                              <div key={i} {...getLineProps({ line })}>
-                                <span className="text-gray-500 mr-2 sm:mr-4 select-none text-[10px] sm:text-sm">{String(i + 1).padStart(3, ' ')}</span>
-                                {line.map((token, key) => (
-                                  <span key={key} {...getTokenProps({ token })} />
-                                ))}
-                              </div>
+                        {tokens.map((line, i) => (
+                          <div key={i} {...getLineProps({ line })}>
+                            <span className="text-gray-600 mr-4 select-none w-8 inline-block text-right">
+                              {i + 1}
+                            </span>
+                            {line.map((token, key) => (
+                              <span key={key} {...getTokenProps({ token })} />
                             ))}
-                          </pre>
-                        )}
-                      </Highlight>
+                          </div>
+                        ))}
+                      </pre>
                     )}
-                  </div>
-                )}
-                {historyItem.explanation && (
-                  <div className="bg-emerald-900/30 border border-emerald-700/50 rounded-lg p-2.5 sm:p-3 text-emerald-200 text-xs sm:text-sm">
-                    💡 {historyItem.explanation}
-                  </div>
-                )}
-              </div>
-            </motion.div>
+                  </Highlight>
+                </div>
+              )}
+
+              {/* 說明 */}
+              {item.explanation && (
+                <div className="mt-3 text-yellow-400/80 text-xs">
+                  💡 {item.explanation}
+                </div>
+              )}
+            </div>
           </div>
         ))}
 
         {/* 載入中 */}
         {isLoading && currentOutput && (
-          <>
-            {/* 顯示使用者訊息 */}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex gap-2 sm:gap-3"
-            >
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
-                <span className="text-white text-xs sm:text-sm">你</span>
+          <div className="mb-4">
+            <div className="flex items-start gap-2 mb-3">
+              <span className="text-green-400">❯</span>
+              <span className="text-white">{currentOutput.userInput}</span>
+            </div>
+            <div className="pl-4 border-l border-gray-700">
+              <div className="flex items-center gap-2 text-gray-400">
+                <Loader2 size={14} className="animate-spin" />
+                <span>思考中...</span>
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="bg-gray-800 rounded-lg p-2.5 sm:p-3 text-gray-200 text-xs sm:text-sm break-words">
-                  {currentOutput.userInput}
-                </div>
-              </div>
-            </motion.div>
-
-            {/* AI 思考中 */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex gap-2 sm:gap-3"
-            >
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center flex-shrink-0">
-                <Loader2 size={14} className="sm:w-4 sm:h-4 text-white animate-spin" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="bg-gray-800 rounded-lg p-2.5 sm:p-3 text-gray-400 text-xs sm:text-sm flex items-center gap-2">
-                  <span>AI 正在思考中</span>
-                  <span className="flex gap-1">
-                    <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-amber-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                    <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-amber-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                    <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-amber-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
-                  </span>
-                </div>
-              </div>
-            </motion.div>
-          </>
+            </div>
+          </div>
         )}
 
         {/* 錯誤訊息 */}
         {error && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="bg-red-500/20 border border-red-500/30 rounded-lg p-3 sm:p-4 text-red-300 text-xs sm:text-sm"
-          >
-            ❌ {error}
-          </motion.div>
+          <div className="mb-4 text-red-400 bg-red-500/10 p-3 rounded-lg border border-red-500/20">
+            ✗ {error}
+          </div>
         )}
 
-        {/* 當前正在輸入的回應（只在 API 模式下顯示，且只顯示還沒加入歷史的訊息） */}
+        {/* 當前回應（打字效果） */}
         <AnimatePresence>
-          {showOutput && activeOutput && !isLoading && !conversationHistory.some(h => h.userInput === activeOutput.userInput && h.claudeResponse === activeOutput.claudeResponse) && (
-            <>
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex gap-3"
-              >
-                <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
-                  <span className="text-white text-sm">你</span>
+          {showOutput && activeOutput && !isLoading &&
+           !conversationHistory.some(h => h.userInput === activeOutput.userInput && h.claudeResponse === activeOutput.claudeResponse) && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="mb-4"
+            >
+              <div className="flex items-start gap-2 mb-3">
+                <span className="text-green-400">❯</span>
+                <span className="text-white">{activeOutput.userInput}</span>
+              </div>
+              <div className="pl-4 border-l border-gray-700">
+                <div className="text-gray-300 whitespace-pre-wrap">
+                  {displayedResponse}
+                  {isTyping && !displayedCode && (
+                    <span className="inline-block w-2 h-4 bg-cyan-400 ml-0.5 animate-pulse"></span>
+                  )}
                 </div>
-                <div className="flex-1">
-                  <div className="bg-gray-800 rounded-lg p-3 text-gray-200 text-sm">
-                    {activeOutput.userInput}
-                  </div>
-                </div>
-              </motion.div>
 
-              {/* AI 回應 */}
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="flex gap-3"
-              >
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center flex-shrink-0">
-                  <span className="text-white text-sm">AI</span>
-                </div>
-                <div className="flex-1 space-y-3">
-                  {/* 文字回應 */}
-                  <div className="bg-gray-800 rounded-lg p-3 text-gray-200 text-sm whitespace-pre-wrap">
-                    {displayedResponse}
-                    {isTyping && displayedCode === '' && (
-                      <span className="inline-block w-2 h-4 bg-amber-500 ml-1 animate-pulse"></span>
-                    )}
-                  </div>
-
-                  {/* 程式碼輸出 */}
-                  {displayedCode && (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="relative"
-                    >
-                      {/* 工具列 */}
-                      <div className="absolute top-2 right-2 flex gap-2 z-10">
-                        {detectCodeType(displayedCode) !== 'none' && !isTyping && (
+                {displayedCode && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="relative mt-3 rounded-lg overflow-hidden border border-gray-700"
+                  >
+                    <div className="flex items-center justify-between px-3 py-2 bg-[#1a1a1a] border-b border-gray-700">
+                      <span className="text-gray-400 text-xs">
+                        {detectCodeType(displayedCode) === 'html' ? 'HTML' :
+                         detectCodeType(displayedCode) === 'javascript' ? 'JavaScript' : 'Code'}
+                      </span>
+                      {!isTyping && (
+                        <div className="flex items-center gap-2">
+                          {detectCodeType(displayedCode) !== 'none' && (
+                            <button
+                              onClick={() => openPreviewInNewTab(displayedCode)}
+                              className="flex items-center gap-1 px-2 py-1 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 rounded text-xs transition-colors"
+                            >
+                              <ExternalLink size={12} />
+                              <span>預覽</span>
+                            </button>
+                          )}
                           <button
-                            onClick={() => setShowPreview(!showPreview)}
-                            className={`p-1.5 rounded transition-colors flex items-center gap-1 ${
-                              showPreview
-                                ? 'bg-amber-600 text-white'
-                                : 'bg-gray-700 hover:bg-gray-600'
-                            }`}
-                            title={showPreview ? '顯示程式碼' : '預覽結果'}
+                            onClick={() => copyCode(displayedCode)}
+                            className="flex items-center gap-1 px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs transition-colors"
                           >
-                            {showPreview ? (
-                              <>
-                                <Code size={14} />
-                                <span className="text-xs">程式碼</span>
-                              </>
+                            {copied ? (
+                              <Check size={12} className="text-green-400" />
                             ) : (
-                              <>
-                                <Eye size={14} className="text-green-400" />
-                                <span className="text-xs text-green-400">
-                                  {detectCodeType(displayedCode) === 'javascript' ? '執行' : '預覽'}
-                                </span>
-                              </>
+                              <Copy size={12} className="text-gray-400" />
                             )}
                           </button>
-                        )}
-                        <button
-                          onClick={copyCode}
-                          className="p-1.5 bg-gray-700 rounded hover:bg-gray-600 transition-colors"
-                          title="複製程式碼"
-                        >
-                          {copied ? (
-                            <Check size={14} className="text-green-400" />
-                          ) : (
-                            <Copy size={14} className="text-gray-400" />
-                          )}
-                        </button>
-                      </div>
-
-                      {/* 預覽模式 */}
-                      {showPreview && detectCodeType(displayedCode) !== 'none' ? (
-                        <div className="rounded-lg overflow-hidden border border-gray-600">
-                          <div className="bg-gray-700 px-3 py-1.5 flex items-center gap-2">
-                            <Eye size={14} className="text-green-400" />
-                            <span className="text-gray-300 text-xs">
-                              {detectCodeType(displayedCode) === 'javascript' ? '執行結果' : '即時預覽'}
-                            </span>
-                          </div>
-                          <iframe
-                            ref={iframeRef}
-                            srcDoc={
-                              detectCodeType(displayedCode) === 'javascript'
-                                ? wrapJavaScriptForPreview(displayedCode)
-                                : displayedCode
-                            }
-                            className="w-full bg-white"
-                            style={{ height: '300px', minHeight: '200px' }}
-                            title="Code Preview"
-                            sandbox="allow-scripts"
-                          />
                         </div>
-                      ) : (
-                        /* 程式碼模式 */
-                        <>
-                          <Highlight
-                            theme={themes.nightOwl}
-                            code={displayedCode}
-                            language="javascript"
-                          >
-                            {({
-                              className,
-                              style,
-                              tokens,
-                              getLineProps,
-                              getTokenProps,
-                            }) => (
-                              <pre
-                                className={`${className} rounded-lg p-4 text-sm overflow-x-auto`}
-                                style={style}
-                              >
-                                {tokens.map((line, i) => (
-                                  <div key={i} {...getLineProps({ line })}>
-                                    <span className="text-gray-500 mr-4 select-none">
-                                      {String(i + 1).padStart(3, ' ')}
-                                    </span>
-                                    {line.map((token, key) => (
-                                      <span key={key} {...getTokenProps({ token })} />
-                                    ))}
-                                  </div>
-                                ))}
-                              </pre>
-                            )}
-                          </Highlight>
-                          {isTyping && (
-                            <span className="inline-block w-2 h-4 bg-amber-500 ml-1 animate-pulse absolute bottom-4 right-4"></span>
-                          )}
-                        </>
                       )}
-                    </motion.div>
-                  )}
+                    </div>
 
-                  {/* 說明 */}
-                  {activeOutput.explanation && !isTyping && (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.5 }}
-                      className="bg-amber-900/30 border border-amber-700/50 rounded-lg p-3 text-amber-200 text-sm"
+                    <Highlight
+                      theme={themes.nightOwl}
+                      code={displayedCode}
+                      language={detectCodeType(displayedCode) === 'html' ? 'markup' : 'javascript'}
                     >
-                      💡 {activeOutput.explanation}
-                    </motion.div>
-                  )}
-                </div>
-              </motion.div>
-            </>
+                      {({ className, style, tokens, getLineProps, getTokenProps }) => (
+                        <pre
+                          className={`${className} p-4 text-xs overflow-x-auto`}
+                          style={{ ...style, background: '#0d0d0d', margin: 0 }}
+                        >
+                          {tokens.map((line, i) => (
+                            <div key={i} {...getLineProps({ line })}>
+                              <span className="text-gray-600 mr-4 select-none w-8 inline-block text-right">
+                                {i + 1}
+                              </span>
+                              {line.map((token, key) => (
+                                <span key={key} {...getTokenProps({ token })} />
+                              ))}
+                            </div>
+                          ))}
+                        </pre>
+                      )}
+                    </Highlight>
+
+                    {isTyping && (
+                      <span className="absolute bottom-4 right-4 w-2 h-4 bg-cyan-400 animate-pulse"></span>
+                    )}
+                  </motion.div>
+                )}
+
+                {activeOutput.explanation && !isTyping && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="mt-3 text-yellow-400/80 text-xs"
+                  >
+                    💡 {activeOutput.explanation}
+                  </motion.div>
+                )}
+              </div>
+            </motion.div>
           )}
         </AnimatePresence>
+
+        {/* 命令提示符 */}
+        {!isLoading && !isTyping && (
+          <div className="flex items-center gap-2 text-gray-500">
+            <span className="text-green-400">❯</span>
+            <span className="animate-pulse">_</span>
+          </div>
+        )}
       </div>
 
       {/* 輸入區域 */}
       {!readOnly && (
-        <div className="border-t border-white/10 p-3 sm:p-4 bg-apple-gray-800/80">
-          <div className="flex gap-2 sm:gap-3">
-            <textarea
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={apiAvailable ? '描述你想要的程式...' : placeholder}
-              className="flex-1 bg-apple-gray-700 text-apple-gray-100 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm resize-none focus:outline-none focus:ring-2 focus:ring-apple-blue border border-white/10"
-              rows={2}
-              disabled={isLoading}
-            />
+        <div className="flex-shrink-0 border-t border-white/5 p-3 bg-[#1a1a1a]">
+          <div className="flex gap-2">
+            <div className="flex-1 flex items-center gap-2 bg-[#0d0d0d] rounded-lg px-3 py-2 border border-gray-700 focus-within:border-cyan-500/50 transition-colors">
+              <span className="text-green-400 text-sm">❯</span>
+              <input
+                type="text"
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={apiAvailable ? '輸入你的需求...' : placeholder}
+                className="flex-1 bg-transparent text-white text-sm outline-none placeholder-gray-600"
+                disabled={isLoading}
+              />
+            </div>
             <button
               onClick={handleSubmit}
               disabled={!input.trim() || isTyping || isLoading}
-              className="px-3 sm:px-4 py-2.5 text-white rounded-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed self-end bg-apple-blue hover:bg-apple-blue-light"
+              className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 disabled:bg-gray-700 disabled:text-gray-500 text-black font-medium rounded-lg transition-all disabled:cursor-not-allowed"
             >
-              {isLoading ? <Loader2 size={16} className="sm:w-[18px] sm:h-[18px] animate-spin" /> : <Send size={16} className="sm:w-[18px] sm:h-[18px]" />}
+              {isLoading ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <Send size={16} />
+              )}
             </button>
           </div>
-          <p className="text-apple-gray-500 text-[10px] sm:text-xs mt-1.5 sm:mt-2">
-            按 Enter 送出，Shift + Enter 換行
-          </p>
+          <div className="flex items-center justify-between mt-2 text-xs text-gray-600">
+            <span>Enter 送出 • Shift+Enter 換行</span>
+            {apiAvailable && <span className="text-orange-400">Gemini 2.5</span>}
+          </div>
         </div>
       )}
     </div>
