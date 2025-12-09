@@ -269,8 +269,8 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
           <span>Claude Code Simulator</span>
         </div>
         <div className="ml-auto flex items-center gap-2">
-          <Sparkles size={14} className="text-purple-400" />
-          <span className="text-purple-400 text-xs">模擬模式</span>
+          <Sparkles size={14} className="text-emerald-400" />
+          <span className="text-emerald-400 text-xs">模擬模式</span>
         </div>
       </div>
 
@@ -286,12 +286,12 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
             animate={{ opacity: 1 }}
             className="text-center py-8"
           >
-            <Sparkles className="w-12 h-12 text-purple-500 mx-auto mb-4" />
+            <Sparkles className="w-12 h-12 text-emerald-500 mx-auto mb-4" />
             <p className="text-gray-400 mb-4">試試看輸入你的請求</p>
             {simulatedOutput && (
               <button
                 onClick={handleTryDemo}
-                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm"
+                className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm"
               >
                 使用範例輸入
               </button>
@@ -325,7 +325,7 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
                 transition={{ delay: 0.3 }}
                 className="flex gap-3"
               >
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500 to-pink-500 flex items-center justify-center flex-shrink-0">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center flex-shrink-0">
                   <span className="text-white text-sm">C</span>
                 </div>
                 <div className="flex-1 space-y-3">
@@ -333,7 +333,7 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
                   <div className="bg-gray-800 rounded-lg p-3 text-gray-200 text-sm whitespace-pre-wrap">
                     {displayedResponse}
                     {isTyping && displayedCode === '' && (
-                      <span className="inline-block w-2 h-4 bg-purple-500 ml-1 animate-pulse"></span>
+                      <span className="inline-block w-2 h-4 bg-emerald-500 ml-1 animate-pulse"></span>
                     )}
                   </div>
 
@@ -351,7 +351,7 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
                             onClick={() => setShowPreview(!showPreview)}
                             className={`p-1.5 rounded transition-colors flex items-center gap-1 ${
                               showPreview
-                                ? 'bg-purple-600 text-white'
+                                ? 'bg-emerald-600 text-white'
                                 : 'bg-gray-700 hover:bg-gray-600'
                             }`}
                             title={showPreview ? '顯示程式碼' : '預覽結果'}
@@ -439,7 +439,7 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
                             )}
                           </Highlight>
                           {isTyping && (
-                            <span className="inline-block w-2 h-4 bg-purple-500 ml-1 animate-pulse absolute bottom-4 right-4"></span>
+                            <span className="inline-block w-2 h-4 bg-emerald-500 ml-1 animate-pulse absolute bottom-4 right-4"></span>
                           )}
                         </>
                       )}
@@ -452,7 +452,7 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ delay: 0.5 }}
-                      className="bg-purple-900/30 border border-purple-700/50 rounded-lg p-3 text-purple-200 text-sm"
+                      className="bg-emerald-900/30 border border-emerald-700/50 rounded-lg p-3 text-emerald-200 text-sm"
                     >
                       💡 {simulatedOutput.explanation}
                     </motion.div>
@@ -473,13 +473,13 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={placeholder}
-              className="flex-1 bg-gray-900 text-gray-200 rounded-lg px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 border border-gray-700"
+              className="flex-1 bg-gray-900 text-gray-200 rounded-lg px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500 border border-gray-700"
               rows={2}
             />
             <button
               onClick={handleSubmit}
               disabled={!input.trim() || isTyping}
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed self-end"
+              className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed self-end"
             >
               <Send size={18} />
             </button>
