@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Send, Copy, Check, Sparkles, Terminal } from 'lucide-react'
+import { Send, Copy, Check, Sparkles, Terminal, Eye, Code } from 'lucide-react'
 import { Highlight, themes } from 'prism-react-renderer'
 
 interface SimulatedOutput {
@@ -18,6 +18,14 @@ interface ClaudeSimulatorProps {
   showTypingEffect?: boolean
 }
 
+// 判斷是否為可預覽的 HTML 程式碼
+const isPreviewableHTML = (code: string): boolean => {
+  return code.includes('<!DOCTYPE html>') ||
+         code.includes('<html') ||
+         (code.includes('<body') && code.includes('</body>')) ||
+         (code.includes('<div') && code.includes('style'))
+}
+
 const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
   simulatedOutput,
   onUserInput,
@@ -31,7 +39,9 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
   const [displayedCode, setDisplayedCode] = useState('')
   const [showOutput, setShowOutput] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [showPreview, setShowPreview] = useState(false)
   const outputRef = useRef<HTMLDivElement>(null)
+  const iframeRef = useRef<HTMLIFrameElement>(null)
 
   // 打字機效果
   useEffect(() => {
@@ -216,7 +226,31 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
                       animate={{ opacity: 1, scale: 1 }}
                       className="relative"
                     >
-                      <div className="absolute top-2 right-2 flex gap-2">
+                      {/* 工具列 */}
+                      <div className="absolute top-2 right-2 flex gap-2 z-10">
+                        {isPreviewableHTML(displayedCode) && !isTyping && (
+                          <button
+                            onClick={() => setShowPreview(!showPreview)}
+                            className={`p-1.5 rounded transition-colors flex items-center gap-1 ${
+                              showPreview
+                                ? 'bg-purple-600 text-white'
+                                : 'bg-gray-700 hover:bg-gray-600'
+                            }`}
+                            title={showPreview ? '顯示程式碼' : '預覽結果'}
+                          >
+                            {showPreview ? (
+                              <>
+                                <Code size={14} />
+                                <span className="text-xs">程式碼</span>
+                              </>
+                            ) : (
+                              <>
+                                <Eye size={14} className="text-green-400" />
+                                <span className="text-xs text-green-400">預覽</span>
+                              </>
+                            )}
+                          </button>
+                        )}
                         <button
                           onClick={copyCode}
                           className="p-1.5 bg-gray-700 rounded hover:bg-gray-600 transition-colors"
@@ -229,37 +263,59 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
                           )}
                         </button>
                       </div>
-                      <Highlight
-                        theme={themes.nightOwl}
-                        code={displayedCode}
-                        language="javascript"
-                      >
-                        {({
-                          className,
-                          style,
-                          tokens,
-                          getLineProps,
-                          getTokenProps,
-                        }) => (
-                          <pre
-                            className={`${className} rounded-lg p-4 text-sm overflow-x-auto`}
-                            style={style}
+
+                      {/* 預覽模式 */}
+                      {showPreview && isPreviewableHTML(displayedCode) ? (
+                        <div className="rounded-lg overflow-hidden border border-gray-600">
+                          <div className="bg-gray-700 px-3 py-1.5 flex items-center gap-2">
+                            <Eye size={14} className="text-green-400" />
+                            <span className="text-gray-300 text-xs">即時預覽</span>
+                          </div>
+                          <iframe
+                            ref={iframeRef}
+                            srcDoc={displayedCode}
+                            className="w-full bg-white"
+                            style={{ height: '300px', minHeight: '200px' }}
+                            title="HTML Preview"
+                            sandbox="allow-scripts"
+                          />
+                        </div>
+                      ) : (
+                        /* 程式碼模式 */
+                        <>
+                          <Highlight
+                            theme={themes.nightOwl}
+                            code={displayedCode}
+                            language="javascript"
                           >
-                            {tokens.map((line, i) => (
-                              <div key={i} {...getLineProps({ line })}>
-                                <span className="text-gray-500 mr-4 select-none">
-                                  {String(i + 1).padStart(3, ' ')}
-                                </span>
-                                {line.map((token, key) => (
-                                  <span key={key} {...getTokenProps({ token })} />
+                            {({
+                              className,
+                              style,
+                              tokens,
+                              getLineProps,
+                              getTokenProps,
+                            }) => (
+                              <pre
+                                className={`${className} rounded-lg p-4 text-sm overflow-x-auto`}
+                                style={style}
+                              >
+                                {tokens.map((line, i) => (
+                                  <div key={i} {...getLineProps({ line })}>
+                                    <span className="text-gray-500 mr-4 select-none">
+                                      {String(i + 1).padStart(3, ' ')}
+                                    </span>
+                                    {line.map((token, key) => (
+                                      <span key={key} {...getTokenProps({ token })} />
+                                    ))}
+                                  </div>
                                 ))}
-                              </div>
-                            ))}
-                          </pre>
-                        )}
-                      </Highlight>
-                      {isTyping && (
-                        <span className="inline-block w-2 h-4 bg-purple-500 ml-1 animate-pulse absolute bottom-4 right-4"></span>
+                              </pre>
+                            )}
+                          </Highlight>
+                          {isTyping && (
+                            <span className="inline-block w-2 h-4 bg-purple-500 ml-1 animate-pulse absolute bottom-4 right-4"></span>
+                          )}
+                        </>
                       )}
                     </motion.div>
                   )}
