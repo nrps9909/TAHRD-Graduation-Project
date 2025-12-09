@@ -978,6 +978,253 @@ const level5Scenes: Record<string, ClaudeCodeScene> = {
 }
 
 // =====================================================
+// Level 5.5 (Bonus): 快速架環境
+// =====================================================
+
+const level5BonusScenes: Record<string, ClaudeCodeScene> = {
+  'cc-5-bonus-1': {
+    id: 'cc-5-bonus-1',
+    level: 5,
+    title: '🚀 超能力：用 Claude 快速架環境',
+    description: '學會用 Claude Code 快速從 GitHub Clone 專案並跑起來',
+    type: 'tutorial',
+    content: {
+      missionObjective: '掌握用 Claude Code 快速架設任何專案環境的技巧',
+      instructions: [
+        '這是 Claude Code 最強大的功能之一！',
+        '當你看到一個有趣的 GitHub 專案，想要快速跑起來：',
+        '',
+        '傳統方式：',
+        '1. 閱讀 README（可能是英文）',
+        '2. 安裝各種依賴',
+        '3. 設定環境變數',
+        '4. 解決版本衝突...',
+        '5. 花費 30 分鐘到數小時',
+        '',
+        'Claude Code 方式：',
+        '1. 給 Claude 一個 GitHub URL',
+        '2. Claude 自動分析、Clone、安裝、啟動',
+        '3. 幾分鐘搞定！',
+      ],
+      example: `實際對話範例：
+
+你：幫我 clone 這個專案並跑起來
+https://github.com/someone/cool-project
+
+Claude：好的！讓我幫你處理...
+
+正在 clone 專案...
+✅ Clone 完成
+
+分析 package.json...
+發現這是一個 React + Vite 專案
+需要 Node.js 18+
+
+正在安裝依賴...
+✅ npm install 完成
+
+檢查環境設定...
+發現需要 .env 檔案
+已自動建立 .env（使用預設值）
+
+正在啟動開發伺服器...
+✅ 專案已在 http://localhost:5173 啟動
+
+【專案說明】
+這是一個 XXX 功能的應用...`,
+      tips: [
+        '直接貼 GitHub URL 給 Claude',
+        'Claude 會自動讀 README 和 package.json',
+        '如果需要 API Key，Claude 會告訴你',
+        '遇到錯誤 Claude 也會自動修復',
+      ],
+    },
+    previousScene: 'cc-5-3',
+    nextScene: 'cc-5-bonus-2',
+    points: 150,
+  },
+
+  'cc-5-bonus-2': {
+    id: 'cc-5-bonus-2',
+    level: 5,
+    title: '實戰：Clone 並分析專案',
+    description: '練習用 Claude Code 分析陌生的程式碼庫',
+    type: 'interactive',
+    content: {
+      missionObjective: '學會讓 Claude 幫你理解陌生的專案結構',
+      instructions: [
+        '除了架環境，Claude 還能幫你快速理解程式碼！',
+        '',
+        '常用的分析指令：',
+      ],
+      promptTemplates: [
+        {
+          id: 'clone-and-run',
+          name: 'Clone 並啟動',
+          template: '幫我 clone 這個專案並跑起來：[GitHub URL]',
+          description: '最簡單的方式，Claude 會自動處理一切',
+        },
+        {
+          id: 'analyze-structure',
+          name: '分析專案結構',
+          template: '分析這個專案的架構，告訴我主要的檔案和功能模組',
+          description: '快速了解專案組成',
+        },
+        {
+          id: 'find-entry',
+          name: '找到入口點',
+          template: '這個專案的入口點在哪？主要邏輯從哪裡開始？',
+          description: '找到程式碼的起點',
+        },
+        {
+          id: 'explain-flow',
+          name: '解釋流程',
+          template: '解釋這個專案的資料流程，從使用者操作到資料處理',
+          description: '理解程式如何運作',
+        },
+      ],
+      simulatedOutput: {
+        userInput: '幫我 clone 這個專案並告訴我怎麼跑：https://github.com/example/todo-app',
+        claudeResponse: `好的！讓我幫你處理這個專案。
+
+**正在執行...**
+\`\`\`bash
+git clone https://github.com/example/todo-app
+cd todo-app
+\`\`\`
+
+**專案分析結果：**
+
+📁 **專案類型**: React + TypeScript + Vite
+📦 **套件管理**: npm (發現 package-lock.json)
+🔧 **Node 版本**: 需要 18.0+
+
+**檔案結構：**
+\`\`\`
+todo-app/
+├── src/
+│   ├── App.tsx          # 主要組件
+│   ├── components/      # UI 組件
+│   ├── hooks/           # 自定義 Hooks
+│   └── store/           # 狀態管理
+├── package.json
+└── vite.config.ts
+\`\`\`
+
+**啟動步驟：**
+\`\`\`bash
+npm install    # 安裝依賴
+npm run dev    # 啟動開發伺服器
+\`\`\`
+
+已自動執行上述指令...
+✅ 專案已在 http://localhost:5173 啟動！
+
+**這個專案的功能：**
+這是一個待辦事項 App，支援：
+- 新增/刪除待辦事項
+- 標記完成狀態
+- 本地儲存 (localStorage)`,
+        explanation: '看！Claude 不只幫你架好環境，還分析了整個專案結構，讓你立刻知道這是什麼、怎麼用！',
+      },
+      tips: [
+        'Clone 後可以繼續問 Claude 關於程式碼的問題',
+        'Claude 可以解釋任何你不懂的程式碼',
+        '想修改功能？直接告訴 Claude 你想改什麼',
+      ],
+    },
+    previousScene: 'cc-5-bonus-1',
+    nextScene: 'cc-5-bonus-3',
+    points: 200,
+    unlockCards: ['card-quick-setup'],
+  },
+
+  'cc-5-bonus-3': {
+    id: 'cc-5-bonus-3',
+    level: 5,
+    title: '進階技巧：環境問題排解',
+    description: '當環境出問題時，讓 Claude 幫你解決',
+    type: 'challenge',
+    content: {
+      missionObjective: '學會用 Claude 解決常見的環境設定問題',
+      instructions: [
+        '架環境時常遇到的問題：',
+        '• Node 版本不對',
+        '• 缺少系統依賴',
+        '• Port 被佔用',
+        '• 環境變數沒設定',
+        '',
+        'Claude 都能幫你解決！',
+      ],
+      requirements: [
+        '學會描述環境錯誤給 Claude',
+        '讓 Claude 自動修復問題',
+        '了解常見問題的解決方式',
+      ],
+      promptTemplates: [
+        {
+          id: 'fix-error',
+          name: '修復錯誤',
+          template: `npm install 時出現這個錯誤：
+[貼上錯誤訊息]
+請幫我解決`,
+          description: '讓 Claude 分析並修復安裝錯誤',
+        },
+        {
+          id: 'check-requirements',
+          name: '檢查需求',
+          template: '這個專案需要什麼環境？我的電腦少了什麼？',
+          description: '讓 Claude 檢查環境需求',
+        },
+        {
+          id: 'port-conflict',
+          name: 'Port 衝突',
+          template: '3000 port 被佔用了，怎麼辦？',
+          description: '解決 port 衝突問題',
+        },
+      ],
+      example: `常見問題解決範例：
+
+❌ 問題：npm install 失敗
+你：npm install 出現 ERESOLVE 錯誤
+
+Claude：這是依賴版本衝突，讓我幫你解決：
+\`\`\`bash
+npm install --legacy-peer-deps
+\`\`\`
+已修復！
+
+❌ 問題：Node 版本太舊
+你：出現 SyntaxError: Unexpected token '?'
+
+Claude：這表示 Node.js 版本太舊，需要升級：
+\`\`\`bash
+nvm install 20
+nvm use 20
+npm install
+\`\`\`
+
+❌ 問題：缺少環境變數
+你：啟動時出現 "API_KEY is not defined"
+
+Claude：這個專案需要 API Key。讓我幫你：
+1. 建立 .env 檔案
+2. 加入 API_KEY=your_key_here
+（如果是測試用，我可以先用假的值讓專案跑起來）`,
+      tips: [
+        '直接貼錯誤訊息給 Claude',
+        'Claude 會解釋問題原因',
+        '大部分問題 Claude 都能自動修復',
+        '不確定的話，讓 Claude 檢查整個環境',
+      ],
+    },
+    previousScene: 'cc-5-bonus-2',
+    nextScene: 'cc-6-1',
+    points: 250,
+  },
+}
+
+// =====================================================
 // Level 6 (Boss): 完整專案構建
 // =====================================================
 
@@ -1146,6 +1393,7 @@ export const claudeCodeScenes: Record<string, ClaudeCodeScene> = {
   ...level3Scenes,
   ...level4Scenes,
   ...level5Scenes,
+  ...level5BonusScenes,
   ...level6Scenes,
 }
 
@@ -1186,9 +1434,9 @@ export const claudeCodeLevels = [
   {
     level: 5,
     title: '小型專案開發',
-    description: '完成 Todo App',
+    description: '完成 Todo App 並學會快速架環境',
     icon: '🚀',
-    scenes: ['cc-5-1', 'cc-5-2', 'cc-5-3'],
+    scenes: ['cc-5-1', 'cc-5-2', 'cc-5-3', 'cc-5-bonus-1', 'cc-5-bonus-2', 'cc-5-bonus-3'],
     badge: '專案建造者',
   },
   {
