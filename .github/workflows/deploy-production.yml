@@ -96,21 +96,23 @@ jobs:
             fi
 
             # 建立 nginx 配置
-            echo 'server {
-                listen 80;
-                server_name jesse-chen.com www.jesse-chen.com;
-                root /var/www/jesse-chen.com;
-                index index.html;
-                gzip on;
-                gzip_types text/plain text/css application/json application/javascript text/xml application/xml;
-                location / {
-                    try_files $uri $uri/ /index.html;
-                }
-                location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2)$ {
-                    expires 1y;
-                    add_header Cache-Control "public, immutable";
-                }
-            }' | sudo tee /etc/nginx/sites-available/jesse-chen.com > /dev/null
+            sudo bash -c 'cat > /etc/nginx/sites-available/jesse-chen.com << EOF
+server {
+    listen 80;
+    server_name jesse-chen.com www.jesse-chen.com;
+    root /var/www/jesse-chen.com;
+    index index.html;
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml;
+    location / {
+        try_files \$uri \$uri/ /index.html;
+    }
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2)\$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+}
+EOF'
 
             # 啟用網站
             sudo ln -sf /etc/nginx/sites-available/jesse-chen.com /etc/nginx/sites-enabled/
@@ -118,8 +120,15 @@ jobs:
             # 移除預設配置（如果存在）
             sudo rm -f /etc/nginx/sites-enabled/default
 
-            # 測試並重載 nginx
-            sudo nginx -t && sudo systemctl reload nginx
+            # 測試 nginx 配置
+            sudo nginx -t
+
+            # 啟用並重啟 nginx
+            sudo systemctl enable nginx
+            sudo systemctl restart nginx
+
+            # 確認 nginx 運行狀態
+            sudo systemctl status nginx --no-pager
 
             echo "========================================="
             echo "3. 部署完成！"
