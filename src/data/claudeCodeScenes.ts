@@ -1355,20 +1355,18 @@ const level6Scenes: Record<string, ClaudeCodeScene> = {
     level: 6,
     title: '恭喜成為 Vibe Coding 大師！',
     description: '你已經掌握了用 AI 寫程式的超能力',
-    type: 'tutorial',
+    type: 'boss',
     content: {
-      missionObjective: '回顧你的學習旅程',
+      missionObjective: '回顧你的學習旅程並領取大師勳章',
       instructions: [
         '🎉 恭喜你完成 Claude Code Adventure！',
-        '',
-        '你已經學會了：',
+        '你已經學會了以下技能：',
         '✅ 用自然語言向 AI 描述需求',
         '✅ 請 AI 生成函式和程式碼',
         '✅ 重構和優化程式碼',
         '✅ 有效地除錯和解決問題',
         '✅ 規劃和完成完整專案',
-        '',
-        '你現在是一位 Vibe Coding 大師了！',
+        '你現在是一位 Vibe Coding 大師了！🏆',
         '繼續創造，繼續探索，繼續成長！',
       ],
       tips: [
@@ -1377,9 +1375,21 @@ const level6Scenes: Record<string, ClaudeCodeScene> = {
         '分享你的作品和經驗',
         '幫助其他學習者',
       ],
+      quiz: {
+        question: '完成這趟旅程後，你覺得 Vibe Coding 最大的優勢是什麼？',
+        options: [
+          '讓程式設計變得更平易近人',
+          '可以更快速地將想法轉化為程式',
+          '降低了學習程式的門檻',
+          '以上皆是！',
+        ],
+        correctAnswer: 3,
+        explanation:
+          '恭喜！你已經完全掌握 Vibe Coding 的精髓。AI 讓每個人都能成為創造者！🎊',
+      },
     },
     previousScene: 'cc-6-3',
-    points: 0,
+    points: 1000,
   },
 }
 
