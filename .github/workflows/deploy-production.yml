@@ -100,26 +100,24 @@ jobs:
             fi
 
             # 建立 nginx 配置
-            sudo tee /etc/nginx/sites-available/jesse-chen.com > /dev/null <<'NGINXCONF'
-server {
-    listen 80;
-    server_name jesse-chen.com www.jesse-chen.com;
-    root /var/www/jesse-chen.com;
-    index index.html;
+            echo 'server {
+                listen 80;
+                server_name jesse-chen.com www.jesse-chen.com;
+                root /var/www/jesse-chen.com;
+                index index.html;
 
-    gzip on;
-    gzip_types text/plain text/css application/json application/javascript text/xml application/xml;
+                gzip on;
+                gzip_types text/plain text/css application/json application/javascript text/xml application/xml;
 
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
+                location / {
+                    try_files $uri $uri/ /index.html;
+                }
 
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2)$ {
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-    }
-}
-NGINXCONF
+                location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2)$ {
+                    expires 1y;
+                    add_header Cache-Control "public, immutable";
+                }
+            }' | sudo tee /etc/nginx/sites-available/jesse-chen.com > /dev/null
 
             # 啟用網站
             sudo ln -sf /etc/nginx/sites-available/jesse-chen.com /etc/nginx/sites-enabled/
