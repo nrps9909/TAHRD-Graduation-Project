@@ -55,33 +55,32 @@ const AdventureMap: React.FC<AdventureMapProps> = ({ onStartLevel }) => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#0a0a0a] via-[#111111] to-[#0a0a0a] p-6 relative overflow-hidden">
-      {/* 背景裝飾 - 科技感光暈 */}
+    <div className="min-h-screen bg-black p-4 sm:p-6 relative overflow-hidden">
+      {/* 背景裝飾 - Apple 風格微妙光暈 */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-emerald-500/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-emerald-500/5 rounded-full blur-3xl" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-radial from-white/[0.02] to-transparent rounded-full" />
+        <div className="absolute top-0 left-1/4 w-48 sm:w-[500px] h-48 sm:h-[500px] bg-apple-blue/[0.03] rounded-full blur-[100px]" />
+        <div className="absolute bottom-0 right-1/4 w-48 sm:w-[400px] h-48 sm:h-[400px] bg-apple-purple/[0.03] rounded-full blur-[100px]" />
       </div>
 
       {/* 標題區域 */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="text-center mb-10 relative z-10"
+        className="text-center mb-6 sm:mb-12 relative z-10"
       >
-        <h1 className="text-5xl font-bold bg-gradient-to-r from-white via-gray-200 to-gray-400 bg-clip-text text-transparent mb-3 tracking-tight">
+        <h1 className="text-2xl sm:text-4xl lg:text-5xl font-bold text-apple-gray-50 mb-2 sm:mb-3 tracking-tight px-2">
           Claude Code Adventure
         </h1>
-        <p className="text-gray-500 mb-6 text-lg">
+        <p className="text-apple-gray-300 mb-5 sm:mb-8 text-sm sm:text-lg">
           踏上 Vibe Coding 的冒險之旅
         </p>
         <Link
           to="/playground"
-          className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-500 text-white rounded-xl hover:from-emerald-500 hover:to-emerald-400 transition-all shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 hover:scale-105"
+          className="inline-flex items-center gap-1.5 sm:gap-2 px-5 sm:px-7 py-3 sm:py-3.5 bg-apple-blue text-white rounded-full hover:bg-apple-blue-light transition-all duration-300 text-sm sm:text-base font-medium"
         >
-          <Sparkles className="w-5 h-5" />
+          <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
           <span>Playground 體驗區</span>
-          <ChevronRight className="w-4 h-4" />
+          <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4" />
         </Link>
       </motion.div>
 
@@ -89,35 +88,35 @@ const AdventureMap: React.FC<AdventureMapProps> = ({ onStartLevel }) => {
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="max-w-2xl mx-auto mb-12 relative z-10"
+        className="max-w-2xl mx-auto mb-8 sm:mb-12 relative z-10"
       >
-        <div className="bg-gradient-to-br from-[#1a1a1a] to-[#0d0d0d] border border-white/10 rounded-2xl p-6 backdrop-blur-xl shadow-2xl">
-          <div className="flex items-center justify-between mb-5">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 flex items-center justify-center border border-emerald-500/20">
-                <Trophy className="w-7 h-7 text-emerald-400" />
+        <div className="glass rounded-2xl sm:rounded-3xl p-4 sm:p-6">
+          <div className="flex items-center justify-between mb-4 sm:mb-5">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-apple-blue/10 flex items-center justify-center">
+                <Trophy className="w-5 h-5 sm:w-7 sm:h-7 text-apple-blue" />
               </div>
               <div>
-                <h2 className="text-xl font-semibold text-white">
+                <h2 className="text-base sm:text-xl font-semibold text-apple-gray-50">
                   冒險進度
                 </h2>
-                <p className="text-gray-500 text-sm">
+                <p className="text-apple-gray-400 text-xs sm:text-sm">
                   {completedCount} / {totalScenes} 場景完成
                 </p>
               </div>
             </div>
             <div className="text-right">
-              <div className="text-4xl font-bold bg-gradient-to-r from-emerald-400 to-emerald-300 bg-clip-text text-transparent">
+              <div className="text-2xl sm:text-4xl font-bold text-apple-blue">
                 {overallProgress}%
               </div>
             </div>
           </div>
-          <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+          <div className="h-1 sm:h-1.5 bg-white/10 rounded-full overflow-hidden">
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${overallProgress}%` }}
               transition={{ duration: 1, ease: 'easeOut' }}
-              className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full shadow-lg shadow-emerald-500/50"
+              className="h-full bg-gradient-to-r from-apple-blue to-apple-blue-light rounded-full"
             />
           </div>
         </div>
@@ -140,7 +139,7 @@ const AdventureMap: React.FC<AdventureMapProps> = ({ onStartLevel }) => {
                 y1={`${index * 160 + 100}px`}
                 x2="50%"
                 y2={`${(index + 1) * 160 + 20}px`}
-                stroke={isCompleted ? 'url(#gradientLine)' : '#333'}
+                stroke={isCompleted ? 'url(#gradientLine)' : 'rgba(255,255,255,0.1)'}
                 strokeWidth="2"
                 strokeDasharray={isCompleted ? '0' : '6 6'}
                 initial={{ pathLength: 0, opacity: 0 }}
@@ -151,14 +150,14 @@ const AdventureMap: React.FC<AdventureMapProps> = ({ onStartLevel }) => {
           })}
           <defs>
             <linearGradient id="gradientLine" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#10b981" />
-              <stop offset="100%" stopColor="#059669" />
+              <stop offset="0%" stopColor="#0071e3" />
+              <stop offset="100%" stopColor="#2997ff" />
             </linearGradient>
           </defs>
         </svg>
 
         {/* 關卡節點 */}
-        <div className="relative z-10 space-y-12">
+        <div className="relative z-10 space-y-6 sm:space-y-12">
           {visualizationData.map((stage, index) => {
             const level = claudeCodeLevels[index]
             const isEven = index % 2 === 0
@@ -169,7 +168,7 @@ const AdventureMap: React.FC<AdventureMapProps> = ({ onStartLevel }) => {
                 initial={{ opacity: 0, x: isEven ? -30 : 30 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
-                className={`flex items-center gap-8 ${
+                className={`flex items-center gap-3 sm:gap-8 ${
                   isEven ? 'flex-row' : 'flex-row-reverse'
                 }`}
               >
@@ -180,47 +179,47 @@ const AdventureMap: React.FC<AdventureMapProps> = ({ onStartLevel }) => {
                   <motion.div
                     whileHover={stage.isAvailable ? { scale: 1.02, y: -2 } : {}}
                     onClick={() => handleLevelClick(index, stage.isAvailable)}
-                    className={`inline-block p-5 rounded-xl cursor-pointer transition-all duration-300 ${
+                    className={`inline-block p-3 sm:p-5 rounded-2xl cursor-pointer transition-all duration-300 max-w-[200px] sm:max-w-none ${
                       stage.isCompleted
-                        ? 'bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 border border-emerald-500/30 shadow-lg shadow-emerald-500/10'
+                        ? 'bg-apple-blue/10 border border-apple-blue/30'
                         : stage.isCurrent
-                          ? 'bg-gradient-to-br from-white/10 to-white/5 border border-white/20 shadow-lg shadow-white/5'
+                          ? 'glass border-white/20'
                           : stage.isAvailable
-                            ? 'bg-gradient-to-br from-white/5 to-transparent border border-white/10 hover:border-white/20 hover:shadow-lg'
+                            ? 'bg-apple-gray-800/50 border border-white/10 hover:border-white/20 hover:bg-apple-gray-700/50'
                             : 'bg-white/[0.02] border border-white/5 opacity-50 cursor-not-allowed'
                     }`}
                   >
                     <div
-                      className={`flex items-center gap-2 mb-2 ${isEven ? 'justify-end' : 'justify-start'}`}
+                      className={`flex items-center gap-1.5 sm:gap-2 mb-1 sm:mb-2 ${isEven ? 'justify-end' : 'justify-start'}`}
                     >
                       {stage.isBoss && (
-                        <Crown className="w-5 h-5 text-amber-400" />
+                        <Crown className="w-4 h-4 sm:w-5 sm:h-5 text-apple-orange" />
                       )}
-                      <span className="text-sm font-medium text-gray-400">
+                      <span className="text-xs sm:text-sm font-medium text-apple-gray-400">
                         Level {level.level}
                       </span>
                     </div>
-                    <h3 className="text-lg font-semibold text-white mb-1">
+                    <h3 className="text-sm sm:text-lg font-semibold text-apple-gray-50 mb-0.5 sm:mb-1">
                       {level.title}
                     </h3>
-                    <p className="text-gray-500 text-sm mb-3">
+                    <p className="text-apple-gray-400 text-xs sm:text-sm mb-2 sm:mb-3 line-clamp-2 sm:line-clamp-none">
                       {level.description}
                     </p>
 
                     {stage.isAvailable && (
-                      <div className="mt-3">
-                        <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                      <div className="mt-2 sm:mt-3">
+                        <div className="h-1 sm:h-1.5 bg-white/10 rounded-full overflow-hidden">
                           <motion.div
                             initial={{ width: 0 }}
                             animate={{ width: `${stage.progress}%` }}
                             className={`h-full rounded-full ${
                               stage.isCompleted
-                                ? 'bg-gradient-to-r from-emerald-500 to-emerald-400'
-                                : 'bg-gradient-to-r from-white/60 to-white/40'
+                                ? 'bg-gradient-to-r from-apple-blue to-apple-blue-light'
+                                : 'bg-gradient-to-r from-apple-gray-400 to-apple-gray-300'
                             }`}
                           />
                         </div>
-                        <p className="text-xs text-gray-600 mt-2">
+                        <p className="text-[10px] sm:text-xs text-apple-gray-500 mt-1 sm:mt-2">
                           {stage.progress}% 完成
                         </p>
                       </div>
@@ -233,28 +232,28 @@ const AdventureMap: React.FC<AdventureMapProps> = ({ onStartLevel }) => {
                   whileHover={stage.isAvailable ? { scale: 1.1 } : {}}
                   whileTap={stage.isAvailable ? { scale: 0.95 } : {}}
                   onClick={() => handleLevelClick(index, stage.isAvailable)}
-                  className={`w-20 h-20 rounded-2xl flex items-center justify-center cursor-pointer transition-all duration-300 ${
+                  className={`w-14 h-14 sm:w-20 sm:h-20 rounded-2xl sm:rounded-3xl flex items-center justify-center cursor-pointer transition-all duration-300 flex-shrink-0 ${
                     stage.isCompleted
-                      ? 'bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-lg shadow-emerald-500/40'
+                      ? 'bg-apple-blue shadow-lg shadow-apple-blue/30'
                       : stage.isCurrent
-                        ? 'bg-gradient-to-br from-white/20 to-white/10 border-2 border-white/30 shadow-lg shadow-white/10'
+                        ? 'glass border-2 border-apple-blue/50'
                         : stage.isAvailable
-                          ? 'bg-gradient-to-br from-white/10 to-white/5 border border-white/20 hover:border-white/40'
-                          : 'bg-white/5 cursor-not-allowed'
+                          ? 'bg-apple-gray-700 border border-white/10 hover:border-white/20'
+                          : 'bg-apple-gray-800 cursor-not-allowed'
                   }`}
                 >
                   {stage.isCompleted ? (
-                    <CheckCircle className="w-10 h-10 text-white" />
+                    <CheckCircle className="w-7 h-7 sm:w-10 sm:h-10 text-white" />
                   ) : !stage.isAvailable ? (
-                    <Lock className="w-7 h-7 text-gray-600" />
+                    <Lock className="w-5 h-5 sm:w-7 sm:h-7 text-apple-gray-500" />
                   ) : stage.isBoss ? (
-                    <Crown className="w-10 h-10 text-amber-400" />
+                    <Crown className="w-7 h-7 sm:w-10 sm:h-10 text-apple-orange" />
                   ) : (
-                    <span className="text-3xl">{level.icon}</span>
+                    <span className="text-xl sm:text-3xl">{level.icon}</span>
                   )}
                 </motion.div>
 
-                <div className="flex-1" />
+                <div className="flex-1 hidden sm:block" />
               </motion.div>
             )
           })}
@@ -268,14 +267,15 @@ const AdventureMap: React.FC<AdventureMapProps> = ({ onStartLevel }) => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            className="fixed inset-0 bg-black/70 backdrop-blur-xl flex items-center justify-center z-50 p-3 sm:p-4"
             onClick={() => setSelectedLevel(null)}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="bg-gradient-to-br from-[#1a1a1a] to-[#0d0d0d] rounded-2xl p-6 max-w-md w-full border border-white/10 shadow-2xl"
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="glass rounded-2xl sm:rounded-3xl p-5 sm:p-8 max-w-md w-full shadow-apple-xl max-h-[90vh] overflow-y-auto"
               onClick={e => e.stopPropagation()}
             >
               {(() => {
@@ -283,50 +283,50 @@ const AdventureMap: React.FC<AdventureMapProps> = ({ onStartLevel }) => {
                 const stage = visualizationData[selectedLevel]
                 return (
                   <>
-                    <div className="text-center mb-6">
-                      <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-white/10 to-white/5 flex items-center justify-center border border-white/10">
-                        <span className="text-4xl">{level.icon}</span>
+                    <div className="text-center mb-5 sm:mb-8">
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 sm:mb-5 rounded-2xl sm:rounded-3xl bg-apple-gray-700 flex items-center justify-center">
+                        <span className="text-3xl sm:text-4xl">{level.icon}</span>
                       </div>
-                      <h3 className="text-2xl font-bold text-white mb-2">
+                      <h3 className="text-xl sm:text-2xl font-bold text-apple-gray-50 mb-2">
                         Level {level.level}：{level.title}
                       </h3>
-                      <p className="text-gray-500">
+                      <p className="text-apple-gray-400 text-sm sm:text-base">
                         {level.description}
                       </p>
                     </div>
 
                     {/* 進度 */}
-                    <div className="bg-white/5 rounded-xl p-4 mb-4 border border-white/10">
-                      <div className="flex justify-between text-sm mb-3">
-                        <span className="text-gray-500">進度</span>
-                        <span className="text-white font-semibold">
+                    <div className="bg-apple-gray-800/50 rounded-2xl p-4 sm:p-5 mb-4 sm:mb-5">
+                      <div className="flex justify-between text-xs sm:text-sm mb-3">
+                        <span className="text-apple-gray-400">進度</span>
+                        <span className="text-apple-gray-50 font-semibold">
                           {stage.progress}%
                         </span>
                       </div>
-                      <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                      <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full"
+                          className="h-full bg-gradient-to-r from-apple-blue to-apple-blue-light rounded-full"
                           style={{ width: `${stage.progress}%` }}
                         />
                       </div>
                     </div>
 
                     {/* 獎勵 */}
-                    <div className="bg-white/5 rounded-xl p-4 mb-6 border border-white/10">
-                      <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
-                        <Star className="w-5 h-5 text-amber-400" />
+                    <div className="bg-apple-gray-800/50 rounded-2xl p-4 sm:p-5 mb-5 sm:mb-8">
+                      <h4 className="text-apple-gray-50 font-semibold mb-3 flex items-center gap-2 text-sm sm:text-base">
+                        <Star className="w-4 h-4 sm:w-5 sm:h-5 text-apple-yellow" />
                         完成獎勵
                       </h4>
-                      <div className="flex items-center gap-6">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
                         <div className="flex items-center gap-2">
-                          <Zap className="w-5 h-5 text-emerald-400" />
-                          <span className="text-white">
+                          <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-apple-blue" />
+                          <span className="text-apple-gray-50 text-sm sm:text-base">
                             {level.level * 200} 分
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Trophy className="w-5 h-5 text-amber-400" />
-                          <span className="text-white">
+                          <Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-apple-yellow" />
+                          <span className="text-apple-gray-50 text-sm sm:text-base">
                             {level.badge}
                           </span>
                         </div>
@@ -334,18 +334,18 @@ const AdventureMap: React.FC<AdventureMapProps> = ({ onStartLevel }) => {
                     </div>
 
                     {/* 按鈕 */}
-                    <div className="flex gap-3">
+                    <div className="flex gap-3 sm:gap-4">
                       <button
                         onClick={() => setSelectedLevel(null)}
-                        className="flex-1 py-3 bg-white/5 text-gray-400 rounded-xl font-semibold hover:bg-white/10 transition-all border border-white/10"
+                        className="flex-1 py-3 sm:py-3.5 bg-apple-gray-700 text-apple-gray-300 rounded-full font-medium hover:bg-apple-gray-600 transition-all text-sm sm:text-base"
                       >
                         返回
                       </button>
                       <button
                         onClick={() => handleStartLevel(selectedLevel)}
-                        className="flex-1 py-3 bg-gradient-to-r from-emerald-600 to-emerald-500 text-white rounded-xl font-semibold hover:from-emerald-500 hover:to-emerald-400 transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20"
+                        className="flex-1 py-3 sm:py-3.5 bg-apple-blue text-white rounded-full font-medium hover:bg-apple-blue-light transition-all flex items-center justify-center gap-1.5 sm:gap-2 text-sm sm:text-base"
                       >
-                        <Play className="w-5 h-5" />
+                        <Play className="w-4 h-4 sm:w-5 sm:h-5" />
                         {stage.progress > 0 ? '繼續冒險' : '開始冒險'}
                       </button>
                     </div>

@@ -34,15 +34,15 @@ const TutorialScene = ({}: TutorialSceneProps) => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="min-h-screen p-8"
+      className="min-h-screen p-4 sm:p-6 lg:p-8"
     >
-      <header className="mb-8">
+      <header className="mb-4 sm:mb-6 lg:mb-8">
         <button
           onClick={() => navigate('/')}
-          className="flex items-center gap-2 text-gray-400 hover:text-emerald-400 transition-colors"
+          className="flex items-center gap-1.5 sm:gap-2 text-gray-400 hover:text-emerald-400 transition-colors"
         >
-          <ArrowLeft className="w-5 h-5" />
-          <span className="chinese-text">返回冒險地圖</span>
+          <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+          <span className="chinese-text text-sm sm:text-base">返回冒險地圖</span>
         </button>
       </header>
 

@@ -41,10 +41,10 @@ const MobileMenu = () => {
 
   return (
     <>
-      {/* 手機選單按鈕 */}
+      {/* 手機選單按鈕 - Apple 風格 */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed top-4 right-4 z-50 lg:hidden p-3 bg-white rounded-full shadow-lg"
+        className="fixed top-3 sm:top-4 right-3 sm:right-4 z-50 lg:hidden p-2.5 sm:p-3 glass rounded-full shadow-apple"
       >
         <AnimatePresence mode="wait">
           {isOpen ? (
@@ -54,7 +54,7 @@ const MobileMenu = () => {
               animate={{ rotate: 0 }}
               exit={{ rotate: 90 }}
             >
-              <X className="w-6 h-6 text-cat-purple" />
+              <X className="w-5 h-5 sm:w-6 sm:h-6 text-apple-blue" />
             </motion.div>
           ) : (
             <motion.div
@@ -63,7 +63,7 @@ const MobileMenu = () => {
               animate={{ rotate: 0 }}
               exit={{ rotate: -90 }}
             >
-              <Menu className="w-6 h-6 text-cat-purple" />
+              <Menu className="w-5 h-5 sm:w-6 sm:h-6 text-apple-blue" />
             </motion.div>
           )}
         </AnimatePresence>
@@ -79,25 +79,25 @@ const MobileMenu = () => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsOpen(false)}
-              className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+              className="fixed inset-0 bg-black/60 backdrop-blur-xl z-40 lg:hidden"
             />
 
-            {/* 選單內容 */}
+            {/* 選單內容 - Apple 風格 */}
             <motion.div
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 20 }}
-              className="fixed right-0 top-0 h-full w-80 bg-white shadow-2xl z-50 lg:hidden"
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="fixed right-0 top-0 h-full w-72 sm:w-80 glass border-l border-white/10 shadow-apple-xl z-50 lg:hidden"
             >
-              <div className="p-6">
-                <div className="mb-8">
-                  <h2 className="text-2xl font-bold text-cat-purple chinese-text">
+              <div className="p-5 sm:p-6">
+                <div className="mb-8 sm:mb-10">
+                  <h2 className="text-xl sm:text-2xl font-bold text-apple-gray-50 chinese-text tracking-tight">
                     選單
                   </h2>
                 </div>
 
-                <nav className="space-y-4">
+                <nav className="space-y-2 sm:space-y-3">
                   {menuItems.map((item, index) => (
                     <motion.button
                       key={item.label}
@@ -105,33 +105,33 @@ const MobileMenu = () => {
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: index * 0.1 }}
                       onClick={() => handleItemClick(item)}
-                      className="w-full flex items-center gap-4 p-3 rounded-xl hover:bg-pink-50 transition-colors"
+                      className="w-full flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl hover:bg-white/5 transition-all duration-300"
                     >
-                      <item.icon className="w-5 h-5 text-cat-purple" />
-                      <span className="text-gray-700 font-medium chinese-text">
+                      <item.icon className="w-5 h-5 sm:w-6 sm:h-6 text-apple-blue" />
+                      <span className="text-apple-gray-200 font-medium chinese-text text-sm sm:text-base">
                         {item.label}
                       </span>
                     </motion.button>
                   ))}
                 </nav>
 
-                {/* 遊戲進度 */}
-                <div className="mt-8 p-4 bg-gradient-to-br from-pink-50 to-purple-50 rounded-xl">
-                  <h3 className="text-sm font-bold text-cat-purple mb-3 chinese-text">
+                {/* 遊戲進度 - Apple 風格 */}
+                <div className="mt-8 sm:mt-10 p-4 sm:p-5 bg-apple-blue/10 rounded-2xl">
+                  <h3 className="text-xs sm:text-sm font-semibold text-apple-blue mb-3 sm:mb-4 chinese-text">
                     遊戲進度
                   </h3>
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600 chinese-text">總分</span>
-                      <span className="font-bold text-cat-purple">
+                  <div className="space-y-2 sm:space-y-3">
+                    <div className="flex justify-between text-xs sm:text-sm">
+                      <span className="text-apple-gray-400 chinese-text">總分</span>
+                      <span className="font-semibold text-apple-gray-50">
                         {totalScore}
                       </span>
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600 chinese-text">
+                    <div className="flex justify-between text-xs sm:text-sm">
+                      <span className="text-apple-gray-400 chinese-text">
                         完成章節
                       </span>
-                      <span className="font-bold text-cat-purple">
+                      <span className="font-semibold text-apple-gray-50">
                         {completedScenes.length} / 9
                       </span>
                     </div>
@@ -139,17 +139,17 @@ const MobileMenu = () => {
                 </div>
 
                 {/* 貓咪裝飾 */}
-                <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2">
+                <div className="absolute bottom-6 sm:bottom-8 left-1/2 transform -translate-x-1/2">
                   <motion.div
                     animate={{
-                      y: [0, -10, 0],
+                      y: [0, -8, 0],
                     }}
                     transition={{
                       duration: 2,
                       repeat: Infinity,
                       ease: 'easeInOut',
                     }}
-                    className="text-6xl"
+                    className="text-4xl sm:text-5xl"
                   >
                     🐱
                   </motion.div>

@@ -62,20 +62,20 @@ const CompletionScreen = ({}: CompletionScreenProps) => {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="min-h-screen flex items-center justify-center p-8"
+      className="min-h-screen flex items-center justify-center p-4 sm:p-6 lg:p-8"
     >
       <div className="max-w-2xl w-full">
         <motion.div
           initial={{ scale: 0.5, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ delay: 0.2, type: 'spring' }}
-          className="text-center mb-8"
+          className="text-center mb-6 sm:mb-8"
         >
-          <Trophy className="w-24 h-24 text-retro-green mx-auto mb-4" />
-          <h1 className="text-5xl font-cute text-retro-green mb-2">
+          <Trophy className="w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 text-retro-green mx-auto mb-3 sm:mb-4" />
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-cute text-retro-green mb-2">
             CONGRATULATIONS!
           </h1>
-          <p className="text-xl font-cute text-text-primary">
+          <p className="text-base sm:text-lg lg:text-xl font-cute text-text-primary px-4">
             {playerName}, you are now a Claude Code Master!
           </p>
         </motion.div>
@@ -84,37 +84,37 @@ const CompletionScreen = ({}: CompletionScreenProps) => {
           initial={{ y: 50, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.4 }}
-          className="terminal-window mb-6"
+          className="terminal-window mb-4 sm:mb-6 p-4 sm:p-6"
         >
-          <h2 className="text-retro-green font-cute mb-4">FINAL SCORE</h2>
-          <div className="grid grid-cols-2 gap-4">
+          <h2 className="text-retro-green font-cute mb-3 sm:mb-4 text-sm sm:text-base">FINAL SCORE</h2>
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
             <div>
-              <p className="text-sm font-cute text-terminal-text">
+              <p className="text-xs sm:text-sm font-cute text-terminal-text">
                 Total Points
               </p>
-              <p className="text-3xl font-cute text-retro-green">
+              <p className="text-2xl sm:text-3xl font-cute text-retro-green">
                 {totalScore}
               </p>
             </div>
             <div>
-              <p className="text-sm font-cute text-terminal-text">Grade</p>
-              <p className="text-3xl font-cute text-retro-green">
+              <p className="text-xs sm:text-sm font-cute text-terminal-text">Grade</p>
+              <p className="text-2xl sm:text-3xl font-cute text-retro-green">
                 {getGrade()}
               </p>
             </div>
             <div>
-              <p className="text-sm font-cute text-terminal-text">
+              <p className="text-xs sm:text-sm font-cute text-terminal-text">
                 Chapters Completed
               </p>
-              <p className="text-2xl font-cute text-retro-coral">
+              <p className="text-xl sm:text-2xl font-cute text-retro-coral">
                 {completedScenes.length}/9
               </p>
             </div>
             <div>
-              <p className="text-sm font-cute text-terminal-text">
+              <p className="text-xs sm:text-sm font-cute text-terminal-text">
                 Achievements
               </p>
-              <p className="text-2xl font-cute text-retro-coral">
+              <p className="text-xl sm:text-2xl font-cute text-retro-coral">
                 {unlockedAchievements.length}/{achievements.length}
               </p>
             </div>
@@ -125,23 +125,23 @@ const CompletionScreen = ({}: CompletionScreenProps) => {
           initial={{ y: 50, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.6 }}
-          className="terminal-window mb-6"
+          className="terminal-window mb-4 sm:mb-6 p-4 sm:p-6"
         >
-          <h2 className="text-retro-coral font-cute mb-4">
+          <h2 className="text-retro-coral font-cute mb-3 sm:mb-4 text-sm sm:text-base">
             ACHIEVEMENTS EARNED
           </h2>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
             {unlockedAchievements.map(achievement => (
               <div
                 key={achievement.id}
                 className="flex items-center gap-2 p-2 bg-cat-cream/20 rounded border border-cat-yellow/30"
               >
-                <span className="text-2xl">{achievement.icon}</span>
-                <div>
-                  <p className="font-cute text-xs text-retro-green">
+                <span className="text-xl sm:text-2xl">{achievement.icon}</span>
+                <div className="min-w-0">
+                  <p className="font-cute text-[10px] sm:text-xs text-retro-green truncate">
                     {achievement.name}
                   </p>
-                  <p className="font-cute text-xs text-terminal-text">
+                  <p className="font-cute text-[10px] sm:text-xs text-terminal-text truncate">
                     {achievement.description}
                   </p>
                 </div>
@@ -154,11 +154,11 @@ const CompletionScreen = ({}: CompletionScreenProps) => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.8 }}
-          className="flex gap-4 justify-center"
+          className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center"
         >
           <button
             onClick={() => navigate('/game')}
-            className="retro-button flex items-center gap-2"
+            className="retro-button flex items-center justify-center gap-2 text-sm sm:text-base py-2.5 sm:py-3"
           >
             <Award className="w-4 h-4" />
             VIEW PROGRESS
@@ -168,7 +168,7 @@ const CompletionScreen = ({}: CompletionScreenProps) => {
               resetGame()
               navigate('/')
             }}
-            className="retro-button flex items-center gap-2"
+            className="retro-button flex items-center justify-center gap-2 text-sm sm:text-base py-2.5 sm:py-3"
           >
             <Home className="w-4 h-4" />
             NEW GAME
@@ -179,7 +179,7 @@ const CompletionScreen = ({}: CompletionScreenProps) => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1 }}
-          className="text-center mt-8 font-cute text-sm text-terminal-text"
+          className="text-center mt-6 sm:mt-8 font-cute text-xs sm:text-sm text-terminal-text"
         >
           Thank you for playing Claude Code Adventure!
         </motion.p>
