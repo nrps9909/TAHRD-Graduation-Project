@@ -75,8 +75,12 @@ jobs:
             echo "2. 配置 Nginx..."
             echo "========================================="
 
-            # 停止 Docker 容器（如果存在）
+            # 停止所有可能佔用 80 port 的服務
             cd /home/jesse/heart-whisper-town 2>/dev/null && docker compose -f docker-compose.production-prebuilt.yml down 2>/dev/null || true
+
+            # 檢查並停止任何佔用 80 port 的進程
+            echo "檢查 port 80 佔用情況..."
+            sudo fuser -k 80/tcp 2>/dev/null || true
 
             # 檢查 nginx 是否安裝
             if ! command -v nginx &> /dev/null; then
@@ -96,7 +100,26 @@ jobs:
             fi
 
             # 建立 nginx 配置
-            printf '%s\n' 'server {' '    listen 80;' '    server_name jesse-chen.com www.jesse-chen.com;' '    root /var/www/jesse-chen.com;' '    index index.html;' '    gzip on;' '    gzip_types text/plain text/css application/json application/javascript text/xml application/xml;' '    location / {' '        try_files $uri $uri/ /index.html;' '    }' '    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2)$ {' '        expires 1y;' '        add_header Cache-Control "public, immutable";' '    }' '}' | sudo tee /etc/nginx/sites-available/jesse-chen.com > /dev/null
+            sudo tee /etc/nginx/sites-available/jesse-chen.com > /dev/null <<'NGINXCONF'
+server {
+    listen 80;
+    server_name jesse-chen.com www.jesse-chen.com;
+    root /var/www/jesse-chen.com;
+    index index.html;
+
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+}
+NGINXCONF
 
             # 啟用網站
             sudo ln -sf /etc/nginx/sites-available/jesse-chen.com /etc/nginx/sites-enabled/
@@ -116,22 +139,51 @@ jobs:
             echo "========================================="
             sudo nginx -t
 
-            # 啟用並重啟 nginx
+            if [ $? -ne 0 ]; then
+                echo "Nginx 配置測試失敗！"
+                sudo tail -20 /var/log/nginx/error.log
+                exit 1
+            fi
+
+            # 重啟 nginx
+            echo "========================================="
+            echo "重啟 Nginx..."
+            echo "========================================="
             sudo systemctl enable nginx
-            sudo systemctl stop nginx || true
-            sudo systemctl start nginx
+            sudo systemctl restart nginx
+
+            # 等待 nginx 啟動
+            sleep 2
 
             # 確認 nginx 運行狀態
             echo "========================================="
             echo "Nginx 狀態:"
             echo "========================================="
-            sudo systemctl status nginx --no-pager || true
+            sudo systemctl status nginx --no-pager
+
+            if ! sudo systemctl is-active --quiet nginx; then
+                echo "Nginx 啟動失敗！查看錯誤日誌："
+                sudo tail -30 /var/log/nginx/error.log
+                sudo journalctl -u nginx --no-pager -n 30
+                exit 1
+            fi
 
             # 檢查端口監聽
             echo "========================================="
             echo "端口 80 監聽狀態:"
             echo "========================================="
-            sudo ss -tlnp | grep :80 || echo "沒有服務監聽端口 80"
+            sudo ss -tlnp | grep :80
+
+            if ! sudo ss -tlnp | grep -q :80; then
+                echo "警告：沒有服務監聽端口 80！"
+                exit 1
+            fi
+
+            # 測試本地連接
+            echo "========================================="
+            echo "測試本地連接:"
+            echo "========================================="
+            curl -s -o /dev/null -w "%{http_code}" http://localhost/ || echo "本地連接失敗"
 
             echo "========================================="
             echo "3. 部署完成！"

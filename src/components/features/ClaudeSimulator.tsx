@@ -246,12 +246,22 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
     }, 10)
   }
 
-  // 自動滾動到底部
-  useEffect(() => {
+  // 自動滾動到底部 - 只在新訊息時滾動，且用戶在底部附近時才滾動
+  const [shouldAutoScroll, setShouldAutoScroll] = useState(true)
+
+  const handleScroll = () => {
     if (outputRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = outputRef.current
+      // 如果用戶滾動到距離底部 100px 以內，啟用自動滾動
+      setShouldAutoScroll(scrollHeight - scrollTop - clientHeight < 100)
+    }
+  }
+
+  useEffect(() => {
+    if (outputRef.current && shouldAutoScroll) {
       outputRef.current.scrollTop = outputRef.current.scrollHeight
     }
-  }, [displayedResponse, displayedCode, conversationHistory])
+  }, [conversationHistory.length, isLoading, shouldAutoScroll])
 
   const handleSubmit = async () => {
     if (!input.trim()) return
@@ -347,6 +357,7 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
       {/* 輸出區域 */}
       <div
         ref={outputRef}
+        onScroll={handleScroll}
         className="h-[400px] overflow-y-auto p-4 space-y-4 bg-gray-900"
       >
         {/* 預設提示 */}
