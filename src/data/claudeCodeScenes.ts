@@ -971,7 +971,7 @@ const level5Scenes: Record<string, ClaudeCodeScene> = {
       ],
     },
     previousScene: 'cc-5-2',
-    nextScene: 'cc-6-1',
+    nextScene: 'cc-5-bonus-1',
     points: 300,
     unlockNPC: 'npc-project-master',
   },
@@ -993,18 +993,8 @@ const level5BonusScenes: Record<string, ClaudeCodeScene> = {
       instructions: [
         '這是 Claude Code 最強大的功能之一！',
         '當你看到一個有趣的 GitHub 專案，想要快速跑起來：',
-        '',
-        '傳統方式：',
-        '1. 閱讀 README（可能是英文）',
-        '2. 安裝各種依賴',
-        '3. 設定環境變數',
-        '4. 解決版本衝突...',
-        '5. 花費 30 分鐘到數小時',
-        '',
-        'Claude Code 方式：',
-        '1. 給 Claude 一個 GitHub URL',
-        '2. Claude 自動分析、Clone、安裝、啟動',
-        '3. 幾分鐘搞定！',
+        '【傳統方式】需要閱讀 README、安裝依賴、設定環境變數、解決版本衝突，花費 30 分鐘到數小時',
+        '【Claude Code 方式】給 Claude 一個 GitHub URL，它會自動分析、Clone、安裝、啟動，幾分鐘搞定！',
       ],
       example: `實際對話範例：
 
@@ -1054,8 +1044,7 @@ Claude：好的！讓我幫你處理...
       missionObjective: '學會讓 Claude 幫你理解陌生的專案結構',
       instructions: [
         '除了架環境，Claude 還能幫你快速理解程式碼！',
-        '',
-        '常用的分析指令：',
+        '以下是常用的分析指令：',
       ],
       promptTemplates: [
         {
@@ -1148,13 +1137,8 @@ npm run dev    # 啟動開發伺服器
     content: {
       missionObjective: '學會用 Claude 解決常見的環境設定問題',
       instructions: [
-        '架環境時常遇到的問題：',
-        '• Node 版本不對',
-        '• 缺少系統依賴',
-        '• Port 被佔用',
-        '• 環境變數沒設定',
-        '',
-        'Claude 都能幫你解決！',
+        '架環境時常遇到的問題：Node 版本不對、缺少系統依賴、Port 被佔用、環境變數沒設定',
+        'Claude 都能幫你解決這些問題！',
       ],
       requirements: [
         '學會描述環境錯誤給 Claude',

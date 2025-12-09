@@ -35,6 +35,8 @@ const MissionPage: React.FC<MissionPageProps> = ({
   >('objective')
   const [quizAnswer, setQuizAnswer] = useState<number | null>(null)
   const [quizSubmitted, setQuizSubmitted] = useState(false)
+  const [quizPassed, setQuizPassed] = useState(false)
+  const [sceneCompleted, setSceneCompleted] = useState(false)
   const [copiedTemplate, setCopiedTemplate] = useState<string | null>(null)
 
   const { content, type, level } = scene
@@ -47,6 +49,8 @@ const MissionPage: React.FC<MissionPageProps> = ({
     setActiveTab('objective')
     setQuizAnswer(null)
     setQuizSubmitted(false)
+    setQuizPassed(false)
+    setSceneCompleted(false)
     setCopiedTemplate(null)
   }, [scene.id])
 
@@ -55,10 +59,19 @@ const MissionPage: React.FC<MissionPageProps> = ({
     setQuizSubmitted(true)
 
     if (quizAnswer === content.quiz?.correctAnswer) {
-      setTimeout(() => {
-        onComplete(scene.points)
-      }, 2000)
+      setQuizPassed(true)
+      if (!sceneCompleted) {
+        setSceneCompleted(true)
+        setTimeout(() => {
+          onComplete(scene.points)
+        }, 2000)
+      }
     }
+  }
+
+  const handleRetryQuiz = () => {
+    setQuizAnswer(null)
+    setQuizSubmitted(false)
   }
 
   const copyTemplate = (template: PromptTemplate) => {
@@ -417,6 +430,14 @@ const MissionPage: React.FC<MissionPageProps> = ({
                     <p className="text-sm opacity-90">
                       {content.quiz!.explanation}
                     </p>
+                    {quizAnswer !== content.quiz!.correctAnswer && (
+                      <button
+                        onClick={handleRetryQuiz}
+                        className="mt-4 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
+                      >
+                        再試一次
+                      </button>
+                    )}
                   </motion.div>
                 )}
               </div>
@@ -444,17 +465,41 @@ const MissionPage: React.FC<MissionPageProps> = ({
           <span className="text-gray-400">+{scene.points} 分</span>
         </div>
 
+        {/* 如果有測驗，必須通過才能進入下一關 */}
         {onNext && (
-          <button
-            onClick={() => {
-              onComplete(scene.points)
-              onNext()
-            }}
-            className="flex items-center gap-2 px-6 py-2 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-500 transition-colors"
-          >
-            下一關
-            <ChevronRight size={20} />
-          </button>
+          hasQuiz ? (
+            quizPassed ? (
+              <button
+                onClick={onNext}
+                className="flex items-center gap-2 px-6 py-2 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-500 transition-colors"
+              >
+                下一關
+                <ChevronRight size={20} />
+              </button>
+            ) : (
+              <button
+                onClick={() => setActiveTab('quiz')}
+                className="flex items-center gap-2 px-6 py-2 bg-amber-600 text-white rounded-lg font-medium hover:bg-amber-500 transition-colors"
+              >
+                完成測驗
+                <ChevronRight size={20} />
+              </button>
+            )
+          ) : (
+            <button
+              onClick={() => {
+                if (!sceneCompleted) {
+                  setSceneCompleted(true)
+                  onComplete(scene.points)
+                }
+                onNext()
+              }}
+              className="flex items-center gap-2 px-6 py-2 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-500 transition-colors"
+            >
+              下一關
+              <ChevronRight size={20} />
+            </button>
+          )
         )}
       </footer>
     </div>

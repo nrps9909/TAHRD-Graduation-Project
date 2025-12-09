@@ -13,13 +13,16 @@ const TutorialScene = ({}: TutorialSceneProps) => {
 
   if (!sceneId) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#0a0a0a] via-[#111111] to-[#0a0a0a]">
         <div className="text-center">
-          <h2 className="text-2xl font-cute text-retro-amber mb-4">
-            Scene not found
+          <h2 className="text-2xl font-bold text-gray-200 mb-4">
+            找不到場景
           </h2>
-          <button onClick={() => navigate('/')} className="retro-button">
-            Return Home
+          <button
+            onClick={() => navigate('/')}
+            className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-colors"
+          >
+            返回首頁
           </button>
         </div>
       </div>
@@ -36,10 +39,10 @@ const TutorialScene = ({}: TutorialSceneProps) => {
       <header className="mb-8">
         <button
           onClick={() => navigate('/')}
-          className="flex items-center gap-2 text-purple-300 hover:text-purple-100 transition-colors"
+          className="flex items-center gap-2 text-gray-400 hover:text-emerald-400 transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
-          <span className="font-cute chinese-text">返回冒險地圖</span>
+          <span className="chinese-text">返回冒險地圖</span>
         </button>
       </header>
 

@@ -47,13 +47,13 @@ const SceneRenderer = ({ sceneId }: SceneRendererProps) => {
 
   if (!scene) {
     return (
-      <div className="text-center text-retro-amber">
-        <h2 className="text-2xl font-cute mb-4">Scene not found</h2>
+      <div className="text-center py-20">
+        <h2 className="text-2xl font-bold text-gray-200 mb-4">找不到場景</h2>
         <button
-          onClick={() => navigateToScene('intro')}
-          className="retro-button"
+          onClick={() => navigate('/')}
+          className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-colors"
         >
-          Return to Start
+          返回首頁
         </button>
       </div>
     )
