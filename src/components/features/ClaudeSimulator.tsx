@@ -18,12 +18,119 @@ interface ClaudeSimulatorProps {
   showTypingEffect?: boolean
 }
 
-// 判斷是否為可預覽的 HTML 程式碼
-const isPreviewableHTML = (code: string): boolean => {
-  return code.includes('<!DOCTYPE html>') ||
-         code.includes('<html') ||
-         (code.includes('<body') && code.includes('</body>')) ||
-         (code.includes('<div') && code.includes('style'))
+// 判斷程式碼類型
+type CodeType = 'html' | 'javascript' | 'none'
+
+const detectCodeType = (code: string): CodeType => {
+  // 檢查是否為 HTML
+  if (code.includes('<!DOCTYPE html>') ||
+      code.includes('<html') ||
+      (code.includes('<body') && code.includes('</body>')) ||
+      (code.includes('<div') && code.includes('style'))) {
+    return 'html'
+  }
+
+  // 檢查是否為 JavaScript (有 function 或 console.log)
+  if ((code.includes('function ') || code.includes('const ') || code.includes('let ')) &&
+      (code.includes('console.log') || code.includes('return '))) {
+    return 'javascript'
+  }
+
+  return 'none'
+}
+
+// 將 JavaScript 程式碼包裝成可執行的 HTML
+const wrapJavaScriptForPreview = (code: string): string => {
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Consolas', 'Monaco', monospace;
+      background: #1a1a2e;
+      color: #eee;
+      padding: 16px;
+      min-height: 100vh;
+    }
+    .output-title {
+      color: #82aaff;
+      font-size: 12px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .output-title::before {
+      content: '▶';
+      color: #addb67;
+    }
+    .console-output {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 12px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .log-line {
+      padding: 4px 0;
+      border-bottom: 1px solid #21262d;
+    }
+    .log-line:last-child { border-bottom: none; }
+    .log-type { color: #7ee787; margin-right: 8px; }
+    .log-value { color: #f0f6fc; }
+    .log-object { color: #79c0ff; }
+    .log-number { color: #f78166; }
+    .log-string { color: #a5d6ff; }
+    .error { color: #f85149; }
+  </style>
+</head>
+<body>
+  <div class="output-title">Console 輸出結果</div>
+  <div class="console-output" id="output"></div>
+  <script>
+    const output = document.getElementById('output');
+    const originalLog = console.log;
+    const logs = [];
+
+    // 格式化輸出值
+    function formatValue(val) {
+      if (val === null) return '<span class="log-object">null</span>';
+      if (val === undefined) return '<span class="log-object">undefined</span>';
+      if (typeof val === 'number') return '<span class="log-number">' + val + '</span>';
+      if (typeof val === 'string') return '<span class="log-string">"' + val + '"</span>';
+      if (typeof val === 'object') {
+        try {
+          return '<span class="log-object">' + JSON.stringify(val, null, 2) + '</span>';
+        } catch(e) {
+          return '<span class="log-object">[Object]</span>';
+        }
+      }
+      return '<span class="log-value">' + String(val) + '</span>';
+    }
+
+    // 攔截 console.log
+    console.log = function(...args) {
+      const formatted = args.map(formatValue).join(' ');
+      logs.push('<div class="log-line"><span class="log-type">log:</span>' + formatted + '</div>');
+      output.innerHTML = logs.join('');
+      originalLog.apply(console, args);
+    };
+
+    try {
+      ${code}
+    } catch(e) {
+      output.innerHTML += '<div class="log-line error">❌ Error: ' + e.message + '</div>';
+    }
+
+    if (logs.length === 0) {
+      output.innerHTML = '<div class="log-line" style="color: #8b949e;">（此程式碼沒有 console.log 輸出）</div>';
+    }
+  </script>
+</body>
+</html>`
 }
 
 const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
@@ -239,7 +346,7 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
                     >
                       {/* 工具列 */}
                       <div className="absolute top-2 right-2 flex gap-2 z-10">
-                        {isPreviewableHTML(displayedCode) && !isTyping && (
+                        {detectCodeType(displayedCode) !== 'none' && !isTyping && (
                           <button
                             onClick={() => setShowPreview(!showPreview)}
                             className={`p-1.5 rounded transition-colors flex items-center gap-1 ${
@@ -257,7 +364,9 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
                             ) : (
                               <>
                                 <Eye size={14} className="text-green-400" />
-                                <span className="text-xs text-green-400">預覽</span>
+                                <span className="text-xs text-green-400">
+                                  {detectCodeType(displayedCode) === 'javascript' ? '執行' : '預覽'}
+                                </span>
                               </>
                             )}
                           </button>
@@ -276,18 +385,24 @@ const ClaudeSimulator: React.FC<ClaudeSimulatorProps> = ({
                       </div>
 
                       {/* 預覽模式 */}
-                      {showPreview && isPreviewableHTML(displayedCode) ? (
+                      {showPreview && detectCodeType(displayedCode) !== 'none' ? (
                         <div className="rounded-lg overflow-hidden border border-gray-600">
                           <div className="bg-gray-700 px-3 py-1.5 flex items-center gap-2">
                             <Eye size={14} className="text-green-400" />
-                            <span className="text-gray-300 text-xs">即時預覽</span>
+                            <span className="text-gray-300 text-xs">
+                              {detectCodeType(displayedCode) === 'javascript' ? '執行結果' : '即時預覽'}
+                            </span>
                           </div>
                           <iframe
                             ref={iframeRef}
-                            srcDoc={displayedCode}
+                            srcDoc={
+                              detectCodeType(displayedCode) === 'javascript'
+                                ? wrapJavaScriptForPreview(displayedCode)
+                                : displayedCode
+                            }
                             className="w-full bg-white"
                             style={{ height: '300px', minHeight: '200px' }}
-                            title="HTML Preview"
+                            title="Code Preview"
                             sandbox="allow-scripts"
                           />
                         </div>
